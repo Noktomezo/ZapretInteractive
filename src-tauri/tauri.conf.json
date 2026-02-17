@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "zapret-interactive",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "identifier": "com.noktomezo.zapret-interactive",
   "build": {
     "beforeDevCommand": "bun run dev",
