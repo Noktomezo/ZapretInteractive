@@ -49,7 +49,7 @@ jobs:
           bun-version: latest
 
       - name: Rust Setup
-        uses: dtolnay/rust-action@stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
