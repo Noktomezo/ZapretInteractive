@@ -11,7 +11,7 @@
     "lint": "eslint .",
     "format": "eslint --fix .",
     "tauri": "tauri",
-    "release": "bunx -- changelogen --release --push"
+    "release": "bunx bumpp"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
