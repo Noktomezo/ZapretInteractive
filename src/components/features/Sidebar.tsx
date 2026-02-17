@@ -4,8 +4,6 @@ import {
   Layers,
   FileCode,
   Settings,
-  Lock,
-  LockOpen,
   PanelRightOpen,
   Filter,
 } from "lucide-react";
@@ -37,48 +35,14 @@ export function Sidebar() {
         collapsed ? "w-16" : "w-64",
       )}
     >
-      <div className="p-4 border-b border-border">
-        <div
-          className={cn(
-            "flex items-center transition-all duration-200",
-            collapsed ? "justify-center" : "justify-between",
-          )}
+      <div className={cn("p-2 border-b border-border flex", collapsed ? "justify-center" : "justify-end")}>
+        <button
+          onClick={toggle}
+          className="cursor-pointer hover:opacity-80 transition-opacity p-2"
+          title={collapsed ? "Развернуть" : "Свернуть"}
         >
-          <div
-            className={cn(
-              "flex items-center overflow-hidden min-w-0",
-              collapsed ? "justify-center" : "gap-3",
-            )}
-          >
-            <button
-              onClick={toggle}
-              className="cursor-pointer hover:opacity-80 transition-opacity shrink-0"
-            >
-              {collapsed ? (
-                <Lock className="w-5 h-5 text-primary" />
-              ) : (
-                <LockOpen className="w-5 h-5 text-primary" />
-              )}
-            </button>
-            <span
-              className={cn(
-                "font-semibold tracking-tight whitespace-nowrap transition-all duration-150",
-                collapsed ? "opacity-0 w-0" : "opacity-100",
-              )}
-            >
-              Zapret Interactive
-            </span>
-          </div>
-          <button
-            onClick={toggle}
-            className={cn(
-              "cursor-pointer hover:opacity-80 transition-opacity shrink-0",
-              collapsed && "hidden",
-            )}
-          >
-            <PanelRightOpen className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </div>
+          <PanelRightOpen className={cn("w-4 h-4 text-muted-foreground", collapsed && "rotate-180")} />
+        </button>
       </div>
 
       <nav className="flex-1 p-2">

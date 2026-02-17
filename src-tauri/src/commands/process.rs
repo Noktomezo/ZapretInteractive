@@ -145,8 +145,11 @@ pub fn check_tcp_timestamps() -> Result<bool, String> {
             .output()
             .map_err(|e| format!("Failed to check TCP timestamps: {}", e))?;
 
-        let stdout = String::from_utf8_lossy(&output.stdout).to_lowercase();
-        Ok(stdout.contains("timestamps") && stdout.contains("enabled"))
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stdout_lower = stdout.to_lowercase();
+        Ok(stdout_lower
+            .lines()
+            .any(|line| line.contains("rfc 1323") && line.contains("enabled")))
     }
 
     #[cfg(not(windows))]

@@ -9,15 +9,17 @@
     "beforeBuildCommand": "bun run build",
     "frontendDist": "../dist"
   },
-"app": {
+  "app": {
     "windows": [
       {
         "title": "Zapret Interactive",
         "width": 900,
-        "height": 650,
+        "height": 700,
         "minWidth": 800,
         "minHeight": 500,
-        "center": true
+        "center": true,
+        "decorations": false,
+        "shadow": true
       }
     ],
     "security": {

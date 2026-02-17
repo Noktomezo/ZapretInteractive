@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { AppConfig, Category, Strategy, Placeholder, GlobalPorts, Filter } from '../lib/types'
+import type { AppConfig, Category, Strategy, Placeholder, GlobalPorts, Filter, ListMode } from '../lib/types'
 import * as tauri from '../lib/tauri'
 
 interface ConfigStore {
@@ -12,6 +12,7 @@ interface ConfigStore {
 
   setGlobalPorts: (ports: GlobalPorts) => void
   setFilters: (filters: Filter[]) => void
+  setListMode: (mode: ListMode) => void
   addCategory: (name: string) => void
   updateCategory: (id: string, name: string) => void
   deleteCategory: (id: string) => void
@@ -66,10 +67,17 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     }
   },
 
-  setFilters: (filters) => {
+setFilters: (filters) => {
     const { config } = get()
     if (config) {
       set({ config: { ...config, filters } })
+    }
+  },
+
+  setListMode: (mode) => {
+    const { config } = get()
+    if (config) {
+      set({ config: { ...config, listMode: mode } })
     }
   },
 

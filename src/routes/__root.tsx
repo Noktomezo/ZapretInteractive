@@ -1,12 +1,14 @@
 import { createRootRoute, Outlet } from '@tanstack/react-router'
 import { Sidebar } from '../components/features/Sidebar'
+import { TitleBar } from '../components/features/TitleBar'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 
 export const Route = createRootRoute({
   component: () => (
     <TooltipProvider>
-      <div className="flex h-screen bg-background">
+      <TitleBar />
+      <div className="flex h-screen bg-background pt-8">
         <Sidebar />
         <OverlayScrollbarsComponent
           defer

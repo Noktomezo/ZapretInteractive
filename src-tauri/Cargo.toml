@@ -14,6 +14,14 @@ edition = "2021"
 name = "zapret_interactive_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[profile.release]
+overflow-checks = false
+codegen-units = 1
+opt-level = "z"
+panic = "abort"
+strip = true
+lto = true
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
@@ -31,7 +39,7 @@ uuid = { version = "1", features = ["v4", "serde"] }
 tokio = { version = "1", features = ["process", "io-util", "time"] }
 reqwest = { version = "0.12", features = ["blocking"] }
 regex = "1"
+tauri-plugin-devtools = "2.0.0"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.58", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authentication_Identity", "Win32_System_Threading", "Win32_System_Services"] }
-

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -14,7 +14,7 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
-  --font-sans: 'Montserrat', sans-serif;
+  --font-sans: "Montserrat", sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -161,7 +161,8 @@
 
 @layer utilities {
   @keyframes pulse-glow {
-    0%, 100% {
+    0%,
+    100% {
       box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5);
     }
     50% {
@@ -178,7 +179,8 @@
   }
 
   @keyframes pulse-glow-dark {
-    0%, 100% {
+    0%,
+    100% {
       box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
     }
     50% {
@@ -187,7 +189,8 @@
   }
 
   @keyframes pulse-glow-primary {
-    0%, 100% {
+    0%,
+    100% {
       box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.3);
     }
     50% {
@@ -204,7 +207,8 @@
   }
 
   @keyframes pulse-glow-primary-dark {
-    0%, 100% {
+    0%,
+    100% {
       box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
     }
     50% {

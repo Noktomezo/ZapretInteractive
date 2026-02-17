@@ -28,10 +28,13 @@ export interface Filter {
   active: boolean
 }
 
+export type ListMode = 'exclude' | 'ipset'
+
 export interface AppConfig {
   global_ports: GlobalPorts
   categories: Category[]
   placeholders: Placeholder[]
   filters: Filter[]
   binaries_path: string
+  listMode?: ListMode
 }

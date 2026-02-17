@@ -14,10 +14,15 @@ export function buildFiltersCommand(filters: Filter[], filtersDir: string): stri
 export function buildStrategyCommand(config: AppConfig): string {
   const activeStrategies: string[] = []
 
+  const listModeArg = (config.listMode ?? 'exclude') === 'exclude'
+    ? '--hostlist-exclude={{HOSTS_USER_EXCLUDE}}'
+    : '--ipset={{IP_USER}}'
+
   for (const category of config.categories) {
     for (const strategy of category.strategies) {
       if (strategy.active) {
-        activeStrategies.push(strategy.content)
+        const content = strategy.content.replace(/<LIST_MODE>/g, listModeArg)
+        activeStrategies.push(content)
       }
     }
   }

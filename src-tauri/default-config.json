@@ -3,21 +3,22 @@
     "tcp": "1-65535",
     "udp": "1-65535"
   },
+  "listMode": "ipset",
   "categories": [
     {
       "id": "preset-http",
       "name": "HTTP",
       "strategies": [
         {
-          "id": "preset-http-1",
+"id": "preset-http-1",
           "name": "HTTP 1",
-          "content": "--filter-l7=http\n--hostlist-exclude={{HOSTS_USER_EXCLUDE}}\n--dpi-desync=fake\n--dpi-desync-autottl=2\n--dpi-desync-fooling=md5sig",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=fake\n--dpi-desync-autottl=2\n--dpi-desync-fooling=md5sig",
           "active": true
         },
         {
-          "id": "preset-http-2",
+"id": "preset-http-2",
           "name": "HTTP 2",
-          "content": "--filter-l7=http\n--hostlist-exclude={{HOSTS_USER_EXCLUDE}}\n--dpi-desync=fakedsplit\n--dpi-desync-ttl=4\n--dpi-desync-repeats=16",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=fakedsplit\n--dpi-desync-ttl=4\n--dpi-desync-repeats=16",
           "active": false
         }
       ]
@@ -159,57 +160,57 @@
       "name": "TCP",
       "strategies": [
         {
-          "id": "tcp-v1",
+"id": "tcp-v1",
           "name": "TCP v1",
-          "content": "--filter-l7=tls\n--hostlist-exclude={{HOSTS_USER_EXCLUDE}}\n--dpi-desync=split2\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-seqovl-pattern={{STUN}}",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=split2\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-seqovl-pattern={{STUN}}",
           "active": true
         },
         {
-          "id": "tcp-v2",
+"id": "tcp-v2",
           "name": "TCP v2",
-          "content": "--filter-l7=tls\n--hostlist-exclude={{HOSTS_USER_EXCLUDE}}\n--dpi-desync=fake,fakeddisorder\n--dpi-desync-split-pos=10,midsld\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=fonts.google.com\n--dpi-desync-fake-tls=0x0F0F0F0F\n--dpi-desync-fake-tls-mod=none\n--dpi-desync-fakedsplit-pattern={{TLS_CLIENTHELLO_VK}}\n--dpi-desync-split-seqovl=336\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOSUSLUGI}}\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-badseq-increment=0",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,fakeddisorder\n--dpi-desync-split-pos=10,midsld\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=fonts.google.com\n--dpi-desync-fake-tls=0x0F0F0F0F\n--dpi-desync-fake-tls-mod=none\n--dpi-desync-fakedsplit-pattern={{TLS_CLIENTHELLO_VK}}\n--dpi-desync-split-seqovl=336\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOSUSLUGI}}\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-badseq-increment=0",
           "active": false
         },
         {
-          "id": "tcp-v3",
+"id": "tcp-v3",
           "name": "TCP v3",
-          "content": "--filter-l7=tls\n--hostlist-exclude={{HOSTS_USER_EXCLUDE}}\n--dpi-desync=fake,fakeddisorder\n--dpi-desync-split-pos=10,midsld\n--dpi-desync-fake-tls={{T2}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=m.ok.ru\n--dpi-desync-fake-tls=0x0F0F0F0F\n--dpi-desync-fake-tls-mod=none\n--dpi-desync-fakedsplit-pattern={{TLS_CLIENTHELLO_VK}}\n--dpi-desync-split-seqovl=336\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOSUSLUGI}}\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-badseq-increment=0",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,fakeddisorder\n--dpi-desync-split-pos=10,midsld\n--dpi-desync-fake-tls={{T2}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=m.ok.ru\n--dpi-desync-fake-tls=0x0F0F0F0F\n--dpi-desync-fake-tls-mod=none\n--dpi-desync-fakedsplit-pattern={{TLS_CLIENTHELLO_VK}}\n--dpi-desync-split-seqovl=336\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOSUSLUGI}}\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-badseq-increment=0",
           "active": false
         },
         {
-          "id": "tcp-v4",
+"id": "tcp-v4",
           "name": "TCP v4",
-          "content": "--new\n--filter-l7=tls\n--hostlist-exclude={{HOSTS_USER_EXCLUDE}}\n--dpi-desync=multisplit\n--dpi-desync-split-seqovl=582\n--dpi-desync-split-pos=1\n--dpi-desync-split-seqovl-pattern={{STUN}}",
+          "content": "--new\n--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=multisplit\n--dpi-desync-split-seqovl=582\n--dpi-desync-split-pos=1\n--dpi-desync-split-seqovl-pattern={{STUN}}",
           "active": false
         },
         {
-          "id": "tcp-v5",
+"id": "tcp-v5",
           "name": "TCP v5",
-          "content": "--filter-l7=tls\n--hostlist-exclude={{HOSTS_USER_EXCLUDE}}\n--dpi-desync=fake,fakeddisorder\n--dpi-desync-split-pos=1\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-fake-tls-mod=none\n--dpi-desync-fakedsplit-pattern={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-badseq-increment=0",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,fakeddisorder\n--dpi-desync-split-pos=1\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-fake-tls-mod=none\n--dpi-desync-fakedsplit-pattern={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-badseq-increment=0",
           "active": false
         },
         {
-          "id": "tcp-v6",
+"id": "tcp-v6",
           "name": "TCP v6",
-          "content": "--filter-l7=tls\n--hostlist-exclude={{HOSTS_USER_EXCLUDE}}\n--dpi-desync=hostfakesplit\n--dpi-desync-hostfakesplit-mod=host=i2.photo.2gis.com\n--dpi-desync-hostfakesplit-midhost=host-2\n--dpi-desync-split-seqovl=726\n--dpi-desync-fooling=badsum,badseq\n--dpi-desync-badseq-increment=0",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=hostfakesplit\n--dpi-desync-hostfakesplit-mod=host=i2.photo.2gis.com\n--dpi-desync-hostfakesplit-midhost=host-2\n--dpi-desync-split-seqovl=726\n--dpi-desync-fooling=badsum,badseq\n--dpi-desync-badseq-increment=0",
           "active": false
         },
         {
-          "id": "tcp-v7",
+"id": "tcp-v7",
           "name": "TCP v7",
-          "content": "--filter-l7=tls\n--hostlist-exclude={{HOSTS_USER_EXCLUDE}}\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=654\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-split-seqovl-pattern={{STUN}}\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-badseq-increment=0",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=654\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-split-seqovl-pattern={{STUN}}\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-badseq-increment=0",
           "active": false
         },
         {
-          "id": "tcp-v8",
+"id": "tcp-v8",
           "name": "TCP v8",
-          "content": "--filter-l7=tls\n--hostlist-exclude={{HOSTS_USER_EXCLUDE}}\n--dpi-desync=fake\n--dpi-desync-fooling=ts\n--dpi-desync-fake-tls={{4PDA}}\n--dpi-desync-fake-tls-mod=none",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake\n--dpi-desync-fooling=ts\n--dpi-desync-fake-tls={{4PDA}}\n--dpi-desync-fake-tls-mod=none",
           "active": false
         },
         {
-          "id": "tcp-v9",
+"id": "tcp-v9",
           "name": "TCP v9",
-          "content": "--filter-l7=tls\n--hostlist-exclude={{HOSTS_USER_EXCLUDE}}\n--dpi-desync=hostfakesplit\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-hostfakesplit-mod=host=mapgl.2gis.com\n--dpi-desync-badseq-increment=0",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=hostfakesplit\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-hostfakesplit-mod=host=mapgl.2gis.com\n--dpi-desync-badseq-increment=0",
           "active": false
         }
       ]
