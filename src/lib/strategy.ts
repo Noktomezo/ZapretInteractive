@@ -3,9 +3,11 @@ import type { AppConfig, Placeholder, Filter } from './types'
 export function buildFiltersCommand(filters: Filter[], filtersDir: string): string {
   const activeFilters = filters.filter(f => f.active)
   if (activeFilters.length === 0) return ''
-  
+
+  const normalizedDir = filtersDir.replace(/[/\\]+$/, '')
+
   return activeFilters
-    .map(f => `--wf-raw-part=@"${filtersDir}/${f.filename}"`)
+    .map(f => `--wf-raw-part=@${normalizedDir}\\${f.filename}`)
     .join('\n')
 }
 

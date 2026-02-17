@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import type { AppConfig } from './types'
 
 export const isElevated = (): Promise<boolean> => invoke('is_elevated')
@@ -43,3 +44,11 @@ export const resolvePlaceholders = (content: string, placeholders: { name: strin
 export const checkTcpTimestamps = (): Promise<boolean> => invoke('check_tcp_timestamps')
 
 export const enableTcpTimestamps = (): Promise<void> => invoke('enable_tcp_timestamps')
+
+export const setConnectedState = (connected: boolean): Promise<void> => invoke('set_connected_state', { connected })
+
+export const onTrayConnectToggle = (callback: () => void): (() => void) => {
+  let unlisten: (() => void) | null = null
+  listen('tray-connect-toggle', () => callback()).then(fn => unlisten = fn)
+  return () => unlisten?.()
+}

@@ -1,6 +1,6 @@
 {
-  "global_ports": {
-    "tcp": "80,443",
+"global_ports": {
+    "tcp": "1-65535",
     "udp": "1-65535"
   },
   "categories": [
@@ -21,7 +21,7 @@
           "active": false
         }
       ]
-    },
+    }, 
     {
       "id": "preset-youtube",
       "name": "YouTube",
@@ -307,9 +307,9 @@
   "filters": [
     { "id": "filter-discord", "name": "Discord Media", "filename": "windivert_part.discord_media.txt", "active": true },
     { "id": "filter-stun", "name": "STUN", "filename": "windivert_part.stun.txt", "active": true },
-    { "id": "filter-wireguard", "name": "WireGuard", "filename": "windivert_part.wireguard.txt", "active": false },
-    { "id": "filter-quic", "name": "QUIC Initial IETF", "filename": "windivert_part.quic_initial_ietf.txt", "active": false },
-    { "id": "filter-dht", "name": "DHT", "filename": "windivert_part.dht.txt", "active": false }
+    { "id": "filter-wireguard", "name": "WireGuard", "filename": "windivert_part.wireguard.txt", "active": true },
+    { "id": "filter-quic", "name": "QUIC Initial IETF", "filename": "windivert_part.quic_initial_ietf.txt", "active": true },
+    { "id": "filter-dht", "name": "DHT", "filename": "windivert_part.dht.txt", "active": true }
   ],
   "binaries_path": ""
 }

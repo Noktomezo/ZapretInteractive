@@ -9,7 +9,7 @@
     "beforeBuildCommand": "bun run build",
     "frontendDist": "../dist"
   },
-  "app": {
+"app": {
     "windows": [
       {
         "title": "Zapret Interactive",
@@ -22,11 +22,6 @@
     ],
     "security": {
       "csp": null
-    },
-    "trayIcon": {
-      "id": "main",
-      "iconPath": "icons/icon.ico",
-      "iconAsTemplate": true
     }
   },
   "bundle": {

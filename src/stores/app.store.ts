@@ -24,6 +24,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     if (get().initialized) return
 
     useThemeStore.getState().initTheme()
+    useConnectionStore.getState().initTrayListener()
 
     const elevated = await tauri.isElevated()
     set({ isElevated: elevated })

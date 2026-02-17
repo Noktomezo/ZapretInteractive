@@ -6,11 +6,17 @@ import { useConfigStore } from "@/stores/config.store";
 import type { Filter as FilterType } from "@/lib/types";
 
 export function FiltersPage() {
-  const { config, loading, load, setFilters } = useConfigStore();
+  const { config, loading, load, save, setFilters } = useConfigStore();
 
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    if (config) {
+      save()
+    }
+  }, [config])
 
   const handleToggleFilter = (filterId: string) => {
     if (!config?.filters) return;

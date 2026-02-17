@@ -15,10 +15,18 @@ interface ConnectionStore {
   checkStatus: () => Promise<void>
   connect: () => Promise<void>
   disconnect: () => Promise<void>
+  toggle: () => Promise<void>
   addLog: (log: string) => void
   clearLogs: () => void
   setError: (error: string | null) => void
   setRecovered: (recovered: boolean) => void
+  initTrayListener: () => () => void
+}
+
+const updateTrayState = async (connected: boolean) => {
+  try {
+    await tauri.setConnectedState(connected)
+  } catch {}
 }
 
 export const useConnectionStore = create<ConnectionStore>((set, get) => ({
@@ -34,11 +42,14 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       if (running) {
         const pid = await tauri.getRunningPid()
         set({ status: 'connected', pid })
+        updateTrayState(true)
       } else {
         set({ status: 'disconnected', pid: null })
+        updateTrayState(false)
       }
     } catch (e) {
       set({ status: 'disconnected', pid: null })
+      updateTrayState(false)
     }
   },
 
@@ -77,9 +88,11 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
         config.global_ports.udp
       )
       set({ status: 'connected', pid })
+      updateTrayState(true)
       get().addLog(`Connected with PID: ${pid}`)
     } catch (e) {
       set({ status: 'error', error: String(e) })
+      updateTrayState(false)
       get().addLog(`Error: ${e}`)
     }
   },
@@ -96,10 +109,21 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
         await tauri.killWindivertService()
       }
       set({ status: 'disconnected', pid: null })
+      updateTrayState(false)
       get().addLog('Disconnected')
     } catch (e) {
       set({ status: 'error', error: String(e) })
+      updateTrayState(false)
       get().addLog(`Error: ${e}`)
+    }
+  },
+
+  toggle: async () => {
+    const { status } = get()
+    if (status === 'connected') {
+      await get().disconnect()
+    } else if (status === 'disconnected') {
+      await get().connect()
     }
   },
 
@@ -115,8 +139,15 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
   setRecovered: (recovered) => {
     if (recovered) {
       set({ recovered: true, status: 'connected' })
+      updateTrayState(true)
     } else {
       set({ recovered: false })
     }
+  },
+
+  initTrayListener: () => {
+    return tauri.onTrayConnectToggle(() => {
+      get().toggle()
+    })
   },
 }))

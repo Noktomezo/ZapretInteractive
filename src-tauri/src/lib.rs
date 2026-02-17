@@ -1,11 +1,15 @@
 mod commands;
 
 use commands::{admin, binaries, config, process};
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{
+    image::Image,
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    Manager,
+    Emitter, Manager,
 };
+
+static CONNECTED: AtomicBool = AtomicBool::new(false);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -36,16 +40,27 @@ pub fn run() {
             process::check_and_recover_orphan,
             process::check_tcp_timestamps,
             process::enable_tcp_timestamps,
+            set_connected_state,
         ])
         .setup(|app| {
+            let connect_item = MenuItem::with_id(app, "connect", "Подключиться", true, None::<&str>)?;
             let show_item = MenuItem::with_id(app, "show", "Показать", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "Выход", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
+            let menu = Menu::with_items(app, &[&connect_item, &show_item, &quit_item])?;
+
+            let icon = Image::from_path("icons/icon.ico")
+                .or_else(|_| Image::from_path("icons/100x100.png"))
+                .ok();
+
+            let connect_item_clone = connect_item.clone();
 
             let _tray = TrayIconBuilder::with_id("main")
                 .menu(&menu)
                 .show_menu_on_left_click(true)
-                .on_menu_event(|app, event| match event.id.as_ref() {
+                .on_menu_event(move |app, event| match event.id.as_ref() {
+                    "connect" => {
+                        let _ = app.emit("tray-connect-toggle", ());
+                    }
                     "show" => {
                         if let Some(window) = app.get_webview_window("main") {
                             let _ = window.show();
@@ -57,10 +72,40 @@ pub fn run() {
                     }
                     _ => {}
                 })
-                .build(app)?;
+                .on_tray_icon_event(|tray, event| {
+                    if let tauri::tray::TrayIconEvent::Click { .. } = event {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                });
+
+            if let Some(icon) = icon {
+                _tray.icon(icon).build(app)?;
+            } else {
+                _tray.build(app)?;
+            }
+
+            app.manage(ConnectMenuItem(connect_item_clone));
 
             Ok(())
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+struct ConnectMenuItem(MenuItem<tauri::Wry>);
+
+#[tauri::command]
+fn set_connected_state(app: tauri::AppHandle, connected: bool) -> Result<(), String> {
+    CONNECTED.store(connected, Ordering::SeqCst);
+    
+    let text = if connected { "Отключиться" } else { "Подключиться" };
+    
+    let item = app.state::<ConnectMenuItem>();
+    item.0.set_text(text).map_err(|e| e.to_string())?;
+    
+    Ok(())
 }
