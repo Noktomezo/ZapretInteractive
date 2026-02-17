@@ -9,8 +9,10 @@ on:
       - "v*"
 
 jobs:
-  release:
+  changelog:
     runs-on: ubuntu-latest
+    outputs:
+      body: ${{ steps.changelog.outputs.body }}
     steps:
       - name: Repository Checkout
         uses: actions/checkout@v4
@@ -22,7 +24,45 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Release
-        run: bunx changelogithub
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          CHANGELOG=$(bunx changelogithub --dry | awk '/^-+$/{if(p)exit; p=1; next} p')
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+  release:
+    needs: changelog
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [windows-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Repository Checkout
+        uses: actions/checkout@v4
+
+      - name: Bun Setup
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Rust Setup
+        uses: dtolnay/rust-action@stable
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Build & Release
+        uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: __VERSION__
+          releaseName: Winsentials __VERSION__
+          releaseBody: ${{ needs.changelog.outputs.body }}
+          releaseDraft: false
+          prerelease: false

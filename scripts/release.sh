@@ -5,6 +5,7 @@ set -e
 TAURI_CONF="src-tauri/tauri.conf.json"
 CARGO_TOML="src-tauri/Cargo.toml"
 PACKAGE_JSON="package.json"
+BRANCH="main"
 
 get_current_version() {
   grep -oP '"version":\s*"\K[^"]+' "$TAURI_CONF"
@@ -73,7 +74,17 @@ esac
 echo ""
 echo "Updating to $new_version..."
 update_files "$new_version"
-echo "Done! Updated in:"
-echo "  - $TAURI_CONF"
-echo "  - $CARGO_TOML"
-echo "  - $PACKAGE_JSON"
+
+echo ""
+echo "Committing and tagging..."
+git add "$TAURI_CONF" "$CARGO_TOML" "$PACKAGE_JSON"
+git commit -m "chore: release v$new_version"
+git tag "v$new_version"
+
+echo ""
+echo "Pushing to origin..."
+git push --set-upstream origin "$BRANCH"
+git push origin "v$new_version"
+
+echo ""
+echo "Done! Released v$new_version"

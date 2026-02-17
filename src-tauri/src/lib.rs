@@ -16,12 +16,11 @@ pub fn run() {
     #[cfg(debug_assertions)]
     let devtools = tauri_plugin_devtools::init();
 
-    let mut builder = tauri::Builder::default();
-
     #[cfg(debug_assertions)]
-    {
-        builder = builder.plugin(devtools);
-    }
+    let builder = tauri::Builder::default().plugin(devtools);
+
+    #[cfg(not(debug_assertions))]
+    let builder = tauri::Builder::default();
 
     builder
         .plugin(tauri_plugin_opener::init())
