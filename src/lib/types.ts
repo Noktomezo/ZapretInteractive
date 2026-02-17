@@ -1,0 +1,37 @@
+export interface GlobalPorts {
+  tcp: string
+  udp: string
+}
+
+export interface Strategy {
+  id: string
+  name: string
+  content: string
+  active: boolean
+}
+
+export interface Category {
+  id: string
+  name: string
+  strategies: Strategy[]
+}
+
+export interface Placeholder {
+  name: string
+  path: string
+}
+
+export interface Filter {
+  id: string
+  name: string
+  filename: string
+  active: boolean
+}
+
+export interface AppConfig {
+  global_ports: GlobalPorts
+  categories: Category[]
+  placeholders: Placeholder[]
+  filters: Filter[]
+  binaries_path: string
+}
