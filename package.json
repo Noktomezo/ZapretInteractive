@@ -1,7 +1,7 @@
 {
   "name": "zapret-interactive",
   "private": true,
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,7 @@
     "lint": "eslint .",
     "format": "eslint --fix .",
     "tauri": "tauri",
-    "release": "bunx bumpp"
+    "release": "bash ./scripts/release.sh"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
