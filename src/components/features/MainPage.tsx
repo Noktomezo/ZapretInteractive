@@ -9,6 +9,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -64,8 +65,13 @@ export function MainPage() {
 
     const unlistenComplete = listen('download-complete', async () => {
       reset()
-      const binaries = await tauri.verifyBinaries()
-      setBinariesOk(binaries)
+      try {
+        const binaries = await tauri.verifyBinaries()
+        setBinariesOk(binaries)
+      }
+      catch (e) {
+        toast.error(`Ошибка проверки файлов: ${e}`)
+      }
     })
 
     const unlistenError = listen<string>('download-error', () => {
@@ -85,13 +91,18 @@ export function MainPage() {
   }, [])
 
   const handleToggleConnection = async () => {
-    if (status === 'connected') {
-      await disconnect()
+    try {
+      if (status === 'connected') {
+        await disconnect()
+      }
+      else {
+        await connect()
+      }
+      await useConfigStore.getState().save()
     }
-    else {
-      await connect()
+    catch (e) {
+      toast.error(`Ошибка подключения: ${e}`)
     }
-    await useConfigStore.getState().save()
   }
 
   const handleDownloadBinaries = async () => {
@@ -102,6 +113,7 @@ export function MainPage() {
     catch (e) {
       console.error(e)
       reset()
+      toast.error(`Ошибка загрузки файлов: ${e}`)
     }
   }
 

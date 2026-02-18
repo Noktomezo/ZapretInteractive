@@ -2,6 +2,7 @@ import type { Strategy } from '@/lib/types'
 import { Link, useParams } from '@tanstack/react-router'
 import { ArrowLeft, Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -104,6 +105,7 @@ export function CategoryPage() {
   const handleDeleteStrategy = (strategyId: string) => {
     if (categoryId) {
       deleteStrategy(categoryId, strategyId)
+      toast.success('Стратегия удалена')
     }
   }
 
@@ -111,6 +113,7 @@ export function CategoryPage() {
     if (categoryId) {
       deleteCategory(categoryId)
       setDeleteDialogOpen(false)
+      toast.success('Категория удалена')
     }
   }
 

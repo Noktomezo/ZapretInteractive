@@ -1,6 +1,7 @@
 import type { Filter as FilterType } from '@/lib/types'
 import { Filter, Loader2, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,30 +59,42 @@ export function FiltersPage() {
     if (!config || !newName.trim() || !newFilename.trim())
       return
 
-    const newFilter: FilterType = {
-      id: `filter-${crypto.randomUUID()}`,
-      name: newName.trim(),
-      filename: newFilename.trim(),
-      active: true,
-    }
+    try {
+      const newFilter: FilterType = {
+        id: `filter-${crypto.randomUUID()}`,
+        name: newName.trim(),
+        filename: newFilename.trim(),
+        active: true,
+      }
 
-    if (newContent.trim()) {
-      await tauri.saveFilterFile(newFilename.trim(), newContent.trim())
-    }
+      if (newContent.trim()) {
+        await tauri.saveFilterFile(newFilename.trim(), newContent.trim())
+      }
 
-    setFilters([...(config.filters || []), newFilter])
-    setNewName('')
-    setNewFilename('')
-    setNewContent('')
-    setDialogOpen(false)
+      setFilters([...(config.filters || []), newFilter])
+      setNewName('')
+      setNewFilename('')
+      setNewContent('')
+      setDialogOpen(false)
+      toast.success('Фильтр создан')
+    }
+    catch (e) {
+      toast.error(`Ошибка создания фильтра: ${e}`)
+    }
   }
 
   const handleDeleteFilter = async (filter: FilterType) => {
     if (!config?.filters)
       return
 
-    await tauri.deleteFilterFile(filter.filename)
-    setFilters(config.filters.filter(f => f.id !== filter.id))
+    try {
+      await tauri.deleteFilterFile(filter.filename)
+      setFilters(config.filters.filter(f => f.id !== filter.id))
+      toast.success('Фильтр удалён')
+    }
+    catch (e) {
+      toast.error(`Ошибка удаления фильтра: ${e}`)
+    }
   }
 
   if (loading || !config) {

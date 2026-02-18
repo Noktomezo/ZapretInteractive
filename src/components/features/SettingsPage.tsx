@@ -1,6 +1,7 @@
 import { listen } from '@tauri-apps/api/event'
 import { Download, FolderOpen, Loader2, RotateCcw } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { ThemeSwitcher } from '@/components/ThemeSwitcher'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
@@ -50,8 +51,13 @@ export function SettingsPage() {
 
     const unlistenComplete = listen('download-complete', async () => {
       resetDownload()
-      const ok = await tauri.verifyBinaries()
-      setBinariesOk(ok)
+      try {
+        const ok = await tauri.verifyBinaries()
+        setBinariesOk(ok)
+      }
+      catch (e) {
+        toast.error(`Ошибка проверки файлов: ${e}`)
+      }
     })
 
     const unlistenError = listen<string>('download-error', (event) => {
@@ -90,12 +96,19 @@ export function SettingsPage() {
     catch (e) {
       console.error(e)
       resetDownload()
+      toast.error(`Ошибка загрузки файлов: ${e}`)
     }
   }
 
   const handleReset = async () => {
-    await reset()
-    setResetDialogOpen(false)
+    try {
+      await reset()
+      setResetDialogOpen(false)
+      toast.success('Настройки сброшены')
+    }
+    catch (e) {
+      toast.error(`Ошибка сброса настроек: ${e}`)
+    }
   }
 
   if (loading || !config) {

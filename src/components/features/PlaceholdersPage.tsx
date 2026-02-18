@@ -1,6 +1,7 @@
 import type { Placeholder } from '@/lib/types'
 import { FolderOpen, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -67,6 +68,7 @@ export function PlaceholdersPage() {
 
   const handleDelete = (index: number) => {
     deletePlaceholder(index)
+    toast.success('Плейсхолдер удалён')
   }
 
   if (loading) {

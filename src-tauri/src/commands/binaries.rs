@@ -122,6 +122,27 @@ fn get_filters_dir() -> PathBuf {
     get_zapret_dir().join("filters")
 }
 
+fn sanitize_filename(filename: &str) -> Result<String, String> {
+    let name = std::path::Path::new(filename)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or_else(|| "Invalid filename".to_string())?;
+    
+    if name.is_empty() {
+        return Err("Filename cannot be empty".to_string());
+    }
+    
+    let valid_chars = name.chars().all(|c| {
+        c.is_alphanumeric() || c == '.' || c == '-' || c == '_'
+    });
+    
+    if !valid_chars {
+        return Err("Filename contains invalid characters".to_string());
+    }
+    
+    Ok(name.to_string())
+}
+
 fn get_hashes_path() -> PathBuf {
     get_zapret_dir().join("hashes.json")
 }
@@ -436,6 +457,7 @@ pub fn get_filters_path() -> String {
 
 #[tauri::command]
 pub fn save_filter_file(filename: String, content: String) -> Result<(), String> {
+    let filename = sanitize_filename(&filename)?;
     let filters_dir = get_filters_dir();
     if !filters_dir.exists() {
         fs::create_dir_all(&filters_dir).map_err(|e| e.to_string())?;
@@ -447,12 +469,14 @@ pub fn save_filter_file(filename: String, content: String) -> Result<(), String>
 
 #[tauri::command]
 pub fn load_filter_file(filename: String) -> Result<String, String> {
+    let filename = sanitize_filename(&filename)?;
     let file_path = get_filters_dir().join(&filename);
     fs::read_to_string(&file_path).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn delete_filter_file(filename: String) -> Result<(), String> {
+    let filename = sanitize_filename(&filename)?;
     let file_path = get_filters_dir().join(&filename);
     if file_path.exists() {
         fs::remove_file(&file_path).map_err(|e| e.to_string())?;

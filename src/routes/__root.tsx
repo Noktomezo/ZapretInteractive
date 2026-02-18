@@ -1,6 +1,7 @@
 import { createRootRoute, Outlet } from '@tanstack/react-router'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { Toaster } from 'sonner'
 import { Sidebar } from '../components/features/Sidebar'
 import { TitleBar } from '../components/features/TitleBar'
 
@@ -18,6 +19,7 @@ export const Route = createRootRoute({
           <Outlet />
         </OverlayScrollbarsComponent>
       </div>
+      <Toaster position="bottom-right" />
     </TooltipProvider>
   ),
 })
