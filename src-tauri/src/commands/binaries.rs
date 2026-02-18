@@ -443,6 +443,32 @@ pub fn get_filters_path() -> String {
 }
 
 #[tauri::command]
+pub fn save_filter_file(filename: String, content: String) -> Result<(), String> {
+    let filters_dir = get_filters_dir();
+    if !filters_dir.exists() {
+        fs::create_dir_all(&filters_dir).map_err(|e| e.to_string())?;
+    }
+    let file_path = filters_dir.join(&filename);
+    fs::write(&file_path, content).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn load_filter_file(filename: String) -> Result<String, String> {
+    let file_path = get_filters_dir().join(&filename);
+    fs::read_to_string(&file_path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_filter_file(filename: String) -> Result<(), String> {
+    let file_path = get_filters_dir().join(&filename);
+    if file_path.exists() {
+        fs::remove_file(&file_path).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub fn open_zapret_directory(app: AppHandle) -> Result<(), String> {
     let dir = get_zapret_dir();
     if !dir.exists() {

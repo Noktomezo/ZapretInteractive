@@ -38,6 +38,15 @@ export const openZapretDirectory = (): Promise<void> => invoke('open_zapret_dire
 
 export const getFiltersPath = (): Promise<string> => invoke('get_filters_path')
 
+export const saveFilterFile = (filename: string, content: string): Promise<void> => 
+  invoke('save_filter_file', { filename, content })
+
+export const loadFilterFile = (filename: string): Promise<string> => 
+  invoke('load_filter_file', { filename })
+
+export const deleteFilterFile = (filename: string): Promise<void> => 
+  invoke('delete_filter_file', { filename })
+
 export const resolvePlaceholders = (content: string, placeholders: { name: string; path: string }[]): Promise<string> => 
   invoke('resolve_placeholders', { content, placeholders })
 
