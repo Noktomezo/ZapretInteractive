@@ -1,13 +1,13 @@
+import { createRouter, RouterProvider } from '@tanstack/react-router'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { createRouter, RouterProvider } from '@tanstack/react-router'
 import { Route as rootRoute } from './routes/__root'
-import { Route as indexRoute } from './routes/index'
-import { Route as strategiesRoute } from './routes/strategies'
-import { Route as strategiesCategoryIdRoute } from './routes/strategies.$categoryId'
 import { Route as filtersRoute } from './routes/filters'
+import { Route as indexRoute } from './routes/index'
 import { Route as placeholdersRoute } from './routes/placeholders'
 import { Route as settingsRoute } from './routes/settings'
+import { Route as strategiesRoute } from './routes/strategies'
+import { Route as strategiesCategoryIdRoute } from './routes/strategies.$categoryId'
 import './index.css'
 
 const routeTree = rootRoute.addChildren([

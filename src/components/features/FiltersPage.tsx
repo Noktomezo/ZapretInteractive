@@ -1,17 +1,6 @@
-import { useState, useEffect } from "react";
-import { Loader2, Filter, Plus, Trash2 } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import type { Filter as FilterType } from '@/lib/types'
+import { Filter, Loader2, Plus, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,21 +11,32 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { useConfigStore } from "@/stores/config.store";
-import * as tauri from "@/lib/tauri";
-import type { Filter as FilterType } from "@/lib/types";
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
+import * as tauri from '@/lib/tauri'
+import { useConfigStore } from '@/stores/config.store'
 
 export function FiltersPage() {
-  const { config, loading, load, save, setFilters } = useConfigStore();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newFilename, setNewFilename] = useState("");
-  const [newContent, setNewContent] = useState("");
+  const { config, loading, load, save, setFilters } = useConfigStore()
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newFilename, setNewFilename] = useState('')
+  const [newContent, setNewContent] = useState('')
 
   useEffect(() => {
-    load();
-  }, []);
+    load()
+  }, [])
 
   useEffect(() => {
     if (config) {
@@ -45,48 +45,51 @@ export function FiltersPage() {
   }, [config])
 
   const handleToggleFilter = (filterId: string) => {
-    if (!config?.filters) return;
+    if (!config?.filters)
+      return
 
-    const updatedFilters = config.filters.map((f) =>
+    const updatedFilters = config.filters.map(f =>
       f.id === filterId ? { ...f, active: !f.active } : f,
-    );
-    setFilters(updatedFilters);
-  };
+    )
+    setFilters(updatedFilters)
+  }
 
   const handleCreateFilter = async () => {
-    if (!config || !newName.trim() || !newFilename.trim()) return;
+    if (!config || !newName.trim() || !newFilename.trim())
+      return
 
     const newFilter: FilterType = {
       id: `filter-${crypto.randomUUID()}`,
       name: newName.trim(),
       filename: newFilename.trim(),
       active: true,
-    };
-
-    if (newContent.trim()) {
-      await tauri.saveFilterFile(newFilename.trim(), newContent.trim());
     }
 
-    setFilters([...(config.filters || []), newFilter]);
-    setNewName("");
-    setNewFilename("");
-    setNewContent("");
-    setDialogOpen(false);
-  };
+    if (newContent.trim()) {
+      await tauri.saveFilterFile(newFilename.trim(), newContent.trim())
+    }
+
+    setFilters([...(config.filters || []), newFilter])
+    setNewName('')
+    setNewFilename('')
+    setNewContent('')
+    setDialogOpen(false)
+  }
 
   const handleDeleteFilter = async (filter: FilterType) => {
-    if (!config?.filters) return;
+    if (!config?.filters)
+      return
 
-    await tauri.deleteFilterFile(filter.filename);
-    setFilters(config.filters.filter((f) => f.id !== filter.id));
-  };
+    await tauri.deleteFilterFile(filter.filename)
+    setFilters(config.filters.filter(f => f.id !== filter.id))
+  }
 
   if (loading || !config) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="w-6 h-6 animate-spin" />
       </div>
-    );
+    )
   }
 
   return (
@@ -140,7 +143,13 @@ export function FiltersPage() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Удалить фильтр?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Фильтр "{filter.name}" будет удалён из списка и файл {filter.filename} будет удалён.
+                      Фильтр "
+                      {filter.name}
+                      " будет удалён из списка и файл
+                      {' '}
+                      {filter.filename}
+                      {' '}
+                      будет удалён.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -170,7 +179,7 @@ export function FiltersPage() {
               <Input
                 id="filter-name"
                 value={newName}
-                onChange={(e) => setNewName(e.target.value)}
+                onChange={e => setNewName(e.target.value)}
                 placeholder="Discord Media"
               />
             </div>
@@ -179,7 +188,7 @@ export function FiltersPage() {
               <Input
                 id="filter-filename"
                 value={newFilename}
-                onChange={(e) => setNewFilename(e.target.value)}
+                onChange={e => setNewFilename(e.target.value)}
                 placeholder="windivert_part.discord_media.txt"
               />
             </div>
@@ -188,7 +197,7 @@ export function FiltersPage() {
               <Textarea
                 id="filter-content"
                 value={newContent}
-                onChange={(e) => setNewContent(e.target.value)}
+                onChange={e => setNewContent(e.target.value)}
                 placeholder="WinDivert фильтр..."
                 rows={8}
                 className="font-mono text-sm"
@@ -206,5 +215,5 @@ export function FiltersPage() {
         </DialogContent>
       </Dialog>
     </div>
-  );
+  )
 }

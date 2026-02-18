@@ -1,6 +1,6 @@
+import type { AppConfig } from './types'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import type { AppConfig } from './types'
 
 export const isElevated = (): Promise<boolean> => invoke('is_elevated')
 
@@ -38,17 +38,21 @@ export const openZapretDirectory = (): Promise<void> => invoke('open_zapret_dire
 
 export const getFiltersPath = (): Promise<string> => invoke('get_filters_path')
 
-export const saveFilterFile = (filename: string, content: string): Promise<void> => 
-  invoke('save_filter_file', { filename, content })
+export function saveFilterFile(filename: string, content: string): Promise<void> {
+  return invoke('save_filter_file', { filename, content })
+}
 
-export const loadFilterFile = (filename: string): Promise<string> => 
-  invoke('load_filter_file', { filename })
+export function loadFilterFile(filename: string): Promise<string> {
+  return invoke('load_filter_file', { filename })
+}
 
-export const deleteFilterFile = (filename: string): Promise<void> => 
-  invoke('delete_filter_file', { filename })
+export function deleteFilterFile(filename: string): Promise<void> {
+  return invoke('delete_filter_file', { filename })
+}
 
-export const resolvePlaceholders = (content: string, placeholders: { name: string; path: string }[]): Promise<string> => 
-  invoke('resolve_placeholders', { content, placeholders })
+export function resolvePlaceholders(content: string, placeholders: { name: string, path: string }[]): Promise<string> {
+  return invoke('resolve_placeholders', { content, placeholders })
+}
 
 export const checkTcpTimestamps = (): Promise<boolean> => invoke('check_tcp_timestamps')
 
@@ -56,7 +60,7 @@ export const enableTcpTimestamps = (): Promise<void> => invoke('enable_tcp_times
 
 export const setConnectedState = (connected: boolean): Promise<void> => invoke('set_connected_state', { connected })
 
-export const onTrayConnectToggle = (callback: () => void): (() => void) => {
+export function onTrayConnectToggle(callback: () => void): (() => void) {
   let unlisten: (() => void) | null = null
   listen('tray-connect-toggle', () => callback()).then(fn => unlisten = fn)
   return () => unlisten?.()

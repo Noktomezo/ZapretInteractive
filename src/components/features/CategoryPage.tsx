@@ -1,16 +1,7 @@
-import { useState, useEffect } from 'react'
-import { Plus, MoreHorizontal, Pencil, Trash2, Loader2, ArrowLeft } from 'lucide-react'
+import type { Strategy } from '@/lib/types'
 import { Link, useParams } from '@tanstack/react-router'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
+import { ArrowLeft, Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,18 +13,27 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { useConfigStore } from '@/stores/config.store'
-import type { Strategy } from '@/lib/types'
 
 export function CategoryPage() {
   const { categoryId } = useParams({ from: '/strategies/$categoryId' })
-  
+
   const [editingStrategy, setEditingStrategy] = useState<Strategy | null>(null)
   const [newStrategyOpen, setNewStrategyOpen] = useState(false)
   const [newStrategyName, setNewStrategyName] = useState('')
@@ -44,9 +44,7 @@ export function CategoryPage() {
   const [renameDialogOpen, setRenameDialogOpen] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
 
-  const { config, loading, load, save, updateCategory, deleteCategory,
-    addStrategy, updateStrategy, deleteStrategy, setActiveStrategy, 
-    clearActiveStrategy, clearAllActiveStrategies } = useConfigStore()
+  const { config, loading, load, save, updateCategory, deleteCategory, addStrategy, updateStrategy, deleteStrategy, setActiveStrategy, clearActiveStrategy, clearAllActiveStrategies } = useConfigStore()
 
   useEffect(() => {
     load()
@@ -160,7 +158,10 @@ export function CategoryPage() {
           <div>
             <h1 className="text-2xl font-semibold">{category.name}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {category.strategies.length} стратеги{category.strategies.length === 1 ? 'я' : category.strategies.length < 5 ? 'и' : 'й'}
+              {category.strategies.length}
+              {' '}
+              стратеги
+              {category.strategies.length === 1 ? 'я' : category.strategies.length < 5 ? 'и' : 'й'}
             </p>
           </div>
         </div>
@@ -179,7 +180,9 @@ export function CategoryPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Удалить категорию?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Категория «{category.name}» и все её стратегии будут удалены. Это действие нельзя отменить.
+                  Категория «
+                  {category.name}
+                  » и все её стратегии будут удалены. Это действие нельзя отменить.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -206,69 +209,73 @@ export function CategoryPage() {
       </div>
 
       <div className="space-y-4">
-        {category.strategies.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Нет стратегий</p>
-        ) : (
-          category.strategies.map((strategy: Strategy) => (
-            <div
-              key={strategy.id}
-              className="border border-border rounded-lg p-4 space-y-3"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="font-medium">{strategy.name}</span>
-                  {strategy.active && (
-                    <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded">
-                      активна
-                    </span>
-                  )}
+        {category.strategies.length === 0
+          ? (
+              <p className="text-sm text-muted-foreground">Нет стратегий</p>
+            )
+          : (
+              category.strategies.map((strategy: Strategy) => (
+                <div
+                  key={strategy.id}
+                  className="border border-border rounded-lg p-4 space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="font-medium">{strategy.name}</span>
+                      {strategy.active && (
+                        <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded">
+                          активна
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {strategy.active
+                        ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleClearActive(strategy.id)}
+                            >
+                              Деактивировать
+                            </Button>
+                          )
+                        : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleSetActive(strategy.id)}
+                            >
+                              Активировать
+                            </Button>
+                          )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem onClick={() => handleEditStrategy(strategy)}>
+                            <Pencil className="w-4 h-4 mr-2" />
+                            Редактировать
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteStrategy(strategy.id)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Удалить
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                  <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto">
+                    {strategy.content}
+                  </pre>
                 </div>
-                <div className="flex items-center gap-2">
-                  {strategy.active ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleClearActive(strategy.id)}
-                    >
-                      Деактивировать
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleSetActive(strategy.id)}
-                    >
-                      Активировать
-                    </Button>
-                  )}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => handleEditStrategy(strategy)}>
-                        <Pencil className="w-4 h-4 mr-2" />
-                        Редактировать
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleDeleteStrategy(strategy.id)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Удалить
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-              <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto">
-                {strategy.content}
-              </pre>
-            </div>
-          ))
-        )}
+              ))
+            )}
       </div>
 
       <Dialog open={newStrategyOpen} onOpenChange={setNewStrategyOpen}>
@@ -280,12 +287,12 @@ export function CategoryPage() {
             <Input
               placeholder="Название стратегии"
               value={newStrategyName}
-              onChange={(e) => setNewStrategyName(e.target.value)}
+              onChange={e => setNewStrategyName(e.target.value)}
             />
             <Textarea
               placeholder="--dpi-desync=fake&#10;--dpi-desync-autottl=2"
               value={newStrategyContent}
-              onChange={(e) => setNewStrategyContent(e.target.value)}
+              onChange={e => setNewStrategyContent(e.target.value)}
               rows={8}
               className="font-mono text-sm"
             />
@@ -308,12 +315,12 @@ export function CategoryPage() {
             <Input
               placeholder="Название стратегии"
               value={editingName}
-              onChange={(e) => setEditingName(e.target.value)}
+              onChange={e => setEditingName(e.target.value)}
             />
             <Textarea
               placeholder="--dpi-desync=fake&#10;--dpi-desync-autottl=2"
               value={editingContent}
-              onChange={(e) => setEditingContent(e.target.value)}
+              onChange={e => setEditingContent(e.target.value)}
               rows={8}
               className="font-mono text-sm"
             />
@@ -336,8 +343,8 @@ export function CategoryPage() {
             <Input
               placeholder="Название категории"
               value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleRenameCategory()}
+              onChange={e => setNewCategoryName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleRenameCategory()}
             />
           </div>
           <DialogFooter>

@@ -1,5 +1,5 @@
+import type { AppConfig, Category, Filter, GlobalPorts, ListMode, Placeholder, Strategy } from '../lib/types'
 import { create } from 'zustand'
-import type { AppConfig, Category, Strategy, Placeholder, GlobalPorts, Filter, ListMode } from '../lib/types'
 import * as tauri from '../lib/tauri'
 
 interface ConfigStore {
@@ -39,7 +39,8 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     try {
       const config = await tauri.loadConfig()
       set({ config, loading: false })
-    } catch (e) {
+    }
+    catch (e) {
       set({ error: String(e), loading: false })
     }
   },
@@ -56,7 +57,8 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     try {
       const config = await tauri.resetConfig()
       set({ config, loading: false })
-    } catch (e) {
+    }
+    catch (e) {
       set({ error: String(e), loading: false })
     }
   },
@@ -68,7 +70,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     }
   },
 
-setFilters: (filters) => {
+  setFilters: (filters) => {
     const { config } = get()
     if (config) {
       set({ config: { ...config, filters } })
@@ -104,8 +106,8 @@ setFilters: (filters) => {
   updateCategory: (id, name) => {
     const { config } = get()
     if (config) {
-      const categories = config.categories.map((c) =>
-        c.id === id ? { ...c, name } : c
+      const categories = config.categories.map(c =>
+        c.id === id ? { ...c, name } : c,
       )
       set({ config: { ...config, categories } })
     }
@@ -114,7 +116,7 @@ setFilters: (filters) => {
   deleteCategory: (id) => {
     const { config } = get()
     if (config) {
-      const categories = config.categories.filter((c) => c.id !== id)
+      const categories = config.categories.filter(c => c.id !== id)
       set({ config: { ...config, categories } })
     }
   },
@@ -138,10 +140,10 @@ setFilters: (filters) => {
         content,
         active: false,
       }
-      const categories = config.categories.map((c) =>
+      const categories = config.categories.map(c =>
         c.id === categoryId
           ? { ...c, strategies: [...c.strategies, newStrategy] }
-          : c
+          : c,
       )
       set({ config: { ...config, categories } })
     }
@@ -150,15 +152,15 @@ setFilters: (filters) => {
   updateStrategy: (categoryId, strategyId, updates) => {
     const { config } = get()
     if (config) {
-      const categories = config.categories.map((c) =>
+      const categories = config.categories.map(c =>
         c.id === categoryId
           ? {
               ...c,
-              strategies: c.strategies.map((s) =>
-                s.id === strategyId ? { ...s, ...updates } : s
+              strategies: c.strategies.map(s =>
+                s.id === strategyId ? { ...s, ...updates } : s,
               ),
             }
-          : c
+          : c,
       )
       set({ config: { ...config, categories } })
     }
@@ -167,10 +169,10 @@ setFilters: (filters) => {
   deleteStrategy: (categoryId, strategyId) => {
     const { config } = get()
     if (config) {
-      const categories = config.categories.map((c) =>
+      const categories = config.categories.map(c =>
         c.id === categoryId
-          ? { ...c, strategies: c.strategies.filter((s) => s.id !== strategyId) }
-          : c
+          ? { ...c, strategies: c.strategies.filter(s => s.id !== strategyId) }
+          : c,
       )
       set({ config: { ...config, categories } })
     }
@@ -179,16 +181,16 @@ setFilters: (filters) => {
   setActiveStrategy: (categoryId, strategyId) => {
     const { config } = get()
     if (config) {
-      const categories = config.categories.map((c) =>
+      const categories = config.categories.map(c =>
         c.id === categoryId
           ? {
               ...c,
-              strategies: c.strategies.map((s) => ({
+              strategies: c.strategies.map(s => ({
                 ...s,
                 active: s.id === strategyId,
               })),
             }
-          : c
+          : c,
       )
       set({ config: { ...config, categories } })
     }
@@ -197,15 +199,15 @@ setFilters: (filters) => {
   clearActiveStrategy: (categoryId, strategyId) => {
     const { config } = get()
     if (config) {
-      const categories = config.categories.map((c) =>
+      const categories = config.categories.map(c =>
         c.id === categoryId
           ? {
               ...c,
-              strategies: c.strategies.map((s) =>
-                s.id === strategyId ? { ...s, active: false } : s
+              strategies: c.strategies.map(s =>
+                s.id === strategyId ? { ...s, active: false } : s,
               ),
             }
-          : c
+          : c,
       )
       set({ config: { ...config, categories } })
     }
@@ -214,13 +216,13 @@ setFilters: (filters) => {
   clearAllActiveStrategies: (categoryId) => {
     const { config } = get()
     if (config) {
-      const categories = config.categories.map((c) =>
+      const categories = config.categories.map(c =>
         c.id === categoryId
           ? {
               ...c,
-              strategies: c.strategies.map((s) => ({ ...s, active: false })),
+              strategies: c.strategies.map(s => ({ ...s, active: false })),
             }
-          : c
+          : c,
       )
       set({ config: { ...config, categories } })
     }

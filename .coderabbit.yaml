@@ -8,9 +8,9 @@ reviews:
   profile: assertive
   request_changes_workflow: false
   high_level_summary: false
-  high_level_summary_placeholder: "@coderabbitai summary"
+  high_level_summary_placeholder: '@coderabbitai summary'
   high_level_summary_in_walkthrough: true
-  auto_title_placeholder: "@coderabbitai"
+  auto_title_placeholder: '@coderabbitai'
   review_status: false
   commit_status: false
   fail_commit_status: false

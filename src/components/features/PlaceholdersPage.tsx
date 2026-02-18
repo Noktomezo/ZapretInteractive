@@ -1,7 +1,15 @@
-import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, Loader2, FolderOpen } from 'lucide-react'
+import type { Placeholder } from '@/lib/types'
+import { FolderOpen, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import {
   Table,
@@ -11,16 +19,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
-import { useConfigStore } from '@/stores/config.store'
 import * as tauri from '@/lib/tauri'
-import type { Placeholder } from '@/lib/types'
+import { useConfigStore } from '@/stores/config.store'
 
 export function PlaceholdersPage() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -30,8 +30,8 @@ export function PlaceholdersPage() {
   const [newName, setNewName] = useState('')
   const [newPath, setNewPath] = useState('')
 
-  const { config, loading, load, save, addPlaceholder, updatePlaceholder, deletePlaceholder } = 
-    useConfigStore()
+  const { config, loading, load, save, addPlaceholder, updatePlaceholder, deletePlaceholder }
+    = useConfigStore()
 
   useEffect(() => {
     load()
@@ -109,47 +109,49 @@ export function PlaceholdersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {config?.placeholders.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground">
-                    Нет плейсхолдеров
-                  </TableCell>
-                </TableRow>
-              ) : (
-                config?.placeholders.map((placeholder: Placeholder, index: number) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-mono whitespace-nowrap">
-                      {'{{'}
-                      {placeholder.name}
-                      {'}}'}
-                    </TableCell>
-                    <TableCell className="font-mono text-muted-foreground max-w-0 w-full">
-                      <div className="relative overflow-hidden whitespace-nowrap" title={placeholder.path}>
-                        {placeholder.path}
-                        <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-card to-transparent pointer-events-none" />
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(index, placeholder)}
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(index)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
+              {config?.placeholders.length === 0
+                ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center text-muted-foreground">
+                        Нет плейсхолдеров
+                      </TableCell>
+                    </TableRow>
+                  )
+                : (
+                    config?.placeholders.map((placeholder: Placeholder, index: number) => (
+                      <TableRow key={index}>
+                        <TableCell className="font-mono whitespace-nowrap">
+                          {'{{'}
+                          {placeholder.name}
+                          {'}}'}
+                        </TableCell>
+                        <TableCell className="font-mono text-muted-foreground max-w-0 w-full">
+                          <div className="relative overflow-hidden whitespace-nowrap" title={placeholder.path}>
+                            {placeholder.path}
+                            <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-card to-transparent pointer-events-none" />
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(index, placeholder)}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(index)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
             </TableBody>
           </Table>
         </CardContent>
@@ -164,12 +166,12 @@ export function PlaceholdersPage() {
             <Input
               placeholder="Название (например TLS_CLIENTHELLO_GOOGLE)"
               value={newName}
-              onChange={(e) => setNewName(e.target.value)}
+              onChange={e => setNewName(e.target.value)}
             />
             <Input
               placeholder="Путь к файлу (например ~/.zapret/tls.bin)"
               value={newPath}
-              onChange={(e) => setNewPath(e.target.value)}
+              onChange={e => setNewPath(e.target.value)}
             />
           </div>
           <DialogFooter>
@@ -190,12 +192,12 @@ export function PlaceholdersPage() {
             <Input
               placeholder="Название"
               value={editName}
-              onChange={(e) => setEditName(e.target.value)}
+              onChange={e => setEditName(e.target.value)}
             />
             <Input
               placeholder="Путь к файлу"
               value={editPath}
-              onChange={(e) => setEditPath(e.target.value)}
+              onChange={e => setEditPath(e.target.value)}
             />
           </div>
           <DialogFooter>

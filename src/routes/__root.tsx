@@ -1,8 +1,8 @@
 import { createRootRoute, Outlet } from '@tanstack/react-router'
+import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { Sidebar } from '../components/features/Sidebar'
 import { TitleBar } from '../components/features/TitleBar'
-import { TooltipProvider } from '@/components/ui/tooltip'
-import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 
 export const Route = createRootRoute({
   component: () => (

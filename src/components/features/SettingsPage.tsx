@@ -1,12 +1,8 @@
-import { useState, useEffect } from 'react'
-import { Loader2, RotateCcw, Download, FolderOpen } from 'lucide-react'
 import { listen } from '@tauri-apps/api/event'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { Download, FolderOpen, Loader2, RotateCcw } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ThemeSwitcher } from '@/components/ThemeSwitcher'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,11 +14,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import * as tauri from '@/lib/tauri'
+import { useAppStore } from '@/stores/app.store'
 import { useConfigStore } from '@/stores/config.store'
 import { useDownloadStore } from '@/stores/download.store'
-import { useAppStore } from '@/stores/app.store'
-import { ThemeSwitcher } from '@/components/ThemeSwitcher'
-import * as tauri from '@/lib/tauri'
 
 interface DownloadProgress {
   current: number
@@ -86,7 +86,8 @@ export function SettingsPage() {
     setDownloading(true)
     try {
       await tauri.downloadBinaries()
-    } catch (e) {
+    }
+    catch (e) {
       console.error(e)
       resetDownload()
     }
@@ -163,9 +164,8 @@ export function SettingsPage() {
               <label className="text-sm font-medium">TCP порты</label>
               <Input
                 value={config.global_ports.tcp}
-                onChange={(e) =>
-                  setGlobalPorts({ ...config.global_ports, tcp: e.target.value })
-                }
+                onChange={e =>
+                  setGlobalPorts({ ...config.global_ports, tcp: e.target.value })}
                 placeholder="80,443"
               />
             </div>
@@ -173,9 +173,8 @@ export function SettingsPage() {
               <label className="text-sm font-medium">UDP порты</label>
               <Input
                 value={config.global_ports.udp}
-                onChange={(e) =>
-                  setGlobalPorts({ ...config.global_ports, udp: e.target.value })
-                }
+                onChange={e =>
+                  setGlobalPorts({ ...config.global_ports, udp: e.target.value })}
                 placeholder="1-65535"
               />
             </div>
@@ -214,28 +213,34 @@ export function SettingsPage() {
             </Alert>
           )}
 
-          {isDownloading && progress ? (
-            <div className="space-y-2">
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-primary transition-all duration-300"
-                  style={{ width: `${(progress.current / progress.total) * 100}%` }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {progress.current}/{progress.total}: {progress.filename}
-              </p>
-            </div>
-          ) : (
-            <Button
-              onClick={handleDownloadBinaries}
-              disabled={isDownloading}
-              variant={binariesOk ? 'outline' : 'default'}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              {binariesOk ? 'Переустановить' : 'Загрузить'}
-            </Button>
-          )}
+          {isDownloading && progress
+            ? (
+                <div className="space-y-2">
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all duration-300"
+                      style={{ width: `${(progress.current / progress.total) * 100}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {progress.current}
+                    /
+                    {progress.total}
+                    :
+                    {progress.filename}
+                  </p>
+                </div>
+              )
+            : (
+                <Button
+                  onClick={handleDownloadBinaries}
+                  disabled={isDownloading}
+                  variant={binariesOk ? 'outline' : 'default'}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  {binariesOk ? 'Переустановить' : 'Загрузить'}
+                </Button>
+              )}
         </CardContent>
       </Card>
 

@@ -8,7 +8,8 @@ interface SidebarStore {
 
 export const useSidebarStore = create<SidebarStore>((set, get) => ({
   collapsed: (() => {
-    if (typeof window === 'undefined') return false
+    if (typeof window === 'undefined')
+      return false
     const stored = localStorage.getItem('sidebar-collapsed')
     return stored === 'true'
   })(),
