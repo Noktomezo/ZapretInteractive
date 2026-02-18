@@ -1,8 +1,14 @@
 <div align="center">
   <img src="assets/thumbnail-alt.svg" alt="Zapret Interactive" width="400">
 
-GUI-обёртка для [zapret(-win-bundle)](https://github.com/bol-van/zapret-win-bundle)
+  GUI-обёртка для [zapret(-win-bundle)](https://github.com/bol-van/zapret-win-bundle)
 
+</div>
+
+## 📸 Скриншот
+
+<div align="center">
+  <img src="assets/app-screenshot.png" alt="Screenshot" width="600">
 </div>
 
 ## ⚡ Требования
@@ -11,13 +17,27 @@ GUI-обёртка для [zapret(-win-bundle)](https://github.com/bol-van/zapre
 - Запуск от имени администратора (для WinDivert драйвера)
 - WebView2 Runtime (устанавливается автоматически)
 
-## 🚀 Запуск
+## 📥 Установка
+
+Готовый установщик можно скачать из [последних релизов](https://github.com/Noktomezo/ZapretInteractive/releases).
+
+## 🛠️ Разработка
+
+### Требования
+
+- [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) с выбранным **Desktop development with C++** (MSVC + Windows SDK)
+- [Bun](https://bun.com/)
+
+### Команды
 
 ```bash
-# Разработка
+# Установка зависимостей
+bun install
+
+# Запуск в режиме разработки
 bun tauri dev
 
-# Сборка
+# Сборка релиза
 bun tauri build
 ```
 
