@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 const DEFAULT_CONFIG: &str = include_str!("../../default-config.json");
 
@@ -48,7 +49,7 @@ pub struct Filter {
     pub active: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum ListMode {
     #[default]
@@ -136,6 +137,44 @@ pub(crate) fn get_config_path() -> PathBuf {
     get_zapret_dir().join("config.json")
 }
 
+pub struct AppState {
+    pub config: Mutex<AppConfig>,
+}
+
+impl AppState {
+    pub fn new() -> Result<Self, String> {
+        let config = load_config_from_disk()?;
+        Ok(Self {
+            config: Mutex::new(config),
+        })
+    }
+}
+
+fn load_config_from_disk() -> Result<AppConfig, String> {
+    let config_path = get_config_path();
+
+    if !config_path.exists() {
+        let default_config = AppConfig::default();
+        save_config_to_disk(&default_config)?;
+        return Ok(default_config);
+    }
+
+    let content = fs::read_to_string(&config_path).map_err(|e| e.to_string())?;
+    let config: AppConfig = serde_json::from_str(&content).map_err(|e| e.to_string())?;
+    Ok(config)
+}
+
+pub fn save_config_to_disk(config: &AppConfig) -> Result<(), String> {
+    let dir = get_zapret_dir();
+    if !dir.exists() {
+        fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    }
+    let config_path = get_config_path();
+    let content = serde_json::to_string_pretty(&config).map_err(|e| e.to_string())?;
+    fs::write(&config_path, content).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[tauri::command]
 pub fn ensure_config_dir() -> Result<String, String> {
     let dir = get_zapret_dir();
@@ -146,34 +185,34 @@ pub fn ensure_config_dir() -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn load_config() -> Result<AppConfig, String> {
-    let config_path = get_config_path();
-
-    if !config_path.exists() {
-        let default_config = AppConfig::default();
-        save_config(default_config.clone())?;
-        return Ok(default_config);
-    }
-
-    let content = fs::read_to_string(&config_path).map_err(|e| e.to_string())?;
-    let config: AppConfig = serde_json::from_str(&content).map_err(|e| e.to_string())?;
-    Ok(config)
+pub fn load_config(state: tauri::State<'_, AppState>) -> Result<AppConfig, String> {
+    let config = state.config.lock().map_err(|e| e.to_string())?;
+    Ok(config.clone())
 }
 
 #[tauri::command]
-pub fn save_config(config: AppConfig) -> Result<(), String> {
-    ensure_config_dir()?;
-    let config_path = get_config_path();
-    let content = serde_json::to_string_pretty(&config).map_err(|e| e.to_string())?;
-    fs::write(&config_path, content).map_err(|e| e.to_string())?;
+pub fn save_config(config: AppConfig, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
+    *cfg = config;
+    save_config_to_disk(&cfg)?;
     Ok(())
 }
 
 #[tauri::command]
-pub fn reset_config() -> Result<AppConfig, String> {
+pub fn reset_config(state: tauri::State<'_, AppState>) -> Result<AppConfig, String> {
     let default_config = AppConfig::default();
-    save_config(default_config.clone())?;
+    let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
+    *cfg = default_config.clone();
+    save_config_to_disk(&cfg)?;
     Ok(default_config)
+}
+
+#[tauri::command]
+pub fn update_list_mode(mode: ListMode, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
+    cfg.list_mode = mode;
+    save_config_to_disk(&cfg)?;
+    Ok(())
 }
 
 #[tauri::command]

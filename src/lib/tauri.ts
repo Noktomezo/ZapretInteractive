@@ -60,12 +60,15 @@ export const enableTcpTimestamps = (): Promise<void> => invoke('enable_tcp_times
 
 export const setConnectedState = (connected: boolean): Promise<void> => invoke('set_connected_state', { connected })
 
-export function onTrayConnectToggle(callback: () => void): (() => void) {
+function createAsyncListener<T>(
+  eventName: string,
+  callback: (payload: T) => void,
+): (() => void) {
   let unlisten: (() => void) | null = null
   let called = false
   let registrationFailed = false
   let registrationError: unknown = null
-  const listenPromise = listen('tray-connect-toggle', () => callback())
+  const listenPromise = listen<T>(eventName, event => callback(event.payload))
   listenPromise
     .then((fn) => {
       if (!called) {
@@ -76,7 +79,7 @@ export function onTrayConnectToggle(callback: () => void): (() => void) {
       }
     })
     .catch((e) => {
-      console.error('Failed to register tray-connect-toggle listener:', e)
+      console.error(`Failed to register ${eventName} listener:`, e)
       registrationFailed = true
       registrationError = e
     })
@@ -86,38 +89,15 @@ export function onTrayConnectToggle(callback: () => void): (() => void) {
       unlisten()
     }
     else if (registrationFailed) {
-      console.error('Tray listener cleanup called but registration had failed:', registrationError)
+      console.error(`${eventName} listener cleanup called but registration had failed:`, registrationError)
     }
   }
 }
 
+export function onTrayConnectToggle(callback: () => void): (() => void) {
+  return createAsyncListener('tray-connect-toggle', () => callback())
+}
+
 export function onListModeChanged(callback: (mode: ListMode) => void): (() => void) {
-  let unlisten: (() => void) | null = null
-  let called = false
-  let registrationFailed = false
-  let registrationError: unknown = null
-  const listenPromise = listen<ListMode>('list-mode-changed', event => callback(event.payload))
-  listenPromise
-    .then((fn) => {
-      if (!called) {
-        unlisten = fn
-      }
-      else {
-        fn()
-      }
-    })
-    .catch((e) => {
-      console.error('Failed to register list-mode-changed listener:', e)
-      registrationFailed = true
-      registrationError = e
-    })
-  return () => {
-    called = true
-    if (unlisten) {
-      unlisten()
-    }
-    else if (registrationFailed) {
-      console.error('ListMode listener cleanup called but registration had failed:', registrationError)
-    }
-  }
+  return createAsyncListener<ListMode>('list-mode-changed', mode => callback(mode))
 }

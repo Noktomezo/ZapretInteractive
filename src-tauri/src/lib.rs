@@ -1,7 +1,6 @@
 mod commands;
 
 use commands::{admin, binaries, config, process};
-use std::fs;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{
     image::Image,
@@ -12,36 +11,25 @@ use tauri::{
 
 static CONNECTED: AtomicBool = AtomicBool::new(false);
 
-fn apply_list_mode(
-    app: &tauri::AppHandle,
-    mode: config::ListMode,
-    ipset_checked: bool,
-    exclude_checked: bool,
-    event_payload: &str,
-) {
+fn apply_list_mode(app: &tauri::AppHandle, mode: config::ListMode) {
     if !CONNECTED.load(Ordering::SeqCst) {
-        if let Ok(mut cfg) = config::load_config() {
+        let state = app.state::<config::AppState>();
+        {
+            let mut cfg = state.config.lock().unwrap();
             cfg.list_mode = mode;
-            if config::save_config(cfg).is_ok() {
-                let items = app.state::<ListModeItems>();
-                let _ = items.ipset.set_checked(ipset_checked);
-                let _ = items.exclude.set_checked(exclude_checked);
-                let _ = app.emit("list-mode-changed", event_payload);
-            }
+        }
+        let cfg = state.config.lock().unwrap();
+        if config::save_config_to_disk(&cfg).is_ok() {
+            let items = app.state::<ListModeItems>();
+            let _ = items.ipset.set_checked(mode == config::ListMode::Ipset);
+            let _ = items.exclude.set_checked(mode == config::ListMode::Exclude);
+            let _ = app.emit("list-mode-changed", mode.to_string());
         }
     }
 }
 
-fn should_minimize_to_tray() -> bool {
-    let config_path = config::get_config_path();
-    if !config_path.exists() {
-        return true;
-    }
-    fs::read_to_string(&config_path)
-        .ok()
-        .and_then(|content| serde_json::from_str::<serde_json::Value>(&content).ok())
-        .and_then(|json| json.get("minimizeToTray").and_then(|v| v.as_bool()))
-        .unwrap_or(true)
+fn should_minimize_to_tray(state: &config::AppState) -> bool {
+    state.config.lock().map(|cfg| cfg.minimize_to_tray).unwrap_or(true)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -68,6 +56,7 @@ pub fn run() {
             config::reset_config,
             config::get_zapret_directory,
             config::resolve_placeholders,
+            config::update_list_mode,
             binaries::verify_binaries,
             binaries::download_binaries,
             binaries::get_binary_path,
@@ -88,13 +77,13 @@ pub fn run() {
             set_connected_state,
         ])
         .setup(|app| {
+            let app_state = config::AppState::new()?;
+            let list_mode = app_state.config.lock().map(|cfg| cfg.list_mode).unwrap_or_default();
+            app.manage(app_state);
+
             let connect_item = MenuItem::with_id(app, "connect", "Подключиться", true, None::<&str>)?;
             let show_item = MenuItem::with_id(app, "show", "Показать", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "Выход", true, None::<&str>)?;
-
-            let list_mode = config::load_config()
-                .map(|cfg| cfg.list_mode)
-                .unwrap_or_default();
 
             let ipset_item = CheckMenuItem::with_id(app, "listmode-ipset", "Только заблокированные", true, list_mode == config::ListMode::Ipset, None::<&str>)?;
             let exclude_item = CheckMenuItem::with_id(app, "listmode-exclude", "Исключения", true, list_mode == config::ListMode::Exclude, None::<&str>)?;
@@ -120,10 +109,10 @@ pub fn run() {
                         let _ = app.emit("tray-connect-toggle", ());
                     }
                     "listmode-ipset" => {
-                        apply_list_mode(app, config::ListMode::Ipset, true, false, "ipset");
+                        apply_list_mode(app, config::ListMode::Ipset);
                     }
                     "listmode-exclude" => {
-                        apply_list_mode(app, config::ListMode::Exclude, false, true, "exclude");
+                        apply_list_mode(app, config::ListMode::Exclude);
                     }
                     "show" => {
                         if let Some(window) = app.get_webview_window("main") {
@@ -156,9 +145,11 @@ pub fn run() {
 
             if let Some(window) = app.get_webview_window("main") {
                 let window_clone = window.clone();
+                let state = app.state::<config::AppState>();
+                let minimize_to_tray = should_minimize_to_tray(&state);
                 window.on_window_event(move |event| {
                     if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                        if should_minimize_to_tray() {
+                        if minimize_to_tray {
                             api.prevent_close();
                             let _ = window_clone.hide();
                         }
