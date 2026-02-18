@@ -83,6 +83,14 @@ export function MainPage() {
 
   useEffect(() => {
     initialize()
+
+    const unlistenListMode = tauri.onListModeChanged((mode) => {
+      setListMode(mode as ListMode)
+    })
+
+    return () => {
+      unlistenListMode()
+    }
   }, [])
 
   const handleToggleConnection = async () => {

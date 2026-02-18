@@ -5,7 +5,7 @@ use std::fs;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{
     image::Image,
-    menu::{Menu, MenuItem},
+    menu::{CheckMenuItem, Menu, MenuItem, Submenu},
     tray::{TrayIconBuilder, MouseButton},
     Emitter, Manager,
 };
@@ -71,12 +71,27 @@ pub fn run() {
             let connect_item = MenuItem::with_id(app, "connect", "Подключиться", true, None::<&str>)?;
             let show_item = MenuItem::with_id(app, "show", "Показать", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "Выход", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&connect_item, &show_item, &quit_item])?;
+
+            let list_mode = fs::read_to_string(config::get_config_path())
+                .ok()
+                .and_then(|content| serde_json::from_str::<serde_json::Value>(&content).ok())
+                .and_then(|json| json.get("listMode").and_then(|v| v.as_str()).map(|s| s.to_string()))
+                .unwrap_or_else(|| "ipset".to_string());
+
+            let ipset_item = CheckMenuItem::with_id(app, "listmode-ipset", "Только заблокированные", true, list_mode == "ipset", None::<&str>)?;
+            let exclude_item = CheckMenuItem::with_id(app, "listmode-exclude", "Исключения", true, list_mode == "exclude", None::<&str>)?;
+
+            let listmode_submenu = Submenu::with_items(app, "Режим списков", true, &[&ipset_item, &exclude_item])?;
+
+            let menu = Menu::with_items(app, &[&connect_item, &listmode_submenu, &show_item, &quit_item])?;
 
             let icon_bytes = include_bytes!("../icons/32x32.png") as &[u8];
             let icon = Image::from_bytes(icon_bytes).ok();
 
             let connect_item_clone = connect_item.clone();
+            let ipset_item_clone = ipset_item.clone();
+            let exclude_item_clone = exclude_item.clone();
+            let listmode_submenu_clone = listmode_submenu.clone();
 
             let _tray = TrayIconBuilder::with_id("main")
                 .tooltip("Zapret Interactive")
@@ -85,6 +100,32 @@ pub fn run() {
                 .on_menu_event(move |app, event| match event.id.as_ref() {
                     "connect" => {
                         let _ = app.emit("tray-connect-toggle", ());
+                    }
+                    "listmode-ipset" => {
+                        if !CONNECTED.load(Ordering::SeqCst) {
+                            if let Ok(mut cfg) = config::load_config() {
+                                cfg.list_mode = "ipset".to_string();
+                                if config::save_config(cfg).is_ok() {
+                                    let items = app.state::<ListModeItems>();
+                                    let _ = items.ipset.set_checked(true);
+                                    let _ = items.exclude.set_checked(false);
+                                    let _ = app.emit("list-mode-changed", "ipset");
+                                }
+                            }
+                        }
+                    }
+                    "listmode-exclude" => {
+                        if !CONNECTED.load(Ordering::SeqCst) {
+                            if let Ok(mut cfg) = config::load_config() {
+                                cfg.list_mode = "exclude".to_string();
+                                if config::save_config(cfg).is_ok() {
+                                    let items = app.state::<ListModeItems>();
+                                    let _ = items.ipset.set_checked(false);
+                                    let _ = items.exclude.set_checked(true);
+                                    let _ = app.emit("list-mode-changed", "exclude");
+                                }
+                            }
+                        }
                     }
                     "show" => {
                         if let Some(window) = app.get_webview_window("main") {
@@ -128,6 +169,11 @@ pub fn run() {
             }
 
             app.manage(ConnectMenuItem(connect_item_clone));
+            app.manage(ListModeItems {
+                ipset: ipset_item_clone,
+                exclude: exclude_item_clone,
+                submenu: listmode_submenu_clone,
+            });
 
             Ok(())
         })
@@ -137,14 +183,23 @@ pub fn run() {
 
 struct ConnectMenuItem(MenuItem<tauri::Wry>);
 
+struct ListModeItems {
+    ipset: CheckMenuItem<tauri::Wry>,
+    exclude: CheckMenuItem<tauri::Wry>,
+    submenu: Submenu<tauri::Wry>,
+}
+
 #[tauri::command]
 fn set_connected_state(app: tauri::AppHandle, connected: bool) -> Result<(), String> {
     CONNECTED.store(connected, Ordering::SeqCst);
-    
+
     let text = if connected { "Отключиться" } else { "Подключиться" };
-    
+
     let item = app.state::<ConnectMenuItem>();
     item.0.set_text(text).map_err(|e| e.to_string())?;
-    
+
+    let list_mode_items = app.state::<ListModeItems>();
+    list_mode_items.submenu.set_enabled(!connected).map_err(|e| e.to_string())?;
+
     Ok(())
 }

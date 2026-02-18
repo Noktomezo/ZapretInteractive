@@ -90,3 +90,27 @@ export function onTrayConnectToggle(callback: () => void): (() => void) {
     }
   }
 }
+
+export function onListModeChanged(callback: (mode: string) => void): (() => void) {
+  let unlisten: (() => void) | null = null
+  let called = false
+  const listenPromise = listen<string>('list-mode-changed', event => callback(event.payload))
+  listenPromise
+    .then((fn) => {
+      if (!called) {
+        unlisten = fn
+      }
+      else {
+        fn()
+      }
+    })
+    .catch((e) => {
+      console.error('Failed to register list-mode-changed listener:', e)
+    })
+  return () => {
+    called = true
+    if (unlisten) {
+      unlisten()
+    }
+  }
+}
