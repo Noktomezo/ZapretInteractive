@@ -6,7 +6,7 @@ permissions:
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   changelog:
@@ -65,7 +65,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: __VERSION__
-          releaseName: Winsentials __VERSION__
+          releaseName: Zapret Interactive __VERSION__
           releaseBody: ${{ needs.changelog.outputs.body }}
           releaseDraft: false
           prerelease: false
