@@ -12,7 +12,7 @@ export function TitleBar() {
       setIsMaximized(maximized)
     })
     return () => {
-      unlisten.then(fn => fn())
+      unlisten.then(fn => fn()).catch(console.error)
     }
   }, [])
 

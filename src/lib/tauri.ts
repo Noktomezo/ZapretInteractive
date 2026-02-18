@@ -22,7 +22,7 @@ export const downloadBinaries = async (): Promise<void> => invoke('download_bina
 
 export const getWinwsPath = (): Promise<string> => invoke('get_winws_path')
 
-export const startWinws = (args: string, tcpPorts: string, udpPorts: string): Promise<number> => invoke('start_winws', { args, tcpPorts, udpPorts })
+export const startWinws = (args: string[], tcpPorts: string, udpPorts: string): Promise<number> => invoke('start_winws', { args, tcpPorts, udpPorts })
 
 export const stopWinws = (): Promise<void> => invoke('stop_winws')
 
@@ -62,6 +62,20 @@ export const setConnectedState = (connected: boolean): Promise<void> => invoke('
 
 export function onTrayConnectToggle(callback: () => void): (() => void) {
   let unlisten: (() => void) | null = null
-  listen('tray-connect-toggle', () => callback()).then(fn => unlisten = fn)
-  return () => unlisten?.()
+  let called = false
+  const listenPromise = listen('tray-connect-toggle', () => callback())
+  listenPromise.then((fn) => {
+    if (!called) {
+      unlisten = fn
+    }
+    else {
+      fn()
+    }
+  })
+  return () => {
+    called = true
+    if (unlisten) {
+      unlisten()
+    }
+  }
 }

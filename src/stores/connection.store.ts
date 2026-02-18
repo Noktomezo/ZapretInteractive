@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { buildFiltersCommand, buildStrategyCommand } from '../lib/strategy'
+import { buildFiltersCommand, buildFiltersCommandArray, buildStrategyCommand } from '../lib/strategy'
 import * as tauri from '../lib/tauri'
 import { useConfigStore } from './config.store'
 
@@ -27,7 +27,9 @@ async function updateTrayState(connected: boolean) {
   try {
     await tauri.setConnectedState(connected)
   }
-  catch { }
+  catch (e) {
+    console.error('Failed to update tray state:', connected, e)
+  }
 }
 
 export const useConnectionStore = create<ConnectionStore>((set, get) => ({
@@ -70,6 +72,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       const filtersDir = await tauri.getFiltersPath()
 
       const filtersCommand = buildFiltersCommand(config.filters, filtersDir)
+      const filtersArgs = buildFiltersCommandArray(config.filters, filtersDir)
       const strategyCommand = buildStrategyCommand(config)
       const processedStrategy = await tauri.resolvePlaceholders(strategyCommand, config.placeholders)
 
@@ -81,12 +84,11 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
 
       get().addLog(fullCommand)
 
-      const combinedArgs = filtersCommand
-        ? `${filtersCommand}\n${processedStrategy}`
-        : processedStrategy
+      const strategyArgs = processedStrategy.split('\n').filter(Boolean)
+      const allArgs = [...filtersArgs, ...strategyArgs]
 
       const pid = await tauri.startWinws(
-        combinedArgs,
+        allArgs,
         config.global_ports.tcp,
         config.global_ports.udp,
       )
@@ -135,7 +137,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
   },
 
   addLog: (log) => {
-    const timestamp = new Date().toLocaleTimeString()
+    const timestamp = new Date().toISOString()
     set(state => ({ logs: [...state.logs, `[${timestamp}] ${log}`] }))
   },
 

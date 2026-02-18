@@ -133,11 +133,27 @@ fn sanitize_filename(filename: &str) -> Result<String, String> {
     }
     
     let valid_chars = name.chars().all(|c| {
-        c.is_alphanumeric() || c == '.' || c == '-' || c == '_'
+        c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_'
     });
     
     if !valid_chars {
         return Err("Filename contains invalid characters".to_string());
+    }
+    
+    let file_stem = std::path::Path::new(name)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .map(|s| s.to_lowercase());
+    
+    if let Some(stem) = file_stem {
+        const RESERVED_NAMES: &[&str] = &[
+            "con", "prn", "aux", "nul",
+            "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
+            "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
+        ];
+        if RESERVED_NAMES.contains(&stem.as_str()) {
+            return Err("Filename uses reserved name".to_string());
+        }
     }
     
     Ok(name.to_string())
@@ -380,7 +396,7 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
     for (current, file) in files_to_download.iter().enumerate() {
         let current = current + 1;
         
-        println!("[download] Starting {} from {}", file.name, file.url);
+        log::info!("[download] Starting {} from {}", file.name, file.url);
         
         app.emit("download-progress", DownloadProgress {
             current,
@@ -394,39 +410,42 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
             .await
             .map_err(|e| {
                 let err = format!("Failed to fetch {}: {}", file.name, e);
-                println!("[download] ERROR: {}", err);
+                log::error!("[download] ERROR: {}", err);
                 app.emit("download-error", err.clone()).ok();
+                let _ = save_stored_hashes(&hashes);
                 err
             })?;
         
         if !response.status().is_success() {
             let err = format!("Failed to download {}: HTTP {}", file.name, response.status());
-            println!("[download] ERROR: {}", err);
+            log::error!("[download] ERROR: {}", err);
             app.emit("download-error", err.clone()).ok();
+            let _ = save_stored_hashes(&hashes);
             return Err(err);
         }
         
         let bytes = response.bytes().await.map_err(|e| {
             let err = format!("Failed to read {} body: {}", file.name, e);
-            println!("[download] ERROR: {}", err);
+            log::error!("[download] ERROR: {}", err);
+            let _ = save_stored_hashes(&hashes);
             err
         })?;
         
         fs::write(&file.dest_path, &bytes).map_err(|e| {
             let err = format!("Failed to write {}: {}", file.name, e);
-            println!("[download] ERROR: {}", err);
+            log::error!("[download] ERROR: {}", err);
+            let _ = save_stored_hashes(&hashes);
             err
         })?;
         
-        println!("[download] Completed {} ({} bytes)", file.name, bytes.len());
+        log::info!("[download] Completed {} ({} bytes)", file.name, bytes.len());
         
         if file.is_binary {
             let hash = calculate_sha256(&file.dest_path)?;
             hashes.insert(file.name.clone(), hash);
+            save_stored_hashes(&hashes)?;
         }
     }
-    
-    save_stored_hashes(&hashes)?;
     
     app.emit("download-complete", ()).ok();
     

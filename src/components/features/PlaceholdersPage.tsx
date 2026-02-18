@@ -35,12 +35,12 @@ export function PlaceholdersPage() {
     = useConfigStore()
 
   useEffect(() => {
-    load()
+    load().catch(console.error)
   }, [])
 
   useEffect(() => {
     if (config) {
-      save()
+      save().catch(console.error)
     }
   }, [config])
 
@@ -61,7 +61,12 @@ export function PlaceholdersPage() {
 
   const handleSaveEdit = () => {
     if (editingIndex !== null) {
-      updatePlaceholder(editingIndex, editName, editPath)
+      const trimmedName = editName.trim()
+      const trimmedPath = editPath.trim()
+      if (!trimmedName || !trimmedPath) {
+        return
+      }
+      updatePlaceholder(editingIndex, trimmedName, trimmedPath)
       setEditingIndex(null)
     }
   }
@@ -121,7 +126,7 @@ export function PlaceholdersPage() {
                   )
                 : (
                     config?.placeholders.map((placeholder: Placeholder, index: number) => (
-                      <TableRow key={index}>
+                      <TableRow key={placeholder.name}>
                         <TableCell className="font-mono whitespace-nowrap">
                           {'{{'}
                           {placeholder.name}
@@ -185,7 +190,7 @@ export function PlaceholdersPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={editingIndex !== null} onOpenChange={() => setEditingIndex(null)}>
+      <Dialog open={editingIndex !== null} onOpenChange={open => !open && setEditingIndex(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Редактировать плейсхолдер</DialogTitle>

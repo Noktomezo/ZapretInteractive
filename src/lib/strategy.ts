@@ -12,6 +12,16 @@ export function buildFiltersCommand(filters: Filter[], filtersDir: string): stri
     .join('\n')
 }
 
+export function buildFiltersCommandArray(filters: Filter[], filtersDir: string): string[] {
+  const activeFilters = filters.filter(f => f.active)
+  if (activeFilters.length === 0)
+    return []
+
+  const normalizedDir = filtersDir.replace(/[/\\]+$/, '')
+
+  return activeFilters.map(f => `--wf-raw-part=@${normalizedDir}\\${f.filename}`)
+}
+
 export function buildStrategyCommand(config: AppConfig): string {
   const activeStrategies: string[] = []
 
