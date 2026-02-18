@@ -1,7 +1,7 @@
-import { Sun, Moon, Monitor } from 'lucide-react'
+import { Monitor, Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useThemeStore } from '@/stores/theme.store'
 import { cn } from '@/lib/utils'
+import { useThemeStore } from '@/stores/theme.store'
 
 const themes = [
   { value: 'light' as const, label: 'Светлая', icon: Sun },

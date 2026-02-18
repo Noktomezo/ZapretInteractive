@@ -1,6 +1,6 @@
+import type { AppConfig } from './types'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import type { AppConfig } from './types'
 
 export const isElevated = (): Promise<boolean> => invoke('is_elevated')
 
@@ -22,7 +22,7 @@ export const downloadBinaries = async (): Promise<void> => invoke('download_bina
 
 export const getWinwsPath = (): Promise<string> => invoke('get_winws_path')
 
-export const startWinws = (args: string, tcpPorts: string, udpPorts: string): Promise<number> => invoke('start_winws', { args, tcpPorts, udpPorts })
+export const startWinws = (args: string[], tcpPorts: string, udpPorts: string): Promise<number> => invoke('start_winws', { args, tcpPorts, udpPorts })
 
 export const stopWinws = (): Promise<void> => invoke('stop_winws')
 
@@ -38,8 +38,21 @@ export const openZapretDirectory = (): Promise<void> => invoke('open_zapret_dire
 
 export const getFiltersPath = (): Promise<string> => invoke('get_filters_path')
 
-export const resolvePlaceholders = (content: string, placeholders: { name: string; path: string }[]): Promise<string> => 
-  invoke('resolve_placeholders', { content, placeholders })
+export function saveFilterFile(filename: string, content: string): Promise<void> {
+  return invoke('save_filter_file', { filename, content })
+}
+
+export function loadFilterFile(filename: string): Promise<string> {
+  return invoke('load_filter_file', { filename })
+}
+
+export function deleteFilterFile(filename: string): Promise<void> {
+  return invoke('delete_filter_file', { filename })
+}
+
+export function resolvePlaceholders(content: string, placeholders: { name: string, path: string }[]): Promise<string> {
+  return invoke('resolve_placeholders', { content, placeholders })
+}
 
 export const checkTcpTimestamps = (): Promise<boolean> => invoke('check_tcp_timestamps')
 
@@ -47,8 +60,33 @@ export const enableTcpTimestamps = (): Promise<void> => invoke('enable_tcp_times
 
 export const setConnectedState = (connected: boolean): Promise<void> => invoke('set_connected_state', { connected })
 
-export const onTrayConnectToggle = (callback: () => void): (() => void) => {
+export function onTrayConnectToggle(callback: () => void): (() => void) {
   let unlisten: (() => void) | null = null
-  listen('tray-connect-toggle', () => callback()).then(fn => unlisten = fn)
-  return () => unlisten?.()
+  let called = false
+  let registrationFailed = false
+  let registrationError: unknown = null
+  const listenPromise = listen('tray-connect-toggle', () => callback())
+  listenPromise
+    .then((fn) => {
+      if (!called) {
+        unlisten = fn
+      }
+      else {
+        fn()
+      }
+    })
+    .catch((e) => {
+      console.error('Failed to register tray-connect-toggle listener:', e)
+      registrationFailed = true
+      registrationError = e
+    })
+  return () => {
+    called = true
+    if (unlisten) {
+      unlisten()
+    }
+    else if (registrationFailed) {
+      console.error('Tray listener cleanup called but registration had failed:', registrationError)
+    }
+  }
 }

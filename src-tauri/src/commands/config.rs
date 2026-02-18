@@ -56,6 +56,12 @@ pub struct AppConfig {
     #[serde(default)]
     pub filters: Vec<Filter>,
     pub binaries_path: String,
+    #[serde(default = "default_minimize_to_tray", rename = "minimizeToTray")]
+    pub minimize_to_tray: bool,
+}
+
+fn default_minimize_to_tray() -> bool {
+    true
 }
 
 impl Default for AppConfig {
@@ -101,13 +107,13 @@ impl Default for AppConfig {
     }
 }
 
-fn get_zapret_dir() -> PathBuf {
+pub fn get_zapret_dir() -> PathBuf {
     dirs::home_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join(".zapret")
 }
 
-fn get_config_path() -> PathBuf {
+pub(crate) fn get_config_path() -> PathBuf {
     get_zapret_dir().join("config.json")
 }
 

@@ -1,14 +1,25 @@
-import type { AppConfig, Placeholder, Filter } from './types'
+import type { AppConfig, Filter, Placeholder } from './types'
 
 export function buildFiltersCommand(filters: Filter[], filtersDir: string): string {
   const activeFilters = filters.filter(f => f.active)
-  if (activeFilters.length === 0) return ''
+  if (activeFilters.length === 0)
+    return ''
 
   const normalizedDir = filtersDir.replace(/[/\\]+$/, '')
 
   return activeFilters
     .map(f => `--wf-raw-part=@${normalizedDir}\\${f.filename}`)
     .join('\n')
+}
+
+export function buildFiltersCommandArray(filters: Filter[], filtersDir: string): string[] {
+  const activeFilters = filters.filter(f => f.active)
+  if (activeFilters.length === 0)
+    return []
+
+  const normalizedDir = filtersDir.replace(/[/\\]+$/, '')
+
+  return activeFilters.map(f => `--wf-raw-part=@${normalizedDir}\\${f.filename}`)
 }
 
 export function buildStrategyCommand(config: AppConfig): string {
@@ -60,7 +71,8 @@ export function parseStrategyFlags(content: string): Map<string, string[]> {
         const existing = flags.get(key) || []
         existing.push(value)
         flags.set(key, existing)
-      } else {
+      }
+      else {
         flags.set(trimmed, [''])
       }
     }
@@ -69,7 +81,7 @@ export function parseStrategyFlags(content: string): Map<string, string[]> {
   return flags
 }
 
-export function validateStrategy(content: string): { valid: boolean; errors: string[] } {
+export function validateStrategy(content: string): { valid: boolean, errors: string[] } {
   const errors: string[] = []
   const flags = parseStrategyFlags(content)
 
@@ -96,7 +108,8 @@ export function flagsToArgs(flags: Map<string, string[]>): string {
     for (const value of values) {
       if (value) {
         args.push(`${key}=${value}`)
-      } else {
+      }
+      else {
         args.push(key)
       }
     }
