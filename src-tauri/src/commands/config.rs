@@ -58,10 +58,16 @@ pub struct AppConfig {
     pub binaries_path: String,
     #[serde(default = "default_minimize_to_tray", rename = "minimizeToTray")]
     pub minimize_to_tray: bool,
+    #[serde(default = "default_list_mode", rename = "listMode")]
+    pub list_mode: String,
 }
 
 fn default_minimize_to_tray() -> bool {
     true
+}
+
+fn default_list_mode() -> String {
+    "ipset".to_string()
 }
 
 impl Default for AppConfig {

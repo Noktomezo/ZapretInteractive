@@ -79,6 +79,7 @@ pub fn run() {
             let connect_item_clone = connect_item.clone();
 
             let _tray = TrayIconBuilder::with_id("main")
+                .tooltip("Zapret Interactive")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(move |app, event| match event.id.as_ref() {
