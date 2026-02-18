@@ -48,6 +48,23 @@ pub struct Filter {
     pub active: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ListMode {
+    #[default]
+    Ipset,
+    Exclude,
+}
+
+impl std::fmt::Display for ListMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ListMode::Ipset => write!(f, "ipset"),
+            ListMode::Exclude => write!(f, "exclude"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     pub global_ports: GlobalPorts,
@@ -58,16 +75,12 @@ pub struct AppConfig {
     pub binaries_path: String,
     #[serde(default = "default_minimize_to_tray", rename = "minimizeToTray")]
     pub minimize_to_tray: bool,
-    #[serde(default = "default_list_mode", rename = "listMode")]
-    pub list_mode: String,
+    #[serde(default, rename = "listMode")]
+    pub list_mode: ListMode,
 }
 
 fn default_minimize_to_tray() -> bool {
     true
-}
-
-fn default_list_mode() -> String {
-    "ipset".to_string()
 }
 
 impl Default for AppConfig {

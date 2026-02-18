@@ -72,14 +72,12 @@ pub fn run() {
             let show_item = MenuItem::with_id(app, "show", "Показать", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "Выход", true, None::<&str>)?;
 
-            let list_mode = fs::read_to_string(config::get_config_path())
-                .ok()
-                .and_then(|content| serde_json::from_str::<serde_json::Value>(&content).ok())
-                .and_then(|json| json.get("listMode").and_then(|v| v.as_str()).map(|s| s.to_string()))
-                .unwrap_or_else(|| "ipset".to_string());
+            let list_mode = config::load_config()
+                .map(|cfg| cfg.list_mode)
+                .unwrap_or_default();
 
-            let ipset_item = CheckMenuItem::with_id(app, "listmode-ipset", "Только заблокированные", true, list_mode == "ipset", None::<&str>)?;
-            let exclude_item = CheckMenuItem::with_id(app, "listmode-exclude", "Исключения", true, list_mode == "exclude", None::<&str>)?;
+            let ipset_item = CheckMenuItem::with_id(app, "listmode-ipset", "Только заблокированные", true, list_mode == config::ListMode::Ipset, None::<&str>)?;
+            let exclude_item = CheckMenuItem::with_id(app, "listmode-exclude", "Исключения", true, list_mode == config::ListMode::Exclude, None::<&str>)?;
 
             let listmode_submenu = Submenu::with_items(app, "Режим списков", true, &[&ipset_item, &exclude_item])?;
 
@@ -104,7 +102,7 @@ pub fn run() {
                     "listmode-ipset" => {
                         if !CONNECTED.load(Ordering::SeqCst) {
                             if let Ok(mut cfg) = config::load_config() {
-                                cfg.list_mode = "ipset".to_string();
+                                cfg.list_mode = config::ListMode::Ipset;
                                 if config::save_config(cfg).is_ok() {
                                     let items = app.state::<ListModeItems>();
                                     let _ = items.ipset.set_checked(true);
@@ -117,7 +115,7 @@ pub fn run() {
                     "listmode-exclude" => {
                         if !CONNECTED.load(Ordering::SeqCst) {
                             if let Ok(mut cfg) = config::load_config() {
-                                cfg.list_mode = "exclude".to_string();
+                                cfg.list_mode = config::ListMode::Exclude;
                                 if config::save_config(cfg).is_ok() {
                                     let items = app.state::<ListModeItems>();
                                     let _ = items.ipset.set_checked(false);
