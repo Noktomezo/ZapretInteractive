@@ -31,6 +31,7 @@ export function PlaceholdersPage() {
   const [newName, setNewName] = useState('')
   const [newPath, setNewPath] = useState('')
   const isInitialLoadRef = useRef(true)
+  const isSavingRef = useRef(false)
 
   const { config, loading, load, save, addPlaceholder, updatePlaceholder, deletePlaceholder }
     = useConfigStore()
@@ -42,7 +43,7 @@ export function PlaceholdersPage() {
   }, [])
 
   useEffect(() => {
-    if (config && !isInitialLoadRef.current) {
+    if (config && !isInitialLoadRef.current && !isSavingRef.current) {
       save().catch(console.error)
     }
   }, [config])
@@ -74,9 +75,23 @@ export function PlaceholdersPage() {
     }
   }
 
-  const handleDelete = (index: number) => {
+  const handleDelete = async (index: number) => {
+    const placeholderToDelete = config?.placeholders[index]
     deletePlaceholder(index)
-    toast.success('Плейсхолдер удалён')
+    isSavingRef.current = true
+    try {
+      await save()
+      toast.success('Плейсхолдер удалён')
+    }
+    catch (e) {
+      toast.error(`Ошибка сохранения: ${e}`)
+      if (placeholderToDelete) {
+        addPlaceholder(placeholderToDelete.name, placeholderToDelete.path)
+      }
+    }
+    finally {
+      isSavingRef.current = false
+    }
   }
 
   if (loading) {

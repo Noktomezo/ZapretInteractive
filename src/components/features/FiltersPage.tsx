@@ -49,10 +49,9 @@ export function FiltersPage() {
   }, [config])
 
   const handleToggleFilter = (filterId: string) => {
-    if (!config?.filters)
-      return
+    const currentFilters = useConfigStore.getState().config?.filters || []
 
-    const updatedFilters = config.filters.map(f =>
+    const updatedFilters = currentFilters.map(f =>
       f.id === filterId ? { ...f, active: !f.active } : f,
     )
     setFilters(updatedFilters)
@@ -83,7 +82,7 @@ export function FiltersPage() {
       toast.success('Фильтр создан')
     }
     catch (e) {
-      toast.error(`Ошибка создания фильтра: ${e}`)
+      toast.error(`Ошибка создания фильтра: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
@@ -95,7 +94,7 @@ export function FiltersPage() {
       toast.success('Фильтр удалён')
     }
     catch (e) {
-      toast.error(`Ошибка удаления фильтра: ${e}`)
+      toast.error(`Ошибка удаления фильтра: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
@@ -183,7 +182,17 @@ export function FiltersPage() {
         ))}
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open)
+          if (!open) {
+            setNewName('')
+            setNewFilename('')
+            setNewContent('')
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Новый фильтр</DialogTitle>
@@ -220,7 +229,15 @@ export function FiltersPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDialogOpen(false)
+                setNewName('')
+                setNewFilename('')
+                setNewContent('')
+              }}
+            >
               Отмена
             </Button>
             <Button onClick={handleCreateFilter} disabled={!newName.trim() || !newFilename.trim()}>

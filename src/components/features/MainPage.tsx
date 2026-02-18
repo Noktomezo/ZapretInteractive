@@ -1,4 +1,4 @@
-import type { ListMode } from '@/lib/types'
+import type { DownloadProgress, ListMode } from '@/lib/types'
 import { listen } from '@tauri-apps/api/event'
 import {
   AlertCircle,
@@ -26,13 +26,6 @@ import { useAppStore } from '@/stores/app.store'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
 import { useDownloadStore } from '@/stores/download.store'
-
-interface DownloadProgress {
-  current: number
-  total: number
-  filename: string
-  phase: 'binaries' | 'fake' | 'lists'
-}
 
 export function MainPage() {
   const [logsOpen, setLogsOpen] = useState(false)
@@ -93,6 +86,7 @@ export function MainPage() {
   }, [])
 
   const handleToggleConnection = async () => {
+    const attemptedAction = status === 'connected' ? 'отключение' : 'подключение'
     try {
       if (status === 'connected') {
         await disconnect()
@@ -103,7 +97,7 @@ export function MainPage() {
       await useConfigStore.getState().save()
     }
     catch (e) {
-      toast.error(`Ошибка подключения: ${e}`)
+      toast.error(`Ошибка при ${attemptedAction} или сохранении конфигурации: ${e}`)
     }
   }
 

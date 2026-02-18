@@ -1,6 +1,7 @@
+import type { DownloadProgress } from '@/lib/types'
 import { listen } from '@tauri-apps/api/event'
 import { Download, FolderOpen, Loader2, RotateCcw } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { ThemeSwitcher } from '@/components/ThemeSwitcher'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -25,16 +26,10 @@ import { useAppStore } from '@/stores/app.store'
 import { useConfigStore } from '@/stores/config.store'
 import { useDownloadStore } from '@/stores/download.store'
 
-interface DownloadProgress {
-  current: number
-  total: number
-  filename: string
-  phase: 'binaries' | 'fake' | 'lists' | 'filters'
-}
-
 export function SettingsPage() {
   const [zapretDir, setZapretDir] = useState<string>('')
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
+  const isInitialLoadRef = useRef(true)
 
   const { config, loading, load, save, setGlobalPorts, setMinimizeToTray, reset } = useConfigStore()
   const { isDownloading, progress, setDownloading, setProgress, reset: resetDownload } = useDownloadStore()
@@ -76,6 +71,7 @@ export function SettingsPage() {
   useEffect(() => {
     const init = async () => {
       await load()
+      isInitialLoadRef.current = false
       const dir = await tauri.getZapretDirectory()
       setZapretDir(dir)
     }
@@ -83,7 +79,7 @@ export function SettingsPage() {
   }, [])
 
   useEffect(() => {
-    if (config) {
+    if (config && !isInitialLoadRef.current) {
       save()
     }
   }, [config])

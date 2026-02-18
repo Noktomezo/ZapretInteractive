@@ -64,6 +64,7 @@ export function onTrayConnectToggle(callback: () => void): (() => void) {
   let unlisten: (() => void) | null = null
   let called = false
   let registrationFailed = false
+  let registrationError: unknown = null
   const listenPromise = listen('tray-connect-toggle', () => callback())
   listenPromise
     .then((fn) => {
@@ -77,6 +78,7 @@ export function onTrayConnectToggle(callback: () => void): (() => void) {
     .catch((e) => {
       console.error('Failed to register tray-connect-toggle listener:', e)
       registrationFailed = true
+      registrationError = e
     })
   return () => {
     called = true
@@ -84,7 +86,7 @@ export function onTrayConnectToggle(callback: () => void): (() => void) {
       unlisten()
     }
     else if (registrationFailed) {
-      console.error('Tray listener cleanup called but registration had failed')
+      console.error('Tray listener cleanup called but registration had failed:', registrationError)
     }
   }
 }

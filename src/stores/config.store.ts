@@ -54,6 +54,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       }
       catch (e) {
         set({ error: String(e) })
+        throw e
       }
     }
   },

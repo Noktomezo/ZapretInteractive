@@ -103,6 +103,7 @@ struct FileToDownload {
     url: String,
     dest_path: PathBuf,
     is_binary: bool,
+    phase: String,
 }
 
 fn get_fake_dir() -> PathBuf {
@@ -118,13 +119,29 @@ fn get_filters_dir() -> PathBuf {
 }
 
 fn sanitize_filename(filename: &str) -> Result<String, String> {
+    if filename.is_empty() {
+        return Err("Filename cannot be empty".to_string());
+    }
+    
+    if filename.contains('/') || filename.contains('\\') {
+        return Err("Path separators not allowed in filename".to_string());
+    }
+    
     let name = std::path::Path::new(filename)
         .file_name()
         .and_then(|n| n.to_str())
         .ok_or_else(|| "Invalid filename".to_string())?;
     
+    if filename != name {
+        return Err("Path separators not allowed in filename".to_string());
+    }
+    
     if name.is_empty() {
         return Err("Filename cannot be empty".to_string());
+    }
+    
+    if name == "." || name == ".." {
+        return Err("Invalid filename".to_string());
     }
     
     let valid_chars = name.chars().all(|c| {
@@ -325,6 +342,7 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
                 url: url.to_string(),
                 dest_path: file_path,
                 is_binary: true,
+                phase: "binaries".to_string(),
             });
         }
     }
@@ -337,6 +355,7 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
                 url: format!("{}/{}", FAKE_FILES_BASE_URL, name),
                 dest_path: file_path,
                 is_binary: false,
+                phase: "fake".to_string(),
             });
         }
     }
@@ -349,6 +368,7 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
                 url: format!("{}/{}", LISTS_BASE_URL, name),
                 dest_path: file_path,
                 is_binary: false,
+                phase: "lists".to_string(),
             });
         }
     }
@@ -361,6 +381,7 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
                 url: format!("{}/{}", FILTERS_BASE_URL, name),
                 dest_path: file_path,
                 is_binary: false,
+                phase: "filters".to_string(),
             });
         }
     }
@@ -397,7 +418,7 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
             current,
             total: total_files,
             filename: file.name.clone(),
-            phase: if file.is_binary { "binaries".to_string() } else { "files".to_string() },
+            phase: file.phase.clone(),
         }).ok();
         
         let response = client.get(&file.url)
