@@ -1,4 +1,4 @@
-import type { AppConfig } from './types'
+import type { AppConfig, ListMode } from './types'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 
@@ -91,10 +91,12 @@ export function onTrayConnectToggle(callback: () => void): (() => void) {
   }
 }
 
-export function onListModeChanged(callback: (mode: string) => void): (() => void) {
+export function onListModeChanged(callback: (mode: ListMode) => void): (() => void) {
   let unlisten: (() => void) | null = null
   let called = false
-  const listenPromise = listen<string>('list-mode-changed', event => callback(event.payload))
+  let registrationFailed = false
+  let registrationError: unknown = null
+  const listenPromise = listen<ListMode>('list-mode-changed', event => callback(event.payload))
   listenPromise
     .then((fn) => {
       if (!called) {
@@ -106,11 +108,16 @@ export function onListModeChanged(callback: (mode: string) => void): (() => void
     })
     .catch((e) => {
       console.error('Failed to register list-mode-changed listener:', e)
+      registrationFailed = true
+      registrationError = e
     })
   return () => {
     called = true
     if (unlisten) {
       unlisten()
+    }
+    else if (registrationFailed) {
+      console.error('ListMode listener cleanup called but registration had failed:', registrationError)
     }
   }
 }

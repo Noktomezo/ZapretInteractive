@@ -12,6 +12,26 @@ use tauri::{
 
 static CONNECTED: AtomicBool = AtomicBool::new(false);
 
+fn apply_list_mode(
+    app: &tauri::AppHandle,
+    mode: config::ListMode,
+    ipset_checked: bool,
+    exclude_checked: bool,
+    event_payload: &str,
+) {
+    if !CONNECTED.load(Ordering::SeqCst) {
+        if let Ok(mut cfg) = config::load_config() {
+            cfg.list_mode = mode;
+            if config::save_config(cfg).is_ok() {
+                let items = app.state::<ListModeItems>();
+                let _ = items.ipset.set_checked(ipset_checked);
+                let _ = items.exclude.set_checked(exclude_checked);
+                let _ = app.emit("list-mode-changed", event_payload);
+            }
+        }
+    }
+}
+
 fn should_minimize_to_tray() -> bool {
     let config_path = config::get_config_path();
     if !config_path.exists() {
@@ -100,30 +120,10 @@ pub fn run() {
                         let _ = app.emit("tray-connect-toggle", ());
                     }
                     "listmode-ipset" => {
-                        if !CONNECTED.load(Ordering::SeqCst) {
-                            if let Ok(mut cfg) = config::load_config() {
-                                cfg.list_mode = config::ListMode::Ipset;
-                                if config::save_config(cfg).is_ok() {
-                                    let items = app.state::<ListModeItems>();
-                                    let _ = items.ipset.set_checked(true);
-                                    let _ = items.exclude.set_checked(false);
-                                    let _ = app.emit("list-mode-changed", "ipset");
-                                }
-                            }
-                        }
+                        apply_list_mode(app, config::ListMode::Ipset, true, false, "ipset");
                     }
                     "listmode-exclude" => {
-                        if !CONNECTED.load(Ordering::SeqCst) {
-                            if let Ok(mut cfg) = config::load_config() {
-                                cfg.list_mode = config::ListMode::Exclude;
-                                if config::save_config(cfg).is_ok() {
-                                    let items = app.state::<ListModeItems>();
-                                    let _ = items.ipset.set_checked(false);
-                                    let _ = items.exclude.set_checked(true);
-                                    let _ = app.emit("list-mode-changed", "exclude");
-                                }
-                            }
-                        }
+                        apply_list_mode(app, config::ListMode::Exclude, false, true, "exclude");
                     }
                     "show" => {
                         if let Some(window) = app.get_webview_window("main") {

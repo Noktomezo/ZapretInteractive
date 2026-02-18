@@ -85,7 +85,7 @@ export function MainPage() {
     initialize()
 
     const unlistenListMode = tauri.onListModeChanged((mode) => {
-      setListMode(mode as ListMode)
+      setListMode(mode)
     })
 
     return () => {
