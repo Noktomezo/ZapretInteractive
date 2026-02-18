@@ -56,6 +56,12 @@ pub struct AppConfig {
     #[serde(default)]
     pub filters: Vec<Filter>,
     pub binaries_path: String,
+    #[serde(default = "default_minimize_to_tray")]
+    pub minimize_to_tray: bool,
+}
+
+fn default_minimize_to_tray() -> bool {
+    true
 }
 
 impl Default for AppConfig {

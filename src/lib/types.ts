@@ -37,4 +37,5 @@ export interface AppConfig {
   filters: Filter[]
   binaries_path: string
   listMode?: ListMode
+  minimizeToTray?: boolean
 }

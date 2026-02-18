@@ -1,15 +1,39 @@
 mod commands;
 
 use commands::{admin, binaries, config, process};
+use std::fs;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{
     image::Image,
     menu::{Menu, MenuItem},
-    tray::TrayIconBuilder,
+    tray::{TrayIconBuilder, MouseButton},
     Emitter, Manager,
 };
 
 static CONNECTED: AtomicBool = AtomicBool::new(false);
+
+fn get_zapret_dir() -> PathBuf {
+    dirs::home_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(".zapret")
+}
+
+fn get_config_path() -> PathBuf {
+    get_zapret_dir().join("config.json")
+}
+
+fn should_minimize_to_tray() -> bool {
+    let config_path = get_config_path();
+    if !config_path.exists() {
+        return true;
+    }
+    fs::read_to_string(&config_path)
+        .ok()
+        .and_then(|content| serde_json::from_str::<serde_json::Value>(&content).ok())
+        .and_then(|json| json.get("minimizeToTray").and_then(|v| v.as_bool()))
+        .unwrap_or(true)
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -57,15 +81,14 @@ pub fn run() {
             let quit_item = MenuItem::with_id(app, "quit", "Выход", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&connect_item, &show_item, &quit_item])?;
 
-            let icon = Image::from_path("icons/icon.ico")
-                .or_else(|_| Image::from_path("icons/100x100.png"))
-                .ok();
+            let icon_bytes = include_bytes!("../icons/32x32.png") as &[u8];
+            let icon = Image::from_bytes(icon_bytes).ok();
 
             let connect_item_clone = connect_item.clone();
 
             let _tray = TrayIconBuilder::with_id("main")
                 .menu(&menu)
-                .show_menu_on_left_click(true)
+                .show_menu_on_left_click(false)
                 .on_menu_event(move |app, event| match event.id.as_ref() {
                     "connect" => {
                         let _ = app.emit("tray-connect-toggle", ());
@@ -82,11 +105,13 @@ pub fn run() {
                     _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
-                    if let tauri::tray::TrayIconEvent::Click { .. } = event {
-                        let app = tray.app_handle();
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
+                    if let tauri::tray::TrayIconEvent::Click { button, .. } = event {
+                        if button == MouseButton::Left {
+                            let app = tray.app_handle();
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
                         }
                     }
                 });
@@ -95,6 +120,18 @@ pub fn run() {
                 _tray.icon(icon).build(app)?;
             } else {
                 _tray.build(app)?;
+            }
+
+            if let Some(window) = app.get_webview_window("main") {
+                let window_clone = window.clone();
+                window.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        if should_minimize_to_tray() {
+                            api.prevent_close();
+                            let _ = window_clone.hide();
+                        }
+                    }
+                });
             }
 
             app.manage(ConnectMenuItem(connect_item_clone));

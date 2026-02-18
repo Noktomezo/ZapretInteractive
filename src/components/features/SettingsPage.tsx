@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,7 +35,7 @@ export function SettingsPage() {
   const [zapretDir, setZapretDir] = useState<string>('')
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
 
-  const { config, loading, load, save, setGlobalPorts, reset } = useConfigStore()
+  const { config, loading, load, save, setGlobalPorts, setMinimizeToTray, reset } = useConfigStore()
   const { isDownloading, progress, setDownloading, setProgress, reset: resetDownload } = useDownloadStore()
   const { binariesOk, setBinariesOk } = useAppStore()
 
@@ -121,6 +123,30 @@ export function SettingsPage() {
         </CardHeader>
         <CardContent>
           <ThemeSwitcher />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Поведение</CardTitle>
+          <CardDescription>
+            Настройки закрытия приложения
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="minimize-to-tray">Сворачивать в трей</Label>
+              <p className="text-xs text-muted-foreground">
+                При закрытии окно будет скрыто в системный трей вместо завершения работы
+              </p>
+            </div>
+            <Switch
+              id="minimize-to-tray"
+              checked={config.minimizeToTray ?? true}
+              onCheckedChange={setMinimizeToTray}
+            />
+          </div>
         </CardContent>
       </Card>
 

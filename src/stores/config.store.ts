@@ -13,6 +13,7 @@ interface ConfigStore {
   setGlobalPorts: (ports: GlobalPorts) => void
   setFilters: (filters: Filter[]) => void
   setListMode: (mode: ListMode) => void
+  setMinimizeToTray: (enabled: boolean) => void
   addCategory: (name: string) => void
   updateCategory: (id: string, name: string) => void
   deleteCategory: (id: string) => void
@@ -78,6 +79,13 @@ setFilters: (filters) => {
     const { config } = get()
     if (config) {
       set({ config: { ...config, listMode: mode } })
+    }
+  },
+
+  setMinimizeToTray: (enabled) => {
+    const { config } = get()
+    if (config) {
+      set({ config: { ...config, minimizeToTray: enabled } })
     }
   },
 
