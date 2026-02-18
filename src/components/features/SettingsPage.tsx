@@ -232,7 +232,9 @@ export function SettingsPage() {
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
                     <div
                       className="h-full bg-primary transition-all duration-300"
-                      style={{ width: `${(progress.current / progress.total) * 100}%` }}
+                      style={{
+                        width: `${Math.max(0, Math.min(100, progress.total > 0 ? (progress.current / progress.total) * 100 : 0))}%`,
+                      }}
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">

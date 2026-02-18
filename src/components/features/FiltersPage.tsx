@@ -1,6 +1,6 @@
 import type { Filter as FilterType } from '@/lib/types'
 import { Filter, Loader2, Plus, Trash2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -34,13 +34,16 @@ export function FiltersPage() {
   const [newName, setNewName] = useState('')
   const [newFilename, setNewFilename] = useState('')
   const [newContent, setNewContent] = useState('')
+  const isInitialLoadRef = useRef(true)
 
   useEffect(() => {
-    load()
+    load().then(() => {
+      isInitialLoadRef.current = false
+    })
   }, [])
 
   useEffect(() => {
-    if (config) {
+    if (config && !isInitialLoadRef.current) {
       save()
     }
   }, [config])
@@ -56,7 +59,7 @@ export function FiltersPage() {
   }
 
   const handleCreateFilter = async () => {
-    if (!config || !newName.trim() || !newFilename.trim())
+    if (!newName.trim() || !newFilename.trim())
       return
 
     try {
@@ -71,7 +74,8 @@ export function FiltersPage() {
         await tauri.saveFilterFile(newFilename.trim(), newContent.trim())
       }
 
-      setFilters([...(config.filters || []), newFilter])
+      const currentFilters = useConfigStore.getState().config?.filters || []
+      setFilters([...currentFilters, newFilter])
       setNewName('')
       setNewFilename('')
       setNewContent('')
@@ -84,12 +88,10 @@ export function FiltersPage() {
   }
 
   const handleDeleteFilter = async (filter: FilterType) => {
-    if (!config?.filters)
-      return
-
     try {
       await tauri.deleteFilterFile(filter.filename)
-      setFilters(config.filters.filter(f => f.id !== filter.id))
+      const currentFilters = useConfigStore.getState().config?.filters || []
+      setFilters(currentFilters.filter(f => f.id !== filter.id))
       toast.success('Фильтр удалён')
     }
     catch (e) {

@@ -63,19 +63,28 @@ export const setConnectedState = (connected: boolean): Promise<void> => invoke('
 export function onTrayConnectToggle(callback: () => void): (() => void) {
   let unlisten: (() => void) | null = null
   let called = false
+  let registrationFailed = false
   const listenPromise = listen('tray-connect-toggle', () => callback())
-  listenPromise.then((fn) => {
-    if (!called) {
-      unlisten = fn
-    }
-    else {
-      fn()
-    }
-  })
+  listenPromise
+    .then((fn) => {
+      if (!called) {
+        unlisten = fn
+      }
+      else {
+        fn()
+      }
+    })
+    .catch((e) => {
+      console.error('Failed to register tray-connect-toggle listener:', e)
+      registrationFailed = true
+    })
   return () => {
     called = true
     if (unlisten) {
       unlisten()
+    }
+    else if (registrationFailed) {
+      console.error('Tray listener cleanup called but registration had failed')
     }
   }
 }

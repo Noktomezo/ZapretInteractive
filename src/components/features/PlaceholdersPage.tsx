@@ -1,6 +1,6 @@
 import type { Placeholder } from '@/lib/types'
 import { FolderOpen, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -30,16 +30,19 @@ export function PlaceholdersPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [newName, setNewName] = useState('')
   const [newPath, setNewPath] = useState('')
+  const isInitialLoadRef = useRef(true)
 
   const { config, loading, load, save, addPlaceholder, updatePlaceholder, deletePlaceholder }
     = useConfigStore()
 
   useEffect(() => {
-    load().catch(console.error)
+    load().then(() => {
+      isInitialLoadRef.current = false
+    }).catch(console.error)
   }, [])
 
   useEffect(() => {
-    if (config) {
+    if (config && !isInitialLoadRef.current) {
       save().catch(console.error)
     }
   }, [config])
@@ -126,7 +129,7 @@ export function PlaceholdersPage() {
                   )
                 : (
                     config?.placeholders.map((placeholder: Placeholder, index: number) => (
-                      <TableRow key={placeholder.name}>
+                      <TableRow key={`${index}-${placeholder.name}`}>
                         <TableCell className="font-mono whitespace-nowrap">
                           {'{{'}
                           {placeholder.name}

@@ -48,7 +48,13 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   save: async () => {
     const { config } = get()
     if (config) {
-      await tauri.saveConfig(config)
+      try {
+        await tauri.saveConfig(config)
+        set({ error: null })
+      }
+      catch (e) {
+        set({ error: String(e) })
+      }
     }
   },
 

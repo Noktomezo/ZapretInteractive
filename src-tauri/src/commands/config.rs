@@ -107,7 +107,7 @@ impl Default for AppConfig {
     }
 }
 
-pub(crate) fn get_zapret_dir() -> PathBuf {
+pub fn get_zapret_dir() -> PathBuf {
     dirs::home_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join(".zapret")

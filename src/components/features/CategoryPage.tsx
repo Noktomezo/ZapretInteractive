@@ -1,7 +1,7 @@
 import type { Strategy } from '@/lib/types'
-import { Link, useParams } from '@tanstack/react-router'
+import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { ArrowLeft, Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -34,6 +34,7 @@ import { useConfigStore } from '@/stores/config.store'
 
 export function CategoryPage() {
   const { categoryId } = useParams({ from: '/strategies/$categoryId' })
+  const navigate = useNavigate()
 
   const [editingStrategy, setEditingStrategy] = useState<Strategy | null>(null)
   const [newStrategyOpen, setNewStrategyOpen] = useState(false)
@@ -44,15 +45,18 @@ export function CategoryPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [renameDialogOpen, setRenameDialogOpen] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
+  const isInitialLoadRef = useRef(true)
 
   const { config, loading, load, save, updateCategory, deleteCategory, addStrategy, updateStrategy, deleteStrategy, setActiveStrategy, clearActiveStrategy, clearAllActiveStrategies } = useConfigStore()
 
   useEffect(() => {
-    load()
+    load().then(() => {
+      isInitialLoadRef.current = false
+    })
   }, [])
 
   useEffect(() => {
-    if (config) {
+    if (config && !isInitialLoadRef.current) {
       save()
     }
   }, [config])
@@ -114,6 +118,7 @@ export function CategoryPage() {
       deleteCategory(categoryId)
       setDeleteDialogOpen(false)
       toast.success('Категория удалена')
+      navigate({ to: '/strategies' })
     }
   }
 
@@ -163,8 +168,18 @@ export function CategoryPage() {
             <p className="text-sm text-muted-foreground mt-1">
               {category.strategies.length}
               {' '}
-              стратеги
-              {category.strategies.length === 1 ? 'я' : category.strategies.length < 5 ? 'и' : 'й'}
+              {(() => {
+                const n = category.strategies.length
+                const lastTwo = n % 100
+                const last = n % 10
+                if (lastTwo >= 11 && lastTwo <= 14)
+                  return 'стратегий'
+                if (last === 1)
+                  return 'стратегия'
+                if (last >= 2 && last <= 4)
+                  return 'стратегии'
+                return 'стратегий'
+              })()}
             </p>
           </div>
         </div>

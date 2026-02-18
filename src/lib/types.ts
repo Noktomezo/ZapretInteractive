@@ -3,6 +3,13 @@ export interface GlobalPorts {
   udp: string
 }
 
+export interface DownloadProgress {
+  current: number
+  total: number
+  filename: string
+  phase: 'binaries' | 'fake' | 'lists' | 'filters'
+}
+
 export interface Strategy {
   id: string
   name: string

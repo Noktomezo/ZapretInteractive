@@ -1,3 +1,4 @@
+use crate::config::get_zapret_dir;
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::PathBuf;
@@ -102,12 +103,6 @@ struct FileToDownload {
     url: String,
     dest_path: PathBuf,
     is_binary: bool,
-}
-
-fn get_zapret_dir() -> PathBuf {
-    dirs::home_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(".zapret")
 }
 
 fn get_fake_dir() -> PathBuf {
@@ -235,7 +230,7 @@ pub fn verify_binaries() -> Result<bool, String> {
         
         let expected_hash = match stored_hashes.get(*name) {
             Some(h) => h,
-            None => return Ok(true),
+            None => continue,
         };
         
         let actual_hash = calculate_sha256(&file_path)?;
@@ -396,7 +391,7 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
     for (current, file) in files_to_download.iter().enumerate() {
         let current = current + 1;
         
-        log::info!("[download] Starting {} from {}", file.name, file.url);
+        println!("[download] Starting {} from {}", file.name, file.url);
         
         app.emit("download-progress", DownloadProgress {
             current,
@@ -410,7 +405,7 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
             .await
             .map_err(|e| {
                 let err = format!("Failed to fetch {}: {}", file.name, e);
-                log::error!("[download] ERROR: {}", err);
+                println!("[download] ERROR: {}", err);
                 app.emit("download-error", err.clone()).ok();
                 let _ = save_stored_hashes(&hashes);
                 err
@@ -418,7 +413,7 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
         
         if !response.status().is_success() {
             let err = format!("Failed to download {}: HTTP {}", file.name, response.status());
-            log::error!("[download] ERROR: {}", err);
+            println!("[download] ERROR: {}", err);
             app.emit("download-error", err.clone()).ok();
             let _ = save_stored_hashes(&hashes);
             return Err(err);
@@ -426,19 +421,21 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
         
         let bytes = response.bytes().await.map_err(|e| {
             let err = format!("Failed to read {} body: {}", file.name, e);
-            log::error!("[download] ERROR: {}", err);
+            println!("[download] ERROR: {}", err);
+            app.emit("download-error", err.clone()).ok();
             let _ = save_stored_hashes(&hashes);
             err
         })?;
         
         fs::write(&file.dest_path, &bytes).map_err(|e| {
             let err = format!("Failed to write {}: {}", file.name, e);
-            log::error!("[download] ERROR: {}", err);
+            println!("[download] ERROR: {}", err);
+            app.emit("download-error", err.clone()).ok();
             let _ = save_stored_hashes(&hashes);
             err
         })?;
         
-        log::info!("[download] Completed {} ({} bytes)", file.name, bytes.len());
+        println!("[download] Completed {} ({} bytes)", file.name, bytes.len());
         
         if file.is_binary {
             let hash = calculate_sha256(&file.dest_path)?;

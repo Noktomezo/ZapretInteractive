@@ -74,7 +74,9 @@ export function MainPage() {
       }
     })
 
-    const unlistenError = listen<string>('download-error', () => {
+    const unlistenError = listen<string>('download-error', (event) => {
+      console.error('Download error:', event.payload)
+      toast.error(`Ошибка загрузки: ${event.payload}`)
       reset()
     })
 
@@ -160,7 +162,7 @@ export function MainPage() {
                     <div
                       className="h-full bg-primary transition-all duration-300"
                       style={{
-                        width: `${(progress.current / progress.total) * 100}%`,
+                        width: `${Math.max(0, Math.min(100, progress.total > 0 ? (progress.current / progress.total) * 100 : 0))}%`,
                       }}
                     />
                   </div>

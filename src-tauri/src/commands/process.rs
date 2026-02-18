@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use crate::config::get_zapret_dir;
 use std::process::Command;
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -9,12 +9,6 @@ use std::os::windows::process::CommandExt;
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 static RUNNING_PID: AtomicU32 = AtomicU32::new(0);
-
-fn get_zapret_dir() -> PathBuf {
-    dirs::home_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(".zapret")
-}
 
 pub fn set_running_pid(pid: u32) {
     RUNNING_PID.store(pid, Ordering::SeqCst);
