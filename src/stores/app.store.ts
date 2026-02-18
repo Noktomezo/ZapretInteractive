@@ -21,7 +21,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   timestampsOk: null,
 
   initialize: async () => {
-    if (get().initialized) return
+    if (get().initialized)
+      return
 
     useThemeStore.getState().initTheme()
     useConnectionStore.getState().initTrayListener()
@@ -47,7 +48,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       if (orphanPid) {
         useConnectionStore.getState().setRecovered(true)
         useConnectionStore.getState().addLog(`Обнаружен запущенный процесс winws.exe (PID: ${orphanPid})`)
-      } else {
+      }
+      else {
         await useConnectionStore.getState().checkStatus()
       }
     }
@@ -55,5 +57,5 @@ export const useAppStore = create<AppStore>((set, get) => ({
     set({ initialized: true })
   },
 
-  setBinariesOk: (ok) => set({ binariesOk: ok }),
+  setBinariesOk: ok => set({ binariesOk: ok }),
 }))

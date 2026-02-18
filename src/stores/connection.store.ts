@@ -1,6 +1,6 @@
 import { create } from 'zustand'
+import { buildFiltersCommand, buildFiltersCommandArray, buildStrategyCommand } from '../lib/strategy'
 import * as tauri from '../lib/tauri'
-import { buildStrategyCommand, buildFiltersCommand } from '../lib/strategy'
 import { useConfigStore } from './config.store'
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'disconnecting' | 'error'
@@ -23,10 +23,13 @@ interface ConnectionStore {
   initTrayListener: () => () => void
 }
 
-const updateTrayState = async (connected: boolean) => {
+async function updateTrayState(connected: boolean) {
   try {
     await tauri.setConnectedState(connected)
-  } catch {}
+  }
+  catch (e) {
+    console.error('Failed to update tray state:', connected, e)
+  }
 }
 
 export const useConnectionStore = create<ConnectionStore>((set, get) => ({
@@ -43,11 +46,13 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
         const pid = await tauri.getRunningPid()
         set({ status: 'connected', pid })
         updateTrayState(true)
-      } else {
+      }
+      else {
         set({ status: 'disconnected', pid: null })
         updateTrayState(false)
       }
-    } catch (e) {
+    }
+    catch {
       set({ status: 'disconnected', pid: null })
       updateTrayState(false)
     }
@@ -65,32 +70,33 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
 
     try {
       const filtersDir = await tauri.getFiltersPath()
-      
+
       const filtersCommand = buildFiltersCommand(config.filters, filtersDir)
+      const filtersArgs = buildFiltersCommandArray(config.filters, filtersDir)
       const strategyCommand = buildStrategyCommand(config)
       const processedStrategy = await tauri.resolvePlaceholders(strategyCommand, config.placeholders)
-      
+
       let fullCommand = `winws.exe --wf-tcp=${config.global_ports.tcp} --wf-udp=${config.global_ports.udp}`
       if (filtersCommand) {
         fullCommand += ` ${filtersCommand.replace(/\n/g, ' ')}`
       }
       fullCommand += ` ${processedStrategy.replace(/\n/g, ' ')}`
-      
+
       get().addLog(fullCommand)
 
-      const combinedArgs = filtersCommand 
-        ? `${filtersCommand}\n${processedStrategy}`
-        : processedStrategy
+      const strategyArgs = processedStrategy.split('\n').filter(Boolean)
+      const allArgs = [...filtersArgs, ...strategyArgs]
 
       const pid = await tauri.startWinws(
-        combinedArgs,
+        allArgs,
         config.global_ports.tcp,
-        config.global_ports.udp
+        config.global_ports.udp,
       )
       set({ status: 'connected', pid })
       updateTrayState(true)
       get().addLog(`Connected with PID: ${pid}`)
-    } catch (e) {
+    }
+    catch (e) {
       set({ status: 'error', error: String(e) })
       updateTrayState(false)
       get().addLog(`Error: ${e}`)
@@ -105,13 +111,15 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     try {
       if (pid) {
         await tauri.stopWinws()
-      } else {
+      }
+      else {
         await tauri.killWindivertService()
       }
       set({ status: 'disconnected', pid: null })
       updateTrayState(false)
       get().addLog('Disconnected')
-    } catch (e) {
+    }
+    catch (e) {
       set({ status: 'error', error: String(e) })
       updateTrayState(false)
       get().addLog(`Error: ${e}`)
@@ -122,25 +130,27 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     const { status } = get()
     if (status === 'connected') {
       await get().disconnect()
-    } else if (status === 'disconnected') {
+    }
+    else if (status === 'disconnected') {
       await get().connect()
     }
   },
 
   addLog: (log) => {
-    const timestamp = new Date().toLocaleTimeString()
-    set((state) => ({ logs: [...state.logs, `[${timestamp}] ${log}`] }))
+    const timestamp = new Date().toISOString()
+    set(state => ({ logs: [...state.logs, `[${timestamp}] ${log}`] }))
   },
 
   clearLogs: () => set({ logs: [] }),
 
-  setError: (error) => set({ error }),
+  setError: error => set({ error }),
 
   setRecovered: (recovered) => {
     if (recovered) {
       set({ recovered: true, status: 'connected' })
       updateTrayState(true)
-    } else {
+    }
+    else {
       set({ recovered: false })
     }
   },

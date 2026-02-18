@@ -15,10 +15,10 @@ interface DownloadStore {
   reset: () => void
 }
 
-export const useDownloadStore = create<DownloadStore>((set) => ({
+export const useDownloadStore = create<DownloadStore>(set => ({
   isDownloading: false,
   progress: null,
-  setDownloading: (isDownloading) => set({ isDownloading }),
-  setProgress: (progress) => set({ progress }),
+  setDownloading: isDownloading => set({ isDownloading }),
+  setProgress: progress => set({ progress }),
   reset: () => set({ isDownloading: false, progress: null }),
 }))

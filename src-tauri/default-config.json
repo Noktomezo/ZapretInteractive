@@ -312,5 +312,6 @@
     { "id": "filter-quic", "name": "QUIC Initial IETF", "filename": "windivert_part.quic_initial_ietf.txt", "active": true },
     { "id": "filter-dht", "name": "DHT", "filename": "windivert_part.dht.txt", "active": true }
   ],
-  "binaries_path": ""
+"binaries_path": "",
+  "minimizeToTray": true
 }

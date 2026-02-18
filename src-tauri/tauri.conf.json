@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "zapret-interactive",
+  "productName": "ZapretInteractive",
   "version": "1.0.0",
   "identifier": "com.noktomezo.zapret-interactive",
   "build": {

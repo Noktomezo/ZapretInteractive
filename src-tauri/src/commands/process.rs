@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use crate::config::get_zapret_dir;
 use std::process::Command;
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -10,33 +10,26 @@ const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 static RUNNING_PID: AtomicU32 = AtomicU32::new(0);
 
-fn get_zapret_dir() -> PathBuf {
-    dirs::home_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(".zapret")
-}
-
 pub fn set_running_pid(pid: u32) {
     RUNNING_PID.store(pid, Ordering::SeqCst);
 }
 
 #[tauri::command]
-pub fn start_winws(args: String, tcp_ports: String, udp_ports: String) -> Result<u32, String> {
+pub fn start_winws(args: Vec<String>, tcp_ports: String, udp_ports: String) -> Result<u32, String> {
     let winws_path = get_zapret_dir().join("winws.exe");
 
     if !winws_path.exists() {
         return Err("winws.exe not found. Please download binaries first.".to_string());
     }
 
-    let full_args = format!(
-        "--wf-tcp={} --wf-udp={} {}",
-        tcp_ports,
-        udp_ports,
-        args.replace('\n', " ")
-    );
+    let mut full_args: Vec<String> = vec![
+        format!("--wf-tcp={}", tcp_ports),
+        format!("--wf-udp={}", udp_ports),
+    ];
+    full_args.extend(args);
 
     let child = Command::new(&winws_path)
-        .args(full_args.split_whitespace())
+        .args(&full_args)
         .creation_flags(CREATE_NO_WINDOW)
         .spawn()
         .map_err(|e| format!("Failed to start winws.exe: {}", e))?;
