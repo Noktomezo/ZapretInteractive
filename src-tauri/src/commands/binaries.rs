@@ -97,6 +97,13 @@ const FILTERS: &[&str] = &[
     "windivert_part.wireguard.txt",
 ];
 
+struct FileToDownload {
+    name: String,
+    url: String,
+    dest_path: PathBuf,
+    is_binary: bool,
+}
+
 fn get_zapret_dir() -> PathBuf {
     dirs::home_dir()
         .unwrap_or_else(|| PathBuf::from("."))
@@ -229,7 +236,6 @@ pub fn verify_binaries() -> Result<bool, String> {
 
 #[tauri::command]
 pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
-    // Stop WinDivert driver before downloading
     #[cfg(windows)]
     {
         let _ = std::process::Command::new("sc")
@@ -248,6 +254,7 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
     let fake_dir = get_fake_dir();
     let lists_dir = get_lists_dir();
     let filters_dir = get_filters_dir();
+    let stored_hashes = load_stored_hashes();
     
     if !dir.exists() {
         fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
@@ -265,162 +272,147 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
         fs::create_dir_all(&filters_dir).map_err(|e| e.to_string())?;
     }
     
+    let mut files_to_download: Vec<FileToDownload> = vec![];
+    
+    for (name, url) in BINARIES.iter() {
+        let file_path = dir.join(name);
+        let needs_download = if !file_path.exists() {
+            true
+        } else if let Some(expected_hash) = stored_hashes.get(*name) {
+            match calculate_sha256(&file_path) {
+                Ok(actual_hash) => actual_hash != *expected_hash,
+                Err(_) => true,
+            }
+        } else {
+            false
+        };
+        
+        if needs_download {
+            files_to_download.push(FileToDownload {
+                name: name.to_string(),
+                url: url.to_string(),
+                dest_path: file_path,
+                is_binary: true,
+            });
+        }
+    }
+    
+    for name in FAKE_FILES.iter() {
+        let file_path = fake_dir.join(name);
+        if !file_path.exists() {
+            files_to_download.push(FileToDownload {
+                name: name.to_string(),
+                url: format!("{}/{}", FAKE_FILES_BASE_URL, name),
+                dest_path: file_path,
+                is_binary: false,
+            });
+        }
+    }
+    
+    for name in LISTS.iter() {
+        let file_path = lists_dir.join(name);
+        if !file_path.exists() {
+            files_to_download.push(FileToDownload {
+                name: name.to_string(),
+                url: format!("{}/{}", LISTS_BASE_URL, name),
+                dest_path: file_path,
+                is_binary: false,
+            });
+        }
+    }
+    
+    for name in FILTERS.iter() {
+        let file_path = filters_dir.join(name);
+        if !file_path.exists() {
+            files_to_download.push(FileToDownload {
+                name: name.to_string(),
+                url: format!("{}/{}", FILTERS_BASE_URL, name),
+                dest_path: file_path,
+                is_binary: false,
+            });
+        }
+    }
+    
+    let total_files = files_to_download.len();
+    
+    if total_files == 0 {
+        app.emit("download-complete", ()).ok();
+        app.notification()
+            .builder()
+            .title("Готово")
+            .body("Все файлы уже на месте")
+            .show()
+            .map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+    
     let client = reqwest::Client::builder()
         .user_agent("Mozilla/5.0")
         .timeout(std::time::Duration::from_secs(120))
         .build()
         .map_err(|e| e.to_string())?;
     
-    let mut hashes: std::collections::HashMap<String, String> = std::collections::HashMap::new();
-    let total_files = BINARIES.len() + FAKE_FILES.len() + LISTS.len() + FILTERS.len();
-    let mut current = 0;
+    let mut hashes: std::collections::HashMap<String, String> = stored_hashes;
     
-    // Emit download start
     app.emit("download-start", total_files).ok();
     
-    // Download main binaries
-    for (name, url) in BINARIES.iter() {
-        current += 1;
+    for (current, file) in files_to_download.iter().enumerate() {
+        let current = current + 1;
         
-        println!("[download] Starting {} from {}", name, url);
+        println!("[download] Starting {} from {}", file.name, file.url);
         
         app.emit("download-progress", DownloadProgress {
             current,
             total: total_files,
-            filename: name.to_string(),
-            phase: "binaries".to_string(),
+            filename: file.name.clone(),
+            phase: if file.is_binary { "binaries".to_string() } else { "files".to_string() },
         }).ok();
         
-        let file_path = dir.join(name);
-        
-        let response = client.get(*url)
+        let response = client.get(&file.url)
             .send()
             .await
             .map_err(|e| {
-                let err = format!("Failed to fetch {}: {}", name, e);
+                let err = format!("Failed to fetch {}: {}", file.name, e);
                 println!("[download] ERROR: {}", err);
                 app.emit("download-error", err.clone()).ok();
                 err
             })?;
         
         if !response.status().is_success() {
-            let err = format!("Failed to download {}: HTTP {}", name, response.status());
+            let err = format!("Failed to download {}: HTTP {}", file.name, response.status());
             println!("[download] ERROR: {}", err);
             app.emit("download-error", err.clone()).ok();
             return Err(err);
         }
         
         let bytes = response.bytes().await.map_err(|e| {
-            let err = format!("Failed to read {} body: {}", name, e);
+            let err = format!("Failed to read {} body: {}", file.name, e);
             println!("[download] ERROR: {}", err);
             err
         })?;
         
-        fs::write(&file_path, &bytes).map_err(|e| {
-            let err = format!("Failed to write {}: {}", name, e);
+        fs::write(&file.dest_path, &bytes).map_err(|e| {
+            let err = format!("Failed to write {}: {}", file.name, e);
             println!("[download] ERROR: {}", err);
             err
         })?;
         
-        println!("[download] Completed {} ({} bytes)", name, bytes.len());
+        println!("[download] Completed {} ({} bytes)", file.name, bytes.len());
         
-        let hash = calculate_sha256(&file_path)?;
-        hashes.insert(name.to_string(), hash);
-    }
-    
-    // Download fake files
-    for name in FAKE_FILES.iter() {
-        current += 1;
-        
-        app.emit("download-progress", DownloadProgress {
-            current,
-            total: total_files,
-            filename: name.to_string(),
-            phase: "fake".to_string(),
-        }).ok();
-        
-        let file_path = fake_dir.join(name);
-        let url = format!("{}/{}", FAKE_FILES_BASE_URL, name);
-        
-        let response = client.get(&url)
-            .send()
-            .await
-            .map_err(|e| e.to_string())?;
-        
-        if !response.status().is_success() {
-            app.emit("download-error", format!("Failed to download {}: HTTP {}", name, response.status())).ok();
-            return Err(format!("Failed to download {}: HTTP {}", name, response.status()));
+        if file.is_binary {
+            let hash = calculate_sha256(&file.dest_path)?;
+            hashes.insert(file.name.clone(), hash);
         }
-        
-        let bytes = response.bytes().await.map_err(|e| e.to_string())?;
-        fs::write(&file_path, &bytes).map_err(|e| e.to_string())?;
-    }
-    
-    // Download lists
-    for name in LISTS.iter() {
-        current += 1;
-        
-        app.emit("download-progress", DownloadProgress {
-            current,
-            total: total_files,
-            filename: name.to_string(),
-            phase: "lists".to_string(),
-        }).ok();
-        
-        let file_path = lists_dir.join(name);
-        let url = format!("{}/{}", LISTS_BASE_URL, name);
-        
-        let response = client.get(&url)
-            .send()
-            .await
-            .map_err(|e| e.to_string())?;
-        
-        if !response.status().is_success() {
-            app.emit("download-error", format!("Failed to download {}: HTTP {}", name, response.status())).ok();
-            return Err(format!("Failed to download {}: HTTP {}", name, response.status()));
-        }
-        
-        let bytes = response.bytes().await.map_err(|e| e.to_string())?;
-        fs::write(&file_path, &bytes).map_err(|e| e.to_string())?;
-    }
-    
-    // Download filters
-    for name in FILTERS.iter() {
-        current += 1;
-        
-        app.emit("download-progress", DownloadProgress {
-            current,
-            total: total_files,
-            filename: name.to_string(),
-            phase: "filters".to_string(),
-        }).ok();
-        
-        let file_path = filters_dir.join(name);
-        let url = format!("{}/{}", FILTERS_BASE_URL, name);
-        
-        let response = client.get(&url)
-            .send()
-            .await
-            .map_err(|e| e.to_string())?;
-        
-        if !response.status().is_success() {
-            app.emit("download-error", format!("Failed to download {}: HTTP {}", name, response.status())).ok();
-            return Err(format!("Failed to download {}: HTTP {}", name, response.status()));
-        }
-        
-        let bytes = response.bytes().await.map_err(|e| e.to_string())?;
-        fs::write(&file_path, &bytes).map_err(|e| e.to_string())?;
     }
     
     save_stored_hashes(&hashes)?;
     
-    // Emit download complete
     app.emit("download-complete", ()).ok();
     
     app.notification()
         .builder()
         .title("Готово")
-        .body("Все файлы загружены")
+        .body(format!("Загружено {} файлов", total_files))
         .show()
         .map_err(|e| e.to_string())?;
     

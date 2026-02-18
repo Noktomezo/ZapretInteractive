@@ -2,7 +2,6 @@ mod commands;
 
 use commands::{admin, binaries, config, process};
 use std::fs;
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{
     image::Image,
@@ -13,18 +12,8 @@ use tauri::{
 
 static CONNECTED: AtomicBool = AtomicBool::new(false);
 
-fn get_zapret_dir() -> PathBuf {
-    dirs::home_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(".zapret")
-}
-
-fn get_config_path() -> PathBuf {
-    get_zapret_dir().join("config.json")
-}
-
 fn should_minimize_to_tray() -> bool {
-    let config_path = get_config_path();
+    let config_path = config::get_config_path();
     if !config_path.exists() {
         return true;
     }
