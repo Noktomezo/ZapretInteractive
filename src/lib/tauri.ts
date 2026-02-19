@@ -60,6 +60,8 @@ export const enableTcpTimestamps = (): Promise<void> => invoke('enable_tcp_times
 
 export const setConnectedState = (connected: boolean): Promise<void> => invoke('set_connected_state', { connected })
 
+export const updateListMode = (mode: ListMode): Promise<void> => invoke('update_list_mode', { mode })
+
 function createAsyncListener<T>(
   eventName: string,
   callback: (payload: T) => void,

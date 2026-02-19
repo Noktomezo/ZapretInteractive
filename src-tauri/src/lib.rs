@@ -180,8 +180,6 @@ struct ListModeItems {
 
 #[tauri::command]
 fn set_connected_state(app: tauri::AppHandle, connected: bool) -> Result<(), String> {
-    CONNECTED.store(connected, Ordering::SeqCst);
-
     let text = if connected { "Отключиться" } else { "Подключиться" };
 
     let item = app.state::<ConnectMenuItem>();
@@ -189,6 +187,8 @@ fn set_connected_state(app: tauri::AppHandle, connected: bool) -> Result<(), Str
 
     let list_mode_items = app.state::<ListModeItems>();
     list_mode_items.submenu.set_enabled(!connected).map_err(|e| e.to_string())?;
+
+    CONNECTED.store(connected, Ordering::SeqCst);
 
     Ok(())
 }
