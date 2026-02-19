@@ -1,4 +1,4 @@
-import type { AppConfig } from './types'
+import type { AppConfig, ListMode } from './types'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 
@@ -60,12 +60,17 @@ export const enableTcpTimestamps = (): Promise<void> => invoke('enable_tcp_times
 
 export const setConnectedState = (connected: boolean): Promise<void> => invoke('set_connected_state', { connected })
 
-export function onTrayConnectToggle(callback: () => void): (() => void) {
+export const updateListMode = (mode: ListMode): Promise<void> => invoke('update_list_mode', { mode })
+
+function createAsyncListener<T>(
+  eventName: string,
+  callback: (payload: T) => void,
+): (() => void) {
   let unlisten: (() => void) | null = null
   let called = false
   let registrationFailed = false
   let registrationError: unknown = null
-  const listenPromise = listen('tray-connect-toggle', () => callback())
+  const listenPromise = listen<T>(eventName, event => callback(event.payload))
   listenPromise
     .then((fn) => {
       if (!called) {
@@ -76,7 +81,7 @@ export function onTrayConnectToggle(callback: () => void): (() => void) {
       }
     })
     .catch((e) => {
-      console.error('Failed to register tray-connect-toggle listener:', e)
+      console.error(`Failed to register ${eventName} listener:`, e)
       registrationFailed = true
       registrationError = e
     })
@@ -86,7 +91,15 @@ export function onTrayConnectToggle(callback: () => void): (() => void) {
       unlisten()
     }
     else if (registrationFailed) {
-      console.error('Tray listener cleanup called but registration had failed:', registrationError)
+      console.error(`${eventName} listener cleanup called but registration had failed:`, registrationError)
     }
   }
+}
+
+export function onTrayConnectToggle(callback: () => void): (() => void) {
+  return createAsyncListener('tray-connect-toggle', callback)
+}
+
+export function onListModeChanged(callback: (mode: ListMode) => void): (() => void) {
+  return createAsyncListener<ListMode>('list-mode-changed', callback)
 }
