@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/thumbnail.svg" alt="Zapret Interactive">
+  <img src="assets/thumbnail.png" alt="Zapret Interactive">
 
 GUI-обёртка для [zapret(-win-bundle)](https://github.com/bol-van/zapret-win-bundle)
 
