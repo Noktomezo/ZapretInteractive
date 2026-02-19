@@ -14,12 +14,12 @@ static CONNECTED: AtomicBool = AtomicBool::new(false);
 fn apply_list_mode(app: &tauri::AppHandle, mode: config::ListMode) {
     if !CONNECTED.load(Ordering::SeqCst) {
         let state = app.state::<config::AppState>();
-        {
-            let mut cfg = state.config.lock().unwrap();
+        let save_result = {
+            let mut cfg = state.config.lock().unwrap_or_else(|e| e.into_inner());
             cfg.list_mode = mode;
-        }
-        let cfg = state.config.lock().unwrap();
-        if config::save_config_to_disk(&cfg).is_ok() {
+            config::save_config_to_disk(&cfg)
+        };
+        if save_result.is_ok() {
             let items = app.state::<ListModeItems>();
             let _ = items.ipset.set_checked(mode == config::ListMode::Ipset);
             let _ = items.exclude.set_checked(mode == config::ListMode::Exclude);

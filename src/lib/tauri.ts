@@ -95,9 +95,9 @@ function createAsyncListener<T>(
 }
 
 export function onTrayConnectToggle(callback: () => void): (() => void) {
-  return createAsyncListener('tray-connect-toggle', () => callback())
+  return createAsyncListener('tray-connect-toggle', callback)
 }
 
 export function onListModeChanged(callback: (mode: ListMode) => void): (() => void) {
-  return createAsyncListener<ListMode>('list-mode-changed', mode => callback(mode))
+  return createAsyncListener<ListMode>('list-mode-changed', callback)
 }
