@@ -1,7 +1,7 @@
 <div align="center">
-  <img src="assets/thumbnail-alt.svg" alt="Zapret Interactive" width="400">
+  <img src="assets/thumbnail.svg" alt="Zapret Interactive" width="400">
 
-  GUI-обёртка для [zapret(-win-bundle)](https://github.com/bol-van/zapret-win-bundle)
+GUI-обёртка для [zapret(-win-bundle)](https://github.com/bol-van/zapret-win-bundle)
 
 </div>
 
