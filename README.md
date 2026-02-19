@@ -1,7 +1,7 @@
 <div align="center">
   <img src="assets/thumbnail.png" alt="Zapret Interactive">
 
-GUI-обёртка для [zapret(-win-bundle)](https://github.com/bol-van/zapret-win-bundle)
+GUI-обёртка для [zapret(-win-bundle)](https://github.com/bol-van/zapret-win-bundle) с предустановленными стретегиями/фильтрами и другими настройками с удобным графическим интерфейсом для их редактирования/добавления/удаления
 
 </div>
 
