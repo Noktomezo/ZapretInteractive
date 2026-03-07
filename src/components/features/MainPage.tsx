@@ -4,7 +4,7 @@ import {
   Loader2,
   Power,
 } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,7 @@ import { useDownloadStore } from '@/stores/download.store'
 
 export function MainPage() {
   const missingFilesToastShownRef = useRef(false)
+  const [initError, setInitError] = useState<string | null>(null)
   const { config, setListMode } = useConfigStore()
   const { status, connect, disconnect } = useConnectionStore()
   const { isDownloading, progress, setDownloading, reset }
@@ -41,7 +42,7 @@ export function MainPage() {
   useEffect(() => {
     initialize().catch((error) => {
       console.error('Failed to initialize app:', error)
-      useConnectionStore.getState().addLog(`Ошибка инициализации приложения: ${error}`)
+      setInitError(String(error))
     })
 
     const unlistenListMode = tauri.onListModeChanged((mode) => {
@@ -86,6 +87,18 @@ export function MainPage() {
       reset()
       toast.error(`Ошибка загрузки файлов: ${e}`)
     }
+  }
+
+  if (initError) {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <Alert variant="destructive" className="max-w-lg">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Ошибка инициализации</AlertTitle>
+          <AlertDescription>{initError}</AlertDescription>
+        </Alert>
+      </div>
+    )
   }
 
   if (!initialized) {

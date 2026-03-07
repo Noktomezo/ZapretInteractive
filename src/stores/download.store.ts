@@ -1,15 +1,9 @@
+import type { DownloadProgress } from '@/lib/types'
 import { listen } from '@tauri-apps/api/event'
 import { toast } from 'sonner'
 import { create } from 'zustand'
 import * as tauri from '../lib/tauri'
 import { useAppStore } from './app.store'
-
-interface DownloadProgress {
-  current: number
-  total: number
-  filename: string
-  phase: 'binaries' | 'fake' | 'lists' | 'filters'
-}
 
 interface DownloadStore {
   isDownloading: boolean
@@ -55,6 +49,7 @@ export const useDownloadStore = create<DownloadStore>(set => ({
 
     void listen<string>('download-error', (event) => {
       console.error('Download error:', event.payload)
+      toast.error(`Ошибка загрузки файлов: ${event.payload}`)
       useDownloadStore.getState().reset()
     })
   },

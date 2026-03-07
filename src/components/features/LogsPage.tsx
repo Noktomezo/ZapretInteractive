@@ -17,7 +17,8 @@ function formatLogTimestamp(timestamp: number) {
 }
 
 export function LogsPage() {
-  const { logs, clearLogs } = useConnectionStore()
+  const logs = useConnectionStore(state => state.logs)
+  const clearLogs = useConnectionStore(state => state.clearLogs)
 
   return (
     <div className="flex h-full min-h-0 flex-col p-6">

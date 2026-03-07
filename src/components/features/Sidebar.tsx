@@ -84,9 +84,18 @@ function SidebarNavItem({
     ? (
         <SidebarMenuButton
           isActive={false}
-          disabled
           aria-label={label}
+          aria-disabled="true"
+          tabIndex={0}
           className="cursor-not-allowed opacity-45 hover:bg-transparent hover:text-sidebar-foreground"
+          onClick={(event) => {
+            event.preventDefault()
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+            }
+          }}
         >
           {content}
         </SidebarMenuButton>

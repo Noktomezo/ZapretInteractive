@@ -9,6 +9,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter};
+use tokio::fs as tokio_fs;
+use tokio::time::sleep;
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 
@@ -188,10 +190,9 @@ fn verify_group(base_dir: &Path, group: &str, names: &[&str], hashes: &HashMap<S
     for name in names {
         let file_path = base_dir.join(name);
         if !file_path.exists() { return Ok(false); }
-        if let Some(expected) = expected_hash(hashes, group, name) {
-            let actual = calculate_sha256(&file_path)?;
-            if actual != *expected { return Ok(false); }
-        }
+        let Some(expected) = expected_hash(hashes, group, name) else { return Ok(false); };
+        let actual = calculate_sha256(&file_path)?;
+        if actual != *expected { return Ok(false); }
     }
     Ok(true)
 }
@@ -228,12 +229,20 @@ fn event_affects_tracked_files(paths: &[PathBuf]) -> bool {
     let base_dir = get_zapret_dir();
     let fake_dir = get_fake_dir();
     let filters_dir = get_filters_dir();
+    let hashes_path = get_hashes_path();
     let critical_binary_names = binary_names();
     paths.iter().any(|path| {
         path_is_inside(path, &fake_dir)
             || path_is_inside(path, &filters_dir)
+            || path == &hashes_path
             || critical_binary_names.iter().any(|name| path == &base_dir.join(name))
     })
+}
+
+async fn calculate_sha256_async(file_path: PathBuf) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || calculate_sha256(&file_path))
+        .await
+        .map_err(|e| format!("Failed to join SHA-256 task: {e}"))?
 }
 
 pub fn start_files_watcher(app: AppHandle) -> Result<(), String> {
@@ -351,7 +360,7 @@ async fn refresh_lists_internal(force: bool) -> Result<usize, String> {
     let client = create_http_client()?;
     for name in LISTS {
         let bytes = download_bytes(&client, &format!("{LISTS_BASE_URL}/{name}"), name).await?;
-        fs::write(lists_dir.join(name), &bytes).map_err(|e| format!("Failed to write {name}: {e}"))?;
+        tokio_fs::write(lists_dir.join(name), &bytes).await.map_err(|e| format!("Failed to write {name}: {e}"))?;
     }
 
     save_lists_state(&ListsState { last_updated_at: Some(now) })?;
@@ -368,7 +377,7 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
     #[cfg(windows)]
     {
         let _ = kill_windivert_service();
-        std::thread::sleep(Duration::from_millis(300));
+        sleep(Duration::from_millis(300)).await;
     }
 
     ensure_base_directories()?;
@@ -431,7 +440,7 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
             }
         };
 
-        if let Err(e) = fs::write(&file.dest_path, &bytes) {
+        if let Err(e) = tokio_fs::write(&file.dest_path, &bytes).await {
             let err = format!("Failed to write {}: {}", file.name, e);
             app.emit("download-error", err.clone()).ok();
             let _ = save_stored_hashes(&hashes);
@@ -439,7 +448,7 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
         }
 
         if let Some(hash_key) = &file.hash_key {
-            let hash = calculate_sha256(&file.dest_path)?;
+            let hash = calculate_sha256_async(file.dest_path.clone()).await?;
             hashes.insert(hash_key.clone(), hash);
             save_stored_hashes(&hashes)?;
         }

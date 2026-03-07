@@ -76,6 +76,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     if (!config) {
       set({ error: 'Config not loaded', status: 'error' })
       get().addLog('Ошибка: конфигурация не загружена')
+      get().updateTrayState(false)
       return
     }
 
