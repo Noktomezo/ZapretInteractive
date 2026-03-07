@@ -13,9 +13,9 @@ function RootLayout() {
   return (
     <TooltipProvider>
       <div className="min-h-full bg-background">
-        <TitleBar />
-        <div className="h-screen overflow-hidden pt-8">
-          <SidebarProvider open={!collapsed} onOpenChange={open => setCollapsed(!open)}>
+        <SidebarProvider className="flex-col" open={!collapsed} onOpenChange={open => setCollapsed(!open)}>
+          <TitleBar />
+          <div className="flex h-screen overflow-hidden pt-10">
             <Sidebar />
             <SidebarInset className="h-full min-h-0">
               <OverlayScrollbarsComponent
@@ -26,8 +26,8 @@ function RootLayout() {
                 <Outlet />
               </OverlayScrollbarsComponent>
             </SidebarInset>
-          </SidebarProvider>
-        </div>
+          </div>
+        </SidebarProvider>
       </div>
       <Toaster position="bottom-right" />
     </TooltipProvider>

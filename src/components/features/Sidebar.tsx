@@ -14,12 +14,10 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar'
 import {
@@ -139,9 +137,6 @@ function SidebarNav() {
 export function Sidebar() {
   return (
     <AppSidebar className="h-full border-r bg-card">
-      <SidebarHeader className="justify-end">
-        <SidebarTrigger />
-      </SidebarHeader>
       <SidebarContent>
         <SidebarNav />
       </SidebarContent>

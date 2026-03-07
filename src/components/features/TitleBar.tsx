@@ -1,6 +1,6 @@
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useEffect, useState } from 'react'
-import appLogo from '../../../assets/app-logo.png'
+import { SidebarTrigger } from '@/components/ui/sidebar'
 
 export function TitleBar() {
   const [isMaximized, setIsMaximized] = useState(false)
@@ -41,15 +41,10 @@ export function TitleBar() {
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-50 flex h-8 items-center border-b border-border bg-card px-3 select-none"
+      className="fixed top-0 left-0 right-0 z-50 flex h-10 items-center border-b border-border bg-card px-3 select-none"
       data-tauri-drag-region
     >
-      <div className="flex items-center gap-2">
-        <img src={appLogo} alt="" aria-hidden="true" className="size-4 shrink-0 rounded-sm object-contain" />
-        <span className="whitespace-nowrap text-sm font-medium tracking-tight">
-          Zapret Interactive
-        </span>
-      </div>
+      <SidebarTrigger className="mr-2 size-9" />
       <div className="flex-1" data-tauri-drag-region />
       <div className="flex items-center gap-2">
         <button
