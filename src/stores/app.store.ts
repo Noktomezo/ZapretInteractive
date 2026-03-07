@@ -52,13 +52,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
         shutdownCleanupRegistered = true
         window.addEventListener('beforeunload', () => {
           get().teardownFilesWatcher()
+          useDownloadStore.getState().cleanup()
         })
       }
 
       useConnectionStore.getState().addLog('Запускаю инициализацию приложения')
       useThemeStore.getState().initTheme()
       useConnectionStore.getState().initTrayListener()
-      useDownloadStore.getState().initListeners()
+      await useDownloadStore.getState().initListeners()
 
       const elevated = await tauri.isElevated()
       set({ isElevated: elevated })

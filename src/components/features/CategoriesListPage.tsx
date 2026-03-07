@@ -71,7 +71,7 @@ function SortableCategoryItem({ category, onClearActive }: SortableCategoryItemP
       <Link
         to="/strategies/$categoryId"
         params={{ categoryId: category.id }}
-        className="flex-1 flex items-center justify-between cursor-pointer"
+        className="flex min-w-0 flex-1 self-stretch items-center justify-between rounded-md px-2 py-1 cursor-pointer"
       >
         <div className="flex items-center gap-3">
           <span className="font-medium">{category.name}</span>

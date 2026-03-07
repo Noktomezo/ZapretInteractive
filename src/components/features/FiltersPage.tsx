@@ -343,7 +343,7 @@ export function FiltersPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300"
+                className="h-8 w-8"
                 aria-label={`Редактировать фильтр ${filter.name}`}
                 title={`Редактировать фильтр ${filter.name}`}
                 disabled={editInFlight || deleteInFlightId === filter.id}

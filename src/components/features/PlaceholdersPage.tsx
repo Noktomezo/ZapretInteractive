@@ -167,7 +167,6 @@ export function PlaceholdersPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300"
                               aria-label={`Редактировать плейсхолдер ${placeholder.name}`}
                               onClick={() => handleEdit(index, placeholder)}
                             >

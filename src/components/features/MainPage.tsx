@@ -27,7 +27,7 @@ export function MainPage() {
   const [initError, setInitError] = useState<string | null>(null)
   const { config, setListMode } = useConfigStore()
   const { status, connect, disconnect } = useConnectionStore()
-  const { isDownloading, progress, setDownloading, reset }
+  const { isDownloading, progress, reset }
     = useDownloadStore()
   const { initialized, isElevated, binariesOk, initialize }
     = useAppStore()
@@ -78,7 +78,6 @@ export function MainPage() {
   }
 
   const handleDownloadBinaries = async () => {
-    setDownloading(true)
     try {
       await tauri.downloadBinaries()
     }

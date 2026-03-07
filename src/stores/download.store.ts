@@ -9,48 +9,67 @@ interface DownloadStore {
   isDownloading: boolean
   progress: DownloadProgress | null
   listenersInitialized: boolean
+  unlistenFns: Array<() => void>
   setDownloading: (downloading: boolean) => void
   setProgress: (progress: DownloadProgress | null) => void
   reset: () => void
-  initListeners: () => void
+  initListeners: () => Promise<void>
+  cleanup: () => void
 }
 
 export const useDownloadStore = create<DownloadStore>(set => ({
   isDownloading: false,
   progress: null,
   listenersInitialized: false,
+  unlistenFns: [],
   setDownloading: isDownloading => set({ isDownloading }),
   setProgress: progress => set({ progress }),
   reset: () => set({ isDownloading: false, progress: null }),
-  initListeners: () => {
+  initListeners: async () => {
     if (useDownloadStore.getState().listenersInitialized)
       return
 
     set({ listenersInitialized: true })
 
-    void listen('download-start', () => {
+    const unlistenStart = await listen('download-start', () => {
       useDownloadStore.getState().setDownloading(true)
     })
 
-    void listen<DownloadProgress>('download-progress', (event) => {
+    const unlistenProgress = await listen<DownloadProgress>('download-progress', (event) => {
       useDownloadStore.getState().setProgress(event.payload)
     })
 
-    void listen('download-complete', async () => {
+    const unlistenComplete = await listen('download-complete', async () => {
       useDownloadStore.getState().reset()
       try {
         const binaries = await tauri.verifyBinaries()
         useAppStore.getState().setBinariesOk(binaries)
       }
       catch (e) {
+        useAppStore.getState().setBinariesOk(false)
         toast.error(`Ошибка проверки файлов: ${e}`)
       }
     })
 
-    void listen<string>('download-error', (event) => {
+    const unlistenError = await listen<string>('download-error', (event) => {
       console.error('Download error:', event.payload)
       toast.error(`Ошибка загрузки файлов: ${event.payload}`)
       useDownloadStore.getState().reset()
+    })
+
+    set({
+      unlistenFns: [unlistenStart, unlistenProgress, unlistenComplete, unlistenError],
+    })
+  },
+  cleanup: () => {
+    for (const unlisten of useDownloadStore.getState().unlistenFns)
+      unlisten()
+
+    set({
+      unlistenFns: [],
+      listenersInitialized: false,
+      isDownloading: false,
+      progress: null,
     })
   },
 }))

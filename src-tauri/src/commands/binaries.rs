@@ -154,6 +154,12 @@ fn save_stored_hashes(hashes: &HashMap<String, String>) -> Result<(), String> {
     Ok(())
 }
 
+async fn save_stored_hashes_async(hashes: &HashMap<String, String>) -> Result<(), String> {
+    let content = serde_json::to_string_pretty(hashes).map_err(|e| e.to_string())?;
+    tokio_fs::write(get_hashes_path(), content).await.map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 fn load_lists_state() -> Result<ListsState, String> {
     let path = get_lists_state_path();
     if !path.exists() { return Ok(ListsState::default()); }
@@ -376,7 +382,11 @@ pub fn verify_binaries() -> Result<bool, String> {
 pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
     #[cfg(windows)]
     {
-        let _ = kill_windivert_service();
+        if let Err(e) = kill_windivert_service() {
+            let err = format!("Failed to stop WinDivert service before download: {e}");
+            app.emit("download-error", err.clone()).ok();
+            return Err(err);
+        }
         sleep(Duration::from_millis(300)).await;
     }
 
@@ -435,7 +445,7 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
             Ok(bytes) => bytes,
             Err(err) => {
                 app.emit("download-error", err.clone()).ok();
-                let _ = save_stored_hashes(&hashes);
+                let _ = save_stored_hashes_async(&hashes).await;
                 return Err(err);
             }
         };
@@ -443,14 +453,14 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
         if let Err(e) = tokio_fs::write(&file.dest_path, &bytes).await {
             let err = format!("Failed to write {}: {}", file.name, e);
             app.emit("download-error", err.clone()).ok();
-            let _ = save_stored_hashes(&hashes);
+            let _ = save_stored_hashes_async(&hashes).await;
             return Err(err);
         }
 
         if let Some(hash_key) = &file.hash_key {
             let hash = calculate_sha256_async(file.dest_path.clone()).await?;
             hashes.insert(hash_key.clone(), hash);
-            save_stored_hashes(&hashes)?;
+            save_stored_hashes_async(&hashes).await?;
         }
     }
 
@@ -502,6 +512,9 @@ pub fn delete_filter_file(filename: String) -> Result<(), String> {
     if file_path.exists() {
         fs::remove_file(file_path).map_err(|e| e.to_string())?;
     }
+    let mut hashes = load_stored_hashes()?;
+    hashes.remove(&hash_key("filters", &filename));
+    save_stored_hashes(&hashes)?;
     Ok(())
 }
 

@@ -7,6 +7,7 @@ type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'disconnec
 const MAX_LOGS = 500
 
 export interface LogEntry {
+  seq: number
   timestamp: number
   message: string
 }
@@ -161,7 +162,9 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
 
   addLog: (message) => {
     set((state) => {
-      const nextLogs = [...state.logs, { timestamp: Date.now(), message }].slice(-MAX_LOGS)
+      const lastLog = state.logs.length > 0 ? state.logs[state.logs.length - 1] : null
+      const nextSeq = (lastLog?.seq ?? 0) + 1
+      const nextLogs = [...state.logs, { seq: nextSeq, timestamp: Date.now(), message }].slice(-MAX_LOGS)
       return { logs: nextLogs }
     })
   },
