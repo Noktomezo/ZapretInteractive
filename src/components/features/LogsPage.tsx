@@ -53,8 +53,12 @@ export function LogsPage() {
               : (
                   logs.map((log, index) => (
                     <p key={`${log.timestamp}-${index}`} className="whitespace-pre-wrap text-zinc-300">
-                      <span className="text-zinc-500">[{formatLogTimestamp(log.timestamp)}]</span>
-                      {' '}
+                      <span className="text-zinc-500">
+                        [
+                        {formatLogTimestamp(log.timestamp)}
+                        ]
+                      </span>
+                      <span> </span>
                       <span>{log.message}</span>
                     </p>
                   ))

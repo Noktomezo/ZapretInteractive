@@ -1,8 +1,9 @@
-import { create } from 'zustand'
 import { toast } from 'sonner'
+import { create } from 'zustand'
 import * as tauri from '../lib/tauri'
 import { useConfigStore } from './config.store'
 import { useConnectionStore } from './connection.store'
+import { useDownloadStore } from './download.store'
 import { useThemeStore } from './theme.store'
 
 let shutdownCleanupRegistered = false
@@ -57,6 +58,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       useConnectionStore.getState().addLog('Запускаю инициализацию приложения')
       useThemeStore.getState().initTheme()
       useConnectionStore.getState().initTrayListener()
+      useDownloadStore.getState().initListeners()
 
       const elevated = await tauri.isElevated()
       set({ isElevated: elevated })

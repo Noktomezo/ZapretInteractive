@@ -50,7 +50,7 @@ const reservedBundledFilenames = new Set([
 ])
 
 export function FiltersPage() {
-  const { config, loading, load, save, setFilters } = useConfigStore()
+  const { config, loading, load, setFilters } = useConfigStore()
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingFilterId, setEditingFilterId] = useState<string | null>(null)
@@ -59,6 +59,9 @@ export function FiltersPage() {
   const [editLoadSucceeded, setEditLoadSucceeded] = useState(false)
   const [currentLoadId, setCurrentLoadId] = useState<string | null>(null)
   const currentLoadIdRef = useRef<string | null>(null)
+  const [createInFlight, setCreateInFlight] = useState(false)
+  const [editInFlight, setEditInFlight] = useState(false)
+  const [deleteInFlightId, setDeleteInFlightId] = useState<string | null>(null)
   const isInitialLoadRef = useRef(true)
 
   useEffect(() => {
@@ -66,14 +69,6 @@ export function FiltersPage() {
       isInitialLoadRef.current = false
     })
   }, [load])
-
-  useEffect(() => {
-    if (config && !isInitialLoadRef.current) {
-      save().catch((e) => {
-        toast.error(`Ошибка сохранения фильтров: ${e instanceof Error ? e.message : String(e)}`)
-      })
-    }
-  }, [config, save])
 
   const resetDraft = () => {
     setDraft(emptyDraft)
@@ -90,6 +85,8 @@ export function FiltersPage() {
 
   const validateFilename = (filename: string, currentFilename?: string) => {
     const normalized = filename.trim()
+    const normalizedLower = normalized.toLowerCase()
+    const currentFilenameLower = currentFilename?.trim().toLowerCase()
     if (!normalized) {
       toast.error('Укажите имя файла фильтра')
       return false
@@ -97,7 +94,8 @@ export function FiltersPage() {
 
     const existingFilters = useConfigStore.getState().config?.filters || []
     const hasCollision = existingFilters.some(filter =>
-      filter.filename === normalized && filter.filename !== currentFilename,
+      filter.filename.trim().toLowerCase() === normalizedLower
+      && filter.filename.trim().toLowerCase() !== currentFilenameLower,
     )
 
     if (hasCollision) {
@@ -105,12 +103,23 @@ export function FiltersPage() {
       return false
     }
 
-    if (reservedBundledFilenames.has(normalized) && normalized !== currentFilename) {
+    if (reservedBundledFilenames.has(normalizedLower) && normalizedLower !== currentFilenameLower) {
       toast.error('Это имя файла зарезервировано встроенным фильтром')
       return false
     }
 
     return true
+  }
+
+  const persistFilters = async (nextFilters: FilterType[], previousFilters: FilterType[]) => {
+    setFilters(nextFilters)
+    try {
+      await useConfigStore.getState().save()
+    }
+    catch (e) {
+      setFilters(previousFilters)
+      throw e
+    }
   }
 
   const handleToggleFilter = (filterId: string) => {
@@ -122,6 +131,8 @@ export function FiltersPage() {
   }
 
   const handleCreateFilter = async () => {
+    if (createInFlight)
+      return
     if (!draft.name.trim() || !draft.filename.trim())
       return
 
@@ -129,6 +140,7 @@ export function FiltersPage() {
     if (!validateFilename(nextFilename))
       return
 
+    setCreateInFlight(true)
     try {
       const newFilter: FilterType = {
         id: `filter-${crypto.randomUUID()}`,
@@ -137,16 +149,20 @@ export function FiltersPage() {
         active: true,
       }
 
-      await tauri.saveFilterFile(nextFilename, draft.content)
+      await tauri.saveFilterFile(nextFilename, draft.content ?? '')
 
       const currentFilters = useConfigStore.getState().config?.filters || []
-      setFilters([...currentFilters, newFilter])
+      await persistFilters([...currentFilters, newFilter], currentFilters)
       resetDraft()
       setCreateDialogOpen(false)
       toast.success('Фильтр создан')
     }
     catch (e) {
+      await tauri.deleteFilterFile(nextFilename).catch(() => {})
       toast.error(`Ошибка создания фильтра: ${e instanceof Error ? e.message : String(e)}`)
+    }
+    finally {
+      setCreateInFlight(false)
     }
   }
 
@@ -191,6 +207,8 @@ export function FiltersPage() {
   }
 
   const handleSaveEdit = async () => {
+    if (editInFlight)
+      return
     if (!editingFilterId || !draft.name.trim() || !draft.filename.trim() || !editLoadSucceeded)
       return
 
@@ -203,8 +221,10 @@ export function FiltersPage() {
     if (!validateFilename(nextFilename, targetFilter.filename))
       return
 
-    const renamed = targetFilter.filename !== nextFilename
+    const renamed = targetFilter.filename.trim().toLowerCase() !== nextFilename.trim().toLowerCase()
+    const originalContent = await tauri.loadFilterFile(targetFilter.filename).catch(() => draft.content)
 
+    setEditInFlight(true)
     try {
       await tauri.saveFilterFile(nextFilename, draft.content)
       if (renamed) {
@@ -227,21 +247,39 @@ export function FiltersPage() {
           : filter,
       )
 
-      setFilters(updatedFilters)
+      await persistFilters(updatedFilters, currentFilters)
       resetDraft()
       setEditDialogOpen(false)
       toast.success('Фильтр сохранён')
     }
     catch (e) {
+      if (renamed) {
+        await tauri.deleteFilterFile(nextFilename).catch(() => {})
+      }
+      await tauri.saveFilterFile(targetFilter.filename, originalContent).catch(() => {})
       toast.error(`Ошибка сохранения фильтра: ${e instanceof Error ? e.message : String(e)}`)
+    }
+    finally {
+      setEditInFlight(false)
     }
   }
 
   const handleDeleteFilter = async (filter: FilterType) => {
+    if (deleteInFlightId)
+      return
+    setDeleteInFlightId(filter.id)
     try {
+      const originalContent = await tauri.loadFilterFile(filter.filename)
       await tauri.deleteFilterFile(filter.filename)
       const currentFilters = useConfigStore.getState().config?.filters || []
-      setFilters(currentFilters.filter(item => item.id !== filter.id))
+      const nextFilters = currentFilters.filter(item => item.id !== filter.id)
+      try {
+        await persistFilters(nextFilters, currentFilters)
+      }
+      catch (e) {
+        await tauri.saveFilterFile(filter.filename, originalContent).catch(() => {})
+        throw e
+      }
       if (editingFilterId === filter.id) {
         resetDraft()
         setEditDialogOpen(false)
@@ -250,6 +288,9 @@ export function FiltersPage() {
     }
     catch (e) {
       toast.error(`Ошибка удаления фильтра: ${e instanceof Error ? e.message : String(e)}`)
+    }
+    finally {
+      setDeleteInFlightId(null)
     }
   }
 
@@ -303,13 +344,23 @@ export function FiltersPage() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300"
+                aria-label={`Редактировать фильтр ${filter.name}`}
+                title={`Редактировать фильтр ${filter.name}`}
+                disabled={editInFlight || deleteInFlightId === filter.id}
                 onClick={() => openEditDialog(filter)}
               >
                 <Pencil className="h-4 w-4" />
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 bg-red-500/10 text-red-600 hover:bg-red-500/20 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 bg-red-500/10 text-red-600 hover:bg-red-500/20 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                    aria-label={`Удалить фильтр ${filter.name}`}
+                    title={`Удалить фильтр ${filter.name}`}
+                    disabled={deleteInFlightId === filter.id || editInFlight}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </AlertDialogTrigger>
@@ -386,7 +437,7 @@ export function FiltersPage() {
             <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
               Отмена
             </Button>
-            <Button onClick={handleCreateFilter} disabled={!draft.name.trim() || !draft.filename.trim()}>
+            <Button onClick={handleCreateFilter} disabled={createInFlight || !draft.name.trim() || !draft.filename.trim()}>
               Создать
             </Button>
           </DialogFooter>
@@ -451,7 +502,7 @@ export function FiltersPage() {
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
               Закрыть
             </Button>
-            <Button onClick={handleSaveEdit} disabled={editLoading || !editLoadSucceeded || !draft.name.trim() || !draft.filename.trim()}>
+            <Button onClick={handleSaveEdit} disabled={editLoading || editInFlight || !editLoadSucceeded || !draft.name.trim() || !draft.filename.trim()}>
               Сохранить
             </Button>
           </DialogFooter>

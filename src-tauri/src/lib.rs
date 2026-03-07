@@ -248,8 +248,3 @@ fn set_autostart_enabled(app: tauri::AppHandle, enabled: bool) -> Result<(), Str
     }
 }
 
-
-
-
-
-

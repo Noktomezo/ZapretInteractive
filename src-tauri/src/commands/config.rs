@@ -237,7 +237,7 @@ pub fn resolve_placeholders(content: String, placeholders: Vec<Placeholder>) -> 
             let relative = &placeholder.path[1..];
             let relative_trimmed = relative.trim_start_matches('/').trim_start_matches('\\');
             let mut path = home_dir.clone();
-            for part in relative_trimmed.split(|c| c == '/' || c == '\\') {
+            for part in relative_trimmed.split(['/', '\\']) {
                 if !part.is_empty() {
                     path.push(part);
                 }
@@ -254,5 +254,3 @@ pub fn resolve_placeholders(content: String, placeholders: Vec<Placeholder>) -> 
 
     result
 }
-
-

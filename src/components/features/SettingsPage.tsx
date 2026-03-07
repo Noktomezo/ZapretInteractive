@@ -1,5 +1,3 @@
-import type { DownloadProgress } from '@/lib/types'
-import { listen } from '@tauri-apps/api/event'
 import { Download, FolderOpen, Loader2, RotateCcw } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -21,8 +19,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { cn } from '@/lib/utils'
 import * as tauri from '@/lib/tauri'
+import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app.store'
 import { useConfigStore } from '@/stores/config.store'
 import { useDownloadStore } from '@/stores/download.store'
@@ -44,41 +42,8 @@ export function SettingsPage() {
     setLaunchToTray,
     reset,
   } = useConfigStore()
-  const { isDownloading, progress, setDownloading, setProgress, reset: resetDownload } = useDownloadStore()
-  const { binariesOk, setBinariesOk } = useAppStore()
-
-  useEffect(() => {
-    const unlistenStart = listen('download-start', () => {
-      setDownloading(true)
-    })
-
-    const unlistenProgress = listen<DownloadProgress>('download-progress', (event) => {
-      setProgress(event.payload)
-    })
-
-    const unlistenComplete = listen('download-complete', async () => {
-      resetDownload()
-      try {
-        const ok = await tauri.verifyBinaries()
-        setBinariesOk(ok)
-      }
-      catch (e) {
-        toast.error(`Ошибка проверки файлов: ${e}`)
-      }
-    })
-
-    const unlistenError = listen<string>('download-error', (event) => {
-      console.error('Download error:', event.payload)
-      resetDownload()
-    })
-
-    return () => {
-      unlistenStart.then(fn => fn())
-      unlistenProgress.then(fn => fn())
-      unlistenComplete.then(fn => fn())
-      unlistenError.then(fn => fn())
-    }
-  }, [])
+  const { isDownloading, progress, setDownloading, reset: resetDownload } = useDownloadStore()
+  const { binariesOk } = useAppStore()
 
   useEffect(() => {
     let isMounted = true

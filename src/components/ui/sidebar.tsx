@@ -1,8 +1,8 @@
-import * as React from 'react'
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import * as React from 'react'
 import { cn } from '@/lib/utils'
 
-type SidebarContextValue = {
+interface SidebarContextValue {
   open: boolean
   setOpen: (open: boolean) => void
   toggleSidebar: () => void
@@ -146,8 +146,9 @@ function SidebarMenuButton({
     return React.cloneElement(child, {
       ...props,
       ...child.props,
-      onClick: composeEventHandlers(onClick, child.props.onClick),
-      className: cn(classes, child.props.className),
+      type,
+      'onClick': composeEventHandlers(onClick, child.props.onClick),
+      'className': cn(classes, child.props.className),
       'data-slot': 'sidebar-menu-button',
       'data-active': isActive,
     })
@@ -176,7 +177,10 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<'
       data-slot="sidebar-trigger"
       type="button"
       className={cn('inline-flex size-9 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground', className)}
-      onClick={composeEventHandlers(() => toggleSidebar(), onClick)}
+      onClick={composeEventHandlers(onClick, (event) => {
+        if (!event.defaultPrevented)
+          toggleSidebar()
+      })}
       {...props}
     >
       <Icon className="size-4" aria-hidden="true" />
@@ -193,7 +197,10 @@ function SidebarRail({ className, onClick, ...props }: React.ComponentProps<'but
       data-slot="sidebar-rail"
       type="button"
       aria-label="Toggle Sidebar"
-      onClick={composeEventHandlers(() => toggleSidebar(), onClick)}
+      onClick={composeEventHandlers(onClick, (event) => {
+        if (!event.defaultPrevented)
+          toggleSidebar()
+      })}
       className={cn('absolute inset-y-0 -right-px hidden w-px cursor-ew-resize bg-sidebar-border opacity-0 transition-opacity group-hover/sidebar-wrapper:opacity-100 md:block', className)}
       {...props}
     >

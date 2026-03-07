@@ -1,5 +1,4 @@
-import type { DownloadProgress, ListMode } from '@/lib/types'
-import { listen } from '@tauri-apps/api/event'
+import type { ListMode } from '@/lib/types'
 import {
   AlertCircle,
   Loader2,
@@ -27,9 +26,9 @@ export function MainPage() {
   const missingFilesToastShownRef = useRef(false)
   const { config, setListMode } = useConfigStore()
   const { status, connect, disconnect } = useConnectionStore()
-  const { isDownloading, progress, setDownloading, setProgress, reset }
+  const { isDownloading, progress, setDownloading, reset }
     = useDownloadStore()
-  const { initialized, isElevated, binariesOk, initialize, setBinariesOk }
+  const { initialized, isElevated, binariesOk, initialize }
     = useAppStore()
 
   const handleListModeChange = (value: string) => {
@@ -40,43 +39,10 @@ export function MainPage() {
   }
 
   useEffect(() => {
-    const unlistenStart = listen('download-start', () => {
-      setDownloading(true)
+    initialize().catch((error) => {
+      console.error('Failed to initialize app:', error)
+      useConnectionStore.getState().addLog(`Ошибка инициализации приложения: ${error}`)
     })
-
-    const unlistenProgress = listen<DownloadProgress>(
-      'download-progress',
-      (event) => {
-        setProgress(event.payload)
-      },
-    )
-
-    const unlistenComplete = listen('download-complete', async () => {
-      reset()
-      try {
-        const binaries = await tauri.verifyBinaries()
-        setBinariesOk(binaries)
-      }
-      catch (e) {
-        toast.error(`Ошибка проверки файлов: ${e}`)
-      }
-    })
-
-    const unlistenError = listen<string>('download-error', (event) => {
-      console.error('Download error:', event.payload)
-      reset()
-    })
-
-    return () => {
-      unlistenStart.then(fn => fn())
-      unlistenProgress.then(fn => fn())
-      unlistenComplete.then(fn => fn())
-      unlistenError.then(fn => fn())
-    }
-  }, [])
-
-  useEffect(() => {
-    initialize()
 
     const unlistenListMode = tauri.onListModeChanged((mode) => {
       setListMode(mode)

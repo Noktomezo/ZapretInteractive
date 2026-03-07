@@ -111,7 +111,13 @@ export function PlaceholdersPage() {
             Замена плейсхолдеров на пути к бинарным файлам
           </p>
         </div>
-        <Button variant="outline" size="icon" onClick={() => tauri.openZapretDirectory()} title="Открыть папку ~/.zapret">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => tauri.openZapretDirectory()}
+          title="Открыть папку ~/.zapret"
+          aria-label="Открыть папку ~/.zapret"
+        >
           <FolderOpen className="h-4 w-4" />
         </Button>
       </div>
@@ -162,6 +168,7 @@ export function PlaceholdersPage() {
                               variant="ghost"
                               size="sm"
                               className="bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300"
+                              aria-label={`Редактировать плейсхолдер ${placeholder.name}`}
                               onClick={() => handleEdit(index, placeholder)}
                             >
                               <Pencil className="h-4 w-4" />
@@ -170,6 +177,7 @@ export function PlaceholdersPage() {
                               variant="ghost"
                               size="sm"
                               className="bg-red-500/10 text-red-600 hover:bg-red-500/20 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                              aria-label={`Удалить плейсхолдер ${placeholder.name}`}
                               onClick={() => handleDelete(index)}
                             >
                               <Trash2 className="h-4 w-4" />

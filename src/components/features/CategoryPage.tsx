@@ -32,6 +32,8 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfigStore } from '@/stores/config.store'
 
+const DEACTIVATE_BUTTON_CLASS = 'border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/20 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300'
+
 export function CategoryPage() {
   const { categoryId } = useParams({ from: '/strategies/$categoryId' })
   const navigate = useNavigate()
@@ -190,7 +192,12 @@ export function CategoryPage() {
           </Button>
           <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="bg-red-500/10 text-red-600 hover:bg-red-500/20 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="bg-red-500/10 text-red-600 hover:bg-red-500/20 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                aria-label={`Удалить категорию ${category.name}`}
+              >
                 <Trash2 className="w-4 h-4" />
               </Button>
             </AlertDialogTrigger>
@@ -220,7 +227,7 @@ export function CategoryPage() {
           Новая стратегия
         </Button>
         {category.strategies.some(s => s.active) && (
-          <Button variant="outline" className="border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/20 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300" onClick={handleClearAllActive}>
+          <Button variant="outline" className={DEACTIVATE_BUTTON_CLASS} onClick={handleClearAllActive}>
             Деактивировать текущую
           </Button>
         )}
@@ -252,7 +259,7 @@ export function CategoryPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/20 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                              className={DEACTIVATE_BUTTON_CLASS}
                               onClick={() => handleClearActive(strategy.id)}
                             >
                               Деактивировать

@@ -37,4 +37,3 @@ function RootLayout() {
 export const Route = createRootRoute({
   component: RootLayout,
 })
-

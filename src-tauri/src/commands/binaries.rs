@@ -152,11 +152,13 @@ fn save_stored_hashes(hashes: &HashMap<String, String>) -> Result<(), String> {
     Ok(())
 }
 
-fn load_lists_state() -> ListsState {
+fn load_lists_state() -> Result<ListsState, String> {
     let path = get_lists_state_path();
-    if !path.exists() { return ListsState::default(); }
-    let content = fs::read_to_string(&path).unwrap_or_default();
-    serde_json::from_str(&content).unwrap_or_default()
+    if !path.exists() { return Ok(ListsState::default()); }
+    let content = fs::read_to_string(&path)
+        .map_err(|e| format!("Failed to read lists-state.json: {e}"))?;
+    serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse lists-state.json: {e}"))
 }
 
 fn save_lists_state(state: &ListsState) -> Result<(), String> {
@@ -337,7 +339,7 @@ async fn refresh_lists_internal(force: bool) -> Result<usize, String> {
     ensure_base_directories()?;
 
     let lists_dir = get_lists_dir();
-    let state = load_lists_state();
+    let state = load_lists_state()?;
     let now = current_timestamp();
     let all_lists_exist = LISTS.iter().all(|name| lists_dir.join(name).exists());
     let is_stale = state.last_updated_at.map(|last| now.saturating_sub(last) >= LISTS_REFRESH_INTERVAL_SECS).unwrap_or(true);

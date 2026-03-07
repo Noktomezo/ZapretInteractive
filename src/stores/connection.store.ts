@@ -4,6 +4,7 @@ import * as tauri from '../lib/tauri'
 import { useConfigStore } from './config.store'
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'disconnecting' | 'error'
+const MAX_LOGS = 500
 
 export interface LogEntry {
   timestamp: number
@@ -22,7 +23,7 @@ interface ConnectionStore {
   connect: () => Promise<void>
   disconnect: () => Promise<void>
   toggle: () => Promise<void>
-  addLog: (log: string) => void
+  addLog: (message: string) => void
   clearLogs: () => void
   setError: (error: string | null) => void
   setRecovered: (recovered: boolean) => void
@@ -158,7 +159,10 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
   },
 
   addLog: (message) => {
-    set(state => ({ logs: [...state.logs, { timestamp: Date.now(), message }] }))
+    set((state) => {
+      const nextLogs = [...state.logs, { timestamp: Date.now(), message }].slice(-MAX_LOGS)
+      return { logs: nextLogs }
+    })
   },
 
   clearLogs: () => set({ logs: [] }),
