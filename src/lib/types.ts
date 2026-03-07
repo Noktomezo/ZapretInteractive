@@ -46,4 +46,5 @@ export interface AppConfig {
   listMode?: ListMode
   minimizeToTray?: boolean
   launchToTray?: boolean
+  connectOnAutostart?: boolean
 }

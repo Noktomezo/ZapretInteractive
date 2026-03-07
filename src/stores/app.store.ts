@@ -147,6 +147,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
         }
         else {
           await useConnectionStore.getState().checkStatus()
+
+          const currentConfig = useConfigStore.getState().config
+          const launchedFromAutostart = await tauri.wasLaunchedFromAutostart()
+          if (launchedFromAutostart && currentConfig?.connectOnAutostart) {
+            useConnectionStore.getState().addLog('Приложение запущено из автозагрузки, запускаю подключение автоматически')
+            await useConnectionStore.getState().connect()
+          }
         }
       }
 

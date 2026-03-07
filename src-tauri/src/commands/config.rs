@@ -78,6 +78,8 @@ pub struct AppConfig {
     pub minimize_to_tray: bool,
     #[serde(default = "default_launch_to_tray", rename = "launchToTray")]
     pub launch_to_tray: bool,
+    #[serde(default = "default_connect_on_autostart", rename = "connectOnAutostart")]
+    pub connect_on_autostart: bool,
     #[serde(default, rename = "listMode")]
     pub list_mode: ListMode,
 }
@@ -87,6 +89,10 @@ fn default_minimize_to_tray() -> bool {
 }
 
 fn default_launch_to_tray() -> bool {
+    false
+}
+
+fn default_connect_on_autostart() -> bool {
     false
 }
 
@@ -254,3 +260,4 @@ pub fn resolve_placeholders(content: String, placeholders: Vec<Placeholder>) -> 
 
     result
 }
+

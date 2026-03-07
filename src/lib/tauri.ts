@@ -28,6 +28,7 @@ export const openZapretDirectory = (): Promise<void> => invoke('open_zapret_dire
 export const getFiltersPath = (): Promise<string> => invoke('get_filters_path')
 export const isAutostartEnabled = (): Promise<boolean> => invoke('is_autostart_enabled')
 export const setAutostartEnabled = (enabled: boolean): Promise<void> => invoke('set_autostart_enabled', { enabled })
+export const wasLaunchedFromAutostart = (): Promise<boolean> => invoke('was_launched_from_autostart')
 
 export function saveFilterFile(filename: string, content: string): Promise<void> {
   return invoke('save_filter_file', { filename, content })

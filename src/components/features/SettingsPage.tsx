@@ -40,6 +40,7 @@ export function SettingsPage() {
     setGlobalPorts,
     setMinimizeToTray,
     setLaunchToTray,
+    setConnectOnAutostart,
     reset,
   } = useConfigStore()
   const { isDownloading, progress, setDownloading, reset: resetDownload } = useDownloadStore()
@@ -203,6 +204,20 @@ export function SettingsPage() {
               >
                 <div className="overflow-hidden">
                   <div className="flex items-center justify-between gap-4 border-l border-border/60 pl-4">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="connect-on-autostart">Подключаться автоматически</Label>
+                      <p className="text-xs text-muted-foreground">
+                        При запуске из автозагрузки приложение будет сразу запускать подключение
+                      </p>
+                    </div>
+                    <Switch
+                      id="connect-on-autostart"
+                      checked={config.connectOnAutostart ?? false}
+                      disabled={autostartLoading}
+                      onCheckedChange={setConnectOnAutostart}
+                    />
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-4 border-l border-border/60 pl-4">
                     <div className="space-y-0.5">
                       <Label htmlFor="launch-to-tray">Запускать свернутым в трей</Label>
                       <p className="text-xs text-muted-foreground">

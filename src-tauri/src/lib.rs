@@ -54,7 +54,7 @@ pub fn run() {
             #[cfg(desktop)]
             app.handle().plugin(tauri_plugin_autostart::init(
                 tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-                None::<Vec<&str>>,
+                Some(vec!["--autostart"]),
             ))?;
 
             let app_state = config::AppState::new()?;
@@ -187,6 +187,7 @@ pub fn run() {
             set_connected_state,
             is_autostart_enabled,
             set_autostart_enabled,
+            was_launched_from_autostart,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -248,3 +249,7 @@ fn set_autostart_enabled(app: tauri::AppHandle, enabled: bool) -> Result<(), Str
     }
 }
 
+#[tauri::command]
+fn was_launched_from_autostart() -> bool {
+    std::env::args().any(|arg| arg == "--autostart")
+}
