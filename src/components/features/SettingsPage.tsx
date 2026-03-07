@@ -154,7 +154,7 @@ export function SettingsPage() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-semibold">Настройки</h1>
+        <h1 className="text-2xl font-medium">Настройки</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Глобальные параметры и управление файлами
         </p>
@@ -262,7 +262,7 @@ export function SettingsPage() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">TCP порты</label>
+              <label className="text-sm font-normal">TCP порты</label>
               <Input
                 value={config.global_ports.tcp}
                 onChange={e =>
@@ -271,7 +271,7 @@ export function SettingsPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">UDP порты</label>
+              <label className="text-sm font-normal">UDP порты</label>
               <Input
                 value={config.global_ports.udp}
                 onChange={e =>

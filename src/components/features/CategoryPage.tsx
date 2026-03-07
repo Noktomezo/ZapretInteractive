@@ -166,7 +166,7 @@ export function CategoryPage() {
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-2xl font-semibold">{category.name}</h1>
+            <h1 className="text-2xl font-medium">{category.name}</h1>
             <p className="text-sm text-muted-foreground mt-1">
               {category.strategies.length}
               {' '}
@@ -246,7 +246,7 @@ export function CategoryPage() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="font-medium">{strategy.name}</span>
+                      <span className="font-normal">{strategy.name}</span>
                       {strategy.active && (
                         <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded">
                           активна

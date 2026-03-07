@@ -1,6 +1,6 @@
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { Lock } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import appLogo from '../../../assets/app-logo.png'
 
 export function TitleBar() {
   const [isMaximized, setIsMaximized] = useState(false)
@@ -45,8 +45,8 @@ export function TitleBar() {
       data-tauri-drag-region
     >
       <div className="flex items-center gap-2">
-        <Lock aria-hidden="true" className="size-4 shrink-0 text-primary" />
-        <span className="whitespace-nowrap text-sm font-semibold tracking-tight">
+        <img src={appLogo} alt="" aria-hidden="true" className="size-4 shrink-0 rounded-sm object-contain" />
+        <span className="whitespace-nowrap text-sm font-medium tracking-tight">
           Zapret Interactive
         </span>
       </div>

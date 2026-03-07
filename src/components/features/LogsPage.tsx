@@ -66,7 +66,7 @@ export function LogsPage() {
     <div className="flex h-full min-h-0 flex-col p-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Логи</h1>
+          <h1 className="text-2xl font-medium">Логи</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Журнал запуска, остановки и внутренних событий подключения.
           </p>

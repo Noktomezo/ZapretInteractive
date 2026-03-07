@@ -134,7 +134,7 @@ function SidebarMenuButton({
   asChild?: boolean
 }) {
   const classes = cn(
-    'flex h-10 w-full items-center overflow-hidden rounded-lg px-1.5 text-left text-sm font-medium outline-none transition-[background-color,color,box-shadow] duration-200 ease-out',
+    'flex h-10 w-full items-center overflow-hidden rounded-lg px-1.5 text-left text-sm font-normal outline-none transition-[background-color,color,box-shadow] duration-200 ease-out',
     'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
     'data-[active=true]:bg-sidebar-primary data-[active=true]:text-sidebar-primary-foreground data-[active=true]:shadow-sm',
     className,

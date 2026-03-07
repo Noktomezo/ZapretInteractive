@@ -307,7 +307,7 @@ export function FiltersPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Фильтры</h1>
+          <h1 className="text-2xl font-medium">Фильтры</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             WinDivert фильтры для отсечения полезной нагрузки
           </p>
@@ -327,7 +327,7 @@ export function FiltersPage() {
             <div className="flex items-center gap-3">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <div>
-                <Label htmlFor={filter.id} className="cursor-pointer font-medium">
+                <Label htmlFor={filter.id} className="cursor-pointer font-normal">
                   {filter.name}
                 </Label>
                 <p className="font-mono text-xs text-muted-foreground">

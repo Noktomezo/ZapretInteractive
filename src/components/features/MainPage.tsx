@@ -131,7 +131,7 @@ export function MainPage() {
             <AlertCircle className="h-8 w-8 text-muted-foreground" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold">Требуется обновление файлов</h2>
+            <h2 className="text-lg font-medium">Требуется обновление файлов</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Бинарные файлы, fake-пакеты или фильтры отсутствуют либо повреждены. Обновление выполняется только вручную.
             </p>
@@ -206,7 +206,7 @@ export function MainPage() {
           </div>
 
           <div>
-            <h2 className="text-2xl font-semibold">
+            <h2 className="text-2xl font-medium">
               {status === 'connected'
                 ? 'Подключено'
                 : status === 'connecting'

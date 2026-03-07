@@ -74,7 +74,7 @@ function SortableCategoryItem({ category, onClearActive }: SortableCategoryItemP
         className="flex min-w-0 flex-1 self-stretch items-center justify-between rounded-md px-2 py-1 cursor-pointer"
       >
         <div className="flex items-center gap-3">
-          <span className="font-medium">{category.name}</span>
+          <span className="font-normal">{category.name}</span>
           {activeCount > 0 && (
             <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded">
               активна
@@ -175,7 +175,7 @@ export function CategoriesListPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Категории</h1>
+          <h1 className="text-2xl font-medium">Категории</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Выберите категорию для управления стратегиями
           </p>
