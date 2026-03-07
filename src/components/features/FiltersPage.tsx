@@ -1,5 +1,5 @@
 import type { Filter as FilterType } from '@/lib/types'
-import { Filter, Loader2, Plus, Trash2 } from 'lucide-react'
+import { Filter, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -28,12 +29,25 @@ import { Textarea } from '@/components/ui/textarea'
 import * as tauri from '@/lib/tauri'
 import { useConfigStore } from '@/stores/config.store'
 
+type FilterDraft = {
+  name: string
+  filename: string
+  content: string
+}
+
+const emptyDraft: FilterDraft = {
+  name: '',
+  filename: '',
+  content: '',
+}
+
 export function FiltersPage() {
   const { config, loading, load, save, setFilters } = useConfigStore()
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [newName, setNewName] = useState('')
-  const [newFilename, setNewFilename] = useState('')
-  const [newContent, setNewContent] = useState('')
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editingFilterId, setEditingFilterId] = useState<string | null>(null)
+  const [draft, setDraft] = useState<FilterDraft>(emptyDraft)
+  const [editLoading, setEditLoading] = useState(false)
   const isInitialLoadRef = useRef(true)
 
   useEffect(() => {
@@ -44,41 +58,50 @@ export function FiltersPage() {
 
   useEffect(() => {
     if (config && !isInitialLoadRef.current) {
-      save()
+      save().catch((e) => {
+        toast.error(`Ошибка сохранения фильтров: ${e instanceof Error ? e.message : String(e)}`)
+      })
     }
   }, [config])
 
+  const resetDraft = () => {
+    setDraft(emptyDraft)
+    setEditingFilterId(null)
+    setEditLoading(false)
+  }
+
+  const updateDraft = (updates: Partial<FilterDraft>) => {
+    setDraft(prev => ({ ...prev, ...updates }))
+  }
+
   const handleToggleFilter = (filterId: string) => {
     const currentFilters = useConfigStore.getState().config?.filters || []
-
-    const updatedFilters = currentFilters.map(f =>
-      f.id === filterId ? { ...f, active: !f.active } : f,
+    const updatedFilters = currentFilters.map(filter =>
+      filter.id === filterId ? { ...filter, active: !filter.active } : filter,
     )
     setFilters(updatedFilters)
   }
 
   const handleCreateFilter = async () => {
-    if (!newName.trim() || !newFilename.trim())
+    if (!draft.name.trim() || !draft.filename.trim())
       return
 
     try {
       const newFilter: FilterType = {
         id: `filter-${crypto.randomUUID()}`,
-        name: newName.trim(),
-        filename: newFilename.trim(),
+        name: draft.name.trim(),
+        filename: draft.filename.trim(),
         active: true,
       }
 
-      if (newContent.trim()) {
-        await tauri.saveFilterFile(newFilename.trim(), newContent.trim())
+      if (draft.content.trim()) {
+        await tauri.saveFilterFile(draft.filename.trim(), draft.content)
       }
 
       const currentFilters = useConfigStore.getState().config?.filters || []
       setFilters([...currentFilters, newFilter])
-      setNewName('')
-      setNewFilename('')
-      setNewContent('')
-      setDialogOpen(false)
+      resetDraft()
+      setCreateDialogOpen(false)
       toast.success('Фильтр создан')
     }
     catch (e) {
@@ -86,11 +109,76 @@ export function FiltersPage() {
     }
   }
 
+  const openEditDialog = async (filter: FilterType) => {
+    setEditingFilterId(filter.id)
+    setEditDialogOpen(true)
+    setEditLoading(true)
+    setDraft({
+      name: filter.name,
+      filename: filter.filename,
+      content: '',
+    })
+
+    try {
+      const content = await tauri.loadFilterFile(filter.filename)
+      setDraft({
+        name: filter.name,
+        filename: filter.filename,
+        content,
+      })
+    }
+    catch (e) {
+      toast.error(`Ошибка загрузки фильтра: ${e instanceof Error ? e.message : String(e)}`)
+    }
+    finally {
+      setEditLoading(false)
+    }
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingFilterId || !draft.name.trim() || !draft.filename.trim())
+      return
+
+    const currentFilters = useConfigStore.getState().config?.filters || []
+    const targetFilter = currentFilters.find(filter => filter.id === editingFilterId)
+    if (!targetFilter)
+      return
+
+    try {
+      await tauri.saveFilterFile(draft.filename.trim(), draft.content)
+      if (targetFilter.filename !== draft.filename.trim()) {
+        await tauri.deleteFilterFile(targetFilter.filename)
+      }
+
+      const updatedFilters = currentFilters.map(filter =>
+        filter.id === editingFilterId
+          ? {
+              ...filter,
+              name: draft.name.trim(),
+              filename: draft.filename.trim(),
+            }
+          : filter,
+      )
+
+      setFilters(updatedFilters)
+      resetDraft()
+      setEditDialogOpen(false)
+      toast.success('Фильтр сохранён')
+    }
+    catch (e) {
+      toast.error(`Ошибка сохранения фильтра: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
   const handleDeleteFilter = async (filter: FilterType) => {
     try {
       await tauri.deleteFilterFile(filter.filename)
       const currentFilters = useConfigStore.getState().config?.filters || []
-      setFilters(currentFilters.filter(f => f.id !== filter.id))
+      setFilters(currentFilters.filter(item => item.id !== filter.id))
+      if (editingFilterId === filter.id) {
+        resetDraft()
+        setEditDialogOpen(false)
+      }
       toast.success('Фильтр удалён')
     }
     catch (e) {
@@ -100,23 +188,23 @@ export function FiltersPage() {
 
   if (loading || !config) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-6 h-6 animate-spin" />
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Фильтры</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="mt-1 text-sm text-muted-foreground">
             WinDivert фильтры для отсечения полезной нагрузки
           </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
+        <Button onClick={() => setCreateDialogOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
           Новый фильтр
         </Button>
       </div>
@@ -125,18 +213,15 @@ export function FiltersPage() {
         {config.filters?.map((filter: FilterType) => (
           <div
             key={filter.id}
-            className="flex items-center justify-between p-4 rounded-lg border bg-card"
+            className="flex items-center justify-between rounded-lg border bg-card p-4"
           >
             <div className="flex items-center gap-3">
-              <Filter className="w-4 h-4 text-muted-foreground" />
+              <Filter className="h-4 w-4 text-muted-foreground" />
               <div>
-                <Label
-                  htmlFor={filter.id}
-                  className="font-medium cursor-pointer"
-                >
+                <Label htmlFor={filter.id} className="cursor-pointer font-medium">
                   {filter.name}
                 </Label>
-                <p className="text-xs text-muted-foreground font-mono">
+                <p className="font-mono text-xs text-muted-foreground">
                   {filter.filename}
                 </p>
               </div>
@@ -147,23 +232,25 @@ export function FiltersPage() {
                 checked={filter.active}
                 onCheckedChange={() => handleToggleFilter(filter.id)}
               />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground"
+                onClick={() => openEditDialog(filter)}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Удалить фильтр?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Фильтр "
-                      {filter.name}
-                      " будет удалён из списка и файл
-                      {' '}
-                      {filter.filename}
-                      {' '}
-                      будет удалён.
+                      Фильтр "{filter.name}" будет удалён из списка, а файл {filter.filename} будет удалён с диска.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -183,27 +270,27 @@ export function FiltersPage() {
       </div>
 
       <Dialog
-        open={dialogOpen}
+        open={createDialogOpen}
         onOpenChange={(open) => {
-          setDialogOpen(open)
-          if (!open) {
-            setNewName('')
-            setNewFilename('')
-            setNewContent('')
-          }
+          setCreateDialogOpen(open)
+          if (!open)
+            resetDraft()
         }}
       >
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Новый фильтр</DialogTitle>
+            <DialogDescription>
+              Создайте новый файл фильтра и добавьте его в конфигурацию.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="filter-name">Название</Label>
               <Input
                 id="filter-name"
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
+                value={draft.name}
+                onChange={e => updateDraft({ name: e.target.value })}
                 placeholder="Discord Media"
               />
             </div>
@@ -211,8 +298,8 @@ export function FiltersPage() {
               <Label htmlFor="filter-filename">Имя файла</Label>
               <Input
                 id="filter-filename"
-                value={newFilename}
-                onChange={e => setNewFilename(e.target.value)}
+                value={draft.filename}
+                onChange={e => updateDraft({ filename: e.target.value })}
                 placeholder="windivert_part.discord_media.txt"
               />
             </div>
@@ -220,28 +307,85 @@ export function FiltersPage() {
               <Label htmlFor="filter-content">Содержимое фильтра</Label>
               <Textarea
                 id="filter-content"
-                value={newContent}
-                onChange={e => setNewContent(e.target.value)}
+                value={draft.content}
+                onChange={e => updateDraft({ content: e.target.value })}
                 placeholder="WinDivert фильтр..."
-                rows={8}
+                rows={10}
                 className="font-mono text-sm"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setDialogOpen(false)
-                setNewName('')
-                setNewFilename('')
-                setNewContent('')
-              }}
-            >
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
               Отмена
             </Button>
-            <Button onClick={handleCreateFilter} disabled={!newName.trim() || !newFilename.trim()}>
+            <Button onClick={handleCreateFilter} disabled={!draft.name.trim() || !draft.filename.trim()}>
               Создать
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={editDialogOpen}
+        onOpenChange={(open) => {
+          setEditDialogOpen(open)
+          if (!open)
+            resetDraft()
+        }}
+      >
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Редактировать фильтр</DialogTitle>
+            <DialogDescription>
+              Просмотр и изменение имени, файла и содержимого фильтра.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-filter-name">Название</Label>
+                <Input
+                  id="edit-filter-name"
+                  value={draft.name}
+                  onChange={e => updateDraft({ name: e.target.value })}
+                  placeholder="Discord Media"
+                  disabled={editLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-filter-filename">Имя файла</Label>
+                <Input
+                  id="edit-filter-filename"
+                  value={draft.filename}
+                  onChange={e => updateDraft({ filename: e.target.value })}
+                  placeholder="windivert_part.discord_media.txt"
+                  disabled={editLoading}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-filter-content">Содержимое фильтра</Label>
+              <Textarea
+                id="edit-filter-content"
+                value={draft.content}
+                onChange={e => updateDraft({ content: e.target.value })}
+                placeholder="WinDivert фильтр..."
+                rows={16}
+                className="font-mono text-sm"
+                disabled={editLoading}
+              />
+              {editLoading && (
+                <p className="text-xs text-muted-foreground">Загружаю содержимое файла...</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Закрыть
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={editLoading || !draft.name.trim() || !draft.filename.trim()}>
+              Сохранить
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -249,3 +393,5 @@ export function FiltersPage() {
     </div>
   )
 }
+
+

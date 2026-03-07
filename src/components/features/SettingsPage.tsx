@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import * as tauri from '@/lib/tauri'
+import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app.store'
 import { useConfigStore } from '@/stores/config.store'
 import { useDownloadStore } from '@/stores/download.store'
@@ -171,39 +172,46 @@ export function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="space-y-0.5">
-              <Label htmlFor="autostart">Автозапуск с Windows</Label>
-              <p className="text-xs text-muted-foreground">
-                Приложение будет запускаться автоматически при входе в систему
-              </p>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="autostart">Автозапуск с Windows</Label>
+                <p className="text-xs text-muted-foreground">
+                  Приложение будет запускаться автоматически при входе в систему
+                </p>
+              </div>
+              <Switch
+                id="autostart"
+                checked={autostartEnabled}
+                disabled={autostartLoading}
+                onCheckedChange={handleAutostartChange}
+              />
             </div>
-            <Switch
-              id="autostart"
-              checked={autostartEnabled}
-              disabled={autostartLoading}
-              onCheckedChange={handleAutostartChange}
-            />
-          </div>
 
-          <div
-            className={[
-              'flex items-center justify-between gap-4 rounded-lg px-1 py-1 transition-opacity',
-              (!autostartEnabled || autostartLoading) && 'opacity-50',
-            ].join(' ')}
-          >
-            <div className="space-y-0.5">
-              <Label htmlFor="launch-to-tray">Запускать свернутым в трей</Label>
-              <p className="text-xs text-muted-foreground">
-                При старте приложения основное окно будет скрыто, а доступ останется через иконку в трее. Доступно только вместе с автозапуском
-              </p>
+            <div
+              className={cn(
+                'grid transition-all duration-200 ease-out',
+                autostartEnabled ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
+              )}
+              aria-hidden={!autostartEnabled}
+            >
+              <div className="overflow-hidden">
+                <div className="flex items-center justify-between gap-4 border-l border-border/60 pl-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="launch-to-tray">Запускать свернутым в трей</Label>
+                    <p className="text-xs text-muted-foreground">
+                      При старте приложения основное окно будет скрыто, а доступ останется через иконку в трее
+                    </p>
+                  </div>
+                  <Switch
+                    id="launch-to-tray"
+                    checked={config.launchToTray ?? false}
+                    disabled={autostartLoading}
+                    onCheckedChange={setLaunchToTray}
+                  />
+                </div>
+              </div>
             </div>
-            <Switch
-              id="launch-to-tray"
-              checked={autostartEnabled && (config.launchToTray ?? false)}
-              disabled={!autostartEnabled || autostartLoading}
-              onCheckedChange={setLaunchToTray}
-            />
           </div>
 
           <div className="flex items-center justify-between gap-4">
@@ -237,7 +245,7 @@ export function SettingsPage() {
                 value={config.global_ports.tcp}
                 onChange={e =>
                   setGlobalPorts({ ...config.global_ports, tcp: e.target.value })}
-                placeholder="80,443"
+                placeholder="1-65535"
               />
             </div>
             <div className="space-y-2">
@@ -352,7 +360,3 @@ export function SettingsPage() {
     </div>
   )
 }
-
-
-
-

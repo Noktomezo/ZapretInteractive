@@ -15,8 +15,8 @@
         "title": "Zapret Interactive",
         "width": 900,
         "height": 700,
-        "minWidth": 800,
-        "minHeight": 500,
+        "minWidth": 900,
+        "minHeight": 700,
         "center": true,
         "decorations": false,
         "shadow": true
@@ -32,3 +32,4 @@
     "icon": ["icons/100x100.png", "icons/icon.ico"]
   }
 }
+

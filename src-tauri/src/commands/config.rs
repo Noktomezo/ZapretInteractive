@@ -14,7 +14,7 @@ pub struct GlobalPorts {
 impl Default for GlobalPorts {
     fn default() -> Self {
         Self {
-            tcp: "80,443".to_string(),
+            tcp: "1-65535".to_string(),
             udp: "1-65535".to_string(),
         }
     }
@@ -254,3 +254,4 @@ pub fn resolve_placeholders(content: String, placeholders: Vec<Placeholder>) -> 
 
     result
 }
+
