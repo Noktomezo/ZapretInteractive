@@ -96,23 +96,23 @@ export function PlaceholdersPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-6 h-6 animate-spin" />
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Плейсхолдеры</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="mt-1 text-sm text-muted-foreground">
             Замена плейсхолдеров на пути к бинарным файлам
           </p>
         </div>
         <Button variant="outline" size="icon" onClick={() => tauri.openZapretDirectory()} title="Открыть папку ~/.zapret">
-          <FolderOpen className="w-4 h-4" />
+          <FolderOpen className="h-4 w-4" />
         </Button>
       </div>
 
@@ -120,7 +120,7 @@ export function PlaceholdersPage() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Таблица плейсхолдеров</CardTitle>
           <Button size="sm" onClick={() => setAddOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
+            <Plus className="mr-2 h-4 w-4" />
             Добавить
           </Button>
         </CardHeader>
@@ -150,10 +150,10 @@ export function PlaceholdersPage() {
                           {placeholder.name}
                           {'}}'}
                         </TableCell>
-                        <TableCell className="font-mono text-muted-foreground max-w-0 w-full">
+                        <TableCell className="max-w-0 w-full font-mono text-muted-foreground">
                           <div className="relative overflow-hidden whitespace-nowrap" title={placeholder.path}>
                             {placeholder.path}
-                            <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-card to-transparent pointer-events-none" />
+                            <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-card to-transparent" />
                           </div>
                         </TableCell>
                         <TableCell>
@@ -161,16 +161,18 @@ export function PlaceholdersPage() {
                             <Button
                               variant="ghost"
                               size="sm"
+                              className="bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300"
                               onClick={() => handleEdit(index, placeholder)}
                             >
-                              <Pencil className="w-4 h-4" />
+                              <Pencil className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
+                              className="bg-red-500/10 text-red-600 hover:bg-red-500/20 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                               onClick={() => handleDelete(index)}
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -187,7 +189,7 @@ export function PlaceholdersPage() {
           <DialogHeader>
             <DialogTitle>Новый плейсхолдер</DialogTitle>
           </DialogHeader>
-          <div className="py-4 space-y-4">
+          <div className="space-y-4 py-4">
             <Input
               placeholder="Название (например TLS_CLIENTHELLO_GOOGLE)"
               value={newName}
@@ -213,7 +215,7 @@ export function PlaceholdersPage() {
           <DialogHeader>
             <DialogTitle>Редактировать плейсхолдер</DialogTitle>
           </DialogHeader>
-          <div className="py-4 space-y-4">
+          <div className="space-y-4 py-4">
             <Input
               placeholder="Название"
               value={editName}

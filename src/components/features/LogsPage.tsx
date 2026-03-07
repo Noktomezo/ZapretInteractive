@@ -3,15 +3,17 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useConnectionStore } from '@/stores/connection.store'
 
+const logTimestampFormatter = new Intl.DateTimeFormat('ru-RU', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+})
+
 function formatLogTimestamp(timestamp: number) {
-  return new Intl.DateTimeFormat('ru-RU', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }).format(new Date(timestamp))
+  return logTimestampFormatter.format(new Date(timestamp))
 }
 
 export function LogsPage() {
@@ -20,7 +22,7 @@ export function LogsPage() {
   return (
     <div className="flex h-full min-h-0 flex-col p-6">
       <div className="flex items-center justify-between gap-4">
-        <div className="">
+        <div>
           <h1 className="text-2xl font-semibold">Логи</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Журнал запуска, остановки и внутренних событий подключения.
@@ -63,4 +65,3 @@ export function LogsPage() {
     </div>
   )
 }
-

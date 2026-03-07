@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { PanelLeft } from 'lucide-react'
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type SidebarContextValue = {
@@ -168,18 +168,19 @@ function SidebarMenuButton({
 }
 
 function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<'button'>) {
-  const { toggleSidebar } = useSidebar()
+  const { open, toggleSidebar } = useSidebar()
+  const Icon = open ? PanelLeftClose : PanelLeftOpen
 
   return (
     <button
       data-slot="sidebar-trigger"
       type="button"
-      className={cn('inline-flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground', className)}
+      className={cn('inline-flex size-9 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground', className)}
       onClick={composeEventHandlers(() => toggleSidebar(), onClick)}
       {...props}
     >
-      <PanelLeft className="size-4" />
-      <span className="sr-only">Toggle Sidebar</span>
+      <Icon className="size-4" aria-hidden="true" />
+      <span className="sr-only">{open ? 'Collapse Sidebar' : 'Expand Sidebar'}</span>
     </button>
   )
 }

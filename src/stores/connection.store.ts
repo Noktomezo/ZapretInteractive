@@ -17,6 +17,7 @@ interface ConnectionStore {
   error: string | null
   recovered: boolean
 
+  updateTrayState: (connected: boolean) => Promise<void>
   checkStatus: () => Promise<void>
   connect: () => Promise<void>
   disconnect: () => Promise<void>
@@ -28,22 +29,22 @@ interface ConnectionStore {
   initTrayListener: () => () => void
 }
 
-async function updateTrayState(connected: boolean) {
-  try {
-    await tauri.setConnectedState(connected)
-  }
-  catch (e) {
-    console.error('Failed to update tray state:', connected, e)
-    useConnectionStore.getState().addLog(`Не удалось обновить состояние трея: ${e}`)
-  }
-}
-
 export const useConnectionStore = create<ConnectionStore>((set, get) => ({
   status: 'disconnected',
   pid: null,
   logs: [],
   error: null,
   recovered: false,
+
+  updateTrayState: async (connected: boolean) => {
+    try {
+      await tauri.setConnectedState(connected)
+    }
+    catch (e) {
+      console.error('Failed to update tray state:', connected, e)
+      get().addLog(`Не удалось обновить состояние трея: ${e}`)
+    }
+  },
 
   checkStatus: async () => {
     get().addLog('Проверяю текущее состояние winws.exe')
@@ -54,17 +55,17 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
         const pid = await tauri.getRunningPid()
         set({ status: 'connected', pid })
         get().addLog(`Найден активный процесс winws.exe (PID: ${pid})`)
-        updateTrayState(true)
+        get().updateTrayState(true)
       }
       else {
         set({ status: 'disconnected', pid: null })
         get().addLog('Активный процесс winws.exe не найден')
-        updateTrayState(false)
+        get().updateTrayState(false)
       }
     }
     catch (e) {
       set({ status: 'disconnected', pid: null })
-      updateTrayState(false)
+      get().updateTrayState(false)
       get().addLog(`Ошибка проверки состояния процесса: ${e}`)
     }
   },
@@ -111,12 +112,12 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
         config.global_ports.udp,
       )
       set({ status: 'connected', pid })
-      updateTrayState(true)
+      get().updateTrayState(true)
       get().addLog(`Подключение установлено, PID: ${pid}`)
     }
     catch (e) {
       set({ status: 'error', error: String(e) })
-      updateTrayState(false)
+      get().updateTrayState(false)
       get().addLog(`Ошибка подключения: ${e}`)
     }
   },
@@ -136,12 +137,12 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
         await tauri.killWindivertService()
       }
       set({ status: 'disconnected', pid: null })
-      updateTrayState(false)
+      get().updateTrayState(false)
       get().addLog('Подключение остановлено')
     }
     catch (e) {
       set({ status: 'error', error: String(e) })
-      updateTrayState(false)
+      get().updateTrayState(false)
       get().addLog(`Ошибка отключения: ${e}`)
     }
   },
@@ -168,7 +169,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     if (recovered) {
       set({ recovered: true, status: 'connected' })
       get().addLog('Восстановлено состояние уже запущенного подключения')
-      updateTrayState(true)
+      get().updateTrayState(true)
     }
     else {
       set({ recovered: false })

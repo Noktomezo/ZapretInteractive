@@ -21,8 +21,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import * as tauri from '@/lib/tauri'
 import { cn } from '@/lib/utils'
+import * as tauri from '@/lib/tauri'
 import { useAppStore } from '@/stores/app.store'
 import { useConfigStore } from '@/stores/config.store'
 import { useDownloadStore } from '@/stores/download.store'
@@ -81,24 +81,62 @@ export function SettingsPage() {
   }, [])
 
   useEffect(() => {
+    let isMounted = true
+
     const init = async () => {
-      await load()
-      isInitialLoadRef.current = false
-      const [dir, autostart] = await Promise.all([
-        tauri.getZapretDirectory(),
-        tauri.isAutostartEnabled().catch(() => false),
-      ])
-      setZapretDir(dir)
-      setAutostartEnabled(autostart)
-      setAutostartLoading(false)
+      try {
+        await load()
+
+        try {
+          const dir = await tauri.getZapretDirectory()
+          if (isMounted)
+            setZapretDir(dir)
+        }
+        catch (e) {
+          if (isMounted)
+            toast.error(`Ошибка получения директории Zapret: ${e}`)
+        }
+
+        try {
+          const autostart = await tauri.isAutostartEnabled()
+          if (isMounted)
+            setAutostartEnabled(autostart)
+        }
+        catch {
+          if (isMounted)
+            setAutostartEnabled(false)
+        }
+      }
+      finally {
+        if (isMounted) {
+          isInitialLoadRef.current = false
+          setAutostartLoading(false)
+        }
+      }
     }
-    init()
+
+    init().catch((e) => {
+      if (isMounted)
+        toast.error(`Ошибка инициализации настроек: ${e}`)
+    })
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   useEffect(() => {
-    if (config && !isInitialLoadRef.current)
-      save()
-  }, [config])
+    let isMounted = true
+    if (config && !isInitialLoadRef.current) {
+      save().catch((e) => {
+        if (isMounted)
+          toast.error(`Ошибка сохранения настроек: ${e}`)
+      })
+    }
+    return () => {
+      isMounted = false
+    }
+  }, [config, save])
 
   const handleDownloadBinaries = async () => {
     setDownloading(true)
@@ -124,6 +162,7 @@ export function SettingsPage() {
   }
 
   const handleAutostartChange = async (checked: boolean) => {
+    setAutostartLoading(true)
     setAutostartEnabled(checked)
     try {
       await tauri.setAutostartEnabled(checked)
@@ -132,6 +171,9 @@ export function SettingsPage() {
     catch (e) {
       setAutostartEnabled(!checked)
       toast.error(`Ошибка настройки автозапуска: ${e}`)
+    }
+    finally {
+      setAutostartLoading(false)
     }
   }
 
@@ -188,30 +230,30 @@ export function SettingsPage() {
               />
             </div>
 
-            <div
-              className={cn(
-                'grid transition-all duration-200 ease-out',
-                autostartEnabled ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
-              )}
-              aria-hidden={!autostartEnabled}
-            >
-              <div className="overflow-hidden">
-                <div className="flex items-center justify-between gap-4 border-l border-border/60 pl-4">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="launch-to-tray">Запускать свернутым в трей</Label>
-                    <p className="text-xs text-muted-foreground">
-                      При старте приложения основное окно будет скрыто, а доступ останется через иконку в трее
-                    </p>
+            {autostartEnabled && (
+              <div
+                className={cn(
+                  'grid grid-rows-[1fr] opacity-100 transition-all duration-200 ease-out',
+                )}
+              >
+                <div className="overflow-hidden">
+                  <div className="flex items-center justify-between gap-4 border-l border-border/60 pl-4">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="launch-to-tray">Запускать свернутым в трей</Label>
+                      <p className="text-xs text-muted-foreground">
+                        При старте приложения основное окно будет скрыто, а доступ останется через иконку в трее
+                      </p>
+                    </div>
+                    <Switch
+                      id="launch-to-tray"
+                      checked={config.launchToTray ?? false}
+                      disabled={autostartLoading}
+                      onCheckedChange={setLaunchToTray}
+                    />
                   </div>
-                  <Switch
-                    id="launch-to-tray"
-                    checked={config.launchToTray ?? false}
-                    disabled={autostartLoading}
-                    onCheckedChange={setLaunchToTray}
-                  />
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
           <div className="flex items-center justify-between gap-4">

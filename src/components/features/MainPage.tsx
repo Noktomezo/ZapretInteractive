@@ -64,7 +64,6 @@ export function MainPage() {
 
     const unlistenError = listen<string>('download-error', (event) => {
       console.error('Download error:', event.payload)
-      toast.error(`Ошибка загрузки файлов: ${event.payload}`)
       reset()
     })
 

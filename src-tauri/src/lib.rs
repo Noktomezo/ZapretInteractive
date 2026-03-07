@@ -125,8 +125,8 @@ pub fn run() {
 
             if let Some(window) = app.get_webview_window("main") {
                 let window_clone = window.clone();
+                let app_handle = app.handle().clone();
                 let state = app.state::<config::AppState>();
-                let minimize_to_tray = should_minimize_to_tray(&state);
                 let launch_to_tray = state
                     .config
                     .lock()
@@ -137,7 +137,8 @@ pub fn run() {
                 }
                 window.on_window_event(move |event| {
                     if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                        if minimize_to_tray {
+                        let state = app_handle.state::<config::AppState>();
+                        if should_minimize_to_tray(&state) {
                             api.prevent_close();
                             let _ = window_clone.hide();
                         }
@@ -246,6 +247,8 @@ fn set_autostart_enabled(app: tauri::AppHandle, enabled: bool) -> Result<(), Str
         Ok(())
     }
 }
+
+
 
 
 

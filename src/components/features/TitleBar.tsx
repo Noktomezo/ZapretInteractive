@@ -34,6 +34,8 @@ export function TitleBar() {
       <div className="flex-1" data-tauri-drag-region />
       <div className="flex items-center gap-2">
         <button
+          type="button"
+          aria-label="Minimize"
           onClick={handleMinimize}
           className="group flex size-4 items-center justify-center rounded-full bg-yellow-500/90 transition-colors hover:bg-yellow-400"
           title="Minimize"
@@ -43,6 +45,8 @@ export function TitleBar() {
           </svg>
         </button>
         <button
+          type="button"
+          aria-label={isMaximized ? 'Restore' : 'Maximize'}
           onClick={handleMaximize}
           className="group flex size-4 items-center justify-center rounded-full bg-green-500/90 transition-colors hover:bg-green-400"
           title={isMaximized ? 'Restore' : 'Maximize'}
@@ -60,6 +64,8 @@ export function TitleBar() {
               )}
         </button>
         <button
+          type="button"
+          aria-label="Close"
           onClick={handleClose}
           className="group flex size-4 items-center justify-center rounded-full bg-red-500/90 transition-colors hover:bg-red-400"
           title="Close"
@@ -72,4 +78,3 @@ export function TitleBar() {
     </header>
   )
 }
-

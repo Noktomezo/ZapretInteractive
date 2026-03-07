@@ -29,7 +29,7 @@ import { Textarea } from '@/components/ui/textarea'
 import * as tauri from '@/lib/tauri'
 import { useConfigStore } from '@/stores/config.store'
 
-type FilterDraft = {
+interface FilterDraft {
   name: string
   filename: string
   content: string
@@ -41,6 +41,14 @@ const emptyDraft: FilterDraft = {
   content: '',
 }
 
+const reservedBundledFilenames = new Set([
+  'windivert_part.dht.txt',
+  'windivert_part.discord_media.txt',
+  'windivert_part.quic_initial_ietf.txt',
+  'windivert_part.stun.txt',
+  'windivert_part.wireguard.txt',
+])
+
 export function FiltersPage() {
   const { config, loading, load, save, setFilters } = useConfigStore()
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -48,13 +56,16 @@ export function FiltersPage() {
   const [editingFilterId, setEditingFilterId] = useState<string | null>(null)
   const [draft, setDraft] = useState<FilterDraft>(emptyDraft)
   const [editLoading, setEditLoading] = useState(false)
+  const [editLoadSucceeded, setEditLoadSucceeded] = useState(false)
+  const [currentLoadId, setCurrentLoadId] = useState<string | null>(null)
+  const currentLoadIdRef = useRef<string | null>(null)
   const isInitialLoadRef = useRef(true)
 
   useEffect(() => {
     load().then(() => {
       isInitialLoadRef.current = false
     })
-  }, [])
+  }, [load])
 
   useEffect(() => {
     if (config && !isInitialLoadRef.current) {
@@ -62,16 +73,44 @@ export function FiltersPage() {
         toast.error(`Ошибка сохранения фильтров: ${e instanceof Error ? e.message : String(e)}`)
       })
     }
-  }, [config])
+  }, [config, save])
 
   const resetDraft = () => {
     setDraft(emptyDraft)
     setEditingFilterId(null)
     setEditLoading(false)
+    setEditLoadSucceeded(false)
+    setCurrentLoadId(null)
+    currentLoadIdRef.current = null
   }
 
   const updateDraft = (updates: Partial<FilterDraft>) => {
     setDraft(prev => ({ ...prev, ...updates }))
+  }
+
+  const validateFilename = (filename: string, currentFilename?: string) => {
+    const normalized = filename.trim()
+    if (!normalized) {
+      toast.error('Укажите имя файла фильтра')
+      return false
+    }
+
+    const existingFilters = useConfigStore.getState().config?.filters || []
+    const hasCollision = existingFilters.some(filter =>
+      filter.filename === normalized && filter.filename !== currentFilename,
+    )
+
+    if (hasCollision) {
+      toast.error('Фильтр с таким именем файла уже существует')
+      return false
+    }
+
+    if (reservedBundledFilenames.has(normalized) && normalized !== currentFilename) {
+      toast.error('Это имя файла зарезервировано встроенным фильтром')
+      return false
+    }
+
+    return true
   }
 
   const handleToggleFilter = (filterId: string) => {
@@ -86,17 +125,19 @@ export function FiltersPage() {
     if (!draft.name.trim() || !draft.filename.trim())
       return
 
+    const nextFilename = draft.filename.trim()
+    if (!validateFilename(nextFilename))
+      return
+
     try {
       const newFilter: FilterType = {
         id: `filter-${crypto.randomUUID()}`,
         name: draft.name.trim(),
-        filename: draft.filename.trim(),
+        filename: nextFilename,
         active: true,
       }
 
-      if (draft.content.trim()) {
-        await tauri.saveFilterFile(draft.filename.trim(), draft.content)
-      }
+      await tauri.saveFilterFile(nextFilename, draft.content)
 
       const currentFilters = useConfigStore.getState().config?.filters || []
       setFilters([...currentFilters, newFilter])
@@ -110,9 +151,13 @@ export function FiltersPage() {
   }
 
   const openEditDialog = async (filter: FilterType) => {
+    const loadId = crypto.randomUUID()
+    currentLoadIdRef.current = loadId
+    setCurrentLoadId(loadId)
     setEditingFilterId(filter.id)
     setEditDialogOpen(true)
     setEditLoading(true)
+    setEditLoadSucceeded(false)
     setDraft({
       name: filter.name,
       filename: filter.filename,
@@ -121,22 +166,32 @@ export function FiltersPage() {
 
     try {
       const content = await tauri.loadFilterFile(filter.filename)
+      if (currentLoadIdRef.current !== loadId) {
+        return
+      }
+
       setDraft({
         name: filter.name,
         filename: filter.filename,
         content,
       })
+      setEditLoadSucceeded(true)
     }
     catch (e) {
-      toast.error(`Ошибка загрузки фильтра: ${e instanceof Error ? e.message : String(e)}`)
+      if (currentLoadIdRef.current === loadId) {
+        setEditLoadSucceeded(false)
+        toast.error(`Ошибка загрузки фильтра: ${e instanceof Error ? e.message : String(e)}`)
+      }
     }
     finally {
-      setEditLoading(false)
+      if (currentLoadIdRef.current === loadId) {
+        setEditLoading(false)
+      }
     }
   }
 
   const handleSaveEdit = async () => {
-    if (!editingFilterId || !draft.name.trim() || !draft.filename.trim())
+    if (!editingFilterId || !draft.name.trim() || !draft.filename.trim() || !editLoadSucceeded)
       return
 
     const currentFilters = useConfigStore.getState().config?.filters || []
@@ -144,10 +199,22 @@ export function FiltersPage() {
     if (!targetFilter)
       return
 
+    const nextFilename = draft.filename.trim()
+    if (!validateFilename(nextFilename, targetFilter.filename))
+      return
+
+    const renamed = targetFilter.filename !== nextFilename
+
     try {
-      await tauri.saveFilterFile(draft.filename.trim(), draft.content)
-      if (targetFilter.filename !== draft.filename.trim()) {
-        await tauri.deleteFilterFile(targetFilter.filename)
+      await tauri.saveFilterFile(nextFilename, draft.content)
+      if (renamed) {
+        try {
+          await tauri.deleteFilterFile(targetFilter.filename)
+        }
+        catch (e) {
+          await tauri.deleteFilterFile(nextFilename).catch(() => {})
+          throw e
+        }
       }
 
       const updatedFilters = currentFilters.map(filter =>
@@ -155,7 +222,7 @@ export function FiltersPage() {
           ? {
               ...filter,
               name: draft.name.trim(),
-              filename: draft.filename.trim(),
+              filename: nextFilename,
             }
           : filter,
       )
@@ -235,14 +302,14 @@ export function FiltersPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-muted-foreground"
+                className="h-8 w-8 bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300"
                 onClick={() => openEditDialog(filter)}
               >
                 <Pencil className="h-4 w-4" />
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 bg-red-500/10 text-red-600 hover:bg-red-500/20 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </AlertDialogTrigger>
@@ -250,7 +317,7 @@ export function FiltersPage() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Удалить фильтр?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Фильтр "{filter.name}" будет удалён из списка, а файл {filter.filename} будет удалён с диска.
+                      {`Фильтр "${filter.name}" будет удалён из списка, а файл ${filter.filename} будет удалён с диска.`}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -300,7 +367,7 @@ export function FiltersPage() {
                 id="filter-filename"
                 value={draft.filename}
                 onChange={e => updateDraft({ filename: e.target.value })}
-                placeholder="windivert_part.discord_media.txt"
+                placeholder="my-filter.txt"
               />
             </div>
             <div className="space-y-2">
@@ -359,7 +426,7 @@ export function FiltersPage() {
                   id="edit-filter-filename"
                   value={draft.filename}
                   onChange={e => updateDraft({ filename: e.target.value })}
-                  placeholder="windivert_part.discord_media.txt"
+                  placeholder="my-filter.txt"
                   disabled={editLoading}
                 />
               </div>
@@ -375,7 +442,7 @@ export function FiltersPage() {
                 className="font-mono text-sm"
                 disabled={editLoading}
               />
-              {editLoading && (
+              {editLoading && currentLoadId && (
                 <p className="text-xs text-muted-foreground">Загружаю содержимое файла...</p>
               )}
             </div>
@@ -384,7 +451,7 @@ export function FiltersPage() {
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
               Закрыть
             </Button>
-            <Button onClick={handleSaveEdit} disabled={editLoading || !draft.name.trim() || !draft.filename.trim()}>
+            <Button onClick={handleSaveEdit} disabled={editLoading || !editLoadSucceeded || !draft.name.trim() || !draft.filename.trim()}>
               Сохранить
             </Button>
           </DialogFooter>
@@ -393,5 +460,3 @@ export function FiltersPage() {
     </div>
   )
 }
-
-

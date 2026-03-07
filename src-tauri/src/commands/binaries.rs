@@ -5,6 +5,7 @@ use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter};
@@ -83,6 +84,7 @@ const FILTERS: &[&str] = &[
 
 const LISTS_REFRESH_INTERVAL_SECS: u64 = 60 * 60 * 12;
 const WATCH_DEBOUNCE_MS: u64 = 800;
+static FILES_WATCHER_STARTED: AtomicBool = AtomicBool::new(false);
 
 struct FileToDownload {
     name: String,
@@ -135,11 +137,13 @@ fn calculate_sha256(file_path: &PathBuf) -> Result<String, String> {
     Ok(format!("{:x}", hasher.finalize()))
 }
 
-fn load_stored_hashes() -> HashMap<String, String> {
+fn load_stored_hashes() -> Result<HashMap<String, String>, String> {
     let hashes_path = get_hashes_path();
-    if !hashes_path.exists() { return HashMap::new(); }
-    let content = fs::read_to_string(&hashes_path).unwrap_or_default();
-    serde_json::from_str(&content).unwrap_or_default()
+    if !hashes_path.exists() { return Ok(HashMap::new()); }
+    let content = fs::read_to_string(&hashes_path)
+        .map_err(|e| format!("Failed to read hashes.json: {e}"))?;
+    serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse hashes.json: {e}"))
 }
 
 fn save_stored_hashes(hashes: &HashMap<String, String>) -> Result<(), String> {
@@ -204,16 +208,14 @@ fn binary_names() -> Vec<&'static str> {
 }
 
 fn critical_files_ok() -> Result<bool, String> {
-    let stored_hashes = load_stored_hashes();
+    let stored_hashes = load_stored_hashes()?;
     if !verify_group(&get_zapret_dir(), "binaries", &binary_names(), &stored_hashes)? { return Ok(false); }
     if !verify_group(&get_fake_dir(), "fake", FAKE_FILES, &stored_hashes)? { return Ok(false); }
     if !verify_group(&get_filters_dir(), "filters", FILTERS, &stored_hashes)? { return Ok(false); }
     Ok(true)
 }
 
-fn path_is_inside(path: &Path, dir: &Path) -> bool {
-    path.starts_with(dir)
-}
+fn path_is_inside(path: &Path, dir: &Path) -> bool { path.starts_with(dir) }
 
 fn event_affects_lists(paths: &[PathBuf]) -> bool {
     let lists_dir = get_lists_dir();
@@ -234,6 +236,9 @@ fn event_affects_tracked_files(paths: &[PathBuf]) -> bool {
 
 pub fn start_files_watcher(app: AppHandle) -> Result<(), String> {
     ensure_base_directories()?;
+    if FILES_WATCHER_STARTED.swap(true, Ordering::SeqCst) {
+        return Ok(());
+    }
     let watch_dir = get_zapret_dir();
 
     std::thread::spawn(move || {
@@ -246,12 +251,14 @@ pub fn start_files_watcher(app: AppHandle) -> Result<(), String> {
         ) {
             Ok(watcher) => watcher,
             Err(e) => {
+                FILES_WATCHER_STARTED.store(false, Ordering::SeqCst);
                 let _ = app.emit("files-health-watch-error", format!("Не удалось запустить watcher файлов: {e}"));
                 return;
             }
         };
 
         if let Err(e) = watcher.watch(&watch_dir, RecursiveMode::Recursive) {
+            FILES_WATCHER_STARTED.store(false, Ordering::SeqCst);
             let _ = app.emit("files-health-watch-error", format!("Не удалось подписаться на каталог файлов: {e}"));
             return;
         }
@@ -368,7 +375,7 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
     let fake_dir = get_fake_dir();
     let filters_dir = get_filters_dir();
     let client = create_http_client()?;
-    let mut hashes = load_stored_hashes();
+    let mut hashes = load_stored_hashes()?;
     let mut files_to_download: Vec<FileToDownload> = vec![];
 
     for (name, url) in BINARIES {
@@ -457,7 +464,17 @@ pub fn save_filter_file(filename: String, content: String) -> Result<(), String>
     if !filters_dir.exists() {
         fs::create_dir_all(&filters_dir).map_err(|e| e.to_string())?;
     }
-    fs::write(filters_dir.join(&filename), content).map_err(|e| e.to_string())?;
+
+    let file_path = filters_dir.join(&filename);
+    fs::write(&file_path, content).map_err(|e| e.to_string())?;
+
+    if FILTERS.contains(&filename.as_str()) {
+        let mut hashes = load_stored_hashes()?;
+        let hash = calculate_sha256(&file_path)?;
+        hashes.insert(hash_key("filters", &filename), hash);
+        save_stored_hashes(&hashes)?;
+    }
+
     Ok(())
 }
 

@@ -5,6 +5,8 @@ import { useConfigStore } from './config.store'
 import { useConnectionStore } from './connection.store'
 import { useThemeStore } from './theme.store'
 
+let shutdownCleanupRegistered = false
+
 interface AppStore {
   initialized: boolean
   initializing: boolean
@@ -16,6 +18,7 @@ interface AppStore {
 
   initialize: () => Promise<void>
   setBinariesOk: (ok: boolean) => void
+  teardownFilesWatcher: () => void
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
@@ -26,6 +29,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
   timestampsOk: null,
   initializePromise: null,
   filesWatcherCleanup: null,
+  teardownFilesWatcher: () => {
+    const cleanup = get().filesWatcherCleanup
+    if (cleanup) {
+      cleanup()
+      set({ filesWatcherCleanup: null })
+    }
+  },
 
   initialize: async () => {
     if (get().initialized)
@@ -36,6 +46,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
     const initializePromise = (async () => {
       set({ initializing: true })
+
+      if (!shutdownCleanupRegistered && typeof window !== 'undefined') {
+        shutdownCleanupRegistered = true
+        window.addEventListener('beforeunload', () => {
+          get().teardownFilesWatcher()
+        })
+      }
 
       useConnectionStore.getState().addLog('Запускаю инициализацию приложения')
       useThemeStore.getState().initTheme()
