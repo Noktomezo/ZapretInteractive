@@ -1,5 +1,4 @@
 import { createRouter, RouterProvider } from '@tanstack/react-router'
-import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { Route as rootRoute } from './routes/__root'
 import { Route as filtersRoute } from './routes/filters'
@@ -28,7 +27,5 @@ declare module '@tanstack/react-router' {
 }
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <React.StrictMode>
-    <RouterProvider router={router} />
-  </React.StrictMode>,
+  <RouterProvider router={router} />,
 )

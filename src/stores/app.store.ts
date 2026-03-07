@@ -6,9 +6,11 @@ import { useThemeStore } from './theme.store'
 
 interface AppStore {
   initialized: boolean
+  initializing: boolean
   isElevated: boolean | null
   binariesOk: boolean | null
   timestampsOk: boolean | null
+  initializePromise: Promise<void> | null
 
   initialize: () => Promise<void>
   setBinariesOk: (ok: boolean) => void
@@ -16,45 +18,60 @@ interface AppStore {
 
 export const useAppStore = create<AppStore>((set, get) => ({
   initialized: false,
+  initializing: false,
   isElevated: null,
   binariesOk: null,
   timestampsOk: null,
+  initializePromise: null,
 
   initialize: async () => {
     if (get().initialized)
       return
 
-    useThemeStore.getState().initTheme()
-    useConnectionStore.getState().initTrayListener()
+    if (get().initializePromise)
+      return get().initializePromise!
 
-    const elevated = await tauri.isElevated()
-    set({ isElevated: elevated })
+    const initializePromise = (async () => {
+      set({ initializing: true })
 
-    if (elevated) {
-      const timestamps = await tauri.checkTcpTimestamps()
-      set({ timestampsOk: timestamps })
+      useThemeStore.getState().initTheme()
+      useConnectionStore.getState().initTrayListener()
 
-      if (!timestamps) {
-        await tauri.enableTcpTimestamps()
-        useConnectionStore.getState().addLog('TCP timestamps включены')
-        set({ timestampsOk: true })
+      const elevated = await tauri.isElevated()
+      set({ isElevated: elevated })
+
+      if (elevated) {
+        const timestamps = await tauri.checkTcpTimestamps()
+        set({ timestampsOk: timestamps })
+
+        if (!timestamps) {
+          await tauri.enableTcpTimestamps()
+          useConnectionStore.getState().addLog('TCP timestamps включены')
+          set({ timestampsOk: true })
+        }
+
+        await useConfigStore.getState().load()
+        const binaries = await tauri.verifyBinaries()
+        set({ binariesOk: binaries })
+
+        const orphanPid = await tauri.checkAndRecoverOrphan()
+        if (orphanPid) {
+          useConnectionStore.getState().setRecovered(true)
+          useConnectionStore.getState().addLog(`Обнаружен запущенный процесс winws.exe (PID: ${orphanPid})`)
+        }
+        else {
+          await useConnectionStore.getState().checkStatus()
+        }
       }
 
-      await useConfigStore.getState().load()
-      const binaries = await tauri.verifyBinaries()
-      set({ binariesOk: binaries })
+      set({ initialized: true, initializing: false, initializePromise: null })
+    })().catch((error) => {
+      set({ initializing: false, initializePromise: null })
+      throw error
+    })
 
-      const orphanPid = await tauri.checkAndRecoverOrphan()
-      if (orphanPid) {
-        useConnectionStore.getState().setRecovered(true)
-        useConnectionStore.getState().addLog(`Обнаружен запущенный процесс winws.exe (PID: ${orphanPid})`)
-      }
-      else {
-        await useConnectionStore.getState().checkStatus()
-      }
-    }
-
-    set({ initialized: true })
+    set({ initializePromise })
+    return initializePromise
   },
 
   setBinariesOk: ok => set({ binariesOk: ok }),

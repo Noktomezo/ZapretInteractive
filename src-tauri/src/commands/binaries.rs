@@ -1,16 +1,13 @@
-use crate::config::get_zapret_dir;
 use sha2::{Digest, Sha256};
+use crate::commands::process::kill_windivert_service;
+use crate::config::get_zapret_dir;
 use std::fs;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 
-#[cfg(windows)]
-use std::os::windows::process::CommandExt;
 
-#[cfg(windows)]
-const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[derive(Clone, serde::Serialize)]
 struct DownloadProgress {
@@ -287,16 +284,8 @@ pub fn verify_binaries() -> Result<bool, String> {
 pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
     #[cfg(windows)]
     {
-        let _ = std::process::Command::new("sc")
-            .args(["stop", "WinDivert"])
-            .creation_flags(CREATE_NO_WINDOW)
-            .output();
-        std::thread::sleep(std::time::Duration::from_millis(500));
-        let _ = std::process::Command::new("sc")
-            .args(["delete", "WinDivert"])
-            .creation_flags(CREATE_NO_WINDOW)
-            .output();
-        std::thread::sleep(std::time::Duration::from_millis(500));
+        let _ = kill_windivert_service();
+        std::thread::sleep(std::time::Duration::from_millis(300));
     }
     
     let dir = get_zapret_dir();
@@ -532,3 +521,4 @@ pub fn open_zapret_directory(app: AppHandle) -> Result<(), String> {
         .open_path(path, None::<&str>)
         .map_err(|e| e.to_string())
 }
+

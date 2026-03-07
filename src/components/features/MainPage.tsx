@@ -336,8 +336,7 @@ export function MainPage() {
                     )
                   : (
                       logs.map((log, i) => (
-                        <p key={i} className="text-zinc-300">`r`n                          {log}
-                        </p>
+                        <p key={i} className="text-zinc-300">{log}</p>
                       ))
                     )}
               </div>
@@ -348,6 +347,3 @@ export function MainPage() {
     </div>
   )
 }
-
-
-
