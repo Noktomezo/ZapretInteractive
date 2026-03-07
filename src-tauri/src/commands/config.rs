@@ -249,8 +249,7 @@ pub fn resolve_placeholders(content: String, placeholders: Vec<Placeholder>) -> 
                 }
             }
             path.to_string_lossy().to_string()
-        }
-        else {
+        } else {
             placeholder.path.clone()
         };
 

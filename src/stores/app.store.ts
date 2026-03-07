@@ -86,7 +86,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
         useConnectionStore.getState().addLog('Загружаю конфигурацию')
         await useConfigStore.getState().load()
-        useConnectionStore.getState().addLog('Конфигурация загружена')
+        if (useConfigStore.getState().config) {
+          useConnectionStore.getState().addLog('Конфигурация загружена')
+        }
+        else {
+          useConnectionStore.getState().addLog('Не удалось загрузить конфигурацию')
+        }
 
         const binaries = await tauri.verifyBinaries()
         set({ binariesOk: binaries })

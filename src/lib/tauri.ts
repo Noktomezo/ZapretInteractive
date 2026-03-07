@@ -2,6 +2,8 @@ import type { AppConfig, ListMode } from './types'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 
+const ZAPRET_SUFFIX_RE = /\.zapret$/
+
 export interface FileHealthChangedPayload {
   binaries_ok: boolean
   lists_changed: boolean
@@ -13,7 +15,7 @@ export const loadConfig = (): Promise<AppConfig> => invoke('load_config')
 export const saveConfig = (config: AppConfig): Promise<void> => invoke('save_config', { config })
 export const resetConfig = (): Promise<AppConfig> => invoke('reset_config')
 export const getZapretDirectory = (): Promise<string> => invoke('get_zapret_directory')
-export const getHomeDirectory = (): Promise<string> => invoke<string>('get_zapret_directory').then((dir: string) => dir.replace(/\.zapret$/, ''))
+export const getHomeDirectory = (): Promise<string> => invoke<string>('get_zapret_directory').then((dir: string) => dir.replace(ZAPRET_SUFFIX_RE, ''))
 export const verifyBinaries = (): Promise<boolean> => invoke('verify_binaries')
 export const downloadBinaries = async (): Promise<void> => invoke('download_binaries')
 export const refreshListsIfStale = (): Promise<number> => invoke('refresh_lists_if_stale')
