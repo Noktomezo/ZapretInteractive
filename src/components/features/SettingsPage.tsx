@@ -189,7 +189,7 @@ export function SettingsPage() {
           <div
             className={[
               'flex items-center justify-between gap-4 rounded-lg px-1 py-1 transition-opacity',
-              !autostartEnabled && 'opacity-50',
+              (!autostartEnabled || autostartLoading) && 'opacity-50',
             ].join(' ')}
           >
             <div className="space-y-0.5">
@@ -201,7 +201,7 @@ export function SettingsPage() {
             <Switch
               id="launch-to-tray"
               checked={autostartEnabled && (config.launchToTray ?? false)}
-              disabled={!autostartEnabled}
+              disabled={!autostartEnabled || autostartLoading}
               onCheckedChange={setLaunchToTray}
             />
           </div>
@@ -257,7 +257,7 @@ export function SettingsPage() {
         <CardHeader>
           <CardTitle className="text-lg">Бинарные файлы</CardTitle>
           <CardDescription>
-            WinDivert, winws.exe, cygwin1.dll
+            WinDivert, winws.exe, fake-файлы и фильтры
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -352,5 +352,7 @@ export function SettingsPage() {
     </div>
   )
 }
+
+
 
 

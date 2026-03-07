@@ -152,6 +152,8 @@ pub fn run() {
                 submenu: listmode_submenu_clone,
             });
 
+            binaries::start_files_watcher(app.handle().clone())?;
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -165,6 +167,7 @@ pub fn run() {
             config::update_list_mode,
             binaries::verify_binaries,
             binaries::download_binaries,
+            binaries::refresh_lists_if_stale,
             binaries::get_binary_path,
             binaries::get_winws_path,
             binaries::get_filters_path,
@@ -243,5 +246,7 @@ fn set_autostart_enabled(app: tauri::AppHandle, enabled: bool) -> Result<(), Str
         Ok(())
     }
 }
+
+
 
 

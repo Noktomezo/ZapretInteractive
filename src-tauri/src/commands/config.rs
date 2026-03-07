@@ -233,7 +233,6 @@ pub fn resolve_placeholders(content: String, placeholders: Vec<Placeholder>) -> 
     let mut result = content;
 
     for placeholder in placeholders {
-        let regex = regex::Regex::new(&format!("\\{{\\{{{}\\}}\\}}", placeholder.name)).unwrap();
         let resolved_path = if placeholder.path.starts_with('~') {
             let relative = &placeholder.path[1..];
             let relative_trimmed = relative.trim_start_matches('/').trim_start_matches('\\');
@@ -244,10 +243,13 @@ pub fn resolve_placeholders(content: String, placeholders: Vec<Placeholder>) -> 
                 }
             }
             path.to_string_lossy().to_string()
-        } else {
+        }
+        else {
             placeholder.path.clone()
         };
-        result = regex.replace_all(&result, &resolved_path).to_string();
+
+        let token = format!("{{{{{}}}}}", placeholder.name);
+        result = result.replace(&token, &resolved_path);
     }
 
     result

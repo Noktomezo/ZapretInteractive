@@ -19,6 +19,16 @@ function useSidebar() {
   return context
 }
 
+function composeEventHandlers<E>(
+  first?: (event: E) => void,
+  second?: (event: E) => void,
+) {
+  return (event: E) => {
+    first?.(event)
+    second?.(event)
+  }
+}
+
 function SidebarProvider({
   defaultOpen = true,
   open: openProp,
@@ -116,6 +126,8 @@ function SidebarMenuButton({
   isActive = false,
   asChild = false,
   children,
+  type = 'button',
+  onClick,
   ...props
 }: React.ComponentProps<'button'> & {
   isActive?: boolean
@@ -132,7 +144,9 @@ function SidebarMenuButton({
     const child = children as React.ReactElement<any>
 
     return React.cloneElement(child, {
+      ...props,
       ...child.props,
+      onClick: composeEventHandlers(onClick, child.props.onClick),
       className: cn(classes, child.props.className),
       'data-slot': 'sidebar-menu-button',
       'data-active': isActive,
@@ -141,9 +155,11 @@ function SidebarMenuButton({
 
   return (
     <button
+      type={type}
       data-slot="sidebar-menu-button"
       data-active={isActive}
       className={classes}
+      onClick={onClick}
       {...props}
     >
       {children}
@@ -151,7 +167,7 @@ function SidebarMenuButton({
   )
 }
 
-function SidebarTrigger({ className, ...props }: React.ComponentProps<'button'>) {
+function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<'button'>) {
   const { toggleSidebar } = useSidebar()
 
   return (
@@ -159,7 +175,7 @@ function SidebarTrigger({ className, ...props }: React.ComponentProps<'button'>)
       data-slot="sidebar-trigger"
       type="button"
       className={cn('inline-flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground', className)}
-      onClick={toggleSidebar}
+      onClick={composeEventHandlers(() => toggleSidebar(), onClick)}
       {...props}
     >
       <PanelLeft className="size-4" />
@@ -168,7 +184,7 @@ function SidebarTrigger({ className, ...props }: React.ComponentProps<'button'>)
   )
 }
 
-function SidebarRail({ className, ...props }: React.ComponentProps<'button'>) {
+function SidebarRail({ className, onClick, ...props }: React.ComponentProps<'button'>) {
   const { open, toggleSidebar } = useSidebar()
 
   return (
@@ -176,7 +192,7 @@ function SidebarRail({ className, ...props }: React.ComponentProps<'button'>) {
       data-slot="sidebar-rail"
       type="button"
       aria-label="Toggle Sidebar"
-      onClick={toggleSidebar}
+      onClick={composeEventHandlers(() => toggleSidebar(), onClick)}
       className={cn('absolute inset-y-0 -right-px hidden w-px cursor-ew-resize bg-sidebar-border opacity-0 transition-opacity group-hover/sidebar-wrapper:opacity-100 md:block', className)}
       {...props}
     >

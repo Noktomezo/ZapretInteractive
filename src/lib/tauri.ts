@@ -2,6 +2,11 @@ import type { AppConfig, ListMode } from './types'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 
+export interface FileHealthChangedPayload {
+  binaries_ok: boolean
+  lists_changed: boolean
+}
+
 export const isElevated = (): Promise<boolean> => invoke('is_elevated')
 export const ensureConfigDir = (): Promise<string> => invoke('ensure_config_dir')
 export const loadConfig = (): Promise<AppConfig> => invoke('load_config')
@@ -11,6 +16,7 @@ export const getZapretDirectory = (): Promise<string> => invoke('get_zapret_dire
 export const getHomeDirectory = (): Promise<string> => invoke<string>('get_zapret_directory').then((dir: string) => dir.replace(/\.zapret$/, ''))
 export const verifyBinaries = (): Promise<boolean> => invoke('verify_binaries')
 export const downloadBinaries = async (): Promise<void> => invoke('download_binaries')
+export const refreshListsIfStale = (): Promise<number> => invoke('refresh_lists_if_stale')
 export const getWinwsPath = (): Promise<string> => invoke('get_winws_path')
 export const startWinws = (args: string[], tcpPorts: string, udpPorts: string): Promise<number> => invoke('start_winws', { args, tcpPorts, udpPorts })
 export const stopWinws = (): Promise<void> => invoke('stop_winws')
@@ -77,4 +83,12 @@ export function onTrayConnectToggle(callback: () => void): (() => void) {
 
 export function onListModeChanged(callback: (mode: ListMode) => void): (() => void) {
   return createAsyncListener<ListMode>('list-mode-changed', callback)
+}
+
+export function onFilesHealthChanged(callback: (payload: FileHealthChangedPayload) => void): (() => void) {
+  return createAsyncListener<FileHealthChangedPayload>('files-health-changed', callback)
+}
+
+export function onFilesHealthWatchError(callback: (message: string) => void): (() => void) {
+  return createAsyncListener<string>('files-health-watch-error', callback)
 }

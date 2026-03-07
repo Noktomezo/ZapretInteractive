@@ -5,6 +5,7 @@ import {
   Filter,
   Home,
   Layers,
+  Logs,
   Settings,
 } from 'lucide-react'
 import {
@@ -26,12 +27,15 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
+import { useAppStore } from '@/stores/app.store'
 
 const mainNavItems = [
   { path: '/', label: 'Главная', icon: Home },
-  { path: '/strategies', label: 'Стратегии', icon: Layers },
-  { path: '/filters', label: 'Фильтры', icon: Filter },
-  { path: '/placeholders', label: 'Плейсхолдеры', icon: FileCode },
+  { path: '/strategies', label: 'Стратегии', icon: Layers, requiresFiles: true },
+  { path: '/filters', label: 'Фильтры', icon: Filter, requiresFiles: true },
+  { path: '/placeholders', label: 'Плейсхолдеры', icon: FileCode, requiresFiles: true },
+  { path: '/logs', label: 'Логи', icon: Logs },
 ]
 
 const footerNavItem = { path: '/settings', label: 'Настройки', icon: Settings }
@@ -40,36 +44,60 @@ function SidebarNavItem({
   path,
   label,
   icon: Icon,
+  requiresFiles = false,
 }: {
   path: string
   label: string
   icon: LucideIcon
+  requiresFiles?: boolean
 }) {
   const location = useLocation()
   const currentPath = location.pathname
   const { open } = useSidebar()
+  const binariesOk = useAppStore(state => state.binariesOk)
   const isActive = currentPath === path
+  const isDisabled = requiresFiles && binariesOk === false
+  const tooltipLabel = isDisabled
+    ? `${label} недоступны, пока файлы приложения или фильтры отсутствуют`
+    : label
 
-  const button = (
-    <SidebarMenuButton asChild isActive={isActive}>
-      <Link to={path} className="flex w-full items-center overflow-hidden">
-        <span className="flex size-7 shrink-0 items-center justify-center">
-          <Icon className="size-4 shrink-0" />
+  const content = (
+    <>
+      <span className="flex size-7 shrink-0 items-center justify-center">
+        <Icon className="size-4 shrink-0" />
+      </span>
+      <span className="min-w-0 flex-1 overflow-hidden">
+        <span
+          className={cn(
+            'block whitespace-nowrap text-left transition-[transform,opacity] duration-200 ease-out will-change-transform',
+            open ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0',
+          )}
+          aria-hidden={!open}
+        >
+          {label}
         </span>
-        <span className="min-w-0 flex-1 overflow-hidden">
-          <span
-            className={[
-              'block whitespace-nowrap text-left transition-[transform,opacity] duration-200 ease-out will-change-transform',
-              open ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0',
-            ].join(' ')}
-            aria-hidden={!open}
-          >
-            {label}
-          </span>
-        </span>
-      </Link>
-    </SidebarMenuButton>
+      </span>
+    </>
   )
+
+  const button = isDisabled
+    ? (
+        <SidebarMenuButton
+          isActive={false}
+          disabled
+          aria-label={label}
+          className="cursor-not-allowed opacity-45 hover:bg-transparent hover:text-sidebar-foreground"
+        >
+          {content}
+        </SidebarMenuButton>
+      )
+    : (
+        <SidebarMenuButton asChild isActive={isActive}>
+          <Link to={path} aria-label={label} className="flex w-full items-center overflow-hidden">
+            {content}
+          </Link>
+        </SidebarMenuButton>
+      )
 
   return (
     <SidebarMenuItem>
@@ -78,7 +106,7 @@ function SidebarNavItem({
         : (
             <Tooltip>
               <TooltipTrigger asChild>{button}</TooltipTrigger>
-              <TooltipContent side="right">{label}</TooltipContent>
+              <TooltipContent side="right">{tooltipLabel}</TooltipContent>
             </Tooltip>
           )}
     </SidebarMenuItem>
@@ -117,4 +145,3 @@ export function Sidebar() {
     </AppSidebar>
   )
 }
-
