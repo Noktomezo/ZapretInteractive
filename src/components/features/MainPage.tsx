@@ -136,25 +136,33 @@ export function MainPage() {
               Бинарные файлы, fake-пакеты или фильтры отсутствуют либо повреждены. Обновление выполняется только вручную.
             </p>
           </div>
-          {isDownloading && progress
+          {isDownloading
             ? (
-                <div className="space-y-2">
-                  <div className="h-2 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full bg-primary transition-all duration-300"
-                      style={{
-                        width: `${Math.max(0, Math.min(100, progress.total > 0 ? (progress.current / progress.total) * 100 : 0))}%`,
-                      }}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {progress.current}
-                    /
-                    {progress.total}
-                    :
-                    {progress.filename}
-                  </p>
-                </div>
+                progress
+                  ? (
+                      <div className="space-y-2">
+                        <div className="h-2 overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full bg-primary transition-all duration-300"
+                            style={{
+                              width: `${Math.max(0, Math.min(100, progress.total > 0 ? (progress.current / progress.total) * 100 : 0))}%`,
+                            }}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {progress.current}
+                          /
+                          {progress.total}
+                          :
+                          {progress.filename}
+                        </p>
+                      </div>
+                    )
+                  : (
+                      <Button disabled className="w-full">
+                        Обновление...
+                      </Button>
+                    )
               )
             : (
                 <Button onClick={handleDownloadBinaries} className="w-full">

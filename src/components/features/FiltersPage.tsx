@@ -127,7 +127,9 @@ export function FiltersPage() {
     const updatedFilters = currentFilters.map(filter =>
       filter.id === filterId ? { ...filter, active: !filter.active } : filter,
     )
-    setFilters(updatedFilters)
+    void persistFilters(updatedFilters, currentFilters).catch((e) => {
+      toast.error(`Ошибка сохранения фильтров: ${e instanceof Error ? e.message : String(e)}`)
+    })
   }
 
   const handleCreateFilter = async () => {
@@ -223,7 +225,6 @@ export function FiltersPage() {
 
     const renamed = targetFilter.filename.trim().toLowerCase() !== nextFilename.trim().toLowerCase()
     const originalContent = await tauri.loadFilterFile(targetFilter.filename).catch(() => draft.content)
-
     setEditInFlight(true)
     try {
       await tauri.saveFilterFile(nextFilename, draft.content)

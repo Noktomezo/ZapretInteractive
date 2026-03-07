@@ -5,6 +5,7 @@ import { useConfigStore } from './config.store'
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'disconnecting' | 'error'
 const MAX_LOGS = 500
+let trayUpdatePromise: Promise<void> = Promise.resolve()
 
 export interface LogEntry {
   seq: number
@@ -39,13 +40,19 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
   recovered: false,
 
   updateTrayState: async (connected: boolean) => {
-    try {
-      await tauri.setConnectedState(connected)
-    }
-    catch (e) {
-      console.error('Failed to update tray state:', connected, e)
-      get().addLog(`Не удалось обновить состояние трея: ${e}`)
-    }
+    trayUpdatePromise = trayUpdatePromise
+      .catch(() => {})
+      .then(async () => {
+        try {
+          await tauri.setConnectedState(connected)
+        }
+        catch (e) {
+          console.error('Failed to update tray state:', connected, e)
+          get().addLog(`Не удалось обновить состояние трея: ${e}`)
+        }
+      })
+
+    return trayUpdatePromise
   },
 
   checkStatus: async () => {

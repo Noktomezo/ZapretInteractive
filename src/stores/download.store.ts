@@ -28,38 +28,41 @@ export const useDownloadStore = create<DownloadStore>(set => ({
   initListeners: async () => {
     if (useDownloadStore.getState().listenersInitialized)
       return
+    try {
+      const unlistenStart = await listen('download-start', () => {
+        useDownloadStore.getState().setDownloading(true)
+      })
 
-    set({ listenersInitialized: true })
+      const unlistenProgress = await listen<DownloadProgress>('download-progress', (event) => {
+        useDownloadStore.getState().setProgress(event.payload)
+      })
 
-    const unlistenStart = await listen('download-start', () => {
-      useDownloadStore.getState().setDownloading(true)
-    })
+      const unlistenComplete = await listen('download-complete', async () => {
+        useDownloadStore.getState().reset()
+        try {
+          const binaries = await tauri.verifyBinaries()
+          useAppStore.getState().setBinariesOk(binaries)
+        }
+        catch (e) {
+          useAppStore.getState().setBinariesOk(false)
+          toast.error(`Ошибка проверки файлов: ${e}`)
+        }
+      })
 
-    const unlistenProgress = await listen<DownloadProgress>('download-progress', (event) => {
-      useDownloadStore.getState().setProgress(event.payload)
-    })
+      const unlistenError = await listen<string>('download-error', (event) => {
+        console.error('Download error:', event.payload)
+        useDownloadStore.getState().reset()
+      })
 
-    const unlistenComplete = await listen('download-complete', async () => {
-      useDownloadStore.getState().reset()
-      try {
-        const binaries = await tauri.verifyBinaries()
-        useAppStore.getState().setBinariesOk(binaries)
-      }
-      catch (e) {
-        useAppStore.getState().setBinariesOk(false)
-        toast.error(`Ошибка проверки файлов: ${e}`)
-      }
-    })
-
-    const unlistenError = await listen<string>('download-error', (event) => {
-      console.error('Download error:', event.payload)
-      toast.error(`Ошибка загрузки файлов: ${event.payload}`)
-      useDownloadStore.getState().reset()
-    })
-
-    set({
-      unlistenFns: [unlistenStart, unlistenProgress, unlistenComplete, unlistenError],
-    })
+      set({
+        listenersInitialized: true,
+        unlistenFns: [unlistenStart, unlistenProgress, unlistenComplete, unlistenError],
+      })
+    }
+    catch (e) {
+      useDownloadStore.getState().cleanup()
+      throw e
+    }
   },
   cleanup: () => {
     for (const unlisten of useDownloadStore.getState().unlistenFns)

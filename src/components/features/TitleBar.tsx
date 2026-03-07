@@ -12,7 +12,7 @@ export function TitleBar() {
     const syncMaximizedState = async () => {
       try {
         const maximized = await appWindow.isMaximized()
-        setIsMaximized(prev => (prev === maximized ? prev : maximized))
+        setIsMaximized(maximized)
       }
       catch (error) {
         console.error(error)
@@ -45,7 +45,7 @@ export function TitleBar() {
       data-tauri-drag-region
     >
       <div className="flex items-center gap-2">
-        <Lock className="size-4 shrink-0 text-primary" />
+        <Lock aria-hidden="true" className="size-4 shrink-0 text-primary" />
         <span className="whitespace-nowrap text-sm font-semibold tracking-tight">
           Zapret Interactive
         </span>

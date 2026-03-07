@@ -29,6 +29,12 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Install Just
+        uses: taiki-e/install-action@just
+
+      - name: Run linters
+        run: just lint-front
+
       - name: Generate icons
         run: bun tauri icon assets/app-logo.png
 
@@ -38,7 +44,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'Zapret Interative ${{ github.ref_name }}'
+          releaseName: 'Zapret Interactive ${{ github.ref_name }}'
           releaseBody: GUI-обёртка для zapret-win-bundle от bol-van. Смотри ассеты ниже.
           releaseDraft: true
           prerelease: false

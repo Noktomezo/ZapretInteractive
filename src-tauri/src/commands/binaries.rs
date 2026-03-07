@@ -150,13 +150,26 @@ fn load_stored_hashes() -> Result<HashMap<String, String>, String> {
 
 fn save_stored_hashes(hashes: &HashMap<String, String>) -> Result<(), String> {
     let content = serde_json::to_string_pretty(hashes).map_err(|e| e.to_string())?;
-    fs::write(get_hashes_path(), content).map_err(|e| e.to_string())?;
+    let hashes_path = get_hashes_path();
+    let temp_path = hashes_path.with_extension("json.tmp");
+    let mut temp_file = fs::File::create(&temp_path).map_err(|e| e.to_string())?;
+    use std::io::Write;
+    temp_file.write_all(content.as_bytes()).map_err(|e| e.to_string())?;
+    temp_file.sync_all().map_err(|e| e.to_string())?;
+    fs::rename(temp_path, hashes_path).map_err(|e| e.to_string())?;
     Ok(())
 }
 
 async fn save_stored_hashes_async(hashes: &HashMap<String, String>) -> Result<(), String> {
     let content = serde_json::to_string_pretty(hashes).map_err(|e| e.to_string())?;
-    tokio_fs::write(get_hashes_path(), content).await.map_err(|e| e.to_string())?;
+    let hashes_path = get_hashes_path();
+    let temp_path = hashes_path.with_extension("json.tmp");
+    let mut temp_file = tokio_fs::File::create(&temp_path).await.map_err(|e| e.to_string())?;
+    use tokio::io::AsyncWriteExt;
+    temp_file.write_all(content.as_bytes()).await.map_err(|e| e.to_string())?;
+    temp_file.sync_all().await.map_err(|e| e.to_string())?;
+    drop(temp_file);
+    tokio_fs::rename(temp_path, hashes_path).await.map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -354,7 +367,9 @@ async fn refresh_lists_internal(force: bool) -> Result<usize, String> {
     ensure_base_directories()?;
 
     let lists_dir = get_lists_dir();
-    let state = load_lists_state()?;
+    let state = load_lists_state()
+        .inspect_err(|e| eprintln!("Failed to load lists-state.json, using defaults: {e}"))
+        .unwrap_or_default();
     let now = current_timestamp();
     let all_lists_exist = LISTS.iter().all(|name| lists_dir.join(name).exists());
     let is_stale = state.last_updated_at.map(|last| now.saturating_sub(last) >= LISTS_REFRESH_INTERVAL_SECS).unwrap_or(true);
@@ -383,9 +398,13 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
     #[cfg(windows)]
     {
         if let Err(e) = kill_windivert_service() {
+            if e.contains("does not exist") || e.contains("marked for deletion") {
+                app.emit("download-error", format!("Non-fatal WinDivert service state before download: {e}")).ok();
+            } else {
             let err = format!("Failed to stop WinDivert service before download: {e}");
             app.emit("download-error", err.clone()).ok();
             return Err(err);
+            }
         }
         sleep(Duration::from_millis(300)).await;
     }
@@ -465,7 +484,7 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
     }
 
     app.emit("download-complete", ()).ok();
-    app.notification().builder().title("Готово").body(format!("Обновлено {} файлов приложения", total_files)).show().map_err(|e| e.to_string())?;
+    let _ = app.notification().builder().title("Готово").body(format!("Обновлено {} файлов приложения", total_files)).show();
     Ok(())
 }
 

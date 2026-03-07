@@ -48,6 +48,11 @@ export function LogsPage() {
     if (!viewport)
       return
 
+    if (logs.length === 0) {
+      setHasUnreadLogs(false)
+      return
+    }
+
     if (isPinnedToBottom) {
       viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' })
       setHasUnreadLogs(false)
