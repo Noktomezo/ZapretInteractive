@@ -5,9 +5,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{
     image::Image,
     menu::{CheckMenuItem, Menu, MenuItem, Submenu},
-    tray::{TrayIconBuilder, MouseButton},
+    tray::{MouseButton, TrayIconBuilder},
     Emitter, Manager,
 };
+#[cfg(desktop)]
+use tauri_plugin_autostart::ManagerExt;
 
 static CONNECTED: AtomicBool = AtomicBool::new(false);
 
@@ -48,35 +50,13 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_notification::init())
-        .invoke_handler(tauri::generate_handler![
-            admin::is_elevated,
-            config::ensure_config_dir,
-            config::load_config,
-            config::save_config,
-            config::reset_config,
-            config::get_zapret_directory,
-            config::resolve_placeholders,
-            config::update_list_mode,
-            binaries::verify_binaries,
-            binaries::download_binaries,
-            binaries::get_binary_path,
-            binaries::get_winws_path,
-            binaries::get_filters_path,
-            binaries::save_filter_file,
-            binaries::load_filter_file,
-            binaries::delete_filter_file,
-            binaries::open_zapret_directory,
-            process::start_winws,
-            process::stop_winws,
-            process::is_winws_running,
-            process::kill_windivert_service,
-            process::get_running_pid,
-            process::check_and_recover_orphan,
-            process::check_tcp_timestamps,
-            process::enable_tcp_timestamps,
-            set_connected_state,
-        ])
         .setup(|app| {
+            #[cfg(desktop)]
+            app.handle().plugin(tauri_plugin_autostart::init(
+                tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+                None::<Vec<&str>>,
+            ))?;
+
             let app_state = config::AppState::new()?;
             let list_mode = app_state.config.lock().map(|cfg| cfg.list_mode).unwrap_or_default();
             app.manage(app_state);
@@ -147,6 +127,14 @@ pub fn run() {
                 let window_clone = window.clone();
                 let state = app.state::<config::AppState>();
                 let minimize_to_tray = should_minimize_to_tray(&state);
+                let launch_to_tray = state
+                    .config
+                    .lock()
+                    .map(|cfg| cfg.launch_to_tray)
+                    .unwrap_or(false);
+                if launch_to_tray {
+                    let _ = window.hide();
+                }
                 window.on_window_event(move |event| {
                     if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                         if minimize_to_tray {
@@ -166,6 +154,36 @@ pub fn run() {
 
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![
+            admin::is_elevated,
+            config::ensure_config_dir,
+            config::load_config,
+            config::save_config,
+            config::reset_config,
+            config::get_zapret_directory,
+            config::resolve_placeholders,
+            config::update_list_mode,
+            binaries::verify_binaries,
+            binaries::download_binaries,
+            binaries::get_binary_path,
+            binaries::get_winws_path,
+            binaries::get_filters_path,
+            binaries::save_filter_file,
+            binaries::load_filter_file,
+            binaries::delete_filter_file,
+            binaries::open_zapret_directory,
+            process::start_winws,
+            process::stop_winws,
+            process::is_winws_running,
+            process::kill_windivert_service,
+            process::get_running_pid,
+            process::check_and_recover_orphan,
+            process::check_tcp_timestamps,
+            process::enable_tcp_timestamps,
+            set_connected_state,
+            is_autostart_enabled,
+            set_autostart_enabled,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -192,3 +210,38 @@ fn set_connected_state(app: tauri::AppHandle, connected: bool) -> Result<(), Str
 
     Ok(())
 }
+
+#[tauri::command]
+fn is_autostart_enabled(app: tauri::AppHandle) -> Result<bool, String> {
+    #[cfg(desktop)]
+    {
+        app.autolaunch().is_enabled().map_err(|e| e.to_string())
+    }
+
+    #[cfg(not(desktop))]
+    {
+        let _ = app;
+        Ok(false)
+    }
+}
+
+#[tauri::command]
+fn set_autostart_enabled(app: tauri::AppHandle, enabled: bool) -> Result<(), String> {
+    #[cfg(desktop)]
+    {
+        let autolaunch = app.autolaunch();
+        if enabled {
+            autolaunch.enable().map_err(|e| e.to_string())
+        } else {
+            autolaunch.disable().map_err(|e| e.to_string())
+        }
+    }
+
+    #[cfg(not(desktop))]
+    {
+        let _ = (app, enabled);
+        Ok(())
+    }
+}
+
+

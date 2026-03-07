@@ -1,89 +1,120 @@
 import { Link, useLocation } from '@tanstack/react-router'
+import type { LucideIcon } from 'lucide-react'
 import {
   FileCode,
   Filter,
   Home,
   Layers,
-  PanelRightOpen,
   Settings,
 } from 'lucide-react'
+import {
+  Sidebar as AppSidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+  SidebarTrigger,
+  useSidebar,
+} from '@/components/ui/sidebar'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { cn } from '@/lib/utils'
-import { useSidebarStore } from '@/stores/sidebar.store'
 
-const navItems = [
+const mainNavItems = [
   { path: '/', label: 'Главная', icon: Home },
   { path: '/strategies', label: 'Стратегии', icon: Layers },
   { path: '/filters', label: 'Фильтры', icon: Filter },
   { path: '/placeholders', label: 'Плейсхолдеры', icon: FileCode },
-  { path: '/settings', label: 'Настройки', icon: Settings },
 ]
 
-export function Sidebar() {
+const footerNavItem = { path: '/settings', label: 'Настройки', icon: Settings }
+
+function SidebarNavItem({
+  path,
+  label,
+  icon: Icon,
+}: {
+  path: string
+  label: string
+  icon: LucideIcon
+}) {
   const location = useLocation()
   const currentPath = location.pathname
-  const { collapsed, toggle } = useSidebarStore()
+  const { open } = useSidebar()
+  const isActive = currentPath === path
+
+  const button = (
+    <SidebarMenuButton asChild isActive={isActive}>
+      <Link to={path} className="flex w-full items-center overflow-hidden">
+        <span className="flex size-7 shrink-0 items-center justify-center">
+          <Icon className="size-4 shrink-0" />
+        </span>
+        <span className="min-w-0 flex-1 overflow-hidden">
+          <span
+            className={[
+              'block whitespace-nowrap text-left transition-[transform,opacity] duration-200 ease-out will-change-transform',
+              open ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0',
+            ].join(' ')}
+            aria-hidden={!open}
+          >
+            {label}
+          </span>
+        </span>
+      </Link>
+    </SidebarMenuButton>
+  )
 
   return (
-    <aside
-      className={cn(
-        'border-r border-border bg-card flex flex-col transition-all duration-200',
-        collapsed ? 'w-16' : 'w-64',
-      )}
-    >
-      <div className={cn('p-2 border-b border-border flex', collapsed ? 'justify-center' : 'justify-end')}>
-        <button
-          onClick={toggle}
-          className="cursor-pointer hover:opacity-80 transition-opacity p-2"
-          title={collapsed ? 'Развернуть' : 'Свернуть'}
-        >
-          <PanelRightOpen className={cn('w-4 h-4 text-muted-foreground', collapsed && 'rotate-180')} />
-        </button>
-      </div>
-
-      <nav className="flex-1 p-2">
-        <ul className="space-y-1">
-          {navItems.map((item) => {
-            const isActive = currentPath === item.path
-            const Icon = item.icon
-            const linkContent = (
-              <Link
-                to={item.path}
-                className={cn(
-                  'cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium',
-                  'transition-all duration-200 ease-out',
-                  isActive
-                    ? 'bg-primary text-primary-foreground scale-[1.02] shadow-sm'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:scale-[1.01]',
-                  collapsed && 'justify-center px-0',
-                )}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                {!collapsed && item.label}
-              </Link>
-            )
-
-            return (
-              <li key={item.path}>
-                {collapsed
-                  ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
-                        <TooltipContent side="right">{item.label}</TooltipContent>
-                      </Tooltip>
-                    )
-                  : (
-                      linkContent
-                    )}
-              </li>
-            )
-          })}
-        </ul>
-      </nav>
-    </aside>
+    <SidebarMenuItem>
+      {open
+        ? button
+        : (
+            <Tooltip>
+              <TooltipTrigger asChild>{button}</TooltipTrigger>
+              <TooltipContent side="right">{label}</TooltipContent>
+            </Tooltip>
+          )}
+    </SidebarMenuItem>
   )
 }
+
+function SidebarNav() {
+  return (
+    <SidebarGroup>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {mainNavItems.map(item => (
+            <SidebarNavItem key={item.path} {...item} />
+          ))}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  )
+}
+
+export function Sidebar() {
+  return (
+    <AppSidebar className="h-full border-r bg-card">
+      <SidebarHeader className="justify-end">
+        <SidebarTrigger />
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarNav />
+      </SidebarContent>
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarNavItem {...footerNavItem} />
+        </SidebarMenu>
+      </SidebarFooter>
+      <SidebarRail />
+    </AppSidebar>
+  )
+}
+

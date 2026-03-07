@@ -295,10 +295,10 @@ export function MainPage() {
         </div>
       </div>
 
-      <div className="border-t border-border">
+      <div className="window-surface-strong border-t border-border/70">
         <button
           onClick={() => setLogsOpen(!logsOpen)}
-          className="w-full px-4 py-2 flex items-center justify-between text-sm hover:bg-accent transition-colors cursor-pointer"
+          className="flex w-full items-center justify-between px-4 py-2 text-sm transition-colors hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
         >
           <span className="text-muted-foreground">Логи</span>
           <div className="flex items-center gap-2">
@@ -327,17 +327,16 @@ export function MainPage() {
         </button>
 
         {logsOpen && (
-          <div className="border-t border-border">
+          <div className="window-surface-strong border-t border-border/70">
             <ScrollArea className="h-48">
-              <div className="p-3 font-mono text-xs space-y-1">
+              <div className="space-y-1 bg-zinc-950/92 p-3 font-mono text-xs text-zinc-100">
                 {logs.length === 0
                   ? (
-                      <p className="text-muted-foreground">Нет логов</p>
+                      <div className="flex h-full min-h-[11.25rem] items-center justify-center text-zinc-400">Нет логов</div>
                     )
                   : (
                       logs.map((log, i) => (
-                        <p key={i} className="text-muted-foreground">
-                          {log}
+                        <p key={i} className="text-zinc-300">`r`n                          {log}
                         </p>
                       ))
                     )}
@@ -349,3 +348,6 @@ export function MainPage() {
     </div>
   )
 }
+
+
+

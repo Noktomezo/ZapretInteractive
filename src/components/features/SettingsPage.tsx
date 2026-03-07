@@ -29,9 +29,20 @@ import { useDownloadStore } from '@/stores/download.store'
 export function SettingsPage() {
   const [zapretDir, setZapretDir] = useState<string>('')
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
+  const [autostartEnabled, setAutostartEnabled] = useState(false)
+  const [autostartLoading, setAutostartLoading] = useState(true)
   const isInitialLoadRef = useRef(true)
 
-  const { config, loading, load, save, setGlobalPorts, setMinimizeToTray, reset } = useConfigStore()
+  const {
+    config,
+    loading,
+    load,
+    save,
+    setGlobalPorts,
+    setMinimizeToTray,
+    setLaunchToTray,
+    reset,
+  } = useConfigStore()
   const { isDownloading, progress, setDownloading, setProgress, reset: resetDownload } = useDownloadStore()
   const { binariesOk, setBinariesOk } = useAppStore()
 
@@ -72,16 +83,20 @@ export function SettingsPage() {
     const init = async () => {
       await load()
       isInitialLoadRef.current = false
-      const dir = await tauri.getZapretDirectory()
+      const [dir, autostart] = await Promise.all([
+        tauri.getZapretDirectory(),
+        tauri.isAutostartEnabled().catch(() => false),
+      ])
       setZapretDir(dir)
+      setAutostartEnabled(autostart)
+      setAutostartLoading(false)
     }
     init()
   }, [])
 
   useEffect(() => {
-    if (config && !isInitialLoadRef.current) {
+    if (config && !isInitialLoadRef.current)
       save()
-    }
   }, [config])
 
   const handleDownloadBinaries = async () => {
@@ -107,19 +122,31 @@ export function SettingsPage() {
     }
   }
 
+  const handleAutostartChange = async (checked: boolean) => {
+    setAutostartEnabled(checked)
+    try {
+      await tauri.setAutostartEnabled(checked)
+      toast.success(checked ? 'Автозапуск включен' : 'Автозапуск отключен')
+    }
+    catch (e) {
+      setAutostartEnabled(!checked)
+      toast.error(`Ошибка настройки автозапуска: ${e}`)
+    }
+  }
+
   if (loading || !config) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-6 h-6 animate-spin" />
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="size-6 animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6 p-6">
       <div>
         <h1 className="text-2xl font-semibold">Настройки</h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="mt-1 text-sm text-muted-foreground">
           Глобальные параметры и управление файлами
         </p>
       </div>
@@ -140,13 +167,48 @@ export function SettingsPage() {
         <CardHeader>
           <CardTitle className="text-lg">Поведение</CardTitle>
           <CardDescription>
-            Настройки закрытия приложения
+            Настройки запуска и закрытия приложения
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
             <div className="space-y-0.5">
-              <Label htmlFor="minimize-to-tray">Сворачивать в трей</Label>
+              <Label htmlFor="autostart">Автозапуск с Windows</Label>
+              <p className="text-xs text-muted-foreground">
+                Приложение будет запускаться автоматически при входе в систему
+              </p>
+            </div>
+            <Switch
+              id="autostart"
+              checked={autostartEnabled}
+              disabled={autostartLoading}
+              onCheckedChange={handleAutostartChange}
+            />
+          </div>
+
+          <div
+            className={[
+              'flex items-center justify-between gap-4 rounded-lg px-1 py-1 transition-opacity',
+              !autostartEnabled && 'opacity-50',
+            ].join(' ')}
+          >
+            <div className="space-y-0.5">
+              <Label htmlFor="launch-to-tray">Запускать свернутым в трей</Label>
+              <p className="text-xs text-muted-foreground">
+                При старте приложения основное окно будет скрыто, а доступ останется через иконку в трее. Доступно только вместе с автозапуском
+              </p>
+            </div>
+            <Switch
+              id="launch-to-tray"
+              checked={autostartEnabled && (config.launchToTray ?? false)}
+              disabled={!autostartEnabled}
+              onCheckedChange={setLaunchToTray}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <Label htmlFor="minimize-to-tray">Сворачивать в трей при закрытии</Label>
               <p className="text-xs text-muted-foreground">
                 При закрытии окно будет скрыто в системный трей вместо завершения работы
               </p>
@@ -200,8 +262,8 @@ export function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-2">
-            <FolderOpen className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm font-mono">{zapretDir}</span>
+            <FolderOpen className="size-4 text-muted-foreground" />
+            <span className="font-mono text-sm">{zapretDir}</span>
           </div>
 
           {binariesOk === false && (
@@ -225,7 +287,7 @@ export function SettingsPage() {
           {isDownloading && progress
             ? (
                 <div className="space-y-2">
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full bg-primary transition-all duration-300"
                       style={{
@@ -248,7 +310,7 @@ export function SettingsPage() {
                   disabled={isDownloading}
                   variant={binariesOk ? 'outline' : 'default'}
                 >
-                  <Download className="w-4 h-4 mr-2" />
+                  <Download className="mr-2 size-4" />
                   {binariesOk ? 'Переустановить' : 'Загрузить'}
                 </Button>
               )}
@@ -266,7 +328,7 @@ export function SettingsPage() {
           <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
             <AlertDialogTrigger asChild>
               <Button variant="destructive">
-                <RotateCcw className="w-4 h-4 mr-2" />
+                <RotateCcw className="mr-2 size-4" />
                 Сбросить настройки
               </Button>
             </AlertDialogTrigger>
@@ -290,3 +352,5 @@ export function SettingsPage() {
     </div>
   )
 }
+
+

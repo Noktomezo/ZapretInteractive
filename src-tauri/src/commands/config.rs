@@ -76,12 +76,18 @@ pub struct AppConfig {
     pub binaries_path: String,
     #[serde(default = "default_minimize_to_tray", rename = "minimizeToTray")]
     pub minimize_to_tray: bool,
+    #[serde(default = "default_launch_to_tray", rename = "launchToTray")]
+    pub launch_to_tray: bool,
     #[serde(default, rename = "listMode")]
     pub list_mode: ListMode,
 }
 
 fn default_minimize_to_tray() -> bool {
     true
+}
+
+fn default_launch_to_tray() -> bool {
+    false
 }
 
 impl Default for AppConfig {
@@ -227,7 +233,7 @@ pub fn resolve_placeholders(content: String, placeholders: Vec<Placeholder>) -> 
     let mut result = content;
 
     for placeholder in placeholders {
-        let regex = regex::Regex::new(&format!("\\{{\\{{{}}}\\}}", placeholder.name)).unwrap();
+        let regex = regex::Regex::new(&format!("\\{{\\{{{}\\}}\\}}", placeholder.name)).unwrap();
         let resolved_path = if placeholder.path.starts_with('~') {
             let relative = &placeholder.path[1..];
             let relative_trimmed = relative.trim_start_matches('/').trim_start_matches('\\');

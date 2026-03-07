@@ -23,6 +23,9 @@
     "fs:allow-write",
     "fs:allow-exists",
     "fs:allow-mkdir",
-    "notification:default"
+    "notification:default",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled"
   ]
 }

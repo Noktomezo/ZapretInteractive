@@ -45,4 +45,5 @@ export interface AppConfig {
   binaries_path: string
   listMode?: ListMode
   minimizeToTray?: boolean
+  launchToTray?: boolean
 }
