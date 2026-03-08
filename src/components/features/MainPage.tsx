@@ -299,7 +299,11 @@ export function MainPage() {
           <div>
             <h2 className="text-lg font-medium">Отсутствует конфигурация</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Файл `config.json` был удалён или недоступен. Можно восстановить конфигурацию по умолчанию.
+              Файл
+              {' '}
+              <code>config.json</code>
+              {' '}
+              был удалён или недоступен. Можно восстановить конфигурацию по умолчанию.
             </p>
           </div>
           <Button onClick={handleRestoreDefaultConfig} className="w-full">

@@ -201,7 +201,7 @@ fn save_lists_state(state: &ListsState) -> Result<(), String> {
 
 fn rebuild_lists_state() -> Result<(), String> {
     save_lists_state(&ListsState {
-        last_updated_at: Some(current_timestamp()),
+        last_updated_at: None,
     })
 }
 
@@ -593,6 +593,11 @@ async fn refresh_lists_internal(force: bool) -> Result<usize, String> {
                 Ok(())
             })?;
             updated_count += 1;
+        } else {
+            update_hashes(|hashes| {
+                hashes.insert(hash_key("lists", name), remote_hash.clone());
+                Ok(())
+            })?;
         }
     }
 
@@ -644,20 +649,6 @@ pub fn restore_hashes_from_disk() -> Result<(), String> {
 
 #[tauri::command]
 pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Result<(), String> {
-    #[cfg(windows)]
-    {
-        if let Err(e) = kill_windivert_service() {
-            if e.contains("does not exist") || e.contains("marked for deletion") {
-                eprintln!("Non-fatal WinDivert service state before download: {e}");
-            } else {
-                let err = format!("Failed to stop WinDivert service before download: {e}");
-                app.emit("download-error", err.clone()).ok();
-                return Err(err);
-            }
-        }
-        sleep(Duration::from_millis(300)).await;
-    }
-
     ensure_helper_files()?;
     let force_all = force_all.unwrap_or(false);
 
@@ -760,6 +751,20 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
         app.emit("download-complete", ()).ok();
         let _ = app.notification().builder().title("Готово").body("Все файлы уже актуальны").show();
         return Ok(());
+    }
+
+    #[cfg(windows)]
+    {
+        if let Err(e) = kill_windivert_service() {
+            if e.contains("does not exist") || e.contains("marked for deletion") {
+                eprintln!("Non-fatal WinDivert service state before download: {e}");
+            } else {
+                let err = format!("Failed to stop WinDivert service before download: {e}");
+                app.emit("download-error", err.clone()).ok();
+                return Err(err);
+            }
+        }
+        sleep(Duration::from_millis(300)).await;
     }
 
     let downloaded_lists = files_to_download.iter().any(|file| file.phase == "lists");
