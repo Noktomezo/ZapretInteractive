@@ -24,6 +24,7 @@ export const getAvailableUpdates = (): Promise<string[]> => invoke('get_availabl
 export const restoreHashesFromDisk = (): Promise<void> => invoke('restore_hashes_from_disk')
 export const downloadBinaries = async (forceAll = false): Promise<void> => invoke('download_binaries', { forceAll })
 export const refreshListsIfStale = (): Promise<number> => invoke('refresh_lists_if_stale')
+export const restoreDefaultFilters = (): Promise<void> => invoke('restore_default_filters')
 export const getWinwsPath = (): Promise<string> => invoke('get_winws_path')
 export const startWinws = (args: string[], tcpPorts: string, udpPorts: string): Promise<number> => invoke('start_winws', { args, tcpPorts, udpPorts })
 export const stopWinws = (): Promise<void> => invoke('stop_winws')

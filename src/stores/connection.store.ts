@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { toast } from 'sonner'
 import { buildFiltersCommand, buildFiltersCommandArray, buildStrategyCommand } from '../lib/strategy'
 import * as tauri from '../lib/tauri'
 import { useConfigStore } from './config.store'
@@ -24,6 +25,8 @@ interface ConnectionStore {
   checkStatus: () => Promise<void>
   connect: () => Promise<void>
   disconnect: () => Promise<void>
+  restartIfConnected: () => Promise<void>
+  notifyConfigApplied: (message?: string) => void
   toggle: () => Promise<void>
   addLog: (message: string) => void
   clearLogs: () => void
@@ -165,6 +168,32 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     else if (status === 'disconnected') {
       await get().connect()
     }
+  },
+
+  restartIfConnected: async () => {
+    if (get().status !== 'connected') {
+      return
+    }
+
+    const toastId = toast.loading('Применяю изменения подключения...')
+    get().addLog('Конфигурация подключения изменена, перезапускаю winws.exe')
+    try {
+      await get().disconnect()
+      await get().connect()
+      toast.success('Изменения применены', { id: toastId })
+    }
+    catch (e) {
+      toast.error(`Ошибка применения изменений: ${e instanceof Error ? e.message : String(e)}`, { id: toastId })
+      throw e
+    }
+  },
+
+  notifyConfigApplied: (message = 'Изменения сохранены') => {
+    if (get().status === 'connected') {
+      return
+    }
+
+    toast.success(message)
   },
 
   addLog: (message) => {

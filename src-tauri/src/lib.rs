@@ -181,6 +181,7 @@ pub fn run() {
             binaries::restore_hashes_from_disk,
             binaries::download_binaries,
             binaries::refresh_lists_if_stale,
+            binaries::restore_default_filters,
             binaries::get_binary_path,
             binaries::get_winws_path,
             binaries::get_filters_path,

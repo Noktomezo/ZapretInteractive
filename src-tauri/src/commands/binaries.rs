@@ -99,6 +99,7 @@ struct FileToDownload {
     dest_path: PathBuf,
     hash_key: Option<String>,
     phase: String,
+    cached_bytes: Option<Vec<u8>>,
 }
 
 fn get_fake_dir() -> PathBuf { get_zapret_dir().join("fake") }
@@ -190,7 +191,10 @@ fn save_lists_state(state: &ListsState) -> Result<(), String> {
     let content = serde_json::to_string_pretty(state).map_err(|e| e.to_string())?;
     let state_path = get_lists_state_path();
     let temp_path = state_path.with_extension("json.tmp");
-    fs::write(&temp_path, content).map_err(|e| e.to_string())?;
+    let mut temp_file = fs::File::create(&temp_path).map_err(|e| e.to_string())?;
+    use std::io::Write;
+    temp_file.write_all(content.as_bytes()).map_err(|e| e.to_string())?;
+    temp_file.sync_all().map_err(|e| e.to_string())?;
     fs::rename(temp_path, state_path).map_err(|e| e.to_string())
 }
 
@@ -327,7 +331,6 @@ fn critical_files_ok() -> Result<bool, String> {
     let stored_hashes = load_stored_hashes()?;
     if !verify_group(&get_zapret_dir(), "binaries", &binary_names(), &stored_hashes)? { return Ok(false); }
     if !verify_group(&get_fake_dir(), "fake", FAKE_FILES, &stored_hashes)? { return Ok(false); }
-    if !verify_group(&get_filters_dir(), "filters", FILTERS, &stored_hashes)? { return Ok(false); }
     if !verify_group(&get_lists_dir(), "lists", LISTS, &stored_hashes)? { return Ok(false); }
     Ok(true)
 }
@@ -349,12 +352,6 @@ fn collect_missing_critical_files() -> Result<Vec<String>, String> {
         }
     }
 
-    for name in FILTERS {
-        if file_needs_download(&get_filters_dir().join(name), "filters", name, &stored_hashes, true)? {
-            missing.push((*name).to_string());
-        }
-    }
-
     for name in LISTS {
         if file_needs_download(&get_lists_dir().join(name), "lists", name, &stored_hashes, true)? {
             missing.push((*name).to_string());
@@ -364,15 +361,16 @@ fn collect_missing_critical_files() -> Result<Vec<String>, String> {
     Ok(missing)
 }
 
-async fn remote_file_changed(file_path: PathBuf, client: &reqwest::Client, url: &str, name: &str) -> Result<bool, String> {
+async fn check_remote_file(file_path: PathBuf, client: &reqwest::Client, url: &str, name: &str) -> Result<(bool, Option<Vec<u8>>), String> {
     if !file_path.exists() {
-        return Ok(false);
+        return Ok((true, None));
     }
 
     let local_hash = calculate_sha256_async(file_path).await?;
     let bytes = download_bytes(client, url, name).await?;
     let remote_hash = calculate_sha256_bytes(&bytes);
-    Ok(local_hash != remote_hash)
+    let changed = local_hash != remote_hash;
+    Ok((changed, changed.then_some(bytes)))
 }
 
 async fn collect_available_updates() -> Result<Vec<String>, String> {
@@ -403,20 +401,9 @@ async fn collect_available_updates() -> Result<Vec<String>, String> {
         }
     }
 
-    for name in FILTERS {
-        let path = get_filters_dir().join(name);
-        if !file_needs_download(&path, "filters", name, &stored_hashes, true)? {
-            targets.push(RemoteCheckTarget {
-                name: (*name).to_string(),
-                url: format!("{FILTERS_BASE_URL}/{name}"),
-                dest_path: path,
-            });
-        }
-    }
-
     let client = &client;
     let results = stream::iter(targets.into_iter().map(|target| async move {
-        let changed = remote_file_changed(target.dest_path, client, &target.url, &target.name).await?;
+        let (changed, _) = check_remote_file(target.dest_path, client, &target.url, &target.name).await?;
         Ok::<Option<String>, String>(if changed { Some(target.name) } else { None })
     }))
     .buffer_unordered(FILES_CONCURRENCY_LIMIT)
@@ -444,14 +431,12 @@ fn event_affects_lists(paths: &[PathBuf]) -> bool {
 fn event_affects_tracked_files(paths: &[PathBuf]) -> bool {
     let base_dir = get_zapret_dir();
     let fake_dir = get_fake_dir();
-    let filters_dir = get_filters_dir();
     let hashes_path = get_hashes_path();
     let lists_state_path = get_lists_state_path();
     let config_path = get_config_path();
     let critical_binary_names = binary_names();
     paths.iter().any(|path| {
         path_is_inside(path, &fake_dir)
-            || path_is_inside(path, &filters_dir)
             || path == &hashes_path
             || path == &lists_state_path
             || path == &config_path
@@ -617,6 +602,28 @@ async fn refresh_lists_internal(force: bool) -> Result<usize, String> {
     Ok(updated_count)
 }
 
+pub async fn restore_default_filters_internal() -> Result<(), String> {
+    ensure_base_directories()?;
+    let client = create_http_client()?;
+    let filters_dir = get_filters_dir();
+
+    for name in FILTERS {
+        let dest_path = filters_dir.join(name);
+        let bytes = download_bytes(&client, &format!("{FILTERS_BASE_URL}/{name}"), name).await?;
+        tokio_fs::write(&dest_path, &bytes)
+            .await
+            .map_err(|e| format!("Failed to write {name}: {e}"))?;
+
+        let hash = calculate_sha256_async(dest_path).await?;
+        update_hashes(|hashes| {
+            hashes.insert(hash_key("filters", name), hash);
+            Ok(())
+        })?;
+    }
+
+    Ok(())
+}
+
 #[tauri::command]
 pub fn verify_binaries() -> Result<bool, String> {
     critical_files_ok()
@@ -670,6 +677,7 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
             dest_path: dir.join(name),
             hash_key: Some(hash_key("binaries", name)),
             phase: "binaries".to_string(),
+            cached_bytes: None,
         });
     }
     for name in FAKE_FILES {
@@ -679,6 +687,7 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
             dest_path: fake_dir.join(name),
             hash_key: Some(hash_key("fake", name)),
             phase: "fake".to_string(),
+            cached_bytes: None,
         });
     }
     for name in FILTERS {
@@ -688,6 +697,7 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
             dest_path: filters_dir.join(name),
             hash_key: Some(hash_key("filters", name)),
             phase: "filters".to_string(),
+            cached_bytes: None,
         });
     }
     for name in LISTS {
@@ -697,6 +707,7 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
             dest_path: lists_dir.join(name),
             hash_key: Some(hash_key("lists", name)),
             phase: "lists".to_string(),
+            cached_bytes: None,
         });
     }
 
@@ -705,13 +716,23 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
     } else {
         let client = &client;
         let results = stream::iter(candidates.into_iter().map(|file| async move {
-            let needs_download = if file.dest_path.exists() {
-                remote_file_changed(file.dest_path.clone(), client, &file.url, &file.name).await?
+            let checked = if file.dest_path.exists() {
+                let (needs_download, cached_bytes) =
+                    check_remote_file(file.dest_path.clone(), client, &file.url, &file.name).await?;
+                (needs_download, cached_bytes)
             } else {
-                true
+                (true, None)
             };
 
-            Ok::<Option<FileToDownload>, String>(if needs_download { Some(file) } else { None })
+            let (needs_download, cached_bytes) = checked;
+            Ok::<Option<FileToDownload>, String>(if needs_download {
+                Some(FileToDownload {
+                    cached_bytes,
+                    ..file
+                })
+            } else {
+                None
+            })
         }))
         .buffer_unordered(FILES_CONCURRENCY_LIMIT)
         .collect::<Vec<_>>()
@@ -735,6 +756,8 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
         return Ok(());
     }
 
+    let downloaded_lists = files_to_download.iter().any(|file| file.phase == "lists");
+
     for (current, file) in files_to_download.iter().enumerate() {
         app.emit(
             "download-progress",
@@ -746,11 +769,15 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
             },
         ).ok();
 
-        let bytes = match download_bytes(&client, &file.url, &file.name).await {
-            Ok(bytes) => bytes,
-            Err(err) => {
-                app.emit("download-error", err.clone()).ok();
-                return Err(err);
+        let bytes = if let Some(bytes) = &file.cached_bytes {
+            bytes.clone()
+        } else {
+            match download_bytes(&client, &file.url, &file.name).await {
+                Ok(bytes) => bytes,
+                Err(err) => {
+                    app.emit("download-error", err.clone()).ok();
+                    return Err(err);
+                }
             }
         };
 
@@ -769,9 +796,11 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
         }
     }
 
-    save_lists_state(&ListsState {
-        last_updated_at: Some(current_timestamp()),
-    })?;
+    if downloaded_lists {
+        save_lists_state(&ListsState {
+            last_updated_at: Some(current_timestamp()),
+        })?;
+    }
 
     app.emit("download-complete", ()).ok();
     let _ = app.notification().builder().title("Готово").body(format!("Обновлено {} файлов приложения", total_files)).show();
@@ -780,6 +809,8 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
 
 #[tauri::command]
 pub async fn refresh_lists_if_stale() -> Result<usize, String> { refresh_lists_internal(false).await }
+#[tauri::command]
+pub async fn restore_default_filters() -> Result<(), String> { restore_default_filters_internal().await }
 #[tauri::command]
 pub fn get_binary_path(filename: &str) -> Result<String, String> {
     let filename = sanitize_filename(filename)?;

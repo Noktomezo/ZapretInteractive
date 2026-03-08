@@ -128,6 +128,7 @@ export function SettingsPage() {
   const handleReset = async () => {
     try {
       await reset()
+      await tauri.restoreDefaultFilters()
       setResetDialogOpen(false)
       toast.success('Настройки сброшены')
     }
@@ -298,7 +299,7 @@ export function SettingsPage() {
         <CardHeader>
           <CardTitle className="text-lg">Бинарные файлы</CardTitle>
           <CardDescription>
-            WinDivert, winws.exe, fake-файлы, фильтры и списки
+            WinDivert, winws.exe, fake-файлы и списки
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

@@ -38,7 +38,6 @@ export const useDownloadStore = create<DownloadStore>(set => ({
       })
 
       const unlistenComplete = await listen('download-complete', async () => {
-        useDownloadStore.getState().reset()
         try {
           const binaries = await tauri.verifyBinaries()
           const missingCriticalFiles = await tauri.getMissingCriticalFiles()
@@ -50,6 +49,9 @@ export const useDownloadStore = create<DownloadStore>(set => ({
         catch (e) {
           useAppStore.getState().setBinariesOk(false)
           toast.error(`Ошибка проверки файлов: ${e}`)
+        }
+        finally {
+          useDownloadStore.getState().reset()
         }
       })
 

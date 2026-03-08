@@ -99,6 +99,7 @@ export function MainPage() {
   const handleRestoreDefaultConfig = async () => {
     try {
       await useConfigStore.getState().reset()
+      await tauri.restoreDefaultFilters()
       setConfigMissing(false)
       toast.success('Конфигурация по умолчанию восстановлена')
     }
@@ -250,7 +251,7 @@ export function MainPage() {
           <div>
             <h2 className="text-lg font-medium">Требуется обновление файлов</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Один или несколько критичных файлов отсутствуют либо повреждены. Загрузятся только нужные файлы.
+              Один или несколько критичных файлов приложения отсутствуют либо повреждены. Загрузятся только нужные файлы.
             </p>
             {missingCriticalFiles.length > 0 && (
               <p className="mt-2 text-xs text-muted-foreground">

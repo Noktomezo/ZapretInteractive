@@ -107,6 +107,15 @@ export const useAppStore = create<AppStore>((set, get) => ({
           useConnectionStore.getState().addLog('Конфигурация загружена')
           if (!configExists)
             useConnectionStore.getState().addLog('Файл config.json отсутствует, ожидаю подтверждения на восстановление дефолтного конфига')
+          if (!configExists) {
+            try {
+              await tauri.restoreDefaultFilters()
+              useConnectionStore.getState().addLog('Стандартные фильтры восстановлены для дефолтного конфига')
+            }
+            catch (e) {
+              useConnectionStore.getState().addLog(`Не удалось восстановить стандартные фильтры: ${e}`)
+            }
+          }
         }
         else {
           set({ configMissing: true })
@@ -119,8 +128,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
         set({ binariesOk: binaries, missingCriticalFiles })
         useConnectionStore.getState().addLog(
           binaries
-            ? 'Файлы приложения, фильтры и списки прошли проверку целостности'
-            : 'Файлы приложения, фильтры или списки отсутствуют либо повреждены',
+            ? 'Файлы приложения и списки прошли проверку целостности'
+            : 'Файлы приложения или списки отсутствуют либо повреждены',
         )
 
         const refreshRemoteState = async () => {
@@ -182,7 +191,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
               useConnectionStore.getState().addLog(
                 binaries_ok
                   ? 'Локальные файлы приложения снова в порядке'
-                  : 'Обнаружено локальное изменение: файлы приложения, фильтры или списки отсутствуют либо повреждены',
+                  : 'Обнаружено локальное изменение: файлы приложения или списки отсутствуют либо повреждены',
               )
             }
 

@@ -31,6 +31,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfigStore } from '@/stores/config.store'
+import { useConnectionStore } from '@/stores/connection.store'
 
 const DEACTIVATE_BUTTON_CLASS = 'border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/20 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300'
 
@@ -50,6 +51,7 @@ export function CategoryPage() {
   const isInitialLoadRef = useRef(true)
 
   const { config, loading, load, save, updateCategory, deleteCategory, addStrategy, updateStrategy, deleteStrategy, setActiveStrategy, clearActiveStrategy, clearAllActiveStrategies } = useConfigStore()
+  const { restartIfConnected, notifyConfigApplied } = useConnectionStore()
 
   useEffect(() => {
     load().then(() => {
@@ -90,21 +92,48 @@ export function CategoryPage() {
     }
   }
 
-  const handleSetActive = (strategyId: string) => {
-    if (categoryId) {
+  const handleSetActive = async (strategyId: string) => {
+    if (!categoryId)
+      return
+
+    try {
       setActiveStrategy(categoryId, strategyId)
+      await save()
+      await restartIfConnected()
+      notifyConfigApplied('Стратегия активирована')
+    }
+    catch (e) {
+      toast.error(`Ошибка активации стратегии: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
-  const handleClearActive = (strategyId: string) => {
-    if (categoryId) {
+  const handleClearActive = async (strategyId: string) => {
+    if (!categoryId)
+      return
+
+    try {
       clearActiveStrategy(categoryId, strategyId)
+      await save()
+      await restartIfConnected()
+      notifyConfigApplied('Стратегия деактивирована')
+    }
+    catch (e) {
+      toast.error(`Ошибка деактивации стратегии: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
-  const handleClearAllActive = () => {
-    if (categoryId) {
+  const handleClearAllActive = async () => {
+    if (!categoryId)
+      return
+
+    try {
       clearAllActiveStrategies(categoryId)
+      await save()
+      await restartIfConnected()
+      notifyConfigApplied('Активные стратегии отключены')
+    }
+    catch (e) {
+      toast.error(`Ошибка деактивации стратегий: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
