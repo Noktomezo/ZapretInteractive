@@ -168,9 +168,24 @@
 }
 
 @layer utilities {
-  .app-glass-surface {
-    @apply bg-background/40 backdrop-blur-xl;
+.app-glass-surface {
+  @apply bg-background/40 backdrop-blur-xl;
+}
+
+.route-transition {
+  animation: route-enter 180ms ease-out;
+}
+
+@keyframes route-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
   }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
   @keyframes pulse-glow {
     0%,

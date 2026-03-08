@@ -72,7 +72,7 @@ function SortableCategoryItem({ category, onClearActive }: SortableCategoryItemP
     <div
       ref={setNodeRef}
       style={style}
-      className="group flex min-h-20 items-center gap-2 rounded-lg border bg-card p-4"
+      className="group flex h-20 items-center gap-3 rounded-lg border bg-card p-4"
     >
       <button
         {...attributes}
@@ -84,20 +84,24 @@ function SortableCategoryItem({ category, onClearActive }: SortableCategoryItemP
       <Link
         to="/strategies/$categoryId"
         params={{ categoryId: category.id }}
-        className="flex min-w-0 flex-1 self-stretch cursor-pointer items-center justify-between rounded-md px-2 py-1"
+        className="flex min-w-0 flex-1 cursor-pointer items-center justify-between rounded-md"
       >
-        <div className="flex items-center gap-3">
-          <span className="truncate text-sm font-normal">{category.name}</span>
-          {activeCount > 0 && (
-            <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded">
-              активна
-            </span>
-          )}
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="min-w-0 space-y-1">
+            <div className="flex items-center gap-3">
+              <span className="truncate text-sm font-normal">{category.name}</span>
+              {activeCount > 0 && (
+                <span className="rounded bg-green-600 px-2 py-0.5 text-xs text-white">
+                  активна
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {formatStrategiesCount(category.strategies.length)}
+            </p>
+          </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2 text-muted-foreground">
-          <span className="text-xs">
-            {formatStrategiesCount(category.strategies.length)}
-          </span>
+        <div className="flex shrink-0 items-center text-muted-foreground">
           <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
         </div>
       </Link>

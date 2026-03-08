@@ -1,4 +1,4 @@
-import { createRootRoute, Outlet } from '@tanstack/react-router'
+import { createRootRoute, Outlet, useRouterState } from '@tanstack/react-router'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import { Toaster } from 'sonner'
 import { Sidebar } from '@/components/features/Sidebar'
@@ -9,6 +9,7 @@ import { TitleBar } from '../components/features/TitleBar'
 
 function RootLayout() {
   const { collapsed, setCollapsed } = useSidebarStore()
+  const pathname = useRouterState({ select: state => state.location.pathname })
 
   return (
     <TooltipProvider>
@@ -23,7 +24,9 @@ function RootLayout() {
                 options={{ scrollbars: { theme: 'os-theme-custom', autoHide: 'leave' } }}
                 className="h-full flex-1"
               >
-                <Outlet />
+                <div key={pathname} className={pathname === '/' ? 'h-full min-h-full' : 'route-transition'}>
+                  <Outlet />
+                </div>
               </OverlayScrollbarsComponent>
             </SidebarInset>
           </div>

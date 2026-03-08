@@ -448,6 +448,15 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
             phase: "filters".to_string(),
         });
     }
+    for name in LISTS {
+        files_to_download.push(FileToDownload {
+            name: name.to_string(),
+            url: format!("{LISTS_BASE_URL}/{name}"),
+            dest_path: get_lists_dir().join(name),
+            hash_key: None,
+            phase: "lists".to_string(),
+        });
+    }
 
     let total_files = files_to_download.len();
     app.emit("download-start", total_files).ok();
@@ -485,6 +494,10 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
             })?;
         }
     }
+
+    save_lists_state(&ListsState {
+        last_updated_at: Some(current_timestamp()),
+    })?;
 
     app.emit("download-complete", ()).ok();
     let _ = app.notification().builder().title("Готово").body(format!("Обновлено {} файлов приложения", total_files)).show();

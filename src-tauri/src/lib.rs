@@ -140,7 +140,7 @@ pub fn run() {
                     .lock()
                     .map(|cfg| cfg.launch_to_tray)
                     .unwrap_or(false);
-                if launch_to_tray {
+                if launch_to_tray && was_launched_from_autostart() {
                     let _ = window.hide();
                 }
                 window.on_window_event(move |event| {
