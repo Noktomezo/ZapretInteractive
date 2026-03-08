@@ -41,7 +41,11 @@ export const useDownloadStore = create<DownloadStore>(set => ({
         useDownloadStore.getState().reset()
         try {
           const binaries = await tauri.verifyBinaries()
+          const missingCriticalFiles = await tauri.getMissingCriticalFiles()
+          const availableUpdates = binaries ? await tauri.getAvailableUpdates() : []
           useAppStore.getState().setBinariesOk(binaries)
+          useAppStore.getState().setMissingCriticalFiles(missingCriticalFiles)
+          useAppStore.getState().setAvailableUpdates(availableUpdates)
         }
         catch (e) {
           useAppStore.getState().setBinariesOk(false)

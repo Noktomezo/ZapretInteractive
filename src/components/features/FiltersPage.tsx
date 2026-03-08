@@ -350,36 +350,36 @@ export function FiltersPage() {
         {config.filters?.map((filter: FilterType) => (
           <div
             key={filter.id}
-              className="flex min-h-20 items-center justify-between rounded-lg border bg-card p-4"
-            >
-              <div className="flex min-w-0 items-center gap-3">
-                <Filter className="h-4 w-4 text-muted-foreground" />
-                <div className="min-w-0 space-y-1">
-                  <Label htmlFor={filter.id} className="block cursor-pointer truncate text-sm font-normal">
-                    {filter.name}
-                  </Label>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {filter.filename}
-                  </p>
-                </div>
+            className="flex min-h-20 items-center justify-between rounded-lg border bg-card p-4"
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <div className="min-w-0 space-y-1">
+                <Label htmlFor={filter.id} className="block cursor-pointer truncate text-sm font-normal">
+                  {filter.name}
+                </Label>
+                <p className="truncate text-xs text-muted-foreground">
+                  {filter.filename}
+                </p>
               </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  id={filter.id}
-                  checked={filter.active}
-                  onCheckedChange={() => handleToggleFilter(filter.id)}
-                />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  aria-label={`Редактировать фильтр ${filter.name}`}
-                  title={`Редактировать фильтр ${filter.name}`}
-                  disabled={editInFlight || deleteInFlightId === filter.id}
-                  onClick={() => openEditDialog(filter)}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id={filter.id}
+                checked={filter.active}
+                onCheckedChange={() => handleToggleFilter(filter.id)}
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                aria-label={`Редактировать фильтр ${filter.name}`}
+                title={`Редактировать фильтр ${filter.name}`}
+                disabled={editInFlight || deleteInFlightId === filter.id}
+                onClick={() => openEditDialog(filter)}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button

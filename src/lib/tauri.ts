@@ -7,6 +7,7 @@ const ZAPRET_SUFFIX_RE = /\.zapret$/
 export interface FileHealthChangedPayload {
   binaries_ok: boolean
   lists_changed: boolean
+  config_missing: boolean
 }
 
 export const isElevated = (): Promise<boolean> => invoke('is_elevated')
@@ -14,10 +15,14 @@ export const ensureConfigDir = (): Promise<string> => invoke('ensure_config_dir'
 export const loadConfig = (): Promise<AppConfig> => invoke('load_config')
 export const saveConfig = (config: AppConfig): Promise<void> => invoke('save_config', { config })
 export const resetConfig = (): Promise<AppConfig> => invoke('reset_config')
+export const configExists = (): Promise<boolean> => invoke('config_exists')
 export const getZapretDirectory = (): Promise<string> => invoke('get_zapret_directory')
 export const getHomeDirectory = (): Promise<string> => invoke<string>('get_zapret_directory').then((dir: string) => dir.replace(ZAPRET_SUFFIX_RE, ''))
 export const verifyBinaries = (): Promise<boolean> => invoke('verify_binaries')
-export const downloadBinaries = async (): Promise<void> => invoke('download_binaries')
+export const getMissingCriticalFiles = (): Promise<string[]> => invoke('get_missing_critical_files')
+export const getAvailableUpdates = (): Promise<string[]> => invoke('get_available_updates')
+export const restoreHashesFromDisk = (): Promise<void> => invoke('restore_hashes_from_disk')
+export const downloadBinaries = async (forceAll = false): Promise<void> => invoke('download_binaries', { forceAll })
 export const refreshListsIfStale = (): Promise<number> => invoke('refresh_lists_if_stale')
 export const getWinwsPath = (): Promise<string> => invoke('get_winws_path')
 export const startWinws = (args: string[], tcpPorts: string, udpPorts: string): Promise<number> => invoke('start_winws', { args, tcpPorts, udpPorts })

@@ -6621,6 +6621,7 @@ name = "zapret-interactive"
 version = "1.0.3"
 dependencies = [
  "dirs 6.0.0",
+ "futures",
  "notify",
  "regex",
  "reqwest",

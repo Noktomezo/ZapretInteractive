@@ -1,5 +1,6 @@
 use crate::commands::process::kill_windivert_service;
-use crate::config::get_zapret_dir;
+use crate::config::{get_config_path, get_zapret_dir};
+use futures::stream::{self, StreamExt};
 use notify::{Config as NotifyConfig, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -27,6 +28,7 @@ struct DownloadProgress {
 pub struct FileHealthChangedPayload {
     pub binaries_ok: bool,
     pub lists_changed: bool,
+    pub config_missing: bool,
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
@@ -85,8 +87,9 @@ const FILTERS: &[&str] = &[
     "windivert_part.wireguard.txt",
 ];
 
-const LISTS_REFRESH_INTERVAL_SECS: u64 = 60 * 60 * 12;
+const LISTS_REFRESH_INTERVAL_SECS: u64 = 60 * 60 * 3;
 const WATCH_DEBOUNCE_MS: u64 = 800;
+const FILES_CONCURRENCY_LIMIT: usize = 6;
 static FILES_WATCHER_STARTED: AtomicBool = AtomicBool::new(false);
 static HASHES_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
@@ -141,6 +144,18 @@ fn calculate_sha256(file_path: &PathBuf) -> Result<String, String> {
     Ok(format!("{:x}", hasher.finalize()))
 }
 
+struct RemoteCheckTarget {
+    name: String,
+    url: String,
+    dest_path: PathBuf,
+}
+
+fn calculate_sha256_bytes(bytes: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    format!("{:x}", hasher.finalize())
+}
+
 fn load_stored_hashes() -> Result<HashMap<String, String>, String> {
     let hashes_path = get_hashes_path();
     if !hashes_path.exists() { return Ok(HashMap::new()); }
@@ -179,6 +194,12 @@ fn save_lists_state(state: &ListsState) -> Result<(), String> {
     fs::rename(temp_path, state_path).map_err(|e| e.to_string())
 }
 
+fn rebuild_lists_state() -> Result<(), String> {
+    save_lists_state(&ListsState {
+        last_updated_at: Some(current_timestamp()),
+    })
+}
+
 fn update_hashes<F>(mutate: F) -> Result<(), String>
 where
     F: FnOnce(&mut HashMap<String, String>) -> Result<(), String>,
@@ -188,6 +209,40 @@ where
         .map_err(|e| format!("Failed to lock hashes.json: {e}"))?;
     let mut hashes = load_stored_hashes()?;
     mutate(&mut hashes)?;
+    save_stored_hashes(&hashes)
+}
+
+fn rebuild_hashes_from_disk() -> Result<(), String> {
+    let mut hashes = HashMap::new();
+
+    for name in binary_names() {
+        let path = get_zapret_dir().join(name);
+        if path.exists() {
+            hashes.insert(hash_key("binaries", name), calculate_sha256(&path)?);
+        }
+    }
+
+    for name in FAKE_FILES {
+        let path = get_fake_dir().join(name);
+        if path.exists() {
+            hashes.insert(hash_key("fake", name), calculate_sha256(&path)?);
+        }
+    }
+
+    for name in FILTERS {
+        let path = get_filters_dir().join(name);
+        if path.exists() {
+            hashes.insert(hash_key("filters", name), calculate_sha256(&path)?);
+        }
+    }
+
+    for name in LISTS {
+        let path = get_lists_dir().join(name);
+        if path.exists() {
+            hashes.insert(hash_key("lists", name), calculate_sha256(&path)?);
+        }
+    }
+
     save_stored_hashes(&hashes)
 }
 
@@ -207,6 +262,29 @@ fn hash_key(group: &str, name: &str) -> String { format!("{group}:{name}") }
 
 fn expected_hash<'a>(hashes: &'a HashMap<String, String>, group: &str, name: &str) -> Option<&'a String> {
     hashes.get(&hash_key(group, name)).or_else(|| if group == "binaries" { hashes.get(name) } else { None })
+}
+
+fn file_needs_download(
+    file_path: &Path,
+    group: &str,
+    name: &str,
+    hashes: &HashMap<String, String>,
+    requires_hash: bool,
+) -> Result<bool, String> {
+    if !file_path.exists() {
+        return Ok(true);
+    }
+
+    if !requires_hash {
+        return Ok(false);
+    }
+
+    let Some(expected) = expected_hash(hashes, group, name) else {
+        return Ok(true);
+    };
+
+    let actual = calculate_sha256(&file_path.to_path_buf())?;
+    Ok(actual != *expected)
 }
 
 fn verify_group(base_dir: &Path, group: &str, names: &[&str], hashes: &HashMap<String, String>) -> Result<bool, String> {
@@ -229,16 +307,131 @@ fn ensure_base_directories() -> Result<(), String> {
     Ok(())
 }
 
+fn ensure_helper_files() -> Result<(), String> {
+    ensure_base_directories()?;
+    if !get_hashes_path().exists() {
+        rebuild_hashes_from_disk()?;
+    }
+    if !get_lists_state_path().exists() {
+        rebuild_lists_state()?;
+    }
+    Ok(())
+}
+
 fn binary_names() -> Vec<&'static str> {
     BINARIES.iter().map(|(name, _)| *name).collect()
 }
 
 fn critical_files_ok() -> Result<bool, String> {
+    ensure_helper_files()?;
     let stored_hashes = load_stored_hashes()?;
     if !verify_group(&get_zapret_dir(), "binaries", &binary_names(), &stored_hashes)? { return Ok(false); }
     if !verify_group(&get_fake_dir(), "fake", FAKE_FILES, &stored_hashes)? { return Ok(false); }
     if !verify_group(&get_filters_dir(), "filters", FILTERS, &stored_hashes)? { return Ok(false); }
+    if !verify_group(&get_lists_dir(), "lists", LISTS, &stored_hashes)? { return Ok(false); }
     Ok(true)
+}
+
+fn collect_missing_critical_files() -> Result<Vec<String>, String> {
+    ensure_helper_files()?;
+    let stored_hashes = load_stored_hashes()?;
+    let mut missing = Vec::new();
+
+    for name in binary_names() {
+        if file_needs_download(&get_zapret_dir().join(name), "binaries", name, &stored_hashes, true)? {
+            missing.push(name.to_string());
+        }
+    }
+
+    for name in FAKE_FILES {
+        if file_needs_download(&get_fake_dir().join(name), "fake", name, &stored_hashes, true)? {
+            missing.push((*name).to_string());
+        }
+    }
+
+    for name in FILTERS {
+        if file_needs_download(&get_filters_dir().join(name), "filters", name, &stored_hashes, true)? {
+            missing.push((*name).to_string());
+        }
+    }
+
+    for name in LISTS {
+        if file_needs_download(&get_lists_dir().join(name), "lists", name, &stored_hashes, true)? {
+            missing.push((*name).to_string());
+        }
+    }
+
+    Ok(missing)
+}
+
+async fn remote_file_changed(file_path: PathBuf, client: &reqwest::Client, url: &str, name: &str) -> Result<bool, String> {
+    if !file_path.exists() {
+        return Ok(false);
+    }
+
+    let local_hash = calculate_sha256_async(file_path).await?;
+    let bytes = download_bytes(client, url, name).await?;
+    let remote_hash = calculate_sha256_bytes(&bytes);
+    Ok(local_hash != remote_hash)
+}
+
+async fn collect_available_updates() -> Result<Vec<String>, String> {
+    ensure_helper_files()?;
+    let client = create_http_client()?;
+    let stored_hashes = load_stored_hashes()?;
+    let mut targets = Vec::new();
+
+    for (name, url) in BINARIES {
+        let path = get_zapret_dir().join(name);
+        if !file_needs_download(&path, "binaries", name, &stored_hashes, true)? {
+            targets.push(RemoteCheckTarget {
+                name: name.to_string(),
+                url: url.to_string(),
+                dest_path: path,
+            });
+        }
+    }
+
+    for name in FAKE_FILES {
+        let path = get_fake_dir().join(name);
+        if !file_needs_download(&path, "fake", name, &stored_hashes, true)? {
+            targets.push(RemoteCheckTarget {
+                name: (*name).to_string(),
+                url: format!("{FAKE_FILES_BASE_URL}/{name}"),
+                dest_path: path,
+            });
+        }
+    }
+
+    for name in FILTERS {
+        let path = get_filters_dir().join(name);
+        if !file_needs_download(&path, "filters", name, &stored_hashes, true)? {
+            targets.push(RemoteCheckTarget {
+                name: (*name).to_string(),
+                url: format!("{FILTERS_BASE_URL}/{name}"),
+                dest_path: path,
+            });
+        }
+    }
+
+    let client = &client;
+    let results = stream::iter(targets.into_iter().map(|target| async move {
+        let changed = remote_file_changed(target.dest_path, client, &target.url, &target.name).await?;
+        Ok::<Option<String>, String>(if changed { Some(target.name) } else { None })
+    }))
+    .buffer_unordered(FILES_CONCURRENCY_LIMIT)
+    .collect::<Vec<_>>()
+    .await;
+
+    let mut updates = Vec::new();
+    for result in results {
+        if let Some(name) = result? {
+            updates.push(name);
+        }
+    }
+
+    updates.sort();
+    Ok(updates)
 }
 
 fn path_is_inside(path: &Path, dir: &Path) -> bool { path.starts_with(dir) }
@@ -253,11 +446,15 @@ fn event_affects_tracked_files(paths: &[PathBuf]) -> bool {
     let fake_dir = get_fake_dir();
     let filters_dir = get_filters_dir();
     let hashes_path = get_hashes_path();
+    let lists_state_path = get_lists_state_path();
+    let config_path = get_config_path();
     let critical_binary_names = binary_names();
     paths.iter().any(|path| {
         path_is_inside(path, &fake_dir)
             || path_is_inside(path, &filters_dir)
             || path == &hashes_path
+            || path == &lists_state_path
+            || path == &config_path
             || critical_binary_names.iter().any(|name| path == &base_dir.join(name))
     })
 }
@@ -333,9 +530,23 @@ pub fn start_files_watcher(app: AppHandle) -> Result<(), String> {
 
             let tracked_files_changed = event_affects_tracked_files(&changed_paths);
             let lists_changed = event_affects_lists(&changed_paths);
+            let hashes_changed = changed_paths.iter().any(|path| path == &get_hashes_path());
+            let lists_state_changed = changed_paths.iter().any(|path| path == &get_lists_state_path());
 
             if !tracked_files_changed && !lists_changed {
                 continue;
+            }
+
+            if hashes_changed && !get_hashes_path().exists() {
+                if let Err(e) = rebuild_hashes_from_disk() {
+                    let _ = app.emit("files-health-watch-error", format!("Не удалось пересоздать hashes.json: {e}"));
+                }
+            }
+
+            if lists_state_changed && !get_lists_state_path().exists() {
+                if let Err(e) = rebuild_lists_state() {
+                    let _ = app.emit("files-health-watch-error", format!("Не удалось пересоздать lists-state.json: {e}"));
+                }
             }
 
             let binaries_ok = match critical_files_ok() {
@@ -351,6 +562,7 @@ pub fn start_files_watcher(app: AppHandle) -> Result<(), String> {
                 FileHealthChangedPayload {
                     binaries_ok,
                     lists_changed,
+                    config_missing: !get_config_path().exists(),
                 },
             );
         }
@@ -368,14 +580,15 @@ async fn download_bytes(client: &reqwest::Client, url: &str, name: &str) -> Resu
 }
 
 async fn refresh_lists_internal(force: bool) -> Result<usize, String> {
-    ensure_base_directories()?;
+    ensure_helper_files()?;
 
     let lists_dir = get_lists_dir();
+    let stored_hashes = load_stored_hashes()?;
     let state = load_lists_state()
         .inspect_err(|e| eprintln!("Failed to load lists-state.json, using defaults: {e}"))
         .unwrap_or_default();
     let now = current_timestamp();
-    let all_lists_exist = LISTS.iter().all(|name| lists_dir.join(name).exists());
+    let all_lists_exist = verify_group(&lists_dir, "lists", LISTS, &stored_hashes).unwrap_or(false);
     let is_stale = state.last_updated_at.map(|last| now.saturating_sub(last) >= LISTS_REFRESH_INTERVAL_SECS).unwrap_or(true);
 
     if !force && all_lists_exist && !is_stale {
@@ -383,13 +596,25 @@ async fn refresh_lists_internal(force: bool) -> Result<usize, String> {
     }
 
     let client = create_http_client()?;
+    let mut updated_count = 0usize;
     for name in LISTS {
         let bytes = download_bytes(&client, &format!("{LISTS_BASE_URL}/{name}"), name).await?;
-        tokio_fs::write(lists_dir.join(name), &bytes).await.map_err(|e| format!("Failed to write {name}: {e}"))?;
+        let remote_hash = calculate_sha256_bytes(&bytes);
+        let current_hash = expected_hash(&stored_hashes, "lists", name).cloned();
+        let file_path = lists_dir.join(name);
+
+        if current_hash.as_deref() != Some(remote_hash.as_str()) || !file_path.exists() {
+            tokio_fs::write(&file_path, &bytes).await.map_err(|e| format!("Failed to write {name}: {e}"))?;
+            update_hashes(|hashes| {
+                hashes.insert(hash_key("lists", name), remote_hash.clone());
+                Ok(())
+            })?;
+            updated_count += 1;
+        }
     }
 
     save_lists_state(&ListsState { last_updated_at: Some(now) })?;
-    Ok(LISTS.len())
+    Ok(updated_count)
 }
 
 #[tauri::command]
@@ -398,7 +623,22 @@ pub fn verify_binaries() -> Result<bool, String> {
 }
 
 #[tauri::command]
-pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
+pub fn get_missing_critical_files() -> Result<Vec<String>, String> {
+    collect_missing_critical_files()
+}
+
+#[tauri::command]
+pub async fn get_available_updates() -> Result<Vec<String>, String> {
+    collect_available_updates().await
+}
+
+#[tauri::command]
+pub fn restore_hashes_from_disk() -> Result<(), String> {
+    rebuild_hashes_from_disk()
+}
+
+#[tauri::command]
+pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Result<(), String> {
     #[cfg(windows)]
     {
         if let Err(e) = kill_windivert_service() {
@@ -413,16 +653,18 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
         sleep(Duration::from_millis(300)).await;
     }
 
-    ensure_base_directories()?;
+    ensure_helper_files()?;
+    let force_all = force_all.unwrap_or(false);
 
     let dir = get_zapret_dir();
     let fake_dir = get_fake_dir();
+    let lists_dir = get_lists_dir();
     let filters_dir = get_filters_dir();
     let client = create_http_client()?;
-    let mut files_to_download: Vec<FileToDownload> = vec![];
+    let mut candidates: Vec<FileToDownload> = vec![];
 
     for (name, url) in BINARIES {
-        files_to_download.push(FileToDownload {
+        candidates.push(FileToDownload {
             name: name.to_string(),
             url: url.to_string(),
             dest_path: dir.join(name),
@@ -431,7 +673,7 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
         });
     }
     for name in FAKE_FILES {
-        files_to_download.push(FileToDownload {
+        candidates.push(FileToDownload {
             name: name.to_string(),
             url: format!("{FAKE_FILES_BASE_URL}/{name}"),
             dest_path: fake_dir.join(name),
@@ -440,7 +682,7 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
         });
     }
     for name in FILTERS {
-        files_to_download.push(FileToDownload {
+        candidates.push(FileToDownload {
             name: name.to_string(),
             url: format!("{FILTERS_BASE_URL}/{name}"),
             dest_path: filters_dir.join(name),
@@ -449,17 +691,49 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
         });
     }
     for name in LISTS {
-        files_to_download.push(FileToDownload {
+        candidates.push(FileToDownload {
             name: name.to_string(),
             url: format!("{LISTS_BASE_URL}/{name}"),
-            dest_path: get_lists_dir().join(name),
-            hash_key: None,
+            dest_path: lists_dir.join(name),
+            hash_key: Some(hash_key("lists", name)),
             phase: "lists".to_string(),
         });
     }
 
+    let files_to_download = if force_all {
+        candidates
+    } else {
+        let client = &client;
+        let results = stream::iter(candidates.into_iter().map(|file| async move {
+            let needs_download = if file.dest_path.exists() {
+                remote_file_changed(file.dest_path.clone(), client, &file.url, &file.name).await?
+            } else {
+                true
+            };
+
+            Ok::<Option<FileToDownload>, String>(if needs_download { Some(file) } else { None })
+        }))
+        .buffer_unordered(FILES_CONCURRENCY_LIMIT)
+        .collect::<Vec<_>>()
+        .await;
+
+        let mut filtered = Vec::new();
+        for result in results {
+            if let Some(file) = result? {
+                filtered.push(file);
+            }
+        }
+        filtered
+    };
+
     let total_files = files_to_download.len();
     app.emit("download-start", total_files).ok();
+
+    if total_files == 0 {
+        app.emit("download-complete", ()).ok();
+        let _ = app.notification().builder().title("Готово").body("Все файлы уже актуальны").show();
+        return Ok(());
+    }
 
     for (current, file) in files_to_download.iter().enumerate() {
         app.emit(

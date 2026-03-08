@@ -23,6 +23,7 @@ import * as tauri from '@/lib/tauri'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app.store'
 import { useConfigStore } from '@/stores/config.store'
+import { useConnectionStore } from '@/stores/connection.store'
 import { useDownloadStore } from '@/stores/download.store'
 
 export function SettingsPage() {
@@ -43,8 +44,9 @@ export function SettingsPage() {
     setConnectOnAutostart,
     reset,
   } = useConfigStore()
-  const { isDownloading, progress, setDownloading, reset: resetDownload } = useDownloadStore()
-  const { binariesOk } = useAppStore()
+  const { isDownloading, progress, reset: resetDownload } = useDownloadStore()
+  const { binariesOk, availableUpdates } = useAppStore()
+  const { status, connect, disconnect } = useConnectionStore()
 
   useEffect(() => {
     let isMounted = true
@@ -105,9 +107,16 @@ export function SettingsPage() {
   }, [config, save])
 
   const handleDownloadBinaries = async () => {
-    setDownloading(true)
+    const shouldReconnect = status === 'connected'
+    const forceAll = binariesOk === true && availableUpdates.length === 0
     try {
-      await tauri.downloadBinaries()
+      if (status === 'connected' || status === 'connecting' || status === 'disconnecting') {
+        await disconnect()
+      }
+      await tauri.downloadBinaries(forceAll)
+      if (shouldReconnect) {
+        await connect()
+      }
     }
     catch (e) {
       console.error(e)
@@ -289,7 +298,7 @@ export function SettingsPage() {
         <CardHeader>
           <CardTitle className="text-lg">Бинарные файлы</CardTitle>
           <CardDescription>
-            WinDivert, winws.exe, fake-файлы и фильтры
+            WinDivert, winws.exe, fake-файлы, фильтры и списки
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -307,7 +316,18 @@ export function SettingsPage() {
             </Alert>
           )}
 
-          {binariesOk === true && (
+          {binariesOk === true && availableUpdates.length > 0 && (
+            <Alert className="border-yellow-600 bg-yellow-600/10">
+              <AlertTitle>Доступно обновление файлов</AlertTitle>
+              <AlertDescription>
+                {availableUpdates.length === 1
+                  ? `Доступно обновление: ${availableUpdates[0]}`
+                  : `Доступно обновление для ${availableUpdates.length} файлов`}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {binariesOk === true && availableUpdates.length === 0 && (
             <Alert className="border-green-600 bg-green-600/10">
               <AlertTitle>Файлы на месте</AlertTitle>
               <AlertDescription>
@@ -340,10 +360,14 @@ export function SettingsPage() {
                 <Button
                   onClick={handleDownloadBinaries}
                   disabled={isDownloading}
-                  variant={binariesOk ? 'outline' : 'default'}
+                  variant={binariesOk === false ? 'default' : 'outline'}
                 >
                   <Download className="mr-2 size-4" />
-                  {binariesOk ? 'Переустановить' : 'Загрузить'}
+                  {binariesOk === false
+                    ? 'Загрузить'
+                    : availableUpdates.length > 0
+                      ? 'Обновить'
+                      : 'Переустановить'}
                 </Button>
               )}
         </CardContent>
