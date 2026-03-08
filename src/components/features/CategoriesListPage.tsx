@@ -19,7 +19,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { Link } from '@tanstack/react-router'
 import { ChevronRight, Eraser, GripVertical, Loader2, Plus } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -113,6 +113,7 @@ function SortableCategoryItem({ category, onClearActive }: SortableCategoryItemP
 export function CategoriesListPage() {
   const [newCategoryOpen, setNewCategoryOpen] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
+  const isInitialLoadRef = useRef(true)
 
   const { config, loading, load, save, addCategory, clearAllActiveStrategies, reorderCategories } = useConfigStore()
 
@@ -128,11 +129,13 @@ export function CategoriesListPage() {
   )
 
   useEffect(() => {
-    load()
+    load().finally(() => {
+      isInitialLoadRef.current = false
+    })
   }, [])
 
   useEffect(() => {
-    if (config) {
+    if (config && !isInitialLoadRef.current) {
       save()
     }
   }, [config])

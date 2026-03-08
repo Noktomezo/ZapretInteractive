@@ -262,8 +262,9 @@ export function SettingsPage() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-normal">TCP порты</label>
+              <label htmlFor="tcpPortsInput" className="text-sm font-normal">TCP порты</label>
               <Input
+                id="tcpPortsInput"
                 value={config.global_ports.tcp}
                 onChange={e =>
                   setGlobalPorts({ ...config.global_ports, tcp: e.target.value })}
@@ -271,8 +272,9 @@ export function SettingsPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-normal">UDP порты</label>
+              <label htmlFor="udpPortsInput" className="text-sm font-normal">UDP порты</label>
               <Input
+                id="udpPortsInput"
                 value={config.global_ports.udp}
                 onChange={e =>
                   setGlobalPorts({ ...config.global_ports, udp: e.target.value })}

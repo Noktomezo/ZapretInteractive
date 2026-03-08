@@ -6,7 +6,6 @@ import {
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import Waves from '@/components/Waves'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -16,6 +15,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import Waves from '@/components/Waves'
 import * as tauri from '@/lib/tauri'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app.store'

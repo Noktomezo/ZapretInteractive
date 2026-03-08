@@ -1,6 +1,6 @@
 import type { Filter as FilterType } from '@/lib/types'
-import { Filter, FolderOpen, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { openPath } from '@tauri-apps/plugin-opener'
+import { Filter, FolderOpen, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
@@ -225,8 +225,8 @@ export function FiltersPage() {
       return
 
     const renamed = targetFilter.filename.trim().toLowerCase() !== nextFilename.trim().toLowerCase()
-    const originalContent = await tauri.loadFilterFile(targetFilter.filename).catch(() => draft.content)
     setEditInFlight(true)
+    const originalContent = await tauri.loadFilterFile(targetFilter.filename).catch(() => draft.content)
     try {
       await tauri.saveFilterFile(nextFilename, draft.content)
       if (renamed) {

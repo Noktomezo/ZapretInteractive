@@ -169,7 +169,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
 
   addLog: (message) => {
     set((state) => {
-      const lastLog = state.logs.length > 0 ? state.logs[state.logs.length - 1] : null
+      const lastLog = state.logs.length > 0 ? state.logs[state.logs.length - 1] : undefined
       const nextSeq = (lastLog?.seq ?? 0) + 1
       const nextLogs = [...state.logs, { seq: nextSeq, timestamp: Date.now(), message }].slice(-MAX_LOGS)
       return { logs: nextLogs }

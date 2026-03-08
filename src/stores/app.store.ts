@@ -91,6 +91,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         }
         else {
           useConnectionStore.getState().addLog('Не удалось загрузить конфигурацию')
+          throw new Error('Config not loaded')
         }
 
         const binaries = await tauri.verifyBinaries()

@@ -184,7 +184,10 @@ fn load_lists_state() -> Result<ListsState, String> {
 
 fn save_lists_state(state: &ListsState) -> Result<(), String> {
     let content = serde_json::to_string_pretty(state).map_err(|e| e.to_string())?;
-    fs::write(get_lists_state_path(), content).map_err(|e| e.to_string())
+    let state_path = get_lists_state_path();
+    let temp_path = state_path.with_extension("json.tmp");
+    fs::write(&temp_path, content).map_err(|e| e.to_string())?;
+    fs::rename(temp_path, state_path).map_err(|e| e.to_string())
 }
 
 fn current_timestamp() -> u64 {

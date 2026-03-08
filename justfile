@@ -35,6 +35,10 @@ lint-front:
 lint: lint-back lint-front
   opengrep scan
 
+# Run opengrep standalone
+scan:
+  opengrep scan
+
 # Format only backend
 format-back:
   cargo fmt --manifest-path "src-tauri/Cargo.toml"
@@ -45,4 +49,3 @@ format-front:
 
 # Format both backend and frontend
 format: format-back format-front
-  opengrep scan

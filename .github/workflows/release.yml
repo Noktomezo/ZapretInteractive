@@ -36,7 +36,7 @@ jobs:
         run: just lint-front
 
       - name: Generate icons
-        run: bun tauri icon assets/app-logo.png
+        run: just gen-icons
 
       - name: Build and Publish
         uses: tauri-apps/tauri-action@v0
