@@ -97,3 +97,15 @@ jobs:
           labels: |
             version-bump
             automated-pr
+
+      - name: Create and Push Tag
+        if: steps.cpr.outputs.pull-request-number != ''
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          # Настраиваем авторизацию (persist-credentials: false)
+          git config --local http.https://github.com/.extraheader "AUTHORIZATION: basic $(echo -n x-access-token:${GITHUB_TOKEN} | base64)"
+
+          git tag -f "v${{ env.NEW_VERSION }}" ${{ steps.cpr.outputs.pull-request-head-sha }}
+          git push origin "v${{ env.NEW_VERSION }}" --force
