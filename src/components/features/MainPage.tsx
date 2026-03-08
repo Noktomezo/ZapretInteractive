@@ -198,6 +198,7 @@ export function MainPage() {
     try {
       await tauri.restoreHashesFromDisk()
       await useAppStore.getState().refreshRemoteState()
+      toast.success('hashes.json восстановлен')
     }
     catch (e) {
       toast.error(`Ошибка восстановления hashes.json: ${e}`)
