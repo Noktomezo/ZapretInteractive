@@ -1,5 +1,6 @@
 import type { Filter as FilterType } from '@/lib/types'
-import { Filter, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Filter, FolderOpen, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { openPath } from '@tauri-apps/plugin-opener'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
@@ -312,25 +313,44 @@ export function FiltersPage() {
             WinDivert фильтры для отсечения полезной нагрузки
           </p>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Новый фильтр
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Новый фильтр
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            title="Открыть папку ~/.zapret/filters"
+            aria-label="Открыть папку ~/.zapret/filters"
+            onClick={async () => {
+              try {
+                const filtersPath = await tauri.getFiltersPath()
+                await openPath(filtersPath)
+              }
+              catch (e) {
+                toast.error(`Ошибка открытия папки фильтров: ${e instanceof Error ? e.message : String(e)}`)
+              }
+            }}
+          >
+            <FolderOpen className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-3">
         {config.filters?.map((filter: FilterType) => (
           <div
             key={filter.id}
-            className="flex items-center justify-between rounded-lg border bg-card p-4"
+            className="flex min-h-20 items-center justify-between rounded-lg border bg-card p-4"
           >
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <Filter className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <Label htmlFor={filter.id} className="cursor-pointer font-normal">
+              <div className="min-w-0 space-y-1">
+                <Label htmlFor={filter.id} className="block cursor-pointer truncate text-sm font-normal">
                   {filter.name}
                 </Label>
-                <p className="font-mono text-xs text-muted-foreground">
+                <p className="truncate text-xs text-muted-foreground">
                   {filter.filename}
                 </p>
               </div>

@@ -82,7 +82,7 @@ function Sidebar({ className, children, ...props }: React.ComponentProps<'aside'
       data-slot="sidebar"
       data-state={open ? 'expanded' : 'collapsed'}
       className={cn(
-        'relative hidden h-full shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-250 ease-out md:flex',
+        'relative hidden h-full shrink-0 bg-transparent text-sidebar-foreground transition-[width] duration-250 ease-out md:flex',
         open ? 'w-[var(--sidebar-width)]' : 'w-[var(--sidebar-width-icon)]',
         className,
       )}
@@ -176,7 +176,7 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<'
     <button
       data-slot="sidebar-trigger"
       type="button"
-      className={cn('inline-flex size-9 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground', className)}
+      className={cn('inline-flex size-9 cursor-pointer items-center justify-center rounded-md text-foreground transition-colors hover:text-foreground', className)}
       onClick={composeEventHandlers(onClick, (event) => {
         if (!event.defaultPrevented)
           toggleSidebar()
@@ -201,7 +201,7 @@ function SidebarRail({ className, onClick, ...props }: React.ComponentProps<'but
         if (!event.defaultPrevented)
           toggleSidebar()
       })}
-      className={cn('absolute inset-y-0 -right-px hidden w-px cursor-ew-resize bg-sidebar-border opacity-0 transition-opacity group-hover/sidebar-wrapper:opacity-100 md:block', className)}
+      className={cn('absolute inset-y-0 -right-px hidden w-px cursor-ew-resize bg-transparent opacity-0 transition-opacity group-hover/sidebar-wrapper:opacity-100 md:block', className)}
       {...props}
     >
       <span className="sr-only">{open ? 'Collapse Sidebar' : 'Expand Sidebar'}</span>

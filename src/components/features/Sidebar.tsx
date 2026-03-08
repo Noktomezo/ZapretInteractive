@@ -136,7 +136,7 @@ function SidebarNav() {
 
 export function Sidebar() {
   return (
-    <AppSidebar className="h-full border-r bg-card">
+    <AppSidebar className="h-full bg-transparent">
       <SidebarContent>
         <SidebarNav />
       </SidebarContent>

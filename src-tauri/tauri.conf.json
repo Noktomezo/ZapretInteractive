@@ -16,10 +16,11 @@
         "title": "Zapret Interactive",
         "width": 900,
         "height": 700,
-        "minWidth": 900,
-        "minHeight": 700,
         "center": true,
+        "resizable": false,
+        "maximizable": false,
         "decorations": false,
+        "transparent": true,
         "shadow": true
       }
     ],

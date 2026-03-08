@@ -59,7 +59,7 @@ function SortableCategoryItem({ category, onClearActive }: SortableCategoryItemP
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 p-4 rounded-lg border bg-card group"
+      className="group flex min-h-20 items-center gap-2 rounded-lg border bg-card p-4"
     >
       <button
         {...attributes}
@@ -71,18 +71,18 @@ function SortableCategoryItem({ category, onClearActive }: SortableCategoryItemP
       <Link
         to="/strategies/$categoryId"
         params={{ categoryId: category.id }}
-        className="flex min-w-0 flex-1 self-stretch items-center justify-between rounded-md px-2 py-1 cursor-pointer"
+        className="flex min-w-0 flex-1 self-stretch cursor-pointer items-center justify-between rounded-md px-2 py-1"
       >
         <div className="flex items-center gap-3">
-          <span className="font-normal">{category.name}</span>
+          <span className="truncate text-sm font-normal">{category.name}</span>
           {activeCount > 0 && (
             <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded">
               активна
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <span className="text-sm">
+        <div className="flex shrink-0 items-center gap-2 text-muted-foreground">
+          <span className="text-xs">
             {category.strategies.length}
             {' '}
             стратеги

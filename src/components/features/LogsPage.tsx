@@ -84,7 +84,7 @@ export function LogsPage() {
         </Button>
       </div>
 
-      <div className="relative min-h-0 flex-1 overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-950/92">
+      <div className="relative mt-6 min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-card">
         {hasUnreadLogs && (
           <Button
             type="button"
@@ -104,17 +104,17 @@ export function LogsPage() {
           </Button>
         )}
         <ScrollArea ref={scrollAreaRef} className="h-full">
-          <div className="space-y-1 p-4 font-mono text-xs text-zinc-100">
+          <div className="space-y-1 p-4 font-mono text-xs text-foreground">
             {logs.length === 0
               ? (
-                  <div className="flex min-h-[12rem] items-center justify-center text-zinc-400">
+                  <div className="text-muted-foreground flex min-h-[12rem] items-center justify-center">
                     Нет логов
                   </div>
                 )
               : (
                   logs.map(log => (
-                    <p key={log.seq} className="whitespace-pre-wrap text-zinc-300">
-                      <span className="text-zinc-500">
+                    <p key={log.seq} className="text-foreground whitespace-pre-wrap">
+                      <span className="text-muted-foreground">
                         [
                         {formatLogTimestamp(log.timestamp)}
                         ]

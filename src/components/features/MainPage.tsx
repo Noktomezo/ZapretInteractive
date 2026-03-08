@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import Waves from '@/components/Waves'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -31,6 +32,12 @@ export function MainPage() {
     = useDownloadStore()
   const { initialized, isElevated, binariesOk, initialize }
     = useAppStore()
+
+  const waveColor = status === 'connected'
+    ? 'rgba(74, 222, 128, 0.18)'
+    : status === 'connecting' || status === 'disconnecting'
+      ? 'rgba(250, 204, 21, 0.16)'
+      : 'rgba(248, 113, 113, 0.14)'
 
   const handleListModeChange = (value: string) => {
     if (value) {
@@ -176,6 +183,22 @@ export function MainPage() {
 
   return (
     <div className="relative flex h-full flex-col">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <Waves
+          lineColor={waveColor}
+          backgroundColor="transparent"
+          waveSpeedX={0.008}
+          waveSpeedY={0.004}
+          waveAmpX={24}
+          waveAmpY={12}
+          xGap={14}
+          yGap={26}
+          friction={0.94}
+          tension={0.004}
+          maxCursorMove={80}
+          className="opacity-90"
+        />
+      </div>
       <div className="relative z-10 flex flex-1 items-center justify-center p-8">
         <div className="space-y-6 text-center">
           <div className="relative">

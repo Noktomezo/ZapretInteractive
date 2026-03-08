@@ -6,6 +6,7 @@ use tauri::{
     image::Image,
     menu::{CheckMenuItem, Menu, MenuItem, Submenu},
     tray::{MouseButton, TrayIconBuilder},
+    window::{Effect, EffectsBuilder},
     Emitter, Manager,
 };
 #[cfg(desktop)]
@@ -124,6 +125,13 @@ pub fn run() {
             }
 
             if let Some(window) = app.get_webview_window("main") {
+                #[cfg(target_os = "windows")]
+                {
+                    let _ = window.set_effects(Some(
+                        EffectsBuilder::new().effect(Effect::Acrylic).build(),
+                    ));
+                }
+
                 let window_clone = window.clone();
                 let app_handle = app.handle().clone();
                 let state = app.state::<config::AppState>();

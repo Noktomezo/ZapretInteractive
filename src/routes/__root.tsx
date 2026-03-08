@@ -12,12 +12,12 @@ function RootLayout() {
 
   return (
     <TooltipProvider>
-      <div className="min-h-full bg-background">
+      <div className="app-glass-surface min-h-full bg-transparent">
         <SidebarProvider className="flex-col" open={!collapsed} onOpenChange={open => setCollapsed(!open)}>
           <TitleBar />
           <div className="flex h-screen overflow-hidden pt-10">
             <Sidebar />
-            <SidebarInset className="h-full min-h-0">
+            <SidebarInset className="h-full min-h-0 overflow-hidden rounded-tl-lg">
               <OverlayScrollbarsComponent
                 defer
                 options={{ scrollbars: { theme: 'os-theme-custom', autoHide: 'leave' } }}
