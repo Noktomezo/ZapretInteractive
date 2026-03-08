@@ -42,14 +42,6 @@ const emptyDraft: FilterDraft = {
   content: '',
 }
 
-const reservedBundledFilenames = new Set([
-  'windivert_part.dht.txt',
-  'windivert_part.discord_media.txt',
-  'windivert_part.quic_initial_ietf.txt',
-  'windivert_part.stun.txt',
-  'windivert_part.wireguard.txt',
-])
-
 export function FiltersPage() {
   const { config, loading, load, setFilters } = useConfigStore()
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -63,12 +55,19 @@ export function FiltersPage() {
   const [createInFlight, setCreateInFlight] = useState(false)
   const [editInFlight, setEditInFlight] = useState(false)
   const [deleteInFlightId, setDeleteInFlightId] = useState<string | null>(null)
+  const [reservedBundledFilenames, setReservedBundledFilenames] = useState<Set<string>>(new Set())
   const isInitialLoadRef = useRef(true)
+  const latestMutationIdRef = useRef(0)
 
   useEffect(() => {
-    load().then(() => {
-      isInitialLoadRef.current = false
-    })
+    Promise.all([
+      load().then(() => {
+        isInitialLoadRef.current = false
+      }),
+      tauri.getReservedFilterFilenames().then((names) => {
+        setReservedBundledFilenames(new Set(names.map(name => name.trim().toLowerCase())))
+      }),
+    ]).catch(console.error)
   }, [load])
 
   const resetDraft = () => {
@@ -113,12 +112,15 @@ export function FiltersPage() {
   }
 
   const persistFilters = async (nextFilters: FilterType[], previousFilters: FilterType[]) => {
+    const mutationId = ++latestMutationIdRef.current
     setFilters(nextFilters)
     try {
       await useConfigStore.getState().save()
     }
     catch (e) {
-      setFilters(previousFilters)
+      if (latestMutationIdRef.current === mutationId) {
+        setFilters(previousFilters)
+      }
       throw e
     }
   }
@@ -270,8 +272,12 @@ export function FiltersPage() {
     if (deleteInFlightId)
       return
     setDeleteInFlightId(filter.id)
+    let originalContent: string | undefined
     try {
-      const originalContent = await tauri.loadFilterFile(filter.filename)
+      try {
+        originalContent = await tauri.loadFilterFile(filter.filename)
+      }
+      catch {}
       await tauri.deleteFilterFile(filter.filename)
       const currentFilters = useConfigStore.getState().config?.filters || []
       const nextFilters = currentFilters.filter(item => item.id !== filter.id)
@@ -279,7 +285,9 @@ export function FiltersPage() {
         await persistFilters(nextFilters, currentFilters)
       }
       catch (e) {
-        await tauri.saveFilterFile(filter.filename, originalContent).catch(() => {})
+        if (originalContent !== undefined) {
+          await tauri.saveFilterFile(filter.filename, originalContent).catch(() => {})
+        }
         throw e
       }
       if (editingFilterId === filter.id) {

@@ -7,6 +7,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
+use std::sync::{LazyLock, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter};
 use tokio::fs as tokio_fs;
@@ -87,6 +88,7 @@ const FILTERS: &[&str] = &[
 const LISTS_REFRESH_INTERVAL_SECS: u64 = 60 * 60 * 12;
 const WATCH_DEBOUNCE_MS: u64 = 800;
 static FILES_WATCHER_STARTED: AtomicBool = AtomicBool::new(false);
+static HASHES_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
 struct FileToDownload {
     name: String,
@@ -160,19 +162,6 @@ fn save_stored_hashes(hashes: &HashMap<String, String>) -> Result<(), String> {
     Ok(())
 }
 
-async fn save_stored_hashes_async(hashes: &HashMap<String, String>) -> Result<(), String> {
-    let content = serde_json::to_string_pretty(hashes).map_err(|e| e.to_string())?;
-    let hashes_path = get_hashes_path();
-    let temp_path = hashes_path.with_extension("json.tmp");
-    let mut temp_file = tokio_fs::File::create(&temp_path).await.map_err(|e| e.to_string())?;
-    use tokio::io::AsyncWriteExt;
-    temp_file.write_all(content.as_bytes()).await.map_err(|e| e.to_string())?;
-    temp_file.sync_all().await.map_err(|e| e.to_string())?;
-    drop(temp_file);
-    tokio_fs::rename(temp_path, hashes_path).await.map_err(|e| e.to_string())?;
-    Ok(())
-}
-
 fn load_lists_state() -> Result<ListsState, String> {
     let path = get_lists_state_path();
     if !path.exists() { return Ok(ListsState::default()); }
@@ -188,6 +177,18 @@ fn save_lists_state(state: &ListsState) -> Result<(), String> {
     let temp_path = state_path.with_extension("json.tmp");
     fs::write(&temp_path, content).map_err(|e| e.to_string())?;
     fs::rename(temp_path, state_path).map_err(|e| e.to_string())
+}
+
+fn update_hashes<F>(mutate: F) -> Result<(), String>
+where
+    F: FnOnce(&mut HashMap<String, String>) -> Result<(), String>,
+{
+    let _guard = HASHES_LOCK
+        .lock()
+        .map_err(|e| format!("Failed to lock hashes.json: {e}"))?;
+    let mut hashes = load_stored_hashes()?;
+    mutate(&mut hashes)?;
+    save_stored_hashes(&hashes)
 }
 
 fn current_timestamp() -> u64 {
@@ -402,11 +403,11 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
     {
         if let Err(e) = kill_windivert_service() {
             if e.contains("does not exist") || e.contains("marked for deletion") {
-                app.emit("download-error", format!("Non-fatal WinDivert service state before download: {e}")).ok();
+                eprintln!("Non-fatal WinDivert service state before download: {e}");
             } else {
-            let err = format!("Failed to stop WinDivert service before download: {e}");
-            app.emit("download-error", err.clone()).ok();
-            return Err(err);
+                let err = format!("Failed to stop WinDivert service before download: {e}");
+                app.emit("download-error", err.clone()).ok();
+                return Err(err);
             }
         }
         sleep(Duration::from_millis(300)).await;
@@ -418,7 +419,6 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
     let fake_dir = get_fake_dir();
     let filters_dir = get_filters_dir();
     let client = create_http_client()?;
-    let mut hashes = load_stored_hashes()?;
     let mut files_to_download: Vec<FileToDownload> = vec![];
 
     for (name, url) in BINARIES {
@@ -467,7 +467,6 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
             Ok(bytes) => bytes,
             Err(err) => {
                 app.emit("download-error", err.clone()).ok();
-                let _ = save_stored_hashes_async(&hashes).await;
                 return Err(err);
             }
         };
@@ -475,14 +474,15 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
         if let Err(e) = tokio_fs::write(&file.dest_path, &bytes).await {
             let err = format!("Failed to write {}: {}", file.name, e);
             app.emit("download-error", err.clone()).ok();
-            let _ = save_stored_hashes_async(&hashes).await;
             return Err(err);
         }
 
         if let Some(hash_key) = &file.hash_key {
             let hash = calculate_sha256_async(file.dest_path.clone()).await?;
-            hashes.insert(hash_key.clone(), hash);
-            save_stored_hashes_async(&hashes).await?;
+            update_hashes(|hashes| {
+                hashes.insert(hash_key.clone(), hash);
+                Ok(())
+            })?;
         }
     }
 
@@ -494,11 +494,21 @@ pub async fn download_binaries(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 pub async fn refresh_lists_if_stale() -> Result<usize, String> { refresh_lists_internal(false).await }
 #[tauri::command]
-pub fn get_binary_path(filename: &str) -> String { get_zapret_dir().join(filename).to_string_lossy().to_string() }
+pub fn get_binary_path(filename: &str) -> Result<String, String> {
+    let filename = sanitize_filename(filename)?;
+    if !BINARIES.iter().any(|(name, _)| *name == filename) {
+        return Err("Unknown binary filename".to_string());
+    }
+    Ok(get_zapret_dir().join(filename).to_string_lossy().to_string())
+}
 #[tauri::command]
 pub fn get_winws_path() -> String { get_zapret_dir().join("winws.exe").to_string_lossy().to_string() }
 #[tauri::command]
 pub fn get_filters_path() -> String { get_filters_dir().to_string_lossy().to_string() }
+#[tauri::command]
+pub fn get_reserved_filter_filenames() -> Vec<String> {
+    FILTERS.iter().map(|name| (*name).to_string()).collect()
+}
 
 #[tauri::command]
 pub fn save_filter_file(filename: String, content: String) -> Result<(), String> {
@@ -512,10 +522,11 @@ pub fn save_filter_file(filename: String, content: String) -> Result<(), String>
     fs::write(&file_path, content).map_err(|e| e.to_string())?;
 
     if FILTERS.contains(&filename.as_str()) {
-        let mut hashes = load_stored_hashes()?;
         let hash = calculate_sha256(&file_path)?;
-        hashes.insert(hash_key("filters", &filename), hash);
-        save_stored_hashes(&hashes)?;
+        update_hashes(|hashes| {
+            hashes.insert(hash_key("filters", &filename), hash);
+            Ok(())
+        })?;
     }
 
     Ok(())
@@ -534,9 +545,10 @@ pub fn delete_filter_file(filename: String) -> Result<(), String> {
     if file_path.exists() {
         fs::remove_file(file_path).map_err(|e| e.to_string())?;
     }
-    let mut hashes = load_stored_hashes()?;
-    hashes.remove(&hash_key("filters", &filename));
-    save_stored_hashes(&hashes)?;
+    update_hashes(|hashes| {
+        hashes.remove(&hash_key("filters", &filename));
+        Ok(())
+    })?;
     Ok(())
 }
 

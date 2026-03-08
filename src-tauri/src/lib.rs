@@ -180,6 +180,7 @@ pub fn run() {
             binaries::get_binary_path,
             binaries::get_winws_path,
             binaries::get_filters_path,
+            binaries::get_reserved_filter_filenames,
             binaries::save_filter_file,
             binaries::load_filter_file,
             binaries::delete_filter_file,

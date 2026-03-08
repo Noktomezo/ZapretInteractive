@@ -120,14 +120,14 @@ export function PlaceholdersPage() {
       </div>
 
       <div className="space-y-3">
-        {config?.placeholders.length === 0
+        {!config || config.placeholders.length === 0
           ? (
               <div className="text-muted-foreground flex min-h-32 items-center justify-center rounded-lg border border-dashed">
                 Нет плейсхолдеров
               </div>
             )
           : (
-              config?.placeholders.map((placeholder: Placeholder, index: number) => (
+              config.placeholders.map((placeholder: Placeholder, index: number) => (
                 <div
                   key={`${index}-${placeholder.name}`}
                   className="bg-card flex min-h-20 items-center justify-between gap-4 rounded-lg border p-4"
@@ -176,11 +176,13 @@ export function PlaceholdersPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <Input
+              aria-label="Название плейсхолдера"
               placeholder="Название (например TLS_CLIENTHELLO_GOOGLE)"
               value={newName}
               onChange={e => setNewName(e.target.value)}
             />
             <Input
+              aria-label="Путь плейсхолдера"
               placeholder="Путь к файлу (например ~/.zapret/tls.bin)"
               value={newPath}
               onChange={e => setNewPath(e.target.value)}
@@ -202,11 +204,13 @@ export function PlaceholdersPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <Input
+              aria-label="Название плейсхолдера"
               placeholder="Название"
               value={editName}
               onChange={e => setEditName(e.target.value)}
             />
             <Input
+              aria-label="Путь плейсхолдера"
               placeholder="Путь к файлу"
               value={editPath}
               onChange={e => setEditPath(e.target.value)}

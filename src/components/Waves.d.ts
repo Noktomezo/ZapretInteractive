@@ -1,7 +1,8 @@
 declare module '@/components/Waves' {
+  import type React from 'react'
   import type { CSSProperties } from 'react'
 
-  interface WavesProps {
+  export interface WavesProps {
     lineColor?: string
     backgroundColor?: string
     waveSpeedX?: number
@@ -17,6 +18,6 @@ declare module '@/components/Waves' {
     className?: string
   }
 
-  const Waves: (props: WavesProps) => JSX.Element
+  const Waves: (props: WavesProps) => React.ReactElement
   export default Waves
 }

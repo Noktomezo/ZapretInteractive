@@ -37,6 +37,19 @@ interface SortableCategoryItemProps {
   onClearActive: (categoryId: string, e: React.MouseEvent) => void
 }
 
+function formatStrategiesCount(count: number) {
+  const lastTwoDigits = count % 100
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 14)
+    return `${count} стратегий`
+
+  const lastDigit = count % 10
+  if (lastDigit === 1)
+    return `${count} стратегия`
+  if (lastDigit >= 2 && lastDigit <= 4)
+    return `${count} стратегии`
+  return `${count} стратегий`
+}
+
 function SortableCategoryItem({ category, onClearActive }: SortableCategoryItemProps) {
   const activeCount = category.strategies.filter(s => s.active).length
 
@@ -83,10 +96,7 @@ function SortableCategoryItem({ category, onClearActive }: SortableCategoryItemP
         </div>
         <div className="flex shrink-0 items-center gap-2 text-muted-foreground">
           <span className="text-xs">
-            {category.strategies.length}
-            {' '}
-            стратеги
-            {category.strategies.length === 1 ? 'я' : category.strategies.length < 5 ? 'и' : 'й'}
+            {formatStrategiesCount(category.strategies.length)}
           </span>
           <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
         </div>

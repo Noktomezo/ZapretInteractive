@@ -18,6 +18,9 @@
       "identifier": "opener:allow-open-path",
       "allow": [
         {
+          "path": "$HOME/.zapret"
+        },
+        {
           "path": "$HOME/.zapret/filters"
         }
       ]
