@@ -6,6 +6,7 @@ use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{LazyLock, Mutex};
@@ -712,7 +713,7 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
         candidates
     } else {
         let client = &client;
-        let stored_hashes = load_stored_hashes()?;
+        let stored_hashes = Arc::new(load_stored_hashes()?);
         let results = stream::iter(candidates.into_iter().map(|file| {
             let stored_hashes = stored_hashes.clone();
             async move {

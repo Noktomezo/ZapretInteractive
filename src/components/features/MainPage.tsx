@@ -56,6 +56,36 @@ function waitForConnectionStatus(
   })
 }
 
+function waitForTerminalConnectionStatus(timeoutMs = 15000): Promise<'connected' | 'disconnected'> {
+  return new Promise((resolve, reject) => {
+    const currentStatus = useConnectionStore.getState().status
+    if (currentStatus === 'connected' || currentStatus === 'disconnected') {
+      resolve(currentStatus)
+      return
+    }
+
+    let unsubscribe = () => {}
+
+    const timeoutId = window.setTimeout(() => {
+      unsubscribe()
+      reject(new Error('Timeout waiting for terminal connection status'))
+    }, timeoutMs)
+
+    unsubscribe = useConnectionStore.subscribe((state) => {
+      if (state.status === 'connected' || state.status === 'disconnected') {
+        window.clearTimeout(timeoutId)
+        unsubscribe()
+        resolve(state.status)
+      }
+      else if (state.status === 'error') {
+        window.clearTimeout(timeoutId)
+        unsubscribe()
+        reject(new Error('Connection entered error state while waiting for terminal status'))
+      }
+    })
+  })
+}
+
 export function MainPage() {
   const availableUpdatesPromptKeyRef = useRef('')
   const [initError, setInitError] = useState<string | null>(null)
@@ -115,11 +145,12 @@ export function MainPage() {
     try {
       let shouldReconnect = false
 
+      let stableStatus = currentStatus
       if (currentStatus === 'connecting' || currentStatus === 'disconnecting') {
-        await waitForConnectionStatus('disconnected')
+        stableStatus = await waitForTerminalConnectionStatus()
       }
 
-      if (useConnectionStore.getState().status === 'connected') {
+      if (stableStatus === 'connected') {
         shouldReconnect = true
         await disconnect()
         await waitForConnectionStatus('disconnected')
@@ -128,7 +159,6 @@ export function MainPage() {
       await tauri.downloadBinaries()
 
       if (shouldReconnect) {
-        await waitForConnectionStatus('disconnected')
         await connect()
         await waitForConnectionStatus('connected')
       }
