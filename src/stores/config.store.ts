@@ -14,6 +14,8 @@ interface ConfigStore {
   setFilters: (filters: Filter[]) => void
   setListMode: (mode: ListMode) => void
   setMinimizeToTray: (enabled: boolean) => void
+  setLaunchToTray: (enabled: boolean) => void
+  setConnectOnAutostart: (enabled: boolean) => void
   addCategory: (name: string) => void
   updateCategory: (id: string, name: string) => void
   deleteCategory: (id: string) => void
@@ -72,30 +74,38 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
   setGlobalPorts: (ports) => {
     const { config } = get()
-    if (config) {
+    if (config)
       set({ config: { ...config, global_ports: ports } })
-    }
   },
 
   setFilters: (filters) => {
     const { config } = get()
-    if (config) {
+    if (config)
       set({ config: { ...config, filters } })
-    }
   },
 
   setListMode: (mode) => {
     const { config } = get()
-    if (config) {
+    if (config)
       set({ config: { ...config, listMode: mode } })
-    }
   },
 
   setMinimizeToTray: (enabled) => {
     const { config } = get()
-    if (config) {
+    if (config)
       set({ config: { ...config, minimizeToTray: enabled } })
-    }
+  },
+
+  setLaunchToTray: (enabled) => {
+    const { config } = get()
+    if (config)
+      set({ config: { ...config, launchToTray: enabled } })
+  },
+
+  setConnectOnAutostart: (enabled) => {
+    const { config } = get()
+    if (config)
+      set({ config: { ...config, connectOnAutostart: enabled } })
   },
 
   addCategory: (name) => {

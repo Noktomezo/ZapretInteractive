@@ -13,9 +13,18 @@
     "core:window:allow-close",
     "core:window:allow-minimize",
     "core:window:allow-start-dragging",
-    "core:window:allow-toggle-maximize",
-    "core:window:allow-is-maximized",
     "opener:default",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [
+        {
+          "path": "$HOME/.zapret"
+        },
+        {
+          "path": "$HOME/.zapret/filters"
+        }
+      ]
+    },
     "shell:allow-open",
     "shell:allow-execute",
     "fs:default",
@@ -23,6 +32,9 @@
     "fs:allow-write",
     "fs:allow-exists",
     "fs:allow-mkdir",
-    "notification:default"
+    "notification:default",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled"
   ]
 }

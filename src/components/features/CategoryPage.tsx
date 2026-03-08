@@ -32,6 +32,8 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useConfigStore } from '@/stores/config.store'
 
+const DEACTIVATE_BUTTON_CLASS = 'border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/20 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300'
+
 export function CategoryPage() {
   const { categoryId } = useParams({ from: '/strategies/$categoryId' })
   const navigate = useNavigate()
@@ -164,7 +166,7 @@ export function CategoryPage() {
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-2xl font-semibold">{category.name}</h1>
+            <h1 className="text-2xl font-medium">{category.name}</h1>
             <p className="text-sm text-muted-foreground mt-1">
               {category.strategies.length}
               {' '}
@@ -190,7 +192,12 @@ export function CategoryPage() {
           </Button>
           <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="sm">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="bg-red-500/10 text-red-600 hover:bg-red-500/20 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                aria-label={`Удалить категорию ${category.name}`}
+              >
                 <Trash2 className="w-4 h-4" />
               </Button>
             </AlertDialogTrigger>
@@ -220,7 +227,7 @@ export function CategoryPage() {
           Новая стратегия
         </Button>
         {category.strategies.some(s => s.active) && (
-          <Button variant="outline" onClick={handleClearAllActive}>
+          <Button variant="outline" className={DEACTIVATE_BUTTON_CLASS} onClick={handleClearAllActive}>
             Деактивировать текущую
           </Button>
         )}
@@ -239,7 +246,7 @@ export function CategoryPage() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="font-medium">{strategy.name}</span>
+                      <span className="font-normal">{strategy.name}</span>
                       {strategy.active && (
                         <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded">
                           активна
@@ -252,6 +259,7 @@ export function CategoryPage() {
                             <Button
                               variant="outline"
                               size="sm"
+                              className={DEACTIVATE_BUTTON_CLASS}
                               onClick={() => handleClearActive(strategy.id)}
                             >
                               Деактивировать

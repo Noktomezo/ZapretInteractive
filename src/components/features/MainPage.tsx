@@ -1,25 +1,21 @@
-import type { DownloadProgress, ListMode } from '@/lib/types'
-import { listen } from '@tauri-apps/api/event'
+import type { ListMode } from '@/lib/types'
 import {
   AlertCircle,
-  ChevronDown,
-  ChevronUp,
   Loader2,
   Power,
-  Trash2,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import Waves from '@/components/Waves'
 import * as tauri from '@/lib/tauri'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app.store'
@@ -28,14 +24,20 @@ import { useConnectionStore } from '@/stores/connection.store'
 import { useDownloadStore } from '@/stores/download.store'
 
 export function MainPage() {
-  const [logsOpen, setLogsOpen] = useState(false)
-
+  const missingFilesToastShownRef = useRef(false)
+  const [initError, setInitError] = useState<string | null>(null)
   const { config, setListMode } = useConfigStore()
-  const { status, connect, disconnect, logs, clearLogs } = useConnectionStore()
-  const { isDownloading, progress, setDownloading, setProgress, reset }
+  const { status, connect, disconnect } = useConnectionStore()
+  const { isDownloading, progress, reset }
     = useDownloadStore()
-  const { initialized, isElevated, binariesOk, initialize, setBinariesOk }
+  const { initialized, isElevated, binariesOk, initialize }
     = useAppStore()
+
+  const waveColor = status === 'connected'
+    ? 'rgba(74, 222, 128, 0.18)'
+    : status === 'connecting' || status === 'disconnecting'
+      ? 'rgba(250, 204, 21, 0.16)'
+      : 'rgba(248, 113, 113, 0.14)'
 
   const handleListModeChange = (value: string) => {
     if (value) {
@@ -45,44 +47,10 @@ export function MainPage() {
   }
 
   useEffect(() => {
-    const unlistenStart = listen('download-start', () => {
-      setDownloading(true)
+    initialize().catch((error) => {
+      console.error('Failed to initialize app:', error)
+      setInitError(String(error))
     })
-
-    const unlistenProgress = listen<DownloadProgress>(
-      'download-progress',
-      (event) => {
-        setProgress(event.payload)
-      },
-    )
-
-    const unlistenComplete = listen('download-complete', async () => {
-      reset()
-      try {
-        const binaries = await tauri.verifyBinaries()
-        setBinariesOk(binaries)
-      }
-      catch (e) {
-        toast.error(`Ошибка проверки файлов: ${e}`)
-      }
-    })
-
-    const unlistenError = listen<string>('download-error', (event) => {
-      console.error('Download error:', event.payload)
-      toast.error(`Ошибка загрузки: ${event.payload}`)
-      reset()
-    })
-
-    return () => {
-      unlistenStart.then(fn => fn())
-      unlistenProgress.then(fn => fn())
-      unlistenComplete.then(fn => fn())
-      unlistenError.then(fn => fn())
-    }
-  }, [])
-
-  useEffect(() => {
-    initialize()
 
     const unlistenListMode = tauri.onListModeChanged((mode) => {
       setListMode(mode)
@@ -92,6 +60,13 @@ export function MainPage() {
       unlistenListMode()
     }
   }, [])
+
+  useEffect(() => {
+    if (initialized && isElevated && binariesOk === false && !missingFilesToastShownRef.current) {
+      missingFilesToastShownRef.current = true
+      toast.error('Файлы приложения или фильтры отсутствуют либо повреждены. Обновите их вручную.')
+    }
+  }, [initialized, isElevated, binariesOk])
 
   const handleToggleConnection = async () => {
     const attemptedAction = status === 'connected' ? 'отключение' : 'подключение'
@@ -110,7 +85,6 @@ export function MainPage() {
   }
 
   const handleDownloadBinaries = async () => {
-    setDownloading(true)
     try {
       await tauri.downloadBinaries()
     }
@@ -121,17 +95,29 @@ export function MainPage() {
     }
   }
 
+  if (initError) {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <Alert variant="destructive" className="max-w-lg">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Ошибка инициализации</AlertTitle>
+          <AlertDescription>{initError}</AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
   if (!initialized) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-6 h-6 animate-spin" />
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin" />
       </div>
     )
   }
 
   if (!isElevated) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div className="flex h-full items-center justify-center p-8">
         <Alert variant="destructive" className="max-w-lg">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Требуются права администратора</AlertTitle>
@@ -146,40 +132,48 @@ export function MainPage() {
 
   if (binariesOk === false) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
-        <Card className="p-6 max-w-md text-center space-y-4">
-          <div className="w-16 h-16 mx-auto rounded-full bg-accent flex items-center justify-center">
-            <AlertCircle className="w-8 h-8 text-muted-foreground" />
+      <div className="flex h-full items-center justify-center p-8">
+        <Card className="max-w-md space-y-4 p-6 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent">
+            <AlertCircle className="h-8 w-8 text-muted-foreground" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold">Требуется загрузка</h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Необходимые файлы не найдены. Нажмите кнопку для загрузки.
+            <h2 className="text-lg font-medium">Требуется обновление файлов</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Бинарные файлы, fake-пакеты или фильтры отсутствуют либо повреждены. Обновление выполняется только вручную.
             </p>
           </div>
-          {isDownloading && progress
+          {isDownloading
             ? (
-                <div className="space-y-2">
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary transition-all duration-300"
-                      style={{
-                        width: `${Math.max(0, Math.min(100, progress.total > 0 ? (progress.current / progress.total) * 100 : 0))}%`,
-                      }}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {progress.current}
-                    /
-                    {progress.total}
-                    :
-                    {progress.filename}
-                  </p>
-                </div>
+                progress
+                  ? (
+                      <div className="space-y-2">
+                        <div className="h-2 overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full bg-primary transition-all duration-300"
+                            style={{
+                              width: `${Math.max(0, Math.min(100, progress.total > 0 ? (progress.current / progress.total) * 100 : 0))}%`,
+                            }}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {progress.current}
+                          /
+                          {progress.total}
+                          :
+                          {progress.filename}
+                        </p>
+                      </div>
+                    )
+                  : (
+                      <Button disabled className="w-full">
+                        Обновление...
+                      </Button>
+                    )
               )
             : (
                 <Button onClick={handleDownloadBinaries} className="w-full">
-                  Загрузить файлы
+                  Обновить файлы
                 </Button>
               )}
         </Card>
@@ -188,9 +182,25 @@ export function MainPage() {
   }
 
   return (
-    <div className="flex flex-col h-full relative">
-      <div className="flex-1 flex items-center justify-center p-8 relative z-10">
-        <div className="text-center space-y-6">
+    <div className="relative flex h-full flex-col">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <Waves
+          lineColor={waveColor}
+          backgroundColor="transparent"
+          waveSpeedX={0.008}
+          waveSpeedY={0.004}
+          waveAmpX={24}
+          waveAmpY={12}
+          xGap={14}
+          yGap={26}
+          friction={0.94}
+          tension={0.004}
+          maxCursorMove={80}
+          className="opacity-90"
+        />
+      </div>
+      <div className="relative z-10 flex flex-1 items-center justify-center p-8">
+        <div className="space-y-6 text-center">
           <div className="relative">
             <Button
               onClick={handleToggleConnection}
@@ -199,27 +209,27 @@ export function MainPage() {
               }
               variant="ghost"
               className={cn(
-                'w-32 h-32 rounded-full transition-all duration-300',
+                'h-32 w-32 rounded-full transition-all duration-300',
                 status === 'connected'
-                && 'bg-green-600 hover:bg-green-500 dark:hover:bg-green-500 animate-pulse-glow text-white',
+                && 'animate-pulse-glow bg-green-600 text-white hover:bg-green-500 dark:hover:bg-green-500',
                 status === 'connecting'
-                && 'bg-yellow-600 hover:bg-yellow-500 text-white',
+                && 'bg-yellow-600 text-white hover:bg-yellow-500',
                 status === 'disconnecting'
-                && 'bg-orange-600 hover:bg-orange-500 text-white',
-                status === 'error' && 'bg-red-600 hover:bg-red-500 text-white',
+                && 'bg-orange-600 text-white hover:bg-orange-500',
+                status === 'error' && 'bg-red-600 text-white hover:bg-red-500',
                 status === 'disconnected'
-                && 'bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-100 dark:hover:bg-neutral-200 animate-pulse-glow-primary text-white dark:text-neutral-900',
+                && 'animate-pulse-glow-primary bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200',
               )}
             >
               <Power className="size-12" />
             </Button>
             {(status === 'connecting' || status === 'disconnecting') && (
-              <div className="absolute inset-0 rounded-full animate-ping bg-yellow-500/30" />
+              <div className="absolute inset-0 rounded-full bg-yellow-500/30 animate-ping" />
             )}
           </div>
 
           <div>
-            <h2 className="text-2xl font-semibold">
+            <h2 className="text-2xl font-medium">
               {status === 'connected'
                 ? 'Подключено'
                 : status === 'connecting'
@@ -246,7 +256,7 @@ export function MainPage() {
                       <div>
                         <ToggleGroupItem
                           value="ipset"
-                          className="px-3 py-1.5 text-xs data-[state=on]:bg-green-500/20 data-[state=on]:text-green-600 dark:data-[state=on]:text-green-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-3 py-1.5 text-xs data-[state=on]:bg-green-500/20 data-[state=on]:text-green-600 dark:data-[state=on]:text-green-400 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Только заблокированные
                         </ToggleGroupItem>
@@ -260,7 +270,7 @@ export function MainPage() {
               : (
                   <ToggleGroupItem
                     value="ipset"
-                    className="px-3 py-1.5 text-xs data-[state=on]:bg-green-500/20 data-[state=on]:text-green-600 dark:data-[state=on]:text-green-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-1.5 text-xs data-[state=on]:bg-green-500/20 data-[state=on]:text-green-600 dark:data-[state=on]:text-green-400 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Только заблокированные
                   </ToggleGroupItem>
@@ -272,7 +282,7 @@ export function MainPage() {
                       <div>
                         <ToggleGroupItem
                           value="exclude"
-                          className="px-3 py-1.5 text-xs data-[state=on]:bg-amber-500/20 data-[state=on]:text-amber-600 dark:data-[state=on]:text-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-3 py-1.5 text-xs data-[state=on]:bg-amber-500/20 data-[state=on]:text-amber-600 dark:data-[state=on]:text-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Исключения
                         </ToggleGroupItem>
@@ -286,65 +296,13 @@ export function MainPage() {
               : (
                   <ToggleGroupItem
                     value="exclude"
-                    className="px-3 py-1.5 text-xs data-[state=on]:bg-amber-500/20 data-[state=on]:text-amber-600 dark:data-[state=on]:text-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-1.5 text-xs data-[state=on]:bg-amber-500/20 data-[state=on]:text-amber-600 dark:data-[state=on]:text-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Исключения
                   </ToggleGroupItem>
                 )}
           </ToggleGroup>
         </div>
-      </div>
-
-      <div className="border-t border-border">
-        <button
-          onClick={() => setLogsOpen(!logsOpen)}
-          className="w-full px-4 py-2 flex items-center justify-between text-sm hover:bg-accent transition-colors cursor-pointer"
-        >
-          <span className="text-muted-foreground">Логи</span>
-          <div className="flex items-center gap-2">
-            {logsOpen && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Trash2
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      clearLogs()
-                    }}
-                    className="w-4 h-4 text-muted-foreground hover:text-yellow-500 transition-colors cursor-pointer"
-                  />
-                </TooltipTrigger>
-                <TooltipContent>Очистить логи</TooltipContent>
-              </Tooltip>
-            )}
-            {logsOpen
-              ? (
-                  <ChevronDown className="w-4 h-4" />
-                )
-              : (
-                  <ChevronUp className="w-4 h-4" />
-                )}
-          </div>
-        </button>
-
-        {logsOpen && (
-          <div className="border-t border-border">
-            <ScrollArea className="h-48">
-              <div className="p-3 font-mono text-xs space-y-1">
-                {logs.length === 0
-                  ? (
-                      <p className="text-muted-foreground">Нет логов</p>
-                    )
-                  : (
-                      logs.map((log, i) => (
-                        <p key={i} className="text-muted-foreground">
-                          {log}
-                        </p>
-                      ))
-                    )}
-              </div>
-            </ScrollArea>
-          </div>
-        )}
       </div>
     </div>
   )

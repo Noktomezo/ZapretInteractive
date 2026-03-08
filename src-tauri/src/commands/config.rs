@@ -14,7 +14,7 @@ pub struct GlobalPorts {
 impl Default for GlobalPorts {
     fn default() -> Self {
         Self {
-            tcp: "80,443".to_string(),
+            tcp: "1-65535".to_string(),
             udp: "1-65535".to_string(),
         }
     }
@@ -76,12 +76,24 @@ pub struct AppConfig {
     pub binaries_path: String,
     #[serde(default = "default_minimize_to_tray", rename = "minimizeToTray")]
     pub minimize_to_tray: bool,
+    #[serde(default = "default_launch_to_tray", rename = "launchToTray")]
+    pub launch_to_tray: bool,
+    #[serde(default = "default_connect_on_autostart", rename = "connectOnAutostart")]
+    pub connect_on_autostart: bool,
     #[serde(default, rename = "listMode")]
     pub list_mode: ListMode,
 }
 
 fn default_minimize_to_tray() -> bool {
     true
+}
+
+fn default_launch_to_tray() -> bool {
+    false
+}
+
+fn default_connect_on_autostart() -> bool {
+    false
 }
 
 impl Default for AppConfig {
@@ -227,12 +239,11 @@ pub fn resolve_placeholders(content: String, placeholders: Vec<Placeholder>) -> 
     let mut result = content;
 
     for placeholder in placeholders {
-        let regex = regex::Regex::new(&format!("\\{{\\{{{}}}\\}}", placeholder.name)).unwrap();
         let resolved_path = if placeholder.path.starts_with('~') {
             let relative = &placeholder.path[1..];
             let relative_trimmed = relative.trim_start_matches('/').trim_start_matches('\\');
             let mut path = home_dir.clone();
-            for part in relative_trimmed.split(|c| c == '/' || c == '\\') {
+            for part in relative_trimmed.split(['/', '\\']) {
                 if !part.is_empty() {
                     path.push(part);
                 }
@@ -241,8 +252,11 @@ pub fn resolve_placeholders(content: String, placeholders: Vec<Placeholder>) -> 
         } else {
             placeholder.path.clone()
         };
-        result = regex.replace_all(&result, &resolved_path).to_string();
+
+        let token = format!("{{{{{}}}}}", placeholder.name);
+        result = result.replace(&token, &resolved_path);
     }
 
     result
 }
+

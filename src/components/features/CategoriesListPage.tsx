@@ -19,7 +19,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { Link } from '@tanstack/react-router'
 import { ChevronRight, Eraser, GripVertical, Loader2, Plus } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -35,6 +35,19 @@ import { useConfigStore } from '@/stores/config.store'
 interface SortableCategoryItemProps {
   category: Category
   onClearActive: (categoryId: string, e: React.MouseEvent) => void
+}
+
+function formatStrategiesCount(count: number) {
+  const lastTwoDigits = count % 100
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 14)
+    return `${count} стратегий`
+
+  const lastDigit = count % 10
+  if (lastDigit === 1)
+    return `${count} стратегия`
+  if (lastDigit >= 2 && lastDigit <= 4)
+    return `${count} стратегии`
+  return `${count} стратегий`
 }
 
 function SortableCategoryItem({ category, onClearActive }: SortableCategoryItemProps) {
@@ -59,7 +72,7 @@ function SortableCategoryItem({ category, onClearActive }: SortableCategoryItemP
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 p-4 rounded-lg border bg-card group"
+      className="group flex min-h-20 items-center gap-2 rounded-lg border bg-card p-4"
     >
       <button
         {...attributes}
@@ -71,22 +84,19 @@ function SortableCategoryItem({ category, onClearActive }: SortableCategoryItemP
       <Link
         to="/strategies/$categoryId"
         params={{ categoryId: category.id }}
-        className="flex-1 flex items-center justify-between cursor-pointer"
+        className="flex min-w-0 flex-1 self-stretch cursor-pointer items-center justify-between rounded-md px-2 py-1"
       >
         <div className="flex items-center gap-3">
-          <span className="font-medium">{category.name}</span>
+          <span className="truncate text-sm font-normal">{category.name}</span>
           {activeCount > 0 && (
             <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded">
               активна
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <span className="text-sm">
-            {category.strategies.length}
-            {' '}
-            стратеги
-            {category.strategies.length === 1 ? 'я' : category.strategies.length < 5 ? 'и' : 'й'}
+        <div className="flex shrink-0 items-center gap-2 text-muted-foreground">
+          <span className="text-xs">
+            {formatStrategiesCount(category.strategies.length)}
           </span>
           <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
         </div>
@@ -113,6 +123,7 @@ function SortableCategoryItem({ category, onClearActive }: SortableCategoryItemP
 export function CategoriesListPage() {
   const [newCategoryOpen, setNewCategoryOpen] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
+  const isInitialLoadRef = useRef(true)
 
   const { config, loading, load, save, addCategory, clearAllActiveStrategies, reorderCategories } = useConfigStore()
 
@@ -128,11 +139,13 @@ export function CategoriesListPage() {
   )
 
   useEffect(() => {
-    load()
+    load().finally(() => {
+      isInitialLoadRef.current = false
+    })
   }, [])
 
   useEffect(() => {
-    if (config) {
+    if (config && !isInitialLoadRef.current) {
       save()
     }
   }, [config])
@@ -175,7 +188,7 @@ export function CategoriesListPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Категории</h1>
+          <h1 className="text-2xl font-medium">Категории</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Выберите категорию для управления стратегиями
           </p>

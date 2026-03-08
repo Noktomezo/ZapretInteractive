@@ -1,7 +1,4 @@
-name: Release
-
-permissions:
-  contents: write
+name: Release CI
 
 on:
   push:
@@ -9,63 +6,46 @@ on:
       - 'v*'
 
 jobs:
-  changelog:
-    runs-on: ubuntu-latest
-    outputs:
-      body: ${{ steps.changelog.outputs.body }}
+  publish:
+    permissions:
+      contents: write
+    runs-on: windows-latest
     steps:
-      - name: Repository Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v6
 
-      - name: Bun Setup
+      - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - name: Generate Changelog
-        id: changelog
-        run: |
-          CHANGELOG=$(bunx changelogithub --dry | awk '/^-+$/{if(p)exit; p=1; next} p')
-          echo "body<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-  release:
-    needs: changelog
-    strategy:
-      fail-fast: false
-      matrix:
-        platform: [windows-latest]
-    runs-on: ${{ matrix.platform }}
-    steps:
-      - name: Repository Checkout
-        uses: actions/checkout@v4
-
-      - name: Bun Setup
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Rust Setup
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
+        uses: swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri
+          workspaces: src-tauri -> target
 
-      - name: Install frontend dependencies
+      - name: Install dependencies
         run: bun install
 
-      - name: Build & Release
+      - name: Install Just
+        uses: taiki-e/install-action@just
+
+      - name: Run linters
+        run: just lint-front
+
+      - name: Generate icons
+        run: just gen-icons
+
+      - name: Build and Publish
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: __VERSION__
-          releaseName: Zapret Interactive __VERSION__
-          releaseBody: ${{ needs.changelog.outputs.body }}
-          releaseDraft: false
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Zapret Interactive ${{ github.ref_name }}'
+          releaseBody: GUI-обёртка для zapret-win-bundle от bol-van. Смотри ассеты ниже.
+          releaseDraft: true
           prerelease: false
+          args: --verbose

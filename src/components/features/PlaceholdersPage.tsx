@@ -1,9 +1,8 @@
 import type { Placeholder } from '@/lib/types'
-import { FolderOpen, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { FileCode, FolderOpen, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -12,14 +11,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import * as tauri from '@/lib/tauri'
 import { useConfigStore } from '@/stores/config.store'
 
@@ -96,104 +87,102 @@ export function PlaceholdersPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-6 h-6 animate-spin" />
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Плейсхолдеры</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h1 className="text-2xl font-medium">Плейсхолдеры</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Замена плейсхолдеров на пути к бинарным файлам
           </p>
         </div>
-        <Button variant="outline" size="icon" onClick={() => tauri.openZapretDirectory()} title="Открыть папку ~/.zapret">
-          <FolderOpen className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Новый плейсхолдер
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => tauri.openZapretDirectory()}
+            title="Открыть папку ~/.zapret"
+            aria-label="Открыть папку ~/.zapret"
+          >
+            <FolderOpen className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg">Таблица плейсхолдеров</CardTitle>
-          <Button size="sm" onClick={() => setAddOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Добавить
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-40">Название</TableHead>
-                <TableHead>Путь</TableHead>
-                <TableHead className="w-24">Действия</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {config?.placeholders.length === 0
-                ? (
-                    <TableRow>
-                      <TableCell colSpan={3} className="text-center text-muted-foreground">
-                        Нет плейсхолдеров
-                      </TableCell>
-                    </TableRow>
-                  )
-                : (
-                    config?.placeholders.map((placeholder: Placeholder, index: number) => (
-                      <TableRow key={`${index}-${placeholder.name}`}>
-                        <TableCell className="font-mono whitespace-nowrap">
-                          {'{{'}
-                          {placeholder.name}
-                          {'}}'}
-                        </TableCell>
-                        <TableCell className="font-mono text-muted-foreground max-w-0 w-full">
-                          <div className="relative overflow-hidden whitespace-nowrap" title={placeholder.path}>
-                            {placeholder.path}
-                            <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-card to-transparent pointer-events-none" />
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(index, placeholder)}
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(index)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <div className="space-y-3">
+        {!config || config.placeholders.length === 0
+          ? (
+              <div className="text-muted-foreground flex min-h-32 items-center justify-center rounded-lg border border-dashed">
+                Нет плейсхолдеров
+              </div>
+            )
+          : (
+              config.placeholders.map((placeholder: Placeholder, index: number) => (
+                <div
+                  key={`${index}-${placeholder.name}`}
+                  className="bg-card flex min-h-20 items-center justify-between gap-4 rounded-lg border p-4"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <FileCode className="h-4 w-4 text-muted-foreground" />
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="truncate text-sm font-normal text-foreground">
+                        {'{{'}
+                        {placeholder.name}
+                        {'}}'}
+                      </div>
+                      <div className="truncate text-xs text-muted-foreground" title={placeholder.path}>
+                        {placeholder.path}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`Редактировать плейсхолдер ${placeholder.name}`}
+                      onClick={() => handleEdit(index, placeholder)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="bg-red-500/10 text-red-600 hover:bg-red-500/20 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                      aria-label={`Удалить плейсхолдер ${placeholder.name}`}
+                      onClick={() => handleDelete(index)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+      </div>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Новый плейсхолдер</DialogTitle>
           </DialogHeader>
-          <div className="py-4 space-y-4">
+          <div className="space-y-4 py-4">
             <Input
+              aria-label="Название плейсхолдера"
               placeholder="Название (например TLS_CLIENTHELLO_GOOGLE)"
               value={newName}
               onChange={e => setNewName(e.target.value)}
             />
             <Input
+              aria-label="Путь плейсхолдера"
               placeholder="Путь к файлу (например ~/.zapret/tls.bin)"
               value={newPath}
               onChange={e => setNewPath(e.target.value)}
@@ -213,13 +202,15 @@ export function PlaceholdersPage() {
           <DialogHeader>
             <DialogTitle>Редактировать плейсхолдер</DialogTitle>
           </DialogHeader>
-          <div className="py-4 space-y-4">
+          <div className="space-y-4 py-4">
             <Input
+              aria-label="Название плейсхолдера"
               placeholder="Название"
               value={editName}
               onChange={e => setEditName(e.target.value)}
             />
             <Input
+              aria-label="Путь плейсхолдера"
               placeholder="Путь к файлу"
               value={editPath}
               onChange={e => setEditPath(e.target.value)}

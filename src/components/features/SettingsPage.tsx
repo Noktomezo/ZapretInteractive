@@ -1,5 +1,3 @@
-import type { DownloadProgress } from '@/lib/types'
-import { listen } from '@tauri-apps/api/event'
 import { Download, FolderOpen, Loader2, RotateCcw } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -22,6 +20,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import * as tauri from '@/lib/tauri'
+import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app.store'
 import { useConfigStore } from '@/stores/config.store'
 import { useDownloadStore } from '@/stores/download.store'
@@ -29,60 +28,81 @@ import { useDownloadStore } from '@/stores/download.store'
 export function SettingsPage() {
   const [zapretDir, setZapretDir] = useState<string>('')
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
+  const [autostartEnabled, setAutostartEnabled] = useState(false)
+  const [autostartLoading, setAutostartLoading] = useState(true)
   const isInitialLoadRef = useRef(true)
 
-  const { config, loading, load, save, setGlobalPorts, setMinimizeToTray, reset } = useConfigStore()
-  const { isDownloading, progress, setDownloading, setProgress, reset: resetDownload } = useDownloadStore()
-  const { binariesOk, setBinariesOk } = useAppStore()
+  const {
+    config,
+    loading,
+    load,
+    save,
+    setGlobalPorts,
+    setMinimizeToTray,
+    setLaunchToTray,
+    setConnectOnAutostart,
+    reset,
+  } = useConfigStore()
+  const { isDownloading, progress, setDownloading, reset: resetDownload } = useDownloadStore()
+  const { binariesOk } = useAppStore()
 
   useEffect(() => {
-    const unlistenStart = listen('download-start', () => {
-      setDownloading(true)
-    })
+    let isMounted = true
 
-    const unlistenProgress = listen<DownloadProgress>('download-progress', (event) => {
-      setProgress(event.payload)
-    })
-
-    const unlistenComplete = listen('download-complete', async () => {
-      resetDownload()
+    const init = async () => {
       try {
-        const ok = await tauri.verifyBinaries()
-        setBinariesOk(ok)
-      }
-      catch (e) {
-        toast.error(`Ошибка проверки файлов: ${e}`)
-      }
-    })
+        await load()
 
-    const unlistenError = listen<string>('download-error', (event) => {
-      console.error('Download error:', event.payload)
-      resetDownload()
+        try {
+          const dir = await tauri.getZapretDirectory()
+          if (isMounted)
+            setZapretDir(dir)
+        }
+        catch (e) {
+          if (isMounted)
+            toast.error(`Ошибка получения директории Zapret: ${e}`)
+        }
+
+        try {
+          const autostart = await tauri.isAutostartEnabled()
+          if (isMounted)
+            setAutostartEnabled(autostart)
+        }
+        catch {
+          if (isMounted)
+            setAutostartEnabled(false)
+        }
+      }
+      finally {
+        if (isMounted) {
+          isInitialLoadRef.current = false
+          setAutostartLoading(false)
+        }
+      }
+    }
+
+    init().catch((e) => {
+      if (isMounted)
+        toast.error(`Ошибка инициализации настроек: ${e}`)
     })
 
     return () => {
-      unlistenStart.then(fn => fn())
-      unlistenProgress.then(fn => fn())
-      unlistenComplete.then(fn => fn())
-      unlistenError.then(fn => fn())
+      isMounted = false
     }
   }, [])
 
   useEffect(() => {
-    const init = async () => {
-      await load()
-      isInitialLoadRef.current = false
-      const dir = await tauri.getZapretDirectory()
-      setZapretDir(dir)
-    }
-    init()
-  }, [])
-
-  useEffect(() => {
+    let isMounted = true
     if (config && !isInitialLoadRef.current) {
-      save()
+      save().catch((e) => {
+        if (isMounted)
+          toast.error(`Ошибка сохранения настроек: ${e}`)
+      })
     }
-  }, [config])
+    return () => {
+      isMounted = false
+    }
+  }, [config, save])
 
   const handleDownloadBinaries = async () => {
     setDownloading(true)
@@ -107,19 +127,35 @@ export function SettingsPage() {
     }
   }
 
+  const handleAutostartChange = async (checked: boolean) => {
+    setAutostartLoading(true)
+    setAutostartEnabled(checked)
+    try {
+      await tauri.setAutostartEnabled(checked)
+      toast.success(checked ? 'Автозапуск включен' : 'Автозапуск отключен')
+    }
+    catch (e) {
+      setAutostartEnabled(!checked)
+      toast.error(`Ошибка настройки автозапуска: ${e}`)
+    }
+    finally {
+      setAutostartLoading(false)
+    }
+  }
+
   if (loading || !config) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-6 h-6 animate-spin" />
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="size-6 animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-semibold">Настройки</h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <h1 className="text-2xl font-medium">Настройки</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Глобальные параметры и управление файлами
         </p>
       </div>
@@ -140,13 +176,69 @@ export function SettingsPage() {
         <CardHeader>
           <CardTitle className="text-lg">Поведение</CardTitle>
           <CardDescription>
-            Настройки закрытия приложения
+            Настройки запуска и закрытия приложения
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="autostart">Автозапуск с Windows</Label>
+                <p className="text-xs text-muted-foreground">
+                  Приложение будет запускаться автоматически при входе в систему
+                </p>
+              </div>
+              <Switch
+                id="autostart"
+                checked={autostartEnabled}
+                disabled={autostartLoading}
+                onCheckedChange={handleAutostartChange}
+              />
+            </div>
+
+            {autostartEnabled && (
+              <div
+                className={cn(
+                  'grid grid-rows-[1fr] opacity-100 transition-all duration-200 ease-out',
+                )}
+              >
+                <div className="overflow-hidden">
+                  <div className="flex items-center justify-between gap-4 border-l border-border/60 pl-4">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="connect-on-autostart">Подключаться автоматически</Label>
+                      <p className="text-xs text-muted-foreground">
+                        При запуске из автозагрузки приложение будет сразу запускать подключение
+                      </p>
+                    </div>
+                    <Switch
+                      id="connect-on-autostart"
+                      checked={config.connectOnAutostart ?? false}
+                      disabled={autostartLoading}
+                      onCheckedChange={setConnectOnAutostart}
+                    />
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-4 border-l border-border/60 pl-4">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="launch-to-tray">Запускать свернутым в трей</Label>
+                      <p className="text-xs text-muted-foreground">
+                        При старте приложения основное окно будет скрыто, а доступ останется через иконку в трее
+                      </p>
+                    </div>
+                    <Switch
+                      id="launch-to-tray"
+                      checked={config.launchToTray ?? false}
+                      disabled={autostartLoading}
+                      onCheckedChange={setLaunchToTray}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
             <div className="space-y-0.5">
-              <Label htmlFor="minimize-to-tray">Сворачивать в трей</Label>
+              <Label htmlFor="minimize-to-tray">Сворачивать в трей при закрытии</Label>
               <p className="text-xs text-muted-foreground">
                 При закрытии окно будет скрыто в системный трей вместо завершения работы
               </p>
@@ -170,17 +262,19 @@ export function SettingsPage() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">TCP порты</label>
+              <label htmlFor="tcpPortsInput" className="text-sm font-normal">TCP порты</label>
               <Input
+                id="tcpPortsInput"
                 value={config.global_ports.tcp}
                 onChange={e =>
                   setGlobalPorts({ ...config.global_ports, tcp: e.target.value })}
-                placeholder="80,443"
+                placeholder="1-65535"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">UDP порты</label>
+              <label htmlFor="udpPortsInput" className="text-sm font-normal">UDP порты</label>
               <Input
+                id="udpPortsInput"
                 value={config.global_ports.udp}
                 onChange={e =>
                   setGlobalPorts({ ...config.global_ports, udp: e.target.value })}
@@ -195,13 +289,13 @@ export function SettingsPage() {
         <CardHeader>
           <CardTitle className="text-lg">Бинарные файлы</CardTitle>
           <CardDescription>
-            WinDivert, winws.exe, cygwin1.dll
+            WinDivert, winws.exe, fake-файлы и фильтры
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-2">
-            <FolderOpen className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm font-mono">{zapretDir}</span>
+            <FolderOpen className="size-4 text-muted-foreground" />
+            <span className="font-mono text-sm">{zapretDir}</span>
           </div>
 
           {binariesOk === false && (
@@ -225,7 +319,7 @@ export function SettingsPage() {
           {isDownloading && progress
             ? (
                 <div className="space-y-2">
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full bg-primary transition-all duration-300"
                       style={{
@@ -248,7 +342,7 @@ export function SettingsPage() {
                   disabled={isDownloading}
                   variant={binariesOk ? 'outline' : 'default'}
                 >
-                  <Download className="w-4 h-4 mr-2" />
+                  <Download className="mr-2 size-4" />
                   {binariesOk ? 'Переустановить' : 'Загрузить'}
                 </Button>
               )}
@@ -266,7 +360,7 @@ export function SettingsPage() {
           <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
             <AlertDialogTrigger asChild>
               <Button variant="destructive">
-                <RotateCcw className="w-4 h-4 mr-2" />
+                <RotateCcw className="mr-2 size-4" />
                 Сбросить настройки
               </Button>
             </AlertDialogTrigger>
