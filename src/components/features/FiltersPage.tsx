@@ -133,10 +133,13 @@ export function FiltersPage() {
       filter.id === filterId ? { ...filter, active: !filter.active } : filter,
     )
     void persistFilters(updatedFilters, currentFilters)
-      .then(async () => {
-        await restartIfConnected()
-        notifyConfigApplied('Фильтр обновлён')
-      })
+      .then(() => restartIfConnected()
+        .then(() => {
+          notifyConfigApplied('Фильтр обновлён')
+        })
+        .catch((e) => {
+          toast.error(`Ошибка применения фильтров: ${e instanceof Error ? e.message : String(e)}`)
+        }))
       .catch((e) => {
         toast.error(`Ошибка сохранения фильтров: ${e instanceof Error ? e.message : String(e)}`)
       })

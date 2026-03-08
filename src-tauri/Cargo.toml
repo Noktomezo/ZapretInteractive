@@ -12,7 +12,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [profile.release]
 overflow-checks = false
 codegen-units = 1
-opt-level = "z"
+opt-level = 3
 panic = "abort"
 strip = true
 lto = true

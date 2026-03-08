@@ -49,6 +49,7 @@ export function CategoryPage() {
   const [renameDialogOpen, setRenameDialogOpen] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const isInitialLoadRef = useRef(true)
+  const skipNextAutosaveRef = useRef(false)
 
   const { config, loading, load, save, updateCategory, deleteCategory, addStrategy, updateStrategy, deleteStrategy, setActiveStrategy, clearActiveStrategy, clearAllActiveStrategies } = useConfigStore()
   const { restartIfConnected, notifyConfigApplied } = useConnectionStore()
@@ -57,13 +58,18 @@ export function CategoryPage() {
     load().then(() => {
       isInitialLoadRef.current = false
     })
-  }, [])
+  }, [load])
 
   useEffect(() => {
-    if (config && !isInitialLoadRef.current) {
-      save()
+    if (skipNextAutosaveRef.current) {
+      skipNextAutosaveRef.current = false
+      return
     }
-  }, [config])
+
+    if (config && !isInitialLoadRef.current) {
+      void save()
+    }
+  }, [config, save])
 
   const category = config?.categories.find(c => c.id === categoryId)
 
@@ -97,6 +103,7 @@ export function CategoryPage() {
       return
 
     try {
+      skipNextAutosaveRef.current = true
       setActiveStrategy(categoryId, strategyId)
       await save()
       await restartIfConnected()
@@ -112,6 +119,7 @@ export function CategoryPage() {
       return
 
     try {
+      skipNextAutosaveRef.current = true
       clearActiveStrategy(categoryId, strategyId)
       await save()
       await restartIfConnected()
@@ -127,6 +135,7 @@ export function CategoryPage() {
       return
 
     try {
+      skipNextAutosaveRef.current = true
       clearAllActiveStrategies(categoryId)
       await save()
       await restartIfConnected()

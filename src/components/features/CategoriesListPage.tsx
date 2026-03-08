@@ -146,13 +146,13 @@ export function CategoriesListPage() {
     load().finally(() => {
       isInitialLoadRef.current = false
     })
-  }, [])
+  }, [load])
 
   useEffect(() => {
     if (config && !isInitialLoadRef.current) {
-      save()
+      void save()
     }
-  }, [config])
+  }, [config, save])
 
   const handleAddCategory = () => {
     if (newCategoryName.trim()) {

@@ -24,7 +24,7 @@ function RootLayout() {
                 options={{ scrollbars: { theme: 'os-theme-custom', autoHide: 'leave' } }}
                 className="h-full flex-1"
               >
-                <div key={pathname} className={pathname === '/' ? 'h-full min-h-full' : 'route-transition'}>
+                <div key={pathname} className="h-full min-h-full">
                   <Outlet />
                 </div>
               </OverlayScrollbarsComponent>

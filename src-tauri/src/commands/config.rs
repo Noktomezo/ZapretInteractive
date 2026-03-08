@@ -165,7 +165,12 @@ impl AppState {
 fn load_config_from_disk() -> Result<AppConfig, String> {
     let config_path = get_config_path();
 
-    if !config_path.exists() {
+    match config_path.try_exists().map_err(|e| e.to_string())? {
+        false => return Ok(AppConfig::default()),
+        true => {}
+    }
+
+    if !config_path.is_file() {
         return Ok(AppConfig::default());
     }
 
