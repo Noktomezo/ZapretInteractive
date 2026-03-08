@@ -217,6 +217,9 @@ where
 }
 
 fn rebuild_hashes_from_disk() -> Result<(), String> {
+    let _guard = HASHES_LOCK
+        .lock()
+        .map_err(|e| format!("Failed to lock hashes.json: {e}"))?;
     let mut hashes = HashMap::new();
 
     for name in binary_names() {

@@ -112,12 +112,7 @@ export function MainPage() {
   const handleRebuildHashes = async () => {
     try {
       await tauri.restoreHashesFromDisk()
-      const binaries = await tauri.verifyBinaries()
-      const files = await tauri.getMissingCriticalFiles()
-      const updates = binaries ? await tauri.getAvailableUpdates() : []
-      useAppStore.getState().setBinariesOk(binaries)
-      useAppStore.getState().setMissingCriticalFiles(files)
-      useAppStore.getState().setAvailableUpdates(updates)
+      await useAppStore.getState().refreshRemoteState()
     }
     catch (e) {
       toast.error(`Ошибка восстановления hashes.json: ${e}`)

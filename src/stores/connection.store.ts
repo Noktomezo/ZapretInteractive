@@ -179,6 +179,9 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     get().addLog('Конфигурация подключения изменена, перезапускаю winws.exe')
     try {
       await get().disconnect()
+      if (get().status !== 'disconnected') {
+        throw new Error('Не удалось остановить текущее подключение')
+      }
       await get().connect()
       if (get().status === 'connected') {
         toast.success('Изменения применены', { id: toastId })
@@ -190,7 +193,9 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       }
     }
     catch (e) {
-      toast.error(`Ошибка применения изменений: ${e instanceof Error ? e.message : String(e)}`, { id: toastId })
+      if (get().status !== 'connected') {
+        toast.error(`Ошибка применения изменений: ${e instanceof Error ? e.message : String(e)}`, { id: toastId })
+      }
       throw e
     }
   },

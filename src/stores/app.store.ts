@@ -22,6 +22,7 @@ interface AppStore {
   refreshVersion: number
 
   initialize: () => Promise<void>
+  refreshRemoteState: () => Promise<void>
   setBinariesOk: (ok: boolean) => void
   setMissingCriticalFiles: (files: string[]) => void
   setAvailableUpdates: (files: string[]) => void
@@ -52,6 +53,46 @@ export const useAppStore = create<AppStore>((set, get) => ({
     if (backgroundCleanup) {
       backgroundCleanup()
       set({ backgroundChecksCleanup: null })
+    }
+  },
+  refreshRemoteState: async () => {
+    const version = get().refreshVersion + 1
+    set({ refreshVersion: version })
+
+    try {
+      const updatedLists = await tauri.refreshListsIfStale()
+      if (updatedLists > 0) {
+        useConnectionStore.getState().addLog(`Списки обновлены автоматически: ${updatedLists} файлов`)
+      }
+    }
+    catch (e) {
+      useConnectionStore.getState().addLog(`Не удалось автоматически обновить списки: ${e}`)
+    }
+
+    const stillHealthy = await tauri.verifyBinaries()
+    const missingFiles = await tauri.getMissingCriticalFiles()
+    if (get().refreshVersion !== version) {
+      return
+    }
+
+    if (stillHealthy) {
+      try {
+        const availableUpdates = await tauri.getAvailableUpdates()
+        if (get().refreshVersion !== version) {
+          return
+        }
+        set({ binariesOk: stillHealthy, missingCriticalFiles: missingFiles, availableUpdates })
+      }
+      catch (e) {
+        if (get().refreshVersion !== version) {
+          return
+        }
+        set({ binariesOk: stillHealthy, missingCriticalFiles: missingFiles, availableUpdates: [] })
+        useConnectionStore.getState().addLog(`Не удалось проверить обновления файлов: ${e}`)
+      }
+    }
+    else {
+      set({ binariesOk: stillHealthy, missingCriticalFiles: missingFiles, availableUpdates: [] })
     }
   },
 
@@ -125,46 +166,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
             : 'Файлы приложения или списки отсутствуют либо повреждены',
         )
 
-        const refreshRemoteState = async () => {
-          const version = get().refreshVersion + 1
-          set({ refreshVersion: version })
-
-          try {
-            const updatedLists = await tauri.refreshListsIfStale()
-            if (updatedLists > 0) {
-              useConnectionStore.getState().addLog(`Списки обновлены автоматически: ${updatedLists} файлов`)
-            }
-          }
-          catch (e) {
-            useConnectionStore.getState().addLog(`Не удалось автоматически обновить списки: ${e}`)
-          }
-
-          try {
-            const stillHealthy = await tauri.verifyBinaries()
-            const missingFiles = await tauri.getMissingCriticalFiles()
-            if (get().refreshVersion !== version) {
-              return
-            }
-
-            if (stillHealthy) {
-              const availableUpdates = await tauri.getAvailableUpdates()
-              if (get().refreshVersion !== version) {
-                return
-              }
-              set({ binariesOk: stillHealthy, missingCriticalFiles: missingFiles, availableUpdates })
-            }
-            else {
-              set({ binariesOk: stillHealthy, missingCriticalFiles: missingFiles, availableUpdates: [] })
-            }
-          }
-          catch (e) {
-            useConnectionStore.getState().addLog(`Не удалось проверить обновления файлов: ${e}`)
-          }
-        }
-
         if (!get().backgroundChecksCleanup && typeof window !== 'undefined') {
           const intervalId = window.setInterval(() => {
-            void refreshRemoteState()
+            void get().refreshRemoteState()
           }, 3 * 60 * 60 * 1000)
 
           set({
@@ -174,7 +178,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
           })
         }
 
-        void refreshRemoteState()
+        void get().refreshRemoteState()
 
         if (!get().filesWatcherCleanup) {
           const offHealthChanged = tauri.onFilesHealthChanged(({ binaries_ok, lists_changed, config_missing }) => {
