@@ -78,9 +78,10 @@ export function MainPage() {
   }
 
   const handleDownloadBinaries = async () => {
-    const shouldReconnect = status === 'connected'
+    const { status: currentStatus } = useConnectionStore.getState()
+    const shouldReconnect = currentStatus === 'connected'
     try {
-      if (status === 'connected' || status === 'connecting' || status === 'disconnecting') {
+      if (currentStatus === 'connected' || currentStatus === 'connecting' || currentStatus === 'disconnecting') {
         await disconnect()
       }
       await tauri.downloadBinaries()

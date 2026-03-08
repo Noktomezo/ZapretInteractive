@@ -585,10 +585,14 @@ async fn refresh_lists_internal(force: bool) -> Result<usize, String> {
     for name in LISTS {
         let bytes = download_bytes(&client, &format!("{LISTS_BASE_URL}/{name}"), name).await?;
         let remote_hash = calculate_sha256_bytes(&bytes);
-        let current_hash = expected_hash(&stored_hashes, "lists", name).cloned();
         let file_path = lists_dir.join(name);
+        let local_hash = if file_path.exists() {
+            calculate_sha256(&file_path).ok()
+        } else {
+            None
+        };
 
-        if current_hash.as_deref() != Some(remote_hash.as_str()) || !file_path.exists() {
+        if local_hash.as_deref() != Some(remote_hash.as_str()) {
             tokio_fs::write(&file_path, &bytes).await.map_err(|e| format!("Failed to write {name}: {e}"))?;
             update_hashes(|hashes| {
                 hashes.insert(hash_key("lists", name), remote_hash.clone());

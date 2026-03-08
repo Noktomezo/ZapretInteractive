@@ -1,5 +1,5 @@
-import { create } from 'zustand'
 import { toast } from 'sonner'
+import { create } from 'zustand'
 import { buildFiltersCommand, buildFiltersCommandArray, buildStrategyCommand } from '../lib/strategy'
 import * as tauri from '../lib/tauri'
 import { useConfigStore } from './config.store'
@@ -180,7 +180,14 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     try {
       await get().disconnect()
       await get().connect()
-      toast.success('Изменения применены', { id: toastId })
+      if (get().status === 'connected') {
+        toast.success('Изменения применены', { id: toastId })
+      }
+      else {
+        const error = new Error('Подключение не восстановилось после перезапуска')
+        toast.error(error.message, { id: toastId })
+        throw error
+      }
     }
     catch (e) {
       toast.error(`Ошибка применения изменений: ${e instanceof Error ? e.message : String(e)}`, { id: toastId })

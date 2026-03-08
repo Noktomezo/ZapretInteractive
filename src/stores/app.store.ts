@@ -19,6 +19,7 @@ interface AppStore {
   initializePromise: Promise<void> | null
   filesWatcherCleanup: (() => void) | null
   backgroundChecksCleanup: (() => void) | null
+  refreshVersion: number
 
   initialize: () => Promise<void>
   setBinariesOk: (ok: boolean) => void
@@ -40,6 +41,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   initializePromise: null,
   filesWatcherCleanup: null,
   backgroundChecksCleanup: null,
+  refreshVersion: 0,
   teardownFilesWatcher: () => {
     const cleanup = get().filesWatcherCleanup
     if (cleanup) {
@@ -107,15 +109,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
           useConnectionStore.getState().addLog('Конфигурация загружена')
           if (!configExists)
             useConnectionStore.getState().addLog('Файл config.json отсутствует, ожидаю подтверждения на восстановление дефолтного конфига')
-          if (!configExists) {
-            try {
-              await tauri.restoreDefaultFilters()
-              useConnectionStore.getState().addLog('Стандартные фильтры восстановлены для дефолтного конфига')
-            }
-            catch (e) {
-              useConnectionStore.getState().addLog(`Не удалось восстановить стандартные фильтры: ${e}`)
-            }
-          }
         }
         else {
           set({ configMissing: true })
@@ -133,6 +126,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
         )
 
         const refreshRemoteState = async () => {
+          const version = get().refreshVersion + 1
+          set({ refreshVersion: version })
+
           try {
             const updatedLists = await tauri.refreshListsIfStale()
             if (updatedLists > 0) {
@@ -146,14 +142,19 @@ export const useAppStore = create<AppStore>((set, get) => ({
           try {
             const stillHealthy = await tauri.verifyBinaries()
             const missingFiles = await tauri.getMissingCriticalFiles()
-            set({ binariesOk: stillHealthy, missingCriticalFiles: missingFiles })
+            if (get().refreshVersion !== version) {
+              return
+            }
 
             if (stillHealthy) {
               const availableUpdates = await tauri.getAvailableUpdates()
-              set({ availableUpdates })
+              if (get().refreshVersion !== version) {
+                return
+              }
+              set({ binariesOk: stillHealthy, missingCriticalFiles: missingFiles, availableUpdates })
             }
             else {
-              set({ availableUpdates: [] })
+              set({ binariesOk: stillHealthy, missingCriticalFiles: missingFiles, availableUpdates: [] })
             }
           }
           catch (e) {
@@ -178,10 +179,21 @@ export const useAppStore = create<AppStore>((set, get) => ({
         if (!get().filesWatcherCleanup) {
           const offHealthChanged = tauri.onFilesHealthChanged(({ binaries_ok, lists_changed, config_missing }) => {
             const previousState = get().binariesOk
-            set({ binariesOk: binaries_ok, configMissing: config_missing })
-            tauri.getMissingCriticalFiles().then(files => set({ missingCriticalFiles: files })).catch(console.error)
+            const version = get().refreshVersion + 1
+            set({ binariesOk: binaries_ok, configMissing: config_missing, refreshVersion: version })
+            tauri.getMissingCriticalFiles().then((files) => {
+              if (get().refreshVersion !== version) {
+                return
+              }
+              set({ missingCriticalFiles: files })
+            }).catch(console.error)
             if (binaries_ok) {
-              tauri.getAvailableUpdates().then(files => set({ availableUpdates: files })).catch(console.error)
+              tauri.getAvailableUpdates().then((files) => {
+                if (get().refreshVersion !== version) {
+                  return
+                }
+                set({ availableUpdates: files })
+              }).catch(console.error)
             }
             else {
               set({ availableUpdates: [] })

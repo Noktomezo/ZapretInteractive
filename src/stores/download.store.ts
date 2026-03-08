@@ -39,15 +39,22 @@ export const useDownloadStore = create<DownloadStore>(set => ({
 
       const unlistenComplete = await listen('download-complete', async () => {
         try {
+          const version = useAppStore.getState().refreshVersion + 1
+          useAppStore.setState({ refreshVersion: version })
           const binaries = await tauri.verifyBinaries()
           const missingCriticalFiles = await tauri.getMissingCriticalFiles()
           const availableUpdates = binaries ? await tauri.getAvailableUpdates() : []
+          if (useAppStore.getState().refreshVersion !== version) {
+            return
+          }
           useAppStore.getState().setBinariesOk(binaries)
           useAppStore.getState().setMissingCriticalFiles(missingCriticalFiles)
           useAppStore.getState().setAvailableUpdates(availableUpdates)
         }
         catch (e) {
           useAppStore.getState().setBinariesOk(false)
+          useAppStore.getState().setMissingCriticalFiles([])
+          useAppStore.getState().setAvailableUpdates([])
           toast.error(`Ошибка проверки файлов: ${e}`)
         }
         finally {
