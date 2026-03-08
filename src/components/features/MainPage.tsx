@@ -4,7 +4,7 @@ import {
   Loader2,
   Power,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -31,6 +31,10 @@ function waitForConnectionStatus(
     const currentStatus = useConnectionStore.getState().status
     if (currentStatus === expectedStatus) {
       resolve()
+      return
+    }
+    if (currentStatus === 'error') {
+      reject(new Error(`Connection entered error state while waiting for ${expectedStatus}`))
       return
     }
 
@@ -61,6 +65,10 @@ function waitForTerminalConnectionStatus(timeoutMs = 15000): Promise<'connected'
     const currentStatus = useConnectionStore.getState().status
     if (currentStatus === 'connected' || currentStatus === 'disconnected') {
       resolve(currentStatus)
+      return
+    }
+    if (currentStatus === 'error') {
+      reject(new Error('Connection entered error state while waiting for terminal status'))
       return
     }
 
@@ -140,7 +148,7 @@ export function MainPage() {
     }
   }
 
-  const handleDownloadBinaries = async () => {
+  const handleDownloadBinaries = useCallback(async () => {
     const { status: currentStatus } = useConnectionStore.getState()
     try {
       let shouldReconnect = false
@@ -168,7 +176,11 @@ export function MainPage() {
       reset()
       toast.error(`Ошибка загрузки файлов: ${e}`)
     }
-  }
+  }, [connect, disconnect, reset])
+
+  const onDownloadBinaries = useCallback(() => {
+    void handleDownloadBinaries()
+  }, [handleDownloadBinaries])
 
   const handleRestoreDefaultConfig = async () => {
     try {
@@ -207,12 +219,10 @@ export function MainPage() {
         : `${availableUpdates.length} файлов: ${availableUpdates.slice(0, 4).join(', ')}${availableUpdates.length > 4 ? '…' : ''}`,
       action: {
         label: 'Обновить',
-        onClick: () => {
-          void handleDownloadBinaries()
-        },
+        onClick: onDownloadBinaries,
       },
     })
-  }, [availableUpdates, binariesOk, initialized])
+  }, [availableUpdates, binariesOk, initialized, onDownloadBinaries])
 
   if (initError) {
     return (
