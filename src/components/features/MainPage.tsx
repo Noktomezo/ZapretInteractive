@@ -23,6 +23,39 @@ import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
 import { useDownloadStore } from '@/stores/download.store'
 
+function waitForConnectionStatus(
+  expectedStatus: 'connected' | 'disconnected',
+  timeoutMs = 15000,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const currentStatus = useConnectionStore.getState().status
+    if (currentStatus === expectedStatus) {
+      resolve()
+      return
+    }
+
+    let unsubscribe = () => {}
+
+    const timeoutId = window.setTimeout(() => {
+      unsubscribe()
+      reject(new Error(`Timeout waiting for connection status: ${expectedStatus}`))
+    }, timeoutMs)
+
+    unsubscribe = useConnectionStore.subscribe((state) => {
+      if (state.status === expectedStatus) {
+        window.clearTimeout(timeoutId)
+        unsubscribe()
+        resolve()
+      }
+      else if (state.status === 'error') {
+        window.clearTimeout(timeoutId)
+        unsubscribe()
+        reject(new Error(`Connection entered error state while waiting for ${expectedStatus}`))
+      }
+    })
+  })
+}
+
 export function MainPage() {
   const availableUpdatesPromptKeyRef = useRef('')
   const [initError, setInitError] = useState<string | null>(null)
@@ -79,15 +112,25 @@ export function MainPage() {
 
   const handleDownloadBinaries = async () => {
     const { status: currentStatus } = useConnectionStore.getState()
-    const shouldReconnect = currentStatus === 'connected'
     try {
-      if (currentStatus === 'connected' || currentStatus === 'connecting' || currentStatus === 'disconnecting') {
-        await disconnect()
+      let shouldReconnect = false
+
+      if (currentStatus === 'connecting' || currentStatus === 'disconnecting') {
+        await waitForConnectionStatus('disconnected')
       }
+
+      if (useConnectionStore.getState().status === 'connected') {
+        shouldReconnect = true
+        await disconnect()
+        await waitForConnectionStatus('disconnected')
+      }
+
       await tauri.downloadBinaries()
 
       if (shouldReconnect) {
+        await waitForConnectionStatus('disconnected')
         await connect()
+        await waitForConnectionStatus('connected')
       }
     }
     catch (e) {

@@ -168,7 +168,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
         if (!get().backgroundChecksCleanup && typeof window !== 'undefined') {
           const intervalId = window.setInterval(() => {
-            void get().refreshRemoteState()
+            get().refreshRemoteState().catch((e) => {
+              useConnectionStore.getState().addLog(`Фоновая проверка файлов завершилась ошибкой: ${e}`)
+            })
           }, 3 * 60 * 60 * 1000)
 
           set({
@@ -178,7 +180,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
           })
         }
 
-        void get().refreshRemoteState()
+        get().refreshRemoteState().catch((e) => {
+          useConnectionStore.getState().addLog(`Первичная проверка обновлений завершилась ошибкой: ${e}`)
+        })
 
         if (!get().filesWatcherCleanup) {
           const offHealthChanged = tauri.onFilesHealthChanged(({ binaries_ok, lists_changed, config_missing }) => {
@@ -190,14 +194,26 @@ export const useAppStore = create<AppStore>((set, get) => ({
                 return
               }
               set({ missingCriticalFiles: files })
-            }).catch(console.error)
+            }).catch((error) => {
+              if (get().refreshVersion !== version) {
+                return
+              }
+              set({ missingCriticalFiles: [] })
+              useConnectionStore.getState().addLog(`Не удалось получить список отсутствующих файлов: ${error}`)
+            })
             if (binaries_ok) {
               tauri.getAvailableUpdates().then((files) => {
                 if (get().refreshVersion !== version) {
                   return
                 }
                 set({ availableUpdates: files })
-              }).catch(console.error)
+              }).catch((error) => {
+                if (get().refreshVersion !== version) {
+                  return
+                }
+                set({ availableUpdates: [] })
+                useConnectionStore.getState().addLog(`Не удалось получить список обновлений файлов: ${error}`)
+              })
             }
             else {
               set({ availableUpdates: [] })

@@ -316,9 +316,6 @@ fn ensure_base_directories() -> Result<(), String> {
 
 fn ensure_helper_files() -> Result<(), String> {
     ensure_base_directories()?;
-    if !get_hashes_path().exists() {
-        rebuild_hashes_from_disk()?;
-    }
     if !get_lists_state_path().exists() {
         rebuild_lists_state()?;
     }
@@ -518,17 +515,10 @@ pub fn start_files_watcher(app: AppHandle) -> Result<(), String> {
 
             let tracked_files_changed = event_affects_tracked_files(&changed_paths);
             let lists_changed = event_affects_lists(&changed_paths);
-            let hashes_changed = changed_paths.iter().any(|path| path == &get_hashes_path());
             let lists_state_changed = changed_paths.iter().any(|path| path == &get_lists_state_path());
 
             if !tracked_files_changed && !lists_changed {
                 continue;
-            }
-
-            if hashes_changed && !get_hashes_path().exists() {
-                if let Err(e) = rebuild_hashes_from_disk() {
-                    let _ = app.emit("files-health-watch-error", format!("Не удалось пересоздать hashes.json: {e}"));
-                }
             }
 
             if lists_state_changed && !get_lists_state_path().exists() {
@@ -722,7 +712,10 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
         candidates
     } else {
         let client = &client;
-        let results = stream::iter(candidates.into_iter().map(|file| async move {
+        let stored_hashes = load_stored_hashes()?;
+        let results = stream::iter(candidates.into_iter().map(|file| {
+            let stored_hashes = stored_hashes.clone();
+            async move {
             let checked = if file.dest_path.exists() {
                 let (needs_download, cached_bytes) =
                     check_remote_file(file.dest_path.clone(), client, &file.url, &file.name).await?;
@@ -732,7 +725,12 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
             };
 
             let (needs_download, cached_bytes) = checked;
-            Ok::<Option<FileToDownload>, String>(if needs_download {
+            let hash_missing = file
+                .hash_key
+                .as_ref()
+                .map(|key| !stored_hashes.contains_key(key))
+                .unwrap_or(false);
+            Ok::<Option<FileToDownload>, String>(if needs_download || cached_bytes.is_some() || hash_missing {
                 Some(FileToDownload {
                     cached_bytes,
                     ..file
@@ -740,7 +738,7 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
             } else {
                 None
             })
-        }))
+        }}))
         .buffer_unordered(FILES_CONCURRENCY_LIMIT)
         .collect::<Vec<_>>()
         .await;
