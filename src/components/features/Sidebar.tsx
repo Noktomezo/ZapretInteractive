@@ -115,13 +115,15 @@ function SidebarNavItem({
 
   return (
     <SidebarMenuItem>
-      <Tooltip>
+      <Tooltip open={open ? false : undefined}>
         <TooltipTrigger asChild>
           <SidebarMenuButton asChild isActive={isActive}>
             {link}
           </SidebarMenuButton>
         </TooltipTrigger>
-        {!open && <TooltipContent side="right">{tooltipLabel}</TooltipContent>}
+        <TooltipContent side="right">
+          {tooltipLabel}
+        </TooltipContent>
       </Tooltip>
     </SidebarMenuItem>
   )
