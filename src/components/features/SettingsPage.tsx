@@ -27,6 +27,25 @@ import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
 import { useDownloadStore } from '@/stores/download.store'
 
+function isValidPortRange(value: string): boolean {
+  if (!value.trim())
+    return true
+  const parts = value.split(',').map(p => p.trim())
+  for (const part of parts) {
+    if (part.includes('-')) {
+      const [start, end] = part.split('-').map(p => Number.parseInt(p.trim(), 10))
+      if (Number.isNaN(start) || Number.isNaN(end) || start < 1 || end > 65535 || start > end)
+        return false
+    }
+    else {
+      const port = Number.parseInt(part, 10)
+      if (Number.isNaN(port) || port < 1 || port > 65535)
+        return false
+    }
+  }
+  return true
+}
+
 function waitForConnectionStatus(
   expectedStatus: 'connected' | 'disconnected',
   timeoutMs = 15000,
@@ -373,7 +392,14 @@ export function SettingsPage() {
                   id="tcpPortsInput"
                   value={tcpDraft}
                   onChange={e => setTcpDraft(e.target.value)}
-                  onBlur={() => setGlobalPorts({ ...config.global_ports, tcp: tcpDraft })}
+                  onBlur={() => {
+                    if (isValidPortRange(tcpDraft)) {
+                      setGlobalPorts({ ...config.global_ports, tcp: tcpDraft })
+                    }
+                    else {
+                      toast.error('Неверный формат портов. Пример: 80,443 или 1000-2000')
+                    }
+                  }}
                   placeholder="1-65535"
                 />
               </div>
@@ -383,7 +409,14 @@ export function SettingsPage() {
                   id="udpPortsInput"
                   value={udpDraft}
                   onChange={e => setUdpDraft(e.target.value)}
-                  onBlur={() => setGlobalPorts({ ...config.global_ports, udp: udpDraft })}
+                  onBlur={() => {
+                    if (isValidPortRange(udpDraft)) {
+                      setGlobalPorts({ ...config.global_ports, udp: udpDraft })
+                    }
+                    else {
+                      toast.error('Неверный формат портов. Пример: 80,443 или 1000-2000')
+                    }
+                  }}
                   placeholder="1-65535"
                 />
               </div>

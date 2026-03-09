@@ -148,11 +148,20 @@ export function CategoryPage() {
       const strategy = category?.strategies.find(s => s.id === strategyId)
       const wasActive = strategy?.active ?? false
       deleteStrategy(categoryId, strategyId)
-      toast.success('Стратегия удалена')
       if (wasActive) {
-        skipNextAutosaveRef.current = true
-        await save()
-        await restartIfConnected()
+        try {
+          skipNextAutosaveRef.current = true
+          await save()
+          await restartIfConnected()
+          toast.success('Стратегия удалена')
+        }
+        catch (err) {
+          console.error('Failed to save/restart after deleting strategy:', err)
+          toast.error('Ошибка сохранения после удаления стратегии')
+        }
+      }
+      else {
+        toast.success('Стратегия удалена')
       }
     }
   }
@@ -160,14 +169,33 @@ export function CategoryPage() {
   const handleDeleteCategory = async () => {
     if (categoryId) {
       const hadActiveStrategy = category?.strategies.some(s => s.active) ?? false
-      skipNextAutosaveRef.current = true
-      deleteCategory(categoryId)
-      await save()
-      setDeleteDialogOpen(false)
-      toast.success('Категория удалена')
-      if (hadActiveStrategy) {
-        await restartIfConnected()
+      try {
+        skipNextAutosaveRef.current = true
+        await save()
       }
+      catch (err) {
+        console.error('Failed to save before deleting category:', err)
+        toast.error('Ошибка сохранения перед удалением категории')
+        return
+      }
+      deleteCategory(categoryId)
+      try {
+        await save()
+      }
+      catch (err) {
+        console.error('Failed to save after deleting category:', err)
+        toast.error('Ошибка сохранения после удаления категории')
+      }
+      setDeleteDialogOpen(false)
+      if (hadActiveStrategy) {
+        try {
+          await restartIfConnected()
+        }
+        catch (err) {
+          console.error('Failed to restart after deleting category:', err)
+        }
+      }
+      toast.success('Категория удалена')
       navigate({ to: '/strategies' })
     }
   }

@@ -1,8 +1,10 @@
 {
+  "$schema": "https://www.schemastore.org/package.json",
   "name": "zapret-interactive",
   "type": "module",
   "version": "1.0.5",
   "private": true,
+  "packageManager": "bun@1.3.10",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

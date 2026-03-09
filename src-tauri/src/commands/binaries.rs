@@ -166,11 +166,8 @@ fn sanitize_filename(filename: &str) -> Result<String, String> {
         return Err("Invalid filename".to_string());
     }
 
-    let valid_chars = name
-        .chars()
-        .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_');
-    if !valid_chars {
-        return Err("Filename contains invalid characters".to_string());
+    if name.contains('/') || name.contains('\\') || name.contains("..") {
+        return Err("Filename contains path traversal".to_string());
     }
 
     let file_stem = Path::new(name)
@@ -906,16 +903,23 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
                     .as_ref()
                     .map(|key| !stored_hashes.contains_key(key))
                     .unwrap_or(false);
-                Ok::<Option<FileToDownload>, String>(
-                    if needs_download || cached_bytes.is_some() || hash_missing {
-                        Some(FileToDownload {
-                            cached_bytes,
-                            ..file
-                        })
-                    } else {
-                        None
-                    },
-                )
+
+                Ok::<Option<FileToDownload>, String>(if needs_download || cached_bytes.is_some() {
+                    Some(FileToDownload {
+                        cached_bytes,
+                        ..file
+                    })
+                } else if hash_missing && file.dest_path.exists() {
+                    let local_hash = calculate_sha256(&file.dest_path).ok();
+                    if let (Some(hash_key), Some(hash)) = (file.hash_key.as_ref(), local_hash) {
+                        let mut updated_hashes = (*stored_hashes).clone();
+                        updated_hashes.insert(hash_key.clone(), hash);
+                        save_stored_hashes(&updated_hashes).ok();
+                    }
+                    None
+                } else {
+                    None
+                })
             }
         }))
         .buffer_unordered(FILES_CONCURRENCY_LIMIT)
