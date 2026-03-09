@@ -36,7 +36,7 @@ fn should_minimize_to_tray(state: &config::AppState) -> bool {
         .config
         .lock()
         .map(|cfg| cfg.minimize_to_tray)
-        .unwrap_or(true)
+        .unwrap_or_else(|poisoned| poisoned.into_inner().minimize_to_tray)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -55,7 +55,16 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_prevent_default::debug())
+        .plugin({
+            #[cfg(debug_assertions)]
+            {
+                tauri_plugin_prevent_default::debug()
+            }
+            #[cfg(not(debug_assertions))]
+            {
+                tauri_plugin_prevent_default::init()
+            }
+        })
         .setup(|app| {
             #[cfg(desktop)]
             app.handle().plugin(tauri_plugin_autostart::init(
@@ -166,7 +175,7 @@ pub fn run() {
                     .config
                     .lock()
                     .map(|cfg| cfg.launch_to_tray)
-                    .unwrap_or(false);
+                    .unwrap_or_else(|poisoned| poisoned.into_inner().launch_to_tray);
                 if launch_to_tray && was_launched_from_autostart() {
                     let _ = window.hide();
                 }

@@ -16,7 +16,7 @@ dev:
 # Use `just build-uncompressed` if you need an artifact without UPX packing.
 build: gen-icons
   bun run tauri build
-  upx --best --lzma "src-tauri\\target\\release\\Zapret Interactive.exe"
+  upx --best --lzma "src-tauri/target/release/Zapret Interactive.exe"
 
 # Final release build without UPX compression
 build-uncompressed: gen-icons
@@ -24,8 +24,8 @@ build-uncompressed: gen-icons
 
 # Lint only backend
 lint-back:
-  cargo clippy --manifest-path "src-tauri\\Cargo.toml"
-  cargo check --manifest-path "src-tauri\\Cargo.toml"
+  cargo clippy --manifest-path "src-tauri/Cargo.toml"
+  cargo check --manifest-path "src-tauri/Cargo.toml"
 
 # Lint only frontend
 lint-front:
@@ -37,8 +37,8 @@ lint: lint-back lint-front
 
 # Format only backend
 format-back:
-  cargo clippy --fix --allow-dirty --manifest-path "src-tauri\\Cargo.toml"
-  cargo fmt --manifest-path "src-tauri\\Cargo.toml"
+  cargo clippy --fix --allow-dirty --manifest-path "src-tauri/Cargo.toml"
+  cargo fmt --manifest-path "src-tauri/Cargo.toml"
 
 
 # Format only frontend

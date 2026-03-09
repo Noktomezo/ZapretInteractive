@@ -170,7 +170,7 @@ export function SettingsPage() {
       setTcpDraft(config.global_ports.tcp)
       setUdpDraft(config.global_ports.udp)
     }
-  }, [config])
+  }, [config?.global_ports])
 
   useEffect(() => {
     let isMounted = true

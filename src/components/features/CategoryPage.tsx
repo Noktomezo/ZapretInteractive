@@ -143,18 +143,31 @@ export function CategoryPage() {
     }
   }
 
-  const handleDeleteStrategy = (strategyId: string) => {
+  const handleDeleteStrategy = async (strategyId: string) => {
     if (categoryId) {
+      const strategy = category?.strategies.find(s => s.id === strategyId)
+      const wasActive = strategy?.active ?? false
       deleteStrategy(categoryId, strategyId)
       toast.success('Стратегия удалена')
+      if (wasActive) {
+        skipNextAutosaveRef.current = true
+        await save()
+        await restartIfConnected()
+      }
     }
   }
 
-  const handleDeleteCategory = () => {
+  const handleDeleteCategory = async () => {
     if (categoryId) {
+      const hadActiveStrategy = category?.strategies.some(s => s.active) ?? false
+      skipNextAutosaveRef.current = true
       deleteCategory(categoryId)
+      await save()
       setDeleteDialogOpen(false)
       toast.success('Категория удалена')
+      if (hadActiveStrategy) {
+        await restartIfConnected()
+      }
       navigate({ to: '/strategies' })
     }
   }

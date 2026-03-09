@@ -135,6 +135,7 @@ export function CategoriesListPage() {
   const [newCategoryOpen, setNewCategoryOpen] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const isInitialLoadRef = useRef(true)
+  const skipNextAutosaveRef = useRef(false)
 
   const { config, loading, load, save, addCategory, clearAllActiveStrategies, reorderCategories } = useConfigStore()
   const { restartIfConnected, notifyConfigApplied } = useConnectionStore()
@@ -173,10 +174,20 @@ export function CategoriesListPage() {
   const handleClearActive = async (categoryId: string, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    clearAllActiveStrategies(categoryId)
-    await save()
-    await restartIfConnected()
-    notifyConfigApplied('Стратегия деактивирована')
+    try {
+      skipNextAutosaveRef.current = true
+      clearAllActiveStrategies(categoryId)
+      await save()
+      await restartIfConnected()
+      notifyConfigApplied('Стратегия деактивирована')
+    }
+    catch (err) {
+      console.error('Failed to deactivate strategy:', err)
+      notifyConfigApplied('Ошибка деактивации стратегии')
+    }
+    finally {
+      skipNextAutosaveRef.current = false
+    }
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -248,7 +259,9 @@ export function CategoriesListPage() {
               <DialogTitle>Новая категория</DialogTitle>
             </DialogHeader>
             <div className="py-4">
+              <label htmlFor="new-category-name" className="text-sm font-normal">Название категории</label>
               <Input
+                id="new-category-name"
                 placeholder="Название категории"
                 value={newCategoryName}
                 onChange={e => setNewCategoryName(e.target.value)}

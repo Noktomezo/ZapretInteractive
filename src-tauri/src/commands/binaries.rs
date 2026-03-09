@@ -753,9 +753,22 @@ async fn refresh_lists_internal(force: bool) -> Result<usize, String> {
         };
 
         if local_hash.as_deref() != Some(remote_hash.as_str()) {
-            tokio_fs::write(&file_path, &bytes)
+            let temp_path = file_path.with_extension("tmp");
+            use tokio::io::AsyncWriteExt;
+            let mut temp_file = tokio::fs::File::create(&temp_path)
                 .await
-                .map_err(|e| format!("Failed to write {name}: {e}"))?;
+                .map_err(|e| format!("Failed to create temp file: {e}"))?;
+            temp_file
+                .write_all(&bytes)
+                .await
+                .map_err(|e| format!("Failed to write temp file: {e}"))?;
+            temp_file
+                .sync_all()
+                .await
+                .map_err(|e| format!("Failed to sync temp file: {e}"))?;
+            tokio::fs::rename(&temp_path, &file_path)
+                .await
+                .map_err(|e| format!("Failed to rename temp file: {e}"))?;
             update_hashes(|hashes| {
                 hashes.insert(hash_key("lists", name), remote_hash.clone());
                 Ok(())
