@@ -23,7 +23,9 @@ function RootLayout() {
                 options={{ scrollbars: { theme: 'os-theme-custom', autoHide: 'leave' } }}
                 className="h-full flex-1"
               >
-                <Outlet />
+                <div className="h-full min-h-full animate-in fade-in duration-200">
+                  <Outlet />
+                </div>
               </OverlayScrollbarsComponent>
             </SidebarInset>
           </div>

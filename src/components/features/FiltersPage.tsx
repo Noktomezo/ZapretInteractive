@@ -29,6 +29,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import * as tauri from '@/lib/tauri'
 import { useConfigStore } from '@/stores/config.store'
+import { useConnectionStore } from '@/stores/connection.store'
 
 interface FilterDraft {
   name: string
@@ -44,6 +45,7 @@ const emptyDraft: FilterDraft = {
 
 export function FiltersPage() {
   const { config, loading, load, setFilters } = useConfigStore()
+  const { restartIfConnected, notifyConfigApplied } = useConnectionStore()
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingFilterId, setEditingFilterId] = useState<string | null>(null)
@@ -130,9 +132,17 @@ export function FiltersPage() {
     const updatedFilters = currentFilters.map(filter =>
       filter.id === filterId ? { ...filter, active: !filter.active } : filter,
     )
-    void persistFilters(updatedFilters, currentFilters).catch((e) => {
-      toast.error(`Ошибка сохранения фильтров: ${e instanceof Error ? e.message : String(e)}`)
-    })
+    void persistFilters(updatedFilters, currentFilters)
+      .then(() => restartIfConnected()
+        .then(() => {
+          notifyConfigApplied('Фильтр обновлён')
+        })
+        .catch((e) => {
+          toast.error(`Ошибка применения фильтров: ${e instanceof Error ? e.message : String(e)}`)
+        }))
+      .catch((e) => {
+        toast.error(`Ошибка сохранения фильтров: ${e instanceof Error ? e.message : String(e)}`)
+      })
   }
 
   const handleCreateFilter = async () => {

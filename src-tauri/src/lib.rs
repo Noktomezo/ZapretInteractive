@@ -140,7 +140,7 @@ pub fn run() {
                     .lock()
                     .map(|cfg| cfg.launch_to_tray)
                     .unwrap_or(false);
-                if launch_to_tray {
+                if launch_to_tray && was_launched_from_autostart() {
                     let _ = window.hide();
                 }
                 window.on_window_event(move |event| {
@@ -172,11 +172,16 @@ pub fn run() {
             config::save_config,
             config::reset_config,
             config::get_zapret_directory,
+            config::config_exists,
             config::resolve_placeholders,
             config::update_list_mode,
             binaries::verify_binaries,
+            binaries::get_missing_critical_files,
+            binaries::get_available_updates,
+            binaries::restore_hashes_from_disk,
             binaries::download_binaries,
             binaries::refresh_lists_if_stale,
+            binaries::restore_default_filters,
             binaries::get_binary_path,
             binaries::get_winws_path,
             binaries::get_filters_path,

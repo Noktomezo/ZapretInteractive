@@ -37,6 +37,10 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   error: null,
 
   load: async () => {
+    if (get().config) {
+      return
+    }
+
     set({ loading: true, error: null })
     try {
       const config = await tauri.loadConfig()

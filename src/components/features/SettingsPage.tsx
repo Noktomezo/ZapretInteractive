@@ -23,7 +23,77 @@ import * as tauri from '@/lib/tauri'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app.store'
 import { useConfigStore } from '@/stores/config.store'
+import { useConnectionStore } from '@/stores/connection.store'
 import { useDownloadStore } from '@/stores/download.store'
+
+function waitForConnectionStatus(
+  expectedStatus: 'connected' | 'disconnected',
+  timeoutMs = 15000,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const currentStatus = useConnectionStore.getState().status
+    if (currentStatus === expectedStatus) {
+      resolve()
+      return
+    }
+    if (currentStatus === 'error') {
+      reject(new Error(`Connection entered error state while waiting for ${expectedStatus}`))
+      return
+    }
+
+    let unsubscribe = () => {}
+    const timeoutId = window.setTimeout(() => {
+      unsubscribe()
+      reject(new Error(`Timeout waiting for connection status: ${expectedStatus}`))
+    }, timeoutMs)
+
+    unsubscribe = useConnectionStore.subscribe((state) => {
+      if (state.status === expectedStatus) {
+        window.clearTimeout(timeoutId)
+        unsubscribe()
+        resolve()
+      }
+      else if (state.status === 'error') {
+        window.clearTimeout(timeoutId)
+        unsubscribe()
+        reject(new Error(`Connection entered error state while waiting for ${expectedStatus}`))
+      }
+    })
+  })
+}
+
+function waitForTerminalConnectionStatus(timeoutMs = 15000): Promise<'connected' | 'disconnected'> {
+  return new Promise((resolve, reject) => {
+    const currentStatus = useConnectionStore.getState().status
+    if (currentStatus === 'connected' || currentStatus === 'disconnected') {
+      resolve(currentStatus)
+      return
+    }
+    if (currentStatus === 'error') {
+      reject(new Error('Connection entered error state while waiting for terminal status'))
+      return
+    }
+
+    let unsubscribe = () => {}
+    const timeoutId = window.setTimeout(() => {
+      unsubscribe()
+      reject(new Error('Timeout waiting for terminal connection status'))
+    }, timeoutMs)
+
+    unsubscribe = useConnectionStore.subscribe((state) => {
+      if (state.status === 'connected' || state.status === 'disconnected') {
+        window.clearTimeout(timeoutId)
+        unsubscribe()
+        resolve(state.status)
+      }
+      else if (state.status === 'error') {
+        window.clearTimeout(timeoutId)
+        unsubscribe()
+        reject(new Error('Connection entered error state while waiting for terminal status'))
+      }
+    })
+  })
+}
 
 export function SettingsPage() {
   const [zapretDir, setZapretDir] = useState<string>('')
@@ -43,8 +113,9 @@ export function SettingsPage() {
     setConnectOnAutostart,
     reset,
   } = useConfigStore()
-  const { isDownloading, progress, setDownloading, reset: resetDownload } = useDownloadStore()
-  const { binariesOk } = useAppStore()
+  const { isDownloading, progress, reset: resetDownload } = useDownloadStore()
+  const { binariesOk, availableUpdates } = useAppStore()
+  const { connect, disconnect } = useConnectionStore()
 
   useEffect(() => {
     let isMounted = true
@@ -105,20 +176,44 @@ export function SettingsPage() {
   }, [config, save])
 
   const handleDownloadBinaries = async () => {
-    setDownloading(true)
+    const forceAll = binariesOk === true && availableUpdates.length === 0
+    let shouldReconnect = false
     try {
-      await tauri.downloadBinaries()
+      let stableStatus = useConnectionStore.getState().status
+      if (stableStatus === 'connecting' || stableStatus === 'disconnecting') {
+        stableStatus = await waitForTerminalConnectionStatus()
+      }
+
+      if (stableStatus === 'connected') {
+        shouldReconnect = true
+        await disconnect()
+        await waitForConnectionStatus('disconnected')
+      }
+
+      await tauri.downloadBinaries(forceAll)
     }
     catch (e) {
       console.error(e)
       resetDownload()
       toast.error(`Ошибка загрузки файлов: ${e}`)
     }
+    finally {
+      if (shouldReconnect) {
+        try {
+          await connect()
+          await waitForConnectionStatus('connected')
+        }
+        catch (e) {
+          toast.error(`Ошибка восстановления подключения: ${e}`)
+        }
+      }
+    }
   }
 
   const handleReset = async () => {
     try {
       await reset()
+      await tauri.restoreDefaultFilters()
       setResetDialogOpen(false)
       toast.success('Настройки сброшены')
     }
@@ -289,7 +384,7 @@ export function SettingsPage() {
         <CardHeader>
           <CardTitle className="text-lg">Бинарные файлы</CardTitle>
           <CardDescription>
-            WinDivert, winws.exe, fake-файлы и фильтры
+            WinDivert, winws.exe, fake-файлы и списки
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -307,7 +402,18 @@ export function SettingsPage() {
             </Alert>
           )}
 
-          {binariesOk === true && (
+          {binariesOk === true && availableUpdates.length > 0 && (
+            <Alert className="border-yellow-600 bg-yellow-600/10">
+              <AlertTitle>Доступно обновление файлов</AlertTitle>
+              <AlertDescription>
+                {availableUpdates.length === 1
+                  ? `Доступно обновление: ${availableUpdates[0]}`
+                  : `Доступно обновление для ${availableUpdates.length} файлов`}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {binariesOk === true && availableUpdates.length === 0 && (
             <Alert className="border-green-600 bg-green-600/10">
               <AlertTitle>Файлы на месте</AlertTitle>
               <AlertDescription>
@@ -340,10 +446,14 @@ export function SettingsPage() {
                 <Button
                   onClick={handleDownloadBinaries}
                   disabled={isDownloading}
-                  variant={binariesOk ? 'outline' : 'default'}
+                  variant={binariesOk === false ? 'default' : 'outline'}
                 >
                   <Download className="mr-2 size-4" />
-                  {binariesOk ? 'Переустановить' : 'Загрузить'}
+                  {binariesOk === false
+                    ? 'Загрузить'
+                    : availableUpdates.length > 0
+                      ? 'Обновить'
+                      : 'Переустановить'}
                 </Button>
               )}
         </CardContent>

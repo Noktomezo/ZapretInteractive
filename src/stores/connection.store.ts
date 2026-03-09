@@ -1,3 +1,4 @@
+import { toast } from 'sonner'
 import { create } from 'zustand'
 import { buildFiltersCommand, buildFiltersCommandArray, buildStrategyCommand } from '../lib/strategy'
 import * as tauri from '../lib/tauri'
@@ -6,6 +7,7 @@ import { useConfigStore } from './config.store'
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'disconnecting' | 'error'
 const MAX_LOGS = 500
 let trayUpdatePromise: Promise<void> = Promise.resolve()
+let restartPromise: Promise<void> | null = null
 
 export interface LogEntry {
   seq: number
@@ -19,11 +21,14 @@ interface ConnectionStore {
   logs: LogEntry[]
   error: string | null
   recovered: boolean
+  pendingRestart: boolean
 
   updateTrayState: (connected: boolean) => Promise<void>
   checkStatus: () => Promise<void>
   connect: () => Promise<void>
   disconnect: () => Promise<void>
+  restartIfConnected: () => Promise<void>
+  notifyConfigApplied: (message?: string) => void
   toggle: () => Promise<void>
   addLog: (message: string) => void
   clearLogs: () => void
@@ -38,6 +43,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
   logs: [],
   error: null,
   recovered: false,
+  pendingRestart: false,
 
   updateTrayState: async (connected: boolean) => {
     trayUpdatePromise = trayUpdatePromise
@@ -124,6 +130,11 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       set({ status: 'connected', pid })
       get().updateTrayState(true)
       get().addLog(`Подключение установлено, PID: ${pid}`)
+      if (get().pendingRestart && !restartPromise) {
+        queueMicrotask(() => {
+          void get().restartIfConnected()
+        })
+      }
     }
     catch (e) {
       set({ status: 'error', error: String(e) })
@@ -165,6 +176,68 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     else if (status === 'disconnected') {
       await get().connect()
     }
+  },
+
+  restartIfConnected: async () => {
+    const currentStatus = get().status
+    if (restartPromise) {
+      if (currentStatus === 'connected' || currentStatus === 'connecting' || currentStatus === 'disconnecting') {
+        set({ pendingRestart: true })
+      }
+      return restartPromise
+    }
+
+    if (currentStatus === 'connecting' || currentStatus === 'disconnecting') {
+      set({ pendingRestart: true })
+      return
+    }
+
+    if (currentStatus !== 'connected') {
+      return
+    }
+
+    restartPromise = (async () => {
+      const toastId = toast.loading('Применяю изменения подключения...')
+      try {
+        while (true) {
+          set({ pendingRestart: false })
+          get().addLog('Конфигурация подключения изменена, перезапускаю winws.exe')
+
+          await get().disconnect()
+          if (get().status !== 'disconnected') {
+            throw new Error('Не удалось остановить текущее подключение')
+          }
+
+          await get().connect()
+          if (get().status !== 'connected') {
+            throw new Error('Подключение не восстановилось после перезапуска')
+          }
+
+          if (!get().pendingRestart) {
+            break
+          }
+        }
+
+        toast.success('Изменения применены', { id: toastId })
+      }
+      catch (e) {
+        toast.error(`Ошибка применения изменений: ${e instanceof Error ? e.message : String(e)}`, { id: toastId })
+        throw e
+      }
+      finally {
+        restartPromise = null
+      }
+    })()
+
+    return restartPromise
+  },
+
+  notifyConfigApplied: (message = 'Изменения сохранены') => {
+    if (get().status === 'connected' || get().pendingRestart) {
+      return
+    }
+
+    toast.success(message)
   },
 
   addLog: (message) => {

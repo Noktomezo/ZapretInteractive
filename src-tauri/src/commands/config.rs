@@ -165,10 +165,13 @@ impl AppState {
 fn load_config_from_disk() -> Result<AppConfig, String> {
     let config_path = get_config_path();
 
-    if !config_path.exists() {
-        let default_config = AppConfig::default();
-        save_config_to_disk(&default_config)?;
-        return Ok(default_config);
+    match config_path.try_exists().map_err(|e| e.to_string())? {
+        false => return Ok(AppConfig::default()),
+        true => {}
+    }
+
+    if !config_path.is_file() {
+        return Ok(AppConfig::default());
     }
 
     let content = fs::read_to_string(&config_path).map_err(|e| e.to_string())?;
@@ -230,6 +233,11 @@ pub fn update_list_mode(mode: ListMode, state: tauri::State<'_, AppState>) -> Re
 #[tauri::command]
 pub fn get_zapret_directory() -> String {
     get_zapret_dir().to_string_lossy().to_string()
+}
+
+#[tauri::command]
+pub fn config_exists() -> bool {
+    get_config_path().exists()
 }
 
 #[tauri::command]

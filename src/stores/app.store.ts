@@ -1,4 +1,3 @@
-import { toast } from 'sonner'
 import { create } from 'zustand'
 import * as tauri from '../lib/tauri'
 import { useConfigStore } from './config.store'
@@ -14,11 +13,20 @@ interface AppStore {
   isElevated: boolean | null
   binariesOk: boolean | null
   timestampsOk: boolean | null
+  missingCriticalFiles: string[]
+  availableUpdates: string[]
+  configMissing: boolean
   initializePromise: Promise<void> | null
   filesWatcherCleanup: (() => void) | null
+  backgroundChecksCleanup: (() => void) | null
+  refreshVersion: number
 
   initialize: () => Promise<void>
+  refreshRemoteState: () => Promise<void>
   setBinariesOk: (ok: boolean) => void
+  setMissingCriticalFiles: (files: string[]) => void
+  setAvailableUpdates: (files: string[]) => void
+  setConfigMissing: (missing: boolean) => void
   teardownFilesWatcher: () => void
 }
 
@@ -28,13 +36,63 @@ export const useAppStore = create<AppStore>((set, get) => ({
   isElevated: null,
   binariesOk: null,
   timestampsOk: null,
+  missingCriticalFiles: [],
+  availableUpdates: [],
+  configMissing: false,
   initializePromise: null,
   filesWatcherCleanup: null,
+  backgroundChecksCleanup: null,
+  refreshVersion: 0,
   teardownFilesWatcher: () => {
     const cleanup = get().filesWatcherCleanup
     if (cleanup) {
       cleanup()
       set({ filesWatcherCleanup: null })
+    }
+    const backgroundCleanup = get().backgroundChecksCleanup
+    if (backgroundCleanup) {
+      backgroundCleanup()
+      set({ backgroundChecksCleanup: null })
+    }
+  },
+  refreshRemoteState: async () => {
+    const version = get().refreshVersion + 1
+    set({ refreshVersion: version })
+
+    try {
+      const updatedLists = await tauri.refreshListsIfStale()
+      if (updatedLists > 0) {
+        useConnectionStore.getState().addLog(`Списки обновлены автоматически: ${updatedLists} файлов`)
+      }
+    }
+    catch (e) {
+      useConnectionStore.getState().addLog(`Не удалось автоматически обновить списки: ${e}`)
+    }
+
+    const stillHealthy = await tauri.verifyBinaries()
+    const missingFiles = await tauri.getMissingCriticalFiles()
+    if (get().refreshVersion !== version) {
+      return
+    }
+
+    if (stillHealthy) {
+      try {
+        const availableUpdates = await tauri.getAvailableUpdates()
+        if (get().refreshVersion !== version) {
+          return
+        }
+        set({ binariesOk: stillHealthy, missingCriticalFiles: missingFiles, availableUpdates })
+      }
+      catch (e) {
+        if (get().refreshVersion !== version) {
+          return
+        }
+        set({ binariesOk: stillHealthy, missingCriticalFiles: missingFiles, availableUpdates: [] })
+        useConnectionStore.getState().addLog(`Не удалось проверить обновления файлов: ${e}`)
+      }
+    }
+    else {
+      set({ binariesOk: stillHealthy, missingCriticalFiles: missingFiles, availableUpdates: [] })
     }
   },
 
@@ -84,53 +142,97 @@ export const useAppStore = create<AppStore>((set, get) => ({
           set({ timestampsOk: true })
         }
 
+        const configExists = await tauri.configExists()
         useConnectionStore.getState().addLog('Загружаю конфигурацию')
         await useConfigStore.getState().load()
         if (useConfigStore.getState().config) {
+          set({ configMissing: !configExists })
           useConnectionStore.getState().addLog('Конфигурация загружена')
+          if (!configExists)
+            useConnectionStore.getState().addLog('Файл config.json отсутствует, ожидаю подтверждения на восстановление дефолтного конфига')
         }
         else {
+          set({ configMissing: true })
           useConnectionStore.getState().addLog('Не удалось загрузить конфигурацию')
           throw new Error('Config not loaded')
         }
 
         const binaries = await tauri.verifyBinaries()
-        set({ binariesOk: binaries })
+        const missingCriticalFiles = await tauri.getMissingCriticalFiles()
+        set({ binariesOk: binaries, missingCriticalFiles })
         useConnectionStore.getState().addLog(
           binaries
-            ? 'Файлы приложения и фильтры прошли проверку целостности'
-            : 'Файлы приложения или фильтры отсутствуют либо повреждены',
+            ? 'Файлы приложения и списки прошли проверку целостности'
+            : 'Файлы приложения или списки отсутствуют либо повреждены',
         )
 
-        try {
-          const updatedLists = await tauri.refreshListsIfStale()
-          if (updatedLists > 0) {
-            useConnectionStore.getState().addLog(`Списки обновлены автоматически: ${updatedLists} файлов`)
-          }
-        }
-        catch (e) {
-          useConnectionStore.getState().addLog(`Не удалось автоматически обновить списки: ${e}`)
+        if (!get().backgroundChecksCleanup && typeof window !== 'undefined') {
+          const intervalId = window.setInterval(() => {
+            get().refreshRemoteState().catch((e) => {
+              useConnectionStore.getState().addLog(`Фоновая проверка файлов завершилась ошибкой: ${e}`)
+            })
+          }, 3 * 60 * 60 * 1000)
+
+          set({
+            backgroundChecksCleanup: () => {
+              window.clearInterval(intervalId)
+            },
+          })
         }
 
+        get().refreshRemoteState().catch((e) => {
+          useConnectionStore.getState().addLog(`Первичная проверка обновлений завершилась ошибкой: ${e}`)
+        })
+
         if (!get().filesWatcherCleanup) {
-          const offHealthChanged = tauri.onFilesHealthChanged(({ binaries_ok, lists_changed }) => {
+          const offHealthChanged = tauri.onFilesHealthChanged(({ binaries_ok, lists_changed, config_missing }) => {
             const previousState = get().binariesOk
-            set({ binariesOk: binaries_ok })
+            const version = get().refreshVersion + 1
+            set({ binariesOk: binaries_ok, configMissing: config_missing, refreshVersion: version })
+            tauri.getMissingCriticalFiles().then((files) => {
+              if (get().refreshVersion !== version) {
+                return
+              }
+              set({ missingCriticalFiles: files })
+            }).catch((error) => {
+              if (get().refreshVersion !== version) {
+                return
+              }
+              set({ missingCriticalFiles: [] })
+              useConnectionStore.getState().addLog(`Не удалось получить список отсутствующих файлов: ${error}`)
+            })
+            if (binaries_ok) {
+              tauri.getAvailableUpdates().then((files) => {
+                if (get().refreshVersion !== version) {
+                  return
+                }
+                set({ availableUpdates: files })
+              }).catch((error) => {
+                if (get().refreshVersion !== version) {
+                  return
+                }
+                set({ availableUpdates: [] })
+                useConnectionStore.getState().addLog(`Не удалось получить список обновлений файлов: ${error}`)
+              })
+            }
+            else {
+              set({ availableUpdates: [] })
+            }
 
             if (previousState !== binaries_ok) {
               useConnectionStore.getState().addLog(
                 binaries_ok
                   ? 'Локальные файлы приложения снова в порядке'
-                  : 'Обнаружено локальное изменение: файлы приложения или фильтры отсутствуют либо повреждены',
+                  : 'Обнаружено локальное изменение: файлы приложения или списки отсутствуют либо повреждены',
               )
-            }
-
-            if (previousState !== false && binaries_ok === false) {
-              toast.error('Обнаружено изменение локальных файлов. Часть файлов приложения или фильтров отсутствует либо повреждена.')
             }
 
             if (lists_changed) {
               useConnectionStore.getState().addLog('Обнаружено локальное изменение файлов списков')
+            }
+
+            if (config_missing) {
+              useConnectionStore.getState().addLog('Обнаружено локальное удаление config.json')
             }
           })
 
@@ -176,4 +278,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   setBinariesOk: ok => set({ binariesOk: ok }),
+  setMissingCriticalFiles: files => set({ missingCriticalFiles: files }),
+  setAvailableUpdates: files => set({ availableUpdates: files }),
+  setConfigMissing: missing => set({ configMissing: missing }),
 }))

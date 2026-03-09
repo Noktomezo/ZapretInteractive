@@ -168,9 +168,9 @@
 }
 
 @layer utilities {
-  .app-glass-surface {
-    @apply bg-background/40 backdrop-blur-xl;
-  }
+.app-glass-surface {
+  @apply bg-background/40 backdrop-blur-xl;
+}
 
   @keyframes pulse-glow {
     0%,
