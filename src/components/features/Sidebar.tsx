@@ -121,7 +121,7 @@ function SidebarNavItem({
             {link}
           </SidebarMenuButton>
         </TooltipTrigger>
-        <TooltipContent side="right">{tooltipLabel}</TooltipContent>
+        {!open && <TooltipContent side="right">{tooltipLabel}</TooltipContent>}
       </Tooltip>
     </SidebarMenuItem>
   )

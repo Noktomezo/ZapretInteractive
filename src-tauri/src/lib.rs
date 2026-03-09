@@ -11,6 +11,7 @@ use tauri::{
 };
 #[cfg(desktop)]
 use tauri_plugin_autostart::ManagerExt;
+use tauri_plugin_prevent_default::Flags;
 
 static CONNECTED: AtomicBool = AtomicBool::new(false);
 
@@ -51,6 +52,15 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_prevent_default::Builder::new()
+            .with_flags(
+                #[cfg(debug_assertions)]
+                Flags::all().difference(Flags::DEV_TOOLS | Flags::CONTEXT_MENU | Flags::RELOAD),
+                #[cfg(not(debug_assertions))]
+                Flags::all(),
+            )
+            .build()
+        )
         .setup(|app| {
             #[cfg(desktop)]
             app.handle().plugin(tauri_plugin_autostart::init(

@@ -389,8 +389,8 @@ export function MainPage() {
                 'h-32 w-32 rounded-full transition-all duration-300',
                 status === 'connected'
                 && 'animate-pulse-glow bg-green-600 text-white hover:bg-green-500 dark:hover:bg-green-500',
-                status === 'connecting'
-                && 'bg-yellow-600 text-white hover:bg-yellow-500',
+                (status === 'connecting' || status === 'disconnecting')
+                && 'animate-pulse-glow-yellow bg-yellow-600 text-white hover:bg-yellow-500',
                 status === 'disconnecting'
                 && 'bg-orange-600 text-white hover:bg-orange-500',
                 status === 'error' && 'bg-red-600 text-white hover:bg-red-500',
@@ -400,9 +400,6 @@ export function MainPage() {
             >
               <Power className="size-12" />
             </Button>
-            {(status === 'connecting' || status === 'disconnecting') && (
-              <div className="absolute inset-0 rounded-full bg-yellow-500/30 animate-ping" />
-            )}
           </div>
 
           <div>
