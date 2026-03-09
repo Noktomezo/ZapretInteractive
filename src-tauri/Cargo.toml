@@ -10,7 +10,6 @@ name = "zapret_interactive_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [profile.dev]
-incremental = true
 
 [profile.release]
 overflow-checks = false

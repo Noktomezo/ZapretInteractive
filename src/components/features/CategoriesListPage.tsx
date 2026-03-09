@@ -18,7 +18,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Link } from '@tanstack/react-router'
-import { ChevronRight, Eraser, GripVertical, Loader2, Plus } from 'lucide-react'
+import { BrushCleaning, ChevronRight, GripVertical, Loader2, Plus } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
@@ -29,6 +29,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfigStore } from '@/stores/config.store'
 
@@ -84,17 +85,18 @@ function SortableCategoryItem({ category, onClearActive }: SortableCategoryItemP
       <Link
         to="/strategies/$categoryId"
         params={{ categoryId: category.id }}
-        className="flex min-w-0 flex-1 cursor-pointer items-center justify-between rounded-md"
+        className="-my-4 flex min-w-0 flex-1 self-stretch cursor-pointer items-center justify-between rounded-md py-4"
       >
         <div className="flex min-w-0 items-center gap-3">
           <div className="min-w-0 space-y-1">
             <div className="flex items-center gap-3">
               <span className="truncate text-sm font-normal">{category.name}</span>
-              {activeCount > 0 && (
-                <span className="rounded bg-green-600 px-2 py-0.5 text-xs text-white">
-                  активна
-                </span>
-              )}
+              <span
+                className={activeCount > 0
+                  ? 'inline-flex h-2 w-2 rounded-full bg-green-500 animate-pulse'
+                  : 'inline-flex h-2 w-2 rounded-full bg-red-500 animate-pulse'}
+                aria-label={activeCount > 0 ? 'Есть активная стратегия' : 'Нет активной стратегии'}
+              />
             </div>
             <p className="text-xs text-muted-foreground">
               {formatStrategiesCount(category.strategies.length)}
@@ -106,16 +108,16 @@ function SortableCategoryItem({ category, onClearActive }: SortableCategoryItemP
         </div>
       </Link>
       {activeCount > 0 && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={e => onClearActive(category.id, e)}
-              className="cursor-pointer hover:bg-red-500/10 [&:hover_svg]:text-red-500 transition-colors duration-200"
-            >
-              <Eraser className="w-4 h-4 text-muted-foreground" />
-            </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={e => onClearActive(category.id, e)}
+                className="cursor-pointer"
+              >
+                <BrushCleaning className="w-4 h-4 text-red-600 dark:text-red-400" />
+              </Button>
           </TooltipTrigger>
           <TooltipContent>Деактивировать текущую стратегию</TooltipContent>
         </Tooltip>
@@ -189,68 +191,70 @@ export function CategoriesListPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-medium">Категории</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Выберите категорию для управления стратегиями
-          </p>
-        </div>
-        <Button onClick={() => setNewCategoryOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Новая категория
-        </Button>
-      </div>
-
-      <div className="space-y-3">
-        {config?.categories.length === 0
-          ? (
-              <p className="text-sm text-muted-foreground">Нет категорий</p>
-            )
-          : (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={config?.categories.map(c => c.id) ?? []}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {config?.categories.map((category: Category) => (
-                    <SortableCategoryItem
-                      key={category.id}
-                      category={category}
-                      onClearActive={handleClearActive}
-                    />
-                  ))}
-                </SortableContext>
-              </DndContext>
-            )}
-      </div>
-
-      <Dialog open={newCategoryOpen} onOpenChange={setNewCategoryOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Новая категория</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <Input
-              placeholder="Название категории"
-              value={newCategoryName}
-              onChange={e => setNewCategoryName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAddCategory()}
-            />
+    <ScrollArea className="h-full">
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-medium">Категории</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Выберите категорию для управления стратегиями
+            </p>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setNewCategoryOpen(false)}>
-              Отмена
-            </Button>
-            <Button onClick={handleAddCategory}>Создать</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+          <Button onClick={() => setNewCategoryOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Новая категория
+          </Button>
+        </div>
+
+        <div className="space-y-3">
+          {config?.categories.length === 0
+            ? (
+                <p className="text-sm text-muted-foreground">Нет категорий</p>
+              )
+            : (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={config?.categories.map(c => c.id) ?? []}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {config?.categories.map((category: Category) => (
+                      <SortableCategoryItem
+                        key={category.id}
+                        category={category}
+                        onClearActive={handleClearActive}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
+              )}
+        </div>
+
+        <Dialog open={newCategoryOpen} onOpenChange={setNewCategoryOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Новая категория</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <Input
+                placeholder="Название категории"
+                value={newCategoryName}
+                onChange={e => setNewCategoryName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAddCategory()}
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setNewCategoryOpen(false)}>
+                Отмена
+              </Button>
+              <Button onClick={handleAddCategory}>Создать</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </ScrollArea>
   )
 }

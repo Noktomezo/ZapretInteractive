@@ -1,5 +1,4 @@
 import { createRootRoute, Outlet } from '@tanstack/react-router'
-import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import { Toaster } from 'sonner'
 import { Sidebar } from '@/components/features/Sidebar'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
@@ -18,15 +17,11 @@ function RootLayout() {
           <div className="flex h-screen overflow-hidden pt-10">
             <Sidebar />
             <SidebarInset className="h-full min-h-0 overflow-hidden rounded-tl-lg">
-              <OverlayScrollbarsComponent
-                defer
-                options={{ scrollbars: { theme: 'os-theme-custom', autoHide: 'leave' } }}
-                className="h-full flex-1"
-              >
+              <div className="h-full flex-1 overflow-auto">
                 <div className="h-full min-h-full animate-in fade-in duration-200">
                   <Outlet />
                 </div>
-              </OverlayScrollbarsComponent>
+              </div>
             </SidebarInset>
           </div>
         </SidebarProvider>

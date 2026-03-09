@@ -52,15 +52,16 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_prevent_default::Builder::new()
-            .with_flags(
-                #[cfg(debug_assertions)]
-                Flags::all().difference(Flags::DEV_TOOLS | Flags::CONTEXT_MENU | Flags::RELOAD),
-                #[cfg(not(debug_assertions))]
-                Flags::all(),
-            )
-            .build()
-        )
+        .plugin({
+            let flags = if cfg!(debug_assertions) {
+                Flags::all() - Flags::DEV_TOOLS - Flags::CONTEXT_MENU - Flags::RELOAD
+            } else {
+                Flags::all()
+            };
+            tauri_plugin_prevent_default::Builder::new()
+                .with_flags(flags)
+                .build()
+        })
         .setup(|app| {
             #[cfg(desktop)]
             app.handle().plugin(tauri_plugin_autostart::init(

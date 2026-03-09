@@ -82,23 +82,28 @@ function SidebarNavItem({
   if (isDisabled) {
     return (
       <SidebarMenuItem>
-        <SidebarMenuButton
-          isActive={false}
-          aria-label={open ? label : tooltipLabel}
-          aria-disabled="true"
-          tabIndex={0}
-          className="cursor-not-allowed opacity-45 hover:bg-transparent hover:text-sidebar-foreground"
-          onClick={(event) => {
-            event.preventDefault()
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault()
-            }
-          }}
-        >
-          {content}
-        </SidebarMenuButton>
+        <Tooltip open={open ? false : undefined}>
+          <TooltipTrigger asChild>
+            <SidebarMenuButton
+              isActive={false}
+              aria-label={tooltipLabel}
+              aria-disabled="true"
+              tabIndex={0}
+              className="cursor-not-allowed opacity-45 hover:bg-transparent hover:text-sidebar-foreground"
+              onClick={(event) => {
+                event.preventDefault()
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                }
+              }}
+            >
+              {content}
+            </SidebarMenuButton>
+          </TooltipTrigger>
+          <TooltipContent side="right">{tooltipLabel}</TooltipContent>
+        </Tooltip>
       </SidebarMenuItem>
     )
   }

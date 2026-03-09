@@ -38,7 +38,7 @@ function waitForConnectionStatus(
       return
     }
 
-    let unsubscribe = () => {}
+    let unsubscribe = () => { }
 
     const timeoutId = window.setTimeout(() => {
       unsubscribe()
@@ -72,7 +72,7 @@ function waitForTerminalConnectionStatus(timeoutMs = 15000): Promise<'connected'
       return
     }
 
-    let unsubscribe = () => {}
+    let unsubscribe = () => { }
 
     const timeoutId = window.setTimeout(() => {
       unsubscribe()
@@ -272,29 +272,29 @@ export function MainPage() {
           </div>
           {progress
             ? (
-                <div className="space-y-2">
-                  <div className="h-2 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full bg-primary transition-all duration-300"
-                      style={{
-                        width: `${Math.max(0, Math.min(100, progress.total > 0 ? (progress.current / progress.total) * 100 : 0))}%`,
-                      }}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {progress.current}
-                    /
-                    {progress.total}
-                    :
-                    {progress.filename}
-                  </p>
+              <div className="space-y-2">
+                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full bg-primary transition-all duration-300"
+                    style={{
+                      width: `${Math.max(0, Math.min(100, progress.total > 0 ? (progress.current / progress.total) * 100 : 0))}%`,
+                    }}
+                  />
                 </div>
-              )
+                <p className="text-xs text-muted-foreground">
+                  {progress.current}
+                  /
+                  {progress.total}
+                  :
+                  {progress.filename}
+                </p>
+              </div>
+            )
             : (
-                <Button disabled className="w-full">
-                  Обновление...
-                </Button>
-              )}
+              <Button disabled className="w-full">
+                Обновление...
+              </Button>
+            )}
         </Card>
       </div>
     )
@@ -389,10 +389,10 @@ export function MainPage() {
                 'h-32 w-32 rounded-full transition-all duration-300',
                 status === 'connected'
                 && 'animate-pulse-glow bg-green-600 text-white hover:bg-green-500 dark:hover:bg-green-500',
-                (status === 'connecting' || status === 'disconnecting')
+                status === 'connecting'
                 && 'animate-pulse-glow-yellow bg-yellow-600 text-white hover:bg-yellow-500',
                 status === 'disconnecting'
-                && 'bg-orange-600 text-white hover:bg-orange-500',
+                && 'animate-pulse-glow-yellow bg-orange-600 text-white hover:bg-orange-500',
                 status === 'error' && 'bg-red-600 text-white hover:bg-red-500',
                 status === 'disconnected'
                 && 'animate-pulse-glow-primary bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200',
@@ -425,56 +425,56 @@ export function MainPage() {
           >
             {status === 'disconnected'
               ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div>
-                        <ToggleGroupItem
-                          value="ipset"
-                          className="px-3 py-1.5 text-xs data-[state=on]:bg-green-500/20 data-[state=on]:text-green-600 dark:data-[state=on]:text-green-400 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          Только заблокированные
-                        </ToggleGroupItem>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs text-center">
-                      Обрабатываются только заблокированные в России IP-адреса. Достоверность 99.9%
-                    </TooltipContent>
-                  </Tooltip>
-                )
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <ToggleGroupItem
+                        value="ipset"
+                        className="px-3 py-1.5 text-xs data-[state=on]:bg-green-500/20 data-[state=on]:text-green-600 dark:data-[state=on]:text-green-400 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Только заблокированные
+                      </ToggleGroupItem>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-center">
+                    Обрабатываются только заблокированные в России IP-адреса. Достоверность 99.9%
+                  </TooltipContent>
+                </Tooltip>
+              )
               : (
-                  <ToggleGroupItem
-                    value="ipset"
-                    className="px-3 py-1.5 text-xs data-[state=on]:bg-green-500/20 data-[state=on]:text-green-600 dark:data-[state=on]:text-green-400 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Только заблокированные
-                  </ToggleGroupItem>
-                )}
+                <ToggleGroupItem
+                  value="ipset"
+                  className="px-3 py-1.5 text-xs data-[state=on]:bg-green-500/20 data-[state=on]:text-green-600 dark:data-[state=on]:text-green-400 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Только заблокированные
+                </ToggleGroupItem>
+              )}
             {status === 'disconnected'
               ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div>
-                        <ToggleGroupItem
-                          value="exclude"
-                          className="px-3 py-1.5 text-xs data-[state=on]:bg-amber-500/20 data-[state=on]:text-amber-600 dark:data-[state=on]:text-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          Исключения
-                        </ToggleGroupItem>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs text-center">
-                      По умолчанию обрабатываются все адреса, кроме тех, которые стратегии ломают
-                    </TooltipContent>
-                  </Tooltip>
-                )
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <ToggleGroupItem
+                        value="exclude"
+                        className="px-3 py-1.5 text-xs data-[state=on]:bg-amber-500/20 data-[state=on]:text-amber-600 dark:data-[state=on]:text-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Исключения
+                      </ToggleGroupItem>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-center">
+                    По умолчанию обрабатываются все адреса, кроме тех, которые стратегии ломают
+                  </TooltipContent>
+                </Tooltip>
+              )
               : (
-                  <ToggleGroupItem
-                    value="exclude"
-                    className="px-3 py-1.5 text-xs data-[state=on]:bg-amber-500/20 data-[state=on]:text-amber-600 dark:data-[state=on]:text-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Исключения
-                  </ToggleGroupItem>
-                )}
+                <ToggleGroupItem
+                  value="exclude"
+                  className="px-3 py-1.5 text-xs data-[state=on]:bg-amber-500/20 data-[state=on]:text-amber-600 dark:data-[state=on]:text-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Исключения
+                </ToggleGroupItem>
+              )}
           </ToggleGroup>
         </div>
       </div>

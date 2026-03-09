@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
 import * as tauri from '@/lib/tauri'
 import { cn } from '@/lib/utils'
@@ -247,250 +248,252 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-medium">Настройки</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Глобальные параметры и управление файлами
-        </p>
-      </div>
+    <ScrollArea className="h-full">
+      <div className="space-y-6 p-6">
+        <div>
+          <h1 className="text-2xl font-medium">Настройки</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Глобальные параметры и управление файлами
+          </p>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Тема</CardTitle>
-          <CardDescription>
-            Внешний вид приложения
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ThemeSwitcher />
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Тема</CardTitle>
+            <CardDescription>
+              Внешний вид приложения
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ThemeSwitcher />
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Поведение</CardTitle>
-          <CardDescription>
-            Настройки запуска и закрытия приложения
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Поведение</CardTitle>
+            <CardDescription>
+              Настройки запуска и закрытия приложения
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor="autostart">Автозапуск с Windows</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Приложение будет запускаться автоматически при входе в систему
+                  </p>
+                </div>
+                <Switch
+                  id="autostart"
+                  checked={autostartEnabled}
+                  disabled={autostartLoading}
+                  onCheckedChange={handleAutostartChange}
+                />
+              </div>
+
+              {autostartEnabled && (
+                <div
+                  className={cn(
+                    'grid grid-rows-[1fr] opacity-100 transition-all duration-200 ease-out',
+                  )}
+                >
+                  <div className="overflow-hidden">
+                    <div className="flex items-center justify-between gap-4 border-l border-border/60 pl-4">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="connect-on-autostart">Подключаться автоматически</Label>
+                        <p className="text-xs text-muted-foreground">
+                          При запуске из автозагрузки приложение будет сразу запускать подключение
+                        </p>
+                      </div>
+                      <Switch
+                        id="connect-on-autostart"
+                        checked={config.connectOnAutostart ?? false}
+                        disabled={autostartLoading}
+                        onCheckedChange={setConnectOnAutostart}
+                      />
+                    </div>
+                    <div className="mt-3 flex items-center justify-between gap-4 border-l border-border/60 pl-4">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="launch-to-tray">Запускать свернутым в трей</Label>
+                        <p className="text-xs text-muted-foreground">
+                          При старте приложения основное окно будет скрыто, а доступ останется через иконку в трее
+                        </p>
+                      </div>
+                      <Switch
+                        id="launch-to-tray"
+                        checked={config.launchToTray ?? false}
+                        disabled={autostartLoading}
+                        onCheckedChange={setLaunchToTray}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex items-center justify-between gap-4">
               <div className="space-y-0.5">
-                <Label htmlFor="autostart">Автозапуск с Windows</Label>
+                <Label htmlFor="minimize-to-tray">Сворачивать в трей при закрытии</Label>
                 <p className="text-xs text-muted-foreground">
-                  Приложение будет запускаться автоматически при входе в систему
+                  При закрытии окно будет скрыто в системный трей вместо завершения работы
                 </p>
               </div>
               <Switch
-                id="autostart"
-                checked={autostartEnabled}
-                disabled={autostartLoading}
-                onCheckedChange={handleAutostartChange}
+                id="minimize-to-tray"
+                checked={config.minimizeToTray ?? true}
+                onCheckedChange={setMinimizeToTray}
               />
             </div>
+          </CardContent>
+        </Card>
 
-            {autostartEnabled && (
-              <div
-                className={cn(
-                  'grid grid-rows-[1fr] opacity-100 transition-all duration-200 ease-out',
-                )}
-              >
-                <div className="overflow-hidden">
-                  <div className="flex items-center justify-between gap-4 border-l border-border/60 pl-4">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="connect-on-autostart">Подключаться автоматически</Label>
-                      <p className="text-xs text-muted-foreground">
-                        При запуске из автозагрузки приложение будет сразу запускать подключение
-                      </p>
-                    </div>
-                    <Switch
-                      id="connect-on-autostart"
-                      checked={config.connectOnAutostart ?? false}
-                      disabled={autostartLoading}
-                      onCheckedChange={setConnectOnAutostart}
-                    />
-                  </div>
-                  <div className="mt-3 flex items-center justify-between gap-4 border-l border-border/60 pl-4">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="launch-to-tray">Запускать свернутым в трей</Label>
-                      <p className="text-xs text-muted-foreground">
-                        При старте приложения основное окно будет скрыто, а доступ останется через иконку в трее
-                      </p>
-                    </div>
-                    <Switch
-                      id="launch-to-tray"
-                      checked={config.launchToTray ?? false}
-                      disabled={autostartLoading}
-                      onCheckedChange={setLaunchToTray}
-                    />
-                  </div>
-                </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Порты</CardTitle>
+            <CardDescription>
+              Глобальные порты для фильтрации трафика
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label htmlFor="tcpPortsInput" className="text-sm font-normal">TCP порты</label>
+                <Input
+                  id="tcpPortsInput"
+                  value={config.global_ports.tcp}
+                  onChange={e =>
+                    setGlobalPorts({ ...config.global_ports, tcp: e.target.value })}
+                  placeholder="1-65535"
+                />
               </div>
+              <div className="space-y-2">
+                <label htmlFor="udpPortsInput" className="text-sm font-normal">UDP порты</label>
+                <Input
+                  id="udpPortsInput"
+                  value={config.global_ports.udp}
+                  onChange={e =>
+                    setGlobalPorts({ ...config.global_ports, udp: e.target.value })}
+                  placeholder="1-65535"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Бинарные файлы</CardTitle>
+            <CardDescription>
+              WinDivert, winws.exe, fake-файлы и списки
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-2">
+              <FolderOpen className="size-4 text-muted-foreground" />
+              <span className="font-mono text-sm">{zapretDir}</span>
+            </div>
+
+            {binariesOk === false && (
+              <Alert>
+                <AlertTitle>Файлы не найдены</AlertTitle>
+                <AlertDescription>
+                  Необходимые файлы отсутствуют или повреждены
+                </AlertDescription>
+              </Alert>
             )}
-          </div>
 
-          <div className="flex items-center justify-between gap-4">
-            <div className="space-y-0.5">
-              <Label htmlFor="minimize-to-tray">Сворачивать в трей при закрытии</Label>
-              <p className="text-xs text-muted-foreground">
-                При закрытии окно будет скрыто в системный трей вместо завершения работы
-              </p>
-            </div>
-            <Switch
-              id="minimize-to-tray"
-              checked={config.minimizeToTray ?? true}
-              onCheckedChange={setMinimizeToTray}
-            />
-          </div>
-        </CardContent>
-      </Card>
+            {binariesOk === true && availableUpdates.length > 0 && (
+              <Alert className="border-yellow-600 bg-yellow-600/10">
+                <AlertTitle>Доступно обновление файлов</AlertTitle>
+                <AlertDescription>
+                  {availableUpdates.length === 1
+                    ? `Доступно обновление: ${availableUpdates[0]}`
+                    : `Доступно обновление для ${availableUpdates.length} файлов`}
+                </AlertDescription>
+              </Alert>
+            )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Порты</CardTitle>
-          <CardDescription>
-            Глобальные порты для фильтрации трафика
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label htmlFor="tcpPortsInput" className="text-sm font-normal">TCP порты</label>
-              <Input
-                id="tcpPortsInput"
-                value={config.global_ports.tcp}
-                onChange={e =>
-                  setGlobalPorts({ ...config.global_ports, tcp: e.target.value })}
-                placeholder="1-65535"
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="udpPortsInput" className="text-sm font-normal">UDP порты</label>
-              <Input
-                id="udpPortsInput"
-                value={config.global_ports.udp}
-                onChange={e =>
-                  setGlobalPorts({ ...config.global_ports, udp: e.target.value })}
-                placeholder="1-65535"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            {binariesOk === true && availableUpdates.length === 0 && (
+              <Alert className="border-green-600 bg-green-600/10">
+                <AlertTitle>Файлы на месте</AlertTitle>
+                <AlertDescription>
+                  Все необходимые файлы найдены
+                </AlertDescription>
+              </Alert>
+            )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Бинарные файлы</CardTitle>
-          <CardDescription>
-            WinDivert, winws.exe, fake-файлы и списки
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-2">
-            <FolderOpen className="size-4 text-muted-foreground" />
-            <span className="font-mono text-sm">{zapretDir}</span>
-          </div>
-
-          {binariesOk === false && (
-            <Alert>
-              <AlertTitle>Файлы не найдены</AlertTitle>
-              <AlertDescription>
-                Необходимые файлы отсутствуют или повреждены
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {binariesOk === true && availableUpdates.length > 0 && (
-            <Alert className="border-yellow-600 bg-yellow-600/10">
-              <AlertTitle>Доступно обновление файлов</AlertTitle>
-              <AlertDescription>
-                {availableUpdates.length === 1
-                  ? `Доступно обновление: ${availableUpdates[0]}`
-                  : `Доступно обновление для ${availableUpdates.length} файлов`}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {binariesOk === true && availableUpdates.length === 0 && (
-            <Alert className="border-green-600 bg-green-600/10">
-              <AlertTitle>Файлы на месте</AlertTitle>
-              <AlertDescription>
-                Все необходимые файлы найдены
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {isDownloading && progress
-            ? (
-                <div className="space-y-2">
-                  <div className="h-2 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full bg-primary transition-all duration-300"
-                      style={{
-                        width: `${Math.max(0, Math.min(100, progress.total > 0 ? (progress.current / progress.total) * 100 : 0))}%`,
-                      }}
-                    />
+            {isDownloading && progress
+              ? (
+                  <div className="space-y-2">
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full bg-primary transition-all duration-300"
+                        style={{
+                          width: `${Math.max(0, Math.min(100, progress.total > 0 ? (progress.current / progress.total) * 100 : 0))}%`,
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {progress.current}
+                      /
+                      {progress.total}
+                      :
+                      {progress.filename}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {progress.current}
-                    /
-                    {progress.total}
-                    :
-                    {progress.filename}
-                  </p>
-                </div>
-              )
-            : (
-                <Button
-                  onClick={handleDownloadBinaries}
-                  disabled={isDownloading}
-                  variant={binariesOk === false ? 'default' : 'outline'}
-                >
-                  <Download className="mr-2 size-4" />
-                  {binariesOk === false
-                    ? 'Загрузить'
-                    : availableUpdates.length > 0
-                      ? 'Обновить'
-                      : 'Переустановить'}
-                </Button>
-              )}
-        </CardContent>
-      </Card>
+                )
+              : (
+                  <Button
+                    onClick={handleDownloadBinaries}
+                    disabled={isDownloading}
+                    variant={binariesOk === false ? 'default' : 'outline'}
+                  >
+                    <Download className="mr-2 size-4" />
+                    {binariesOk === false
+                      ? 'Загрузить'
+                      : availableUpdates.length > 0
+                        ? 'Обновить'
+                        : 'Переустановить'}
+                  </Button>
+                )}
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Сброс</CardTitle>
-          <CardDescription>
-            Возврат к настройкам по умолчанию
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive">
-                <RotateCcw className="mr-2 size-4" />
-                Сбросить настройки
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Сбросить настройки?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Все категории, стратегии и плейсхолдеры будут удалены и заменены на значения по умолчанию. Это действие нельзя отменить.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Отмена</AlertDialogCancel>
-                <AlertDialogAction onClick={handleReset} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                  Сбросить
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </CardContent>
-      </Card>
-    </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Сброс</CardTitle>
+            <CardDescription>
+              Возврат к настройкам по умолчанию
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive">
+                  <RotateCcw className="mr-2 size-4" />
+                  Сбросить настройки
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Сбросить настройки?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Все категории, стратегии и плейсхолдеры будут удалены и заменены на значения по умолчанию. Это действие нельзя отменить.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Отмена</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleReset} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Сбросить
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </CardContent>
+        </Card>
+      </div>
+    </ScrollArea>
   )
 }
