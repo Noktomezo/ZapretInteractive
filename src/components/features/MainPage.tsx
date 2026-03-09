@@ -108,7 +108,7 @@ export function MainPage() {
     ? 'rgba(74, 222, 128, 0.18)'
     : status === 'connecting' || status === 'disconnecting'
       ? 'rgba(250, 204, 21, 0.16)'
-      : 'rgba(248, 113, 113, 0.14)'
+      : 'rgba(248, 113, 113, 0.35)'
 
   const handleListModeChange = (value: string) => {
     if (value) {

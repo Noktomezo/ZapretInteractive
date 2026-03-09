@@ -1,21 +1,29 @@
+cargo-features = ["profile-rustflags", "trim-paths"]
+
 [package]
 name = "zapret-interactive"
 version = "1.0.5"
-description = "A Tauri App"
-authors = ["you"]
-edition = "2021"
+description = "📦 GUI-wrapper for zapret-win-bundle by bol-van"
+authors = ["Noktomezo <noktomezo@duck.com>"]
+edition = "2024"
 
 [lib]
 name = "zapret_interactive_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[profile.dev]
+incremental = true
+rustflags = ["-Zthreads=16"]
+
 [profile.release]
 overflow-checks = false
 codegen-units = 1
-opt-level = 3
+opt-level = "z"
 panic = "abort"
 strip = true
 lto = true
+trim-paths = "all"
+rustflags = ["-Cdebuginfo=0", "-Zthreads=16"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
