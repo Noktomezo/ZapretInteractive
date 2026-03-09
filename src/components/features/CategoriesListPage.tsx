@@ -32,6 +32,7 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useConfigStore } from '@/stores/config.store'
+import { useConnectionStore } from '@/stores/connection.store'
 
 interface SortableCategoryItemProps {
   category: Category
@@ -95,8 +96,11 @@ function SortableCategoryItem({ category, onClearActive }: SortableCategoryItemP
                 className={activeCount > 0
                   ? 'inline-flex h-2 w-2 rounded-full bg-green-500 animate-pulse'
                   : 'inline-flex h-2 w-2 rounded-full bg-red-500 animate-pulse'}
-                aria-label={activeCount > 0 ? 'Есть активная стратегия' : 'Нет активной стратегии'}
+                aria-hidden="true"
               />
+              <span className="sr-only">
+                {activeCount > 0 ? 'Есть активная стратегия' : 'Нет активной стратегии'}
+              </span>
             </div>
             <p className="text-xs text-muted-foreground">
               {formatStrategiesCount(category.strategies.length)}
@@ -108,16 +112,17 @@ function SortableCategoryItem({ category, onClearActive }: SortableCategoryItemP
         </div>
       </Link>
       {activeCount > 0 && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={e => onClearActive(category.id, e)}
-                className="cursor-pointer"
-              >
-                <BrushCleaning className="w-4 h-4 text-red-600 dark:text-red-400" />
-              </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={e => onClearActive(category.id, e)}
+              className="cursor-pointer"
+              aria-label="Очистить стратегию"
+            >
+              <BrushCleaning className="w-4 h-4 text-red-600 dark:text-red-400" />
+            </Button>
           </TooltipTrigger>
           <TooltipContent>Деактивировать текущую стратегию</TooltipContent>
         </Tooltip>
@@ -132,6 +137,7 @@ export function CategoriesListPage() {
   const isInitialLoadRef = useRef(true)
 
   const { config, loading, load, save, addCategory, clearAllActiveStrategies, reorderCategories } = useConfigStore()
+  const { restartIfConnected, notifyConfigApplied } = useConnectionStore()
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -164,10 +170,13 @@ export function CategoriesListPage() {
     }
   }
 
-  const handleClearActive = (categoryId: string, e: React.MouseEvent) => {
+  const handleClearActive = async (categoryId: string, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     clearAllActiveStrategies(categoryId)
+    await save()
+    await restartIfConnected()
+    notifyConfigApplied('Стратегия деактивирована')
   }
 
   const handleDragEnd = (event: DragEndEvent) => {

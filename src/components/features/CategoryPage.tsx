@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -199,7 +200,7 @@ export function CategoryPage() {
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link to="/strategies" className="text-muted-foreground hover:text-foreground cursor-pointer">
+            <Link to="/strategies" className="text-muted-foreground hover:text-foreground cursor-pointer" aria-label="Назад к категориям">
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <div>
@@ -306,10 +307,11 @@ export function CategoryPage() {
                       <div className="flex items-center gap-3">
                         <span className="font-normal">{strategy.name}</span>
                         {strategy.active && (
-                          <span className="flex h-5 w-5 items-center justify-center rounded bg-green-600 text-white" aria-label="Активная стратегия">
+                          <span className="flex h-5 w-5 items-center justify-center rounded bg-green-600 text-white" aria-hidden="true">
                             <Check className="h-3.5 w-3.5" />
                           </span>
                         )}
+                        {strategy.active && <span className="sr-only">Активная стратегия</span>}
                       </div>
                       <div className="flex items-center gap-2">
                         {strategy.active
@@ -387,18 +389,26 @@ export function CategoryPage() {
               <DialogTitle>Новая стратегия</DialogTitle>
             </DialogHeader>
             <div className="py-4 space-y-4">
-              <Input
-                placeholder="Название стратегии"
-                value={newStrategyName}
-                onChange={e => setNewStrategyName(e.target.value)}
-              />
-              <Textarea
-                placeholder="--dpi-desync=fake&#10;--dpi-desync-autottl=2"
-                value={newStrategyContent}
-                onChange={e => setNewStrategyContent(e.target.value)}
-                rows={8}
-                className="font-mono text-sm"
-              />
+              <div className="space-y-2">
+                <Label htmlFor="strategy-name">Название стратегии</Label>
+                <Input
+                  id="strategy-name"
+                  placeholder="Название стратегии"
+                  value={newStrategyName}
+                  onChange={e => setNewStrategyName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="strategy-content">Содержимое</Label>
+                <Textarea
+                  id="strategy-content"
+                  placeholder="--dpi-desync=fake&#10;--dpi-desync-autottl=2"
+                  value={newStrategyContent}
+                  onChange={e => setNewStrategyContent(e.target.value)}
+                  rows={8}
+                  className="font-mono text-sm"
+                />
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setNewStrategyOpen(false)}>
@@ -415,18 +425,26 @@ export function CategoryPage() {
               <DialogTitle>Редактировать стратегию</DialogTitle>
             </DialogHeader>
             <div className="py-4 space-y-4">
-              <Input
-                placeholder="Название стратегии"
-                value={editingName}
-                onChange={e => setEditingName(e.target.value)}
-              />
-              <Textarea
-                placeholder="--dpi-desync=fake&#10;--dpi-desync-autottl=2"
-                value={editingContent}
-                onChange={e => setEditingContent(e.target.value)}
-                rows={8}
-                className="font-mono text-sm"
-              />
+              <div className="space-y-2">
+                <Label htmlFor="edit-strategy-name">Название стратегии</Label>
+                <Input
+                  id="edit-strategy-name"
+                  placeholder="Название стратегии"
+                  value={editingName}
+                  onChange={e => setEditingName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-strategy-content">Содержимое</Label>
+                <Textarea
+                  id="edit-strategy-content"
+                  placeholder="--dpi-desync=fake&#10;--dpi-desync-autottl=2"
+                  value={editingContent}
+                  onChange={e => setEditingContent(e.target.value)}
+                  rows={8}
+                  className="font-mono text-sm"
+                />
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditingStrategy(null)}>
@@ -443,12 +461,16 @@ export function CategoryPage() {
               <DialogTitle>Переименовать категорию</DialogTitle>
             </DialogHeader>
             <div className="py-4">
-              <Input
-                placeholder="Название категории"
-                value={newCategoryName}
-                onChange={e => setNewCategoryName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleRenameCategory()}
-              />
+              <div className="space-y-2">
+                <Label htmlFor="category-name">Название категории</Label>
+                <Input
+                  id="category-name"
+                  placeholder="Название категории"
+                  value={newCategoryName}
+                  onChange={e => setNewCategoryName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleRenameCategory()}
+                />
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>

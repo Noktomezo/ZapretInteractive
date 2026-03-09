@@ -101,6 +101,8 @@ export function SettingsPage() {
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
   const [autostartEnabled, setAutostartEnabled] = useState(false)
   const [autostartLoading, setAutostartLoading] = useState(true)
+  const [tcpDraft, setTcpDraft] = useState('')
+  const [udpDraft, setUdpDraft] = useState('')
   const isInitialLoadRef = useRef(true)
 
   const {
@@ -162,6 +164,13 @@ export function SettingsPage() {
       isMounted = false
     }
   }, [])
+
+  useEffect(() => {
+    if (config?.global_ports) {
+      setTcpDraft(config.global_ports.tcp)
+      setUdpDraft(config.global_ports.udp)
+    }
+  }, [config])
 
   useEffect(() => {
     let isMounted = true
@@ -362,9 +371,9 @@ export function SettingsPage() {
                 <label htmlFor="tcpPortsInput" className="text-sm font-normal">TCP порты</label>
                 <Input
                   id="tcpPortsInput"
-                  value={config.global_ports.tcp}
-                  onChange={e =>
-                    setGlobalPorts({ ...config.global_ports, tcp: e.target.value })}
+                  value={tcpDraft}
+                  onChange={e => setTcpDraft(e.target.value)}
+                  onBlur={() => setGlobalPorts({ ...config.global_ports, tcp: tcpDraft })}
                   placeholder="1-65535"
                 />
               </div>
@@ -372,9 +381,9 @@ export function SettingsPage() {
                 <label htmlFor="udpPortsInput" className="text-sm font-normal">UDP порты</label>
                 <Input
                   id="udpPortsInput"
-                  value={config.global_ports.udp}
-                  onChange={e =>
-                    setGlobalPorts({ ...config.global_ports, udp: e.target.value })}
+                  value={udpDraft}
+                  onChange={e => setUdpDraft(e.target.value)}
+                  onBlur={() => setGlobalPorts({ ...config.global_ports, udp: udpDraft })}
                   placeholder="1-65535"
                 />
               </div>
@@ -480,7 +489,7 @@ export function SettingsPage() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Сбросить настройки?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Все категории, стратегии и плейсхолдеры будут удалены и заменены на значения по умолчанию. Это действие нельзя отменить.
+                    Все категории, стратегии, плейсхолдеры и фильтры будут удалены и заменены на значения по умолчанию. Это действие нельзя отменить.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

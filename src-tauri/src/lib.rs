@@ -3,15 +3,14 @@ mod commands;
 use commands::{admin, binaries, config, process};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{
+    Emitter, Manager,
     image::Image,
     menu::{CheckMenuItem, Menu, MenuItem, Submenu},
     tray::{MouseButton, TrayIconBuilder},
     window::{Effect, EffectsBuilder},
-    Emitter, Manager,
 };
 #[cfg(desktop)]
 use tauri_plugin_autostart::ManagerExt;
-use tauri_plugin_prevent_default::Flags;
 
 static CONNECTED: AtomicBool = AtomicBool::new(false);
 
@@ -33,7 +32,11 @@ fn apply_list_mode(app: &tauri::AppHandle, mode: config::ListMode) {
 }
 
 fn should_minimize_to_tray(state: &config::AppState) -> bool {
-    state.config.lock().map(|cfg| cfg.minimize_to_tray).unwrap_or(true)
+    state
+        .config
+        .lock()
+        .map(|cfg| cfg.minimize_to_tray)
+        .unwrap_or(true)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -52,16 +55,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_notification::init())
-        .plugin({
-            let flags = if cfg!(debug_assertions) {
-                Flags::all() - Flags::DEV_TOOLS - Flags::CONTEXT_MENU - Flags::RELOAD
-            } else {
-                Flags::all()
-            };
-            tauri_plugin_prevent_default::Builder::new()
-                .with_flags(flags)
-                .build()
-        })
+        .plugin(tauri_plugin_prevent_default::debug())
         .setup(|app| {
             #[cfg(desktop)]
             app.handle().plugin(tauri_plugin_autostart::init(
@@ -70,19 +64,42 @@ pub fn run() {
             ))?;
 
             let app_state = config::AppState::new()?;
-            let list_mode = app_state.config.lock().map(|cfg| cfg.list_mode).unwrap_or_default();
+            let list_mode = app_state
+                .config
+                .lock()
+                .map(|cfg| cfg.list_mode)
+                .unwrap_or_default();
             app.manage(app_state);
 
-            let connect_item = MenuItem::with_id(app, "connect", "Подключиться", true, None::<&str>)?;
+            let connect_item =
+                MenuItem::with_id(app, "connect", "Подключиться", true, None::<&str>)?;
             let show_item = MenuItem::with_id(app, "show", "Показать", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "Выход", true, None::<&str>)?;
 
-            let ipset_item = CheckMenuItem::with_id(app, "listmode-ipset", "Только заблокированные", true, list_mode == config::ListMode::Ipset, None::<&str>)?;
-            let exclude_item = CheckMenuItem::with_id(app, "listmode-exclude", "Исключения", true, list_mode == config::ListMode::Exclude, None::<&str>)?;
+            let ipset_item = CheckMenuItem::with_id(
+                app,
+                "listmode-ipset",
+                "Только заблокированные",
+                true,
+                list_mode == config::ListMode::Ipset,
+                None::<&str>,
+            )?;
+            let exclude_item = CheckMenuItem::with_id(
+                app,
+                "listmode-exclude",
+                "Исключения",
+                true,
+                list_mode == config::ListMode::Exclude,
+                None::<&str>,
+            )?;
 
-            let listmode_submenu = Submenu::with_items(app, "Режим списков", true, &[&ipset_item, &exclude_item])?;
+            let listmode_submenu =
+                Submenu::with_items(app, "Режим списков", true, &[&ipset_item, &exclude_item])?;
 
-            let menu = Menu::with_items(app, &[&connect_item, &listmode_submenu, &show_item, &quit_item])?;
+            let menu = Menu::with_items(
+                app,
+                &[&connect_item, &listmode_submenu, &show_item, &quit_item],
+            )?;
 
             let icon_bytes = include_bytes!("../icons/32x32.png") as &[u8];
             let icon = Image::from_bytes(icon_bytes).ok();
@@ -118,13 +135,13 @@ pub fn run() {
                     _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
-                    if let tauri::tray::TrayIconEvent::Click { button, .. } = event {
-                        if button == MouseButton::Left {
-                            let app = tray.app_handle();
-                            if let Some(window) = app.get_webview_window("main") {
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            }
+                    if let tauri::tray::TrayIconEvent::Click { button, .. } = event
+                        && button == MouseButton::Left
+                    {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
                         }
                     }
                 });
@@ -138,9 +155,8 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 #[cfg(target_os = "windows")]
                 {
-                    let _ = window.set_effects(Some(
-                        EffectsBuilder::new().effect(Effect::Acrylic).build(),
-                    ));
+                    let _ = window
+                        .set_effects(Some(EffectsBuilder::new().effect(Effect::Acrylic).build()));
                 }
 
                 let window_clone = window.clone();
@@ -228,13 +244,20 @@ struct ListModeItems {
 
 #[tauri::command]
 fn set_connected_state(app: tauri::AppHandle, connected: bool) -> Result<(), String> {
-    let text = if connected { "Отключиться" } else { "Подключиться" };
+    let text = if connected {
+        "Отключиться"
+    } else {
+        "Подключиться"
+    };
 
     let item = app.state::<ConnectMenuItem>();
     item.0.set_text(text).map_err(|e| e.to_string())?;
 
     let list_mode_items = app.state::<ListModeItems>();
-    list_mode_items.submenu.set_enabled(!connected).map_err(|e| e.to_string())?;
+    list_mode_items
+        .submenu
+        .set_enabled(!connected)
+        .map_err(|e| e.to_string())?;
 
     CONNECTED.store(connected, Ordering::SeqCst);
 

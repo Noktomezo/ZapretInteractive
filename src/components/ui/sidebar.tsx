@@ -121,7 +121,10 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<'li'>) {
   return <li data-slot="sidebar-menu-item" className={cn('group/menu-item relative', className)} {...props} />
 }
 
-function SidebarMenuButton({
+const SidebarMenuButton = React.forwardRef<HTMLButtonElement, React.ComponentProps<'button'> & {
+  isActive?: boolean
+  asChild?: boolean
+}>(({
   className,
   isActive = false,
   asChild = false,
@@ -129,10 +132,7 @@ function SidebarMenuButton({
   type = 'button',
   onClick,
   ...props
-}: React.ComponentProps<'button'> & {
-  isActive?: boolean
-  asChild?: boolean
-}) {
+}, ref) => {
   const classes = cn(
     'flex h-10 w-full items-center overflow-hidden rounded-lg px-1.5 text-left text-sm font-normal outline-none transition-[background-color,color,box-shadow] duration-200 ease-out',
     'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
@@ -146,6 +146,7 @@ function SidebarMenuButton({
     return React.cloneElement(child, {
       ...props,
       ...child.props,
+      ref,
       type,
       'onClick': composeEventHandlers(onClick, child.props.onClick),
       'className': cn(classes, child.props.className),
@@ -161,12 +162,14 @@ function SidebarMenuButton({
       data-active={isActive}
       className={classes}
       onClick={onClick}
+      ref={ref}
       {...props}
     >
       {children}
     </button>
   )
-}
+})
+SidebarMenuButton.displayName = 'SidebarMenuButton'
 
 function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<'button'>) {
   const { open, toggleSidebar } = useSidebar()

@@ -12,10 +12,10 @@ use std::sync::mpsc;
 use std::sync::{LazyLock, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter};
-use tokio::fs as tokio_fs;
-use tokio::time::sleep;
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
+use tokio::fs as tokio_fs;
+use tokio::time::sleep;
 
 #[derive(Clone, serde::Serialize)]
 struct DownloadProgress {
@@ -58,18 +58,42 @@ const BINARIES: [(&str, &str); 4] = [
 
 const FAKE_FILES_BASE_URL: &str = "https://raw.githubusercontent.com/Noktomezo/ZIStorage/main/fake";
 const FAKE_FILES: &[&str] = &[
-    "4pda.bin", "dht_find_node.bin", "dht_get_peers.bin", "discord-ip-discovery-with-port.bin",
-    "discord-ip-discovery-without-port.bin", "dtls_clienthello_w3_org.bin", "http_iana_org.bin",
-    "isakmp_initiator_request.bin", "max.bin", "quic_initial_facebook_com.bin",
-    "quic_initial_facebook_com_quiche.bin", "quic_initial_rr1---sn-xguxaxjvh-n8me_googlevideo_com_kyber_1.bin",
+    "4pda.bin",
+    "dht_find_node.bin",
+    "dht_get_peers.bin",
+    "discord-ip-discovery-with-port.bin",
+    "discord-ip-discovery-without-port.bin",
+    "dtls_clienthello_w3_org.bin",
+    "http_iana_org.bin",
+    "isakmp_initiator_request.bin",
+    "max.bin",
+    "quic_initial_facebook_com.bin",
+    "quic_initial_facebook_com_quiche.bin",
+    "quic_initial_rr1---sn-xguxaxjvh-n8me_googlevideo_com_kyber_1.bin",
     "quic_initial_rr1---sn-xguxaxjvh-n8me_googlevideo_com_kyber_2.bin",
-    "quic_initial_rr2---sn-gvnuxaxjvh-o8ge_googlevideo_com.bin", "quic_initial_rutracker_org.bin",
-    "quic_initial_rutracker_org_kyber_1.bin", "quic_initial_rutracker_org_kyber_2.bin",
-    "quic_initial_vk_com.bin", "quic_initial_www_google_com.bin", "quic_short_header.bin", "stun.bin",
-    "t2.bin", "tls_clienthello_gosuslugi_ru.bin", "tls_clienthello_iana_org.bin", "tls_clienthello_max_ru.bin",
-    "tls_clienthello_rutracker_org_kyber.bin", "tls_clienthello_sberbank_ru.bin", "tls_clienthello_vk_com.bin",
-    "tls_clienthello_vk_com_kyber.bin", "tls_clienthello_www_google_com.bin", "tls_clienthello_www_onetrust_com.bin",
-    "wireguard_initiation.bin", "wireguard_response.bin", "zero_1024.bin", "zero_256.bin", "zero_512.bin",
+    "quic_initial_rr2---sn-gvnuxaxjvh-o8ge_googlevideo_com.bin",
+    "quic_initial_rutracker_org.bin",
+    "quic_initial_rutracker_org_kyber_1.bin",
+    "quic_initial_rutracker_org_kyber_2.bin",
+    "quic_initial_vk_com.bin",
+    "quic_initial_www_google_com.bin",
+    "quic_short_header.bin",
+    "stun.bin",
+    "t2.bin",
+    "tls_clienthello_gosuslugi_ru.bin",
+    "tls_clienthello_iana_org.bin",
+    "tls_clienthello_max_ru.bin",
+    "tls_clienthello_rutracker_org_kyber.bin",
+    "tls_clienthello_sberbank_ru.bin",
+    "tls_clienthello_vk_com.bin",
+    "tls_clienthello_vk_com_kyber.bin",
+    "tls_clienthello_www_google_com.bin",
+    "tls_clienthello_www_onetrust_com.bin",
+    "wireguard_initiation.bin",
+    "wireguard_response.bin",
+    "zero_1024.bin",
+    "zero_256.bin",
+    "zero_512.bin",
 ];
 
 const LISTS_BASE_URL: &str = "https://raw.githubusercontent.com/Noktomezo/ZIStorage/main/lists";
@@ -103,29 +127,56 @@ struct FileToDownload {
     cached_bytes: Option<Vec<u8>>,
 }
 
-fn get_fake_dir() -> PathBuf { get_zapret_dir().join("fake") }
-fn get_lists_dir() -> PathBuf { get_zapret_dir().join("lists") }
-fn get_filters_dir() -> PathBuf { get_zapret_dir().join("filters") }
-fn get_hashes_path() -> PathBuf { get_zapret_dir().join("hashes.json") }
-fn get_lists_state_path() -> PathBuf { get_zapret_dir().join("lists-state.json") }
+fn get_fake_dir() -> PathBuf {
+    get_zapret_dir().join("fake")
+}
+fn get_lists_dir() -> PathBuf {
+    get_zapret_dir().join("lists")
+}
+fn get_filters_dir() -> PathBuf {
+    get_zapret_dir().join("filters")
+}
+fn get_hashes_path() -> PathBuf {
+    get_zapret_dir().join("hashes.json")
+}
+fn get_lists_state_path() -> PathBuf {
+    get_zapret_dir().join("lists-state.json")
+}
 
 fn sanitize_filename(filename: &str) -> Result<String, String> {
-    if filename.is_empty() { return Err("Filename cannot be empty".to_string()); }
-    if filename.contains('/') || filename.contains('\\') { return Err("Path separators not allowed in filename".to_string()); }
+    if filename.is_empty() {
+        return Err("Filename cannot be empty".to_string());
+    }
+    if filename.contains('/') || filename.contains('\\') {
+        return Err("Path separators not allowed in filename".to_string());
+    }
 
     let name = Path::new(filename)
         .file_name()
         .and_then(|n| n.to_str())
         .ok_or_else(|| "Invalid filename".to_string())?;
 
-    if filename != name { return Err("Path separators not allowed in filename".to_string()); }
-    if name.is_empty() { return Err("Filename cannot be empty".to_string()); }
-    if name == "." || name == ".." { return Err("Invalid filename".to_string()); }
+    if filename != name {
+        return Err("Path separators not allowed in filename".to_string());
+    }
+    if name.is_empty() {
+        return Err("Filename cannot be empty".to_string());
+    }
+    if name == "." || name == ".." {
+        return Err("Invalid filename".to_string());
+    }
 
-    let valid_chars = name.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_');
-    if !valid_chars { return Err("Filename contains invalid characters".to_string()); }
+    let valid_chars = name
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_');
+    if !valid_chars {
+        return Err("Filename contains invalid characters".to_string());
+    }
 
-    let file_stem = Path::new(name).file_stem().and_then(|s| s.to_str()).map(|s| s.to_lowercase());
+    let file_stem = Path::new(name)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .map(|s| s.to_lowercase());
     if let Some(stem) = file_stem {
         const RESERVED_NAMES: &[&str] = &[
             "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7",
@@ -160,11 +211,12 @@ fn calculate_sha256_bytes(bytes: &[u8]) -> String {
 
 fn load_stored_hashes() -> Result<HashMap<String, String>, String> {
     let hashes_path = get_hashes_path();
-    if !hashes_path.exists() { return Ok(HashMap::new()); }
-    let content = fs::read_to_string(&hashes_path)
-        .map_err(|e| format!("Failed to read hashes.json: {e}"))?;
-    serde_json::from_str(&content)
-        .map_err(|e| format!("Failed to parse hashes.json: {e}"))
+    if !hashes_path.exists() {
+        return Ok(HashMap::new());
+    }
+    let content =
+        fs::read_to_string(&hashes_path).map_err(|e| format!("Failed to read hashes.json: {e}"))?;
+    serde_json::from_str(&content).map_err(|e| format!("Failed to parse hashes.json: {e}"))
 }
 
 fn save_stored_hashes(hashes: &HashMap<String, String>) -> Result<(), String> {
@@ -173,7 +225,9 @@ fn save_stored_hashes(hashes: &HashMap<String, String>) -> Result<(), String> {
     let temp_path = hashes_path.with_extension("json.tmp");
     let mut temp_file = fs::File::create(&temp_path).map_err(|e| e.to_string())?;
     use std::io::Write;
-    temp_file.write_all(content.as_bytes()).map_err(|e| e.to_string())?;
+    temp_file
+        .write_all(content.as_bytes())
+        .map_err(|e| e.to_string())?;
     temp_file.sync_all().map_err(|e| e.to_string())?;
     fs::rename(temp_path, hashes_path).map_err(|e| e.to_string())?;
     Ok(())
@@ -181,11 +235,12 @@ fn save_stored_hashes(hashes: &HashMap<String, String>) -> Result<(), String> {
 
 fn load_lists_state() -> Result<ListsState, String> {
     let path = get_lists_state_path();
-    if !path.exists() { return Ok(ListsState::default()); }
-    let content = fs::read_to_string(&path)
-        .map_err(|e| format!("Failed to read lists-state.json: {e}"))?;
-    serde_json::from_str(&content)
-        .map_err(|e| format!("Failed to parse lists-state.json: {e}"))
+    if !path.exists() {
+        return Ok(ListsState::default());
+    }
+    let content =
+        fs::read_to_string(&path).map_err(|e| format!("Failed to read lists-state.json: {e}"))?;
+    serde_json::from_str(&content).map_err(|e| format!("Failed to parse lists-state.json: {e}"))
 }
 
 fn save_lists_state(state: &ListsState) -> Result<(), String> {
@@ -194,7 +249,9 @@ fn save_lists_state(state: &ListsState) -> Result<(), String> {
     let temp_path = state_path.with_extension("json.tmp");
     let mut temp_file = fs::File::create(&temp_path).map_err(|e| e.to_string())?;
     use std::io::Write;
-    temp_file.write_all(content.as_bytes()).map_err(|e| e.to_string())?;
+    temp_file
+        .write_all(content.as_bytes())
+        .map_err(|e| e.to_string())?;
     temp_file.sync_all().map_err(|e| e.to_string())?;
     fs::rename(temp_path, state_path).map_err(|e| e.to_string())
 }
@@ -255,7 +312,10 @@ fn rebuild_hashes_from_disk() -> Result<(), String> {
 }
 
 fn current_timestamp() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs()
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
 }
 
 fn create_http_client() -> Result<reqwest::Client, String> {
@@ -266,10 +326,22 @@ fn create_http_client() -> Result<reqwest::Client, String> {
         .map_err(|e| e.to_string())
 }
 
-fn hash_key(group: &str, name: &str) -> String { format!("{group}:{name}") }
+fn hash_key(group: &str, name: &str) -> String {
+    format!("{group}:{name}")
+}
 
-fn expected_hash<'a>(hashes: &'a HashMap<String, String>, group: &str, name: &str) -> Option<&'a String> {
-    hashes.get(&hash_key(group, name)).or_else(|| if group == "binaries" { hashes.get(name) } else { None })
+fn expected_hash<'a>(
+    hashes: &'a HashMap<String, String>,
+    group: &str,
+    name: &str,
+) -> Option<&'a String> {
+    hashes.get(&hash_key(group, name)).or_else(|| {
+        if group == "binaries" {
+            hashes.get(name)
+        } else {
+            None
+        }
+    })
 }
 
 fn file_needs_download(
@@ -295,19 +367,35 @@ fn file_needs_download(
     Ok(actual != *expected)
 }
 
-fn verify_group(base_dir: &Path, group: &str, names: &[&str], hashes: &HashMap<String, String>) -> Result<bool, String> {
+fn verify_group(
+    base_dir: &Path,
+    group: &str,
+    names: &[&str],
+    hashes: &HashMap<String, String>,
+) -> Result<bool, String> {
     for name in names {
         let file_path = base_dir.join(name);
-        if !file_path.exists() { return Ok(false); }
-        let Some(expected) = expected_hash(hashes, group, name) else { return Ok(false); };
+        if !file_path.exists() {
+            return Ok(false);
+        }
+        let Some(expected) = expected_hash(hashes, group, name) else {
+            return Ok(false);
+        };
         let actual = calculate_sha256(&file_path)?;
-        if actual != *expected { return Ok(false); }
+        if actual != *expected {
+            return Ok(false);
+        }
     }
     Ok(true)
 }
 
 fn ensure_base_directories() -> Result<(), String> {
-    for dir in [get_zapret_dir(), get_fake_dir(), get_lists_dir(), get_filters_dir()] {
+    for dir in [
+        get_zapret_dir(),
+        get_fake_dir(),
+        get_lists_dir(),
+        get_filters_dir(),
+    ] {
         if !dir.exists() {
             fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
         }
@@ -330,9 +418,20 @@ fn binary_names() -> Vec<&'static str> {
 fn critical_files_ok() -> Result<bool, String> {
     ensure_helper_files()?;
     let stored_hashes = load_stored_hashes()?;
-    if !verify_group(&get_zapret_dir(), "binaries", &binary_names(), &stored_hashes)? { return Ok(false); }
-    if !verify_group(&get_fake_dir(), "fake", FAKE_FILES, &stored_hashes)? { return Ok(false); }
-    if !verify_group(&get_lists_dir(), "lists", LISTS, &stored_hashes)? { return Ok(false); }
+    if !verify_group(
+        &get_zapret_dir(),
+        "binaries",
+        &binary_names(),
+        &stored_hashes,
+    )? {
+        return Ok(false);
+    }
+    if !verify_group(&get_fake_dir(), "fake", FAKE_FILES, &stored_hashes)? {
+        return Ok(false);
+    }
+    if !verify_group(&get_lists_dir(), "lists", LISTS, &stored_hashes)? {
+        return Ok(false);
+    }
     Ok(true)
 }
 
@@ -342,19 +441,37 @@ fn collect_missing_critical_files() -> Result<Vec<String>, String> {
     let mut missing = Vec::new();
 
     for name in binary_names() {
-        if file_needs_download(&get_zapret_dir().join(name), "binaries", name, &stored_hashes, true)? {
+        if file_needs_download(
+            &get_zapret_dir().join(name),
+            "binaries",
+            name,
+            &stored_hashes,
+            true,
+        )? {
             missing.push(name.to_string());
         }
     }
 
     for name in FAKE_FILES {
-        if file_needs_download(&get_fake_dir().join(name), "fake", name, &stored_hashes, true)? {
+        if file_needs_download(
+            &get_fake_dir().join(name),
+            "fake",
+            name,
+            &stored_hashes,
+            true,
+        )? {
             missing.push((*name).to_string());
         }
     }
 
     for name in LISTS {
-        if file_needs_download(&get_lists_dir().join(name), "lists", name, &stored_hashes, true)? {
+        if file_needs_download(
+            &get_lists_dir().join(name),
+            "lists",
+            name,
+            &stored_hashes,
+            true,
+        )? {
             missing.push((*name).to_string());
         }
     }
@@ -362,7 +479,12 @@ fn collect_missing_critical_files() -> Result<Vec<String>, String> {
     Ok(missing)
 }
 
-async fn check_remote_file(file_path: PathBuf, client: &reqwest::Client, url: &str, name: &str) -> Result<(bool, Option<Vec<u8>>), String> {
+async fn check_remote_file(
+    file_path: PathBuf,
+    client: &reqwest::Client,
+    url: &str,
+    name: &str,
+) -> Result<(bool, Option<Vec<u8>>), String> {
     if !file_path.exists() {
         return Ok((true, None));
     }
@@ -404,7 +526,8 @@ async fn collect_available_updates() -> Result<Vec<String>, String> {
 
     let client = &client;
     let results = stream::iter(targets.into_iter().map(|target| async move {
-        let (changed, _) = check_remote_file(target.dest_path, client, &target.url, &target.name).await?;
+        let (changed, _) =
+            check_remote_file(target.dest_path, client, &target.url, &target.name).await?;
         Ok::<Option<String>, String>(if changed { Some(target.name) } else { None })
     }))
     .buffer_unordered(FILES_CONCURRENCY_LIMIT)
@@ -422,7 +545,9 @@ async fn collect_available_updates() -> Result<Vec<String>, String> {
     Ok(updates)
 }
 
-fn path_is_inside(path: &Path, dir: &Path) -> bool { path.starts_with(dir) }
+fn path_is_inside(path: &Path, dir: &Path) -> bool {
+    path.starts_with(dir)
+}
 
 fn event_affects_lists(paths: &[PathBuf]) -> bool {
     let lists_dir = get_lists_dir();
@@ -441,7 +566,9 @@ fn event_affects_tracked_files(paths: &[PathBuf]) -> bool {
             || path == &hashes_path
             || path == &lists_state_path
             || path == &config_path
-            || critical_binary_names.iter().any(|name| path == &base_dir.join(name))
+            || critical_binary_names
+                .iter()
+                .any(|name| path == &base_dir.join(name))
     })
 }
 
@@ -469,14 +596,20 @@ pub fn start_files_watcher(app: AppHandle) -> Result<(), String> {
             Ok(watcher) => watcher,
             Err(e) => {
                 FILES_WATCHER_STARTED.store(false, Ordering::SeqCst);
-                let _ = app.emit("files-health-watch-error", format!("Не удалось запустить watcher файлов: {e}"));
+                let _ = app.emit(
+                    "files-health-watch-error",
+                    format!("Не удалось запустить watcher файлов: {e}"),
+                );
                 return;
             }
         };
 
         if let Err(e) = watcher.watch(&watch_dir, RecursiveMode::Recursive) {
             FILES_WATCHER_STARTED.store(false, Ordering::SeqCst);
-            let _ = app.emit("files-health-watch-error", format!("Не удалось подписаться на каталог файлов: {e}"));
+            let _ = app.emit(
+                "files-health-watch-error",
+                format!("Не удалось подписаться на каталог файлов: {e}"),
+            );
             return;
         }
 
@@ -484,7 +617,10 @@ pub fn start_files_watcher(app: AppHandle) -> Result<(), String> {
             let event = match rx.recv() {
                 Ok(Ok(event)) => event,
                 Ok(Err(e)) => {
-                    let _ = app.emit("files-health-watch-error", format!("Ошибка watcher файлов: {e}"));
+                    let _ = app.emit(
+                        "files-health-watch-error",
+                        format!("Ошибка watcher файлов: {e}"),
+                    );
                     continue;
                 }
                 Err(_) => break,
@@ -495,7 +631,10 @@ pub fn start_files_watcher(app: AppHandle) -> Result<(), String> {
                 match next {
                     Ok(next_event) => batch.push(next_event),
                     Err(e) => {
-                        let _ = app.emit("files-health-watch-error", format!("Ошибка watcher файлов: {e}"));
+                        let _ = app.emit(
+                            "files-health-watch-error",
+                            format!("Ошибка watcher файлов: {e}"),
+                        );
                     }
                 }
             }
@@ -516,22 +655,31 @@ pub fn start_files_watcher(app: AppHandle) -> Result<(), String> {
 
             let tracked_files_changed = event_affects_tracked_files(&changed_paths);
             let lists_changed = event_affects_lists(&changed_paths);
-            let lists_state_changed = changed_paths.iter().any(|path| path == &get_lists_state_path());
+            let lists_state_changed = changed_paths
+                .iter()
+                .any(|path| path == &get_lists_state_path());
 
             if !tracked_files_changed && !lists_changed {
                 continue;
             }
 
-            if lists_state_changed && !get_lists_state_path().exists() {
-                if let Err(e) = rebuild_lists_state() {
-                    let _ = app.emit("files-health-watch-error", format!("Не удалось пересоздать lists-state.json: {e}"));
-                }
+            if lists_state_changed
+                && !get_lists_state_path().exists()
+                && let Err(e) = rebuild_lists_state()
+            {
+                let _ = app.emit(
+                    "files-health-watch-error",
+                    format!("Не удалось пересоздать lists-state.json: {e}"),
+                );
             }
 
             let binaries_ok = match critical_files_ok() {
                 Ok(ok) => ok,
                 Err(e) => {
-                    let _ = app.emit("files-health-watch-error", format!("Не удалось перепроверить файлы: {e}"));
+                    let _ = app.emit(
+                        "files-health-watch-error",
+                        format!("Не удалось перепроверить файлы: {e}"),
+                    );
                     continue;
                 }
             };
@@ -550,12 +698,27 @@ pub fn start_files_watcher(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-async fn download_bytes(client: &reqwest::Client, url: &str, name: &str) -> Result<Vec<u8>, String> {
-    let response = client.get(url).send().await.map_err(|e| format!("Failed to fetch {name}: {e}"))?;
+async fn download_bytes(
+    client: &reqwest::Client,
+    url: &str,
+    name: &str,
+) -> Result<Vec<u8>, String> {
+    let response = client
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch {name}: {e}"))?;
     if !response.status().is_success() {
-        return Err(format!("Failed to download {name}: HTTP {}", response.status()));
+        return Err(format!(
+            "Failed to download {name}: HTTP {}",
+            response.status()
+        ));
     }
-    response.bytes().await.map(|bytes| bytes.to_vec()).map_err(|e| format!("Failed to read {name} body: {e}"))
+    response
+        .bytes()
+        .await
+        .map(|bytes| bytes.to_vec())
+        .map_err(|e| format!("Failed to read {name} body: {e}"))
 }
 
 async fn refresh_lists_internal(force: bool) -> Result<usize, String> {
@@ -568,7 +731,10 @@ async fn refresh_lists_internal(force: bool) -> Result<usize, String> {
         .unwrap_or_default();
     let now = current_timestamp();
     let all_lists_exist = verify_group(&lists_dir, "lists", LISTS, &stored_hashes).unwrap_or(false);
-    let is_stale = state.last_updated_at.map(|last| now.saturating_sub(last) >= LISTS_REFRESH_INTERVAL_SECS).unwrap_or(true);
+    let is_stale = state
+        .last_updated_at
+        .map(|last| now.saturating_sub(last) >= LISTS_REFRESH_INTERVAL_SECS)
+        .unwrap_or(true);
 
     if !force && all_lists_exist && !is_stale {
         return Ok(0);
@@ -587,7 +753,9 @@ async fn refresh_lists_internal(force: bool) -> Result<usize, String> {
         };
 
         if local_hash.as_deref() != Some(remote_hash.as_str()) {
-            tokio_fs::write(&file_path, &bytes).await.map_err(|e| format!("Failed to write {name}: {e}"))?;
+            tokio_fs::write(&file_path, &bytes)
+                .await
+                .map_err(|e| format!("Failed to write {name}: {e}"))?;
             update_hashes(|hashes| {
                 hashes.insert(hash_key("lists", name), remote_hash.clone());
                 Ok(())
@@ -601,7 +769,9 @@ async fn refresh_lists_internal(force: bool) -> Result<usize, String> {
         }
     }
 
-    save_lists_state(&ListsState { last_updated_at: Some(now) })?;
+    save_lists_state(&ListsState {
+        last_updated_at: Some(now),
+    })?;
     Ok(updated_count)
 }
 
@@ -708,29 +878,33 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
         let results = stream::iter(candidates.into_iter().map(|file| {
             let stored_hashes = stored_hashes.clone();
             async move {
-            let checked = if file.dest_path.exists() {
-                let (needs_download, cached_bytes) =
-                    check_remote_file(file.dest_path.clone(), client, &file.url, &file.name).await?;
-                (needs_download, cached_bytes)
-            } else {
-                (true, None)
-            };
+                let checked = if file.dest_path.exists() {
+                    let (needs_download, cached_bytes) =
+                        check_remote_file(file.dest_path.clone(), client, &file.url, &file.name)
+                            .await?;
+                    (needs_download, cached_bytes)
+                } else {
+                    (true, None)
+                };
 
-            let (needs_download, cached_bytes) = checked;
-            let hash_missing = file
-                .hash_key
-                .as_ref()
-                .map(|key| !stored_hashes.contains_key(key))
-                .unwrap_or(false);
-            Ok::<Option<FileToDownload>, String>(if needs_download || cached_bytes.is_some() || hash_missing {
-                Some(FileToDownload {
-                    cached_bytes,
-                    ..file
-                })
-            } else {
-                None
-            })
-        }}))
+                let (needs_download, cached_bytes) = checked;
+                let hash_missing = file
+                    .hash_key
+                    .as_ref()
+                    .map(|key| !stored_hashes.contains_key(key))
+                    .unwrap_or(false);
+                Ok::<Option<FileToDownload>, String>(
+                    if needs_download || cached_bytes.is_some() || hash_missing {
+                        Some(FileToDownload {
+                            cached_bytes,
+                            ..file
+                        })
+                    } else {
+                        None
+                    },
+                )
+            }
+        }))
         .buffer_unordered(FILES_CONCURRENCY_LIMIT)
         .collect::<Vec<_>>()
         .await;
@@ -749,7 +923,12 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
 
     if total_files == 0 {
         app.emit("download-complete", ()).ok();
-        let _ = app.notification().builder().title("Готово").body("Все файлы уже актуальны").show();
+        let _ = app
+            .notification()
+            .builder()
+            .title("Готово")
+            .body("Все файлы уже актуальны")
+            .show();
         return Ok(());
     }
 
@@ -778,7 +957,8 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
                 filename: file.name.clone(),
                 phase: file.phase.clone(),
             },
-        ).ok();
+        )
+        .ok();
 
         let bytes = if let Some(bytes) = &file.cached_bytes {
             bytes.clone()
@@ -814,26 +994,45 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
     }
 
     app.emit("download-complete", ()).ok();
-    let _ = app.notification().builder().title("Готово").body(format!("Обновлено {} файлов приложения", total_files)).show();
+    let _ = app
+        .notification()
+        .builder()
+        .title("Готово")
+        .body(format!("Обновлено {} файлов приложения", total_files))
+        .show();
     Ok(())
 }
 
 #[tauri::command]
-pub async fn refresh_lists_if_stale() -> Result<usize, String> { refresh_lists_internal(false).await }
+pub async fn refresh_lists_if_stale() -> Result<usize, String> {
+    refresh_lists_internal(false).await
+}
 #[tauri::command]
-pub async fn restore_default_filters() -> Result<(), String> { restore_default_filters_internal().await }
+pub async fn restore_default_filters() -> Result<(), String> {
+    restore_default_filters_internal().await
+}
 #[tauri::command]
 pub fn get_binary_path(filename: &str) -> Result<String, String> {
     let filename = sanitize_filename(filename)?;
     if !BINARIES.iter().any(|(name, _)| *name == filename) {
         return Err("Unknown binary filename".to_string());
     }
-    Ok(get_zapret_dir().join(filename).to_string_lossy().to_string())
+    Ok(get_zapret_dir()
+        .join(filename)
+        .to_string_lossy()
+        .to_string())
 }
 #[tauri::command]
-pub fn get_winws_path() -> String { get_zapret_dir().join("winws.exe").to_string_lossy().to_string() }
+pub fn get_winws_path() -> String {
+    get_zapret_dir()
+        .join("winws.exe")
+        .to_string_lossy()
+        .to_string()
+}
 #[tauri::command]
-pub fn get_filters_path() -> String { get_filters_dir().to_string_lossy().to_string() }
+pub fn get_filters_path() -> String {
+    get_filters_dir().to_string_lossy().to_string()
+}
 #[tauri::command]
 pub fn get_reserved_filter_filenames() -> Vec<String> {
     FILTERS.iter().map(|name| (*name).to_string()).collect()
@@ -887,5 +1086,7 @@ pub fn open_zapret_directory(app: AppHandle) -> Result<(), String> {
     if !dir.exists() {
         fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     }
-    app.opener().open_path(dir.to_string_lossy().to_string(), None::<&str>).map_err(|e| e.to_string())
+    app.opener()
+        .open_path(dir.to_string_lossy().to_string(), None::<&str>)
+        .map_err(|e| e.to_string())
 }
