@@ -146,7 +146,7 @@ export function SettingsPage() {
   } = useConfigStore()
   const { isDownloading, progress, reset: resetDownload } = useDownloadStore()
   const { binariesOk, availableUpdates } = useAppStore()
-  const { connect, disconnect } = useConnectionStore()
+  const { connect, disconnect, restartIfConnected } = useConnectionStore()
 
   useEffect(() => {
     let isMounted = true
@@ -425,13 +425,10 @@ export function SettingsPage() {
                       setGlobalPorts({ ...config.global_ports, tcp: tcpDraft })
                       if (wasConnected) {
                         try {
-                          await disconnect()
-                          await waitForConnectionStatus('disconnected')
-                          await connect()
-                          await waitForConnectionStatus('connected')
+                          await restartIfConnected()
                         }
                         catch (err) {
-                          console.error('Failed to reconnect after port change:', err)
+                          console.error('Failed to restart after port change:', err)
                           toast.error('Не удалось переподключиться с новыми портами')
                         }
                       }
@@ -464,13 +461,10 @@ export function SettingsPage() {
                       setGlobalPorts({ ...config.global_ports, udp: udpDraft })
                       if (wasConnected) {
                         try {
-                          await disconnect()
-                          await waitForConnectionStatus('disconnected')
-                          await connect()
-                          await waitForConnectionStatus('connected')
+                          await restartIfConnected()
                         }
                         catch (err) {
-                          console.error('Failed to reconnect after port change:', err)
+                          console.error('Failed to restart after port change:', err)
                           toast.error('Не удалось переподключиться с новыми портами')
                         }
                       }
