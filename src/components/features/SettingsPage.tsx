@@ -128,6 +128,8 @@ export function SettingsPage() {
   const [autostartLoading, setAutostartLoading] = useState(true)
   const [tcpDraft, setTcpDraft] = useState('')
   const [udpDraft, setUdpDraft] = useState('')
+  const [tcpFocused, setTcpFocused] = useState(false)
+  const [udpFocused, setUdpFocused] = useState(false)
   const isInitialLoadRef = useRef(true)
 
   const {
@@ -192,10 +194,14 @@ export function SettingsPage() {
 
   useEffect(() => {
     if (config?.global_ports) {
-      setTcpDraft(config.global_ports.tcp)
-      setUdpDraft(config.global_ports.udp)
+      if (!tcpFocused) {
+        setTcpDraft(config.global_ports.tcp)
+      }
+      if (!udpFocused) {
+        setUdpDraft(config.global_ports.udp)
+      }
     }
-  }, [config?.global_ports])
+  }, [config?.global_ports, tcpFocused, udpFocused])
 
   useEffect(() => {
     let isMounted = true
@@ -398,7 +404,9 @@ export function SettingsPage() {
                   id="tcpPortsInput"
                   value={tcpDraft}
                   onChange={e => setTcpDraft(e.target.value)}
+                  onFocus={() => setTcpFocused(true)}
                   onBlur={async () => {
+                    setTcpFocused(false)
                     if (isValidPortRange(tcpDraft)) {
                       const wasConnected = useConnectionStore.getState().status === 'connected'
                       setGlobalPorts({ ...config.global_ports, tcp: tcpDraft })
@@ -428,7 +436,9 @@ export function SettingsPage() {
                   id="udpPortsInput"
                   value={udpDraft}
                   onChange={e => setUdpDraft(e.target.value)}
+                  onFocus={() => setUdpFocused(true)}
                   onBlur={async () => {
+                    setUdpFocused(false)
                     if (isValidPortRange(udpDraft)) {
                       const wasConnected = useConnectionStore.getState().status === 'connected'
                       setGlobalPorts({ ...config.global_ports, udp: udpDraft })

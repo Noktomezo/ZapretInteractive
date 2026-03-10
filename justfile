@@ -44,7 +44,7 @@ format-back:
 
 # Apply clippy fixes to backend
 clippy-fix-back:
-  cargo clippy --fix --allow-dirty --manifest-path "src-tauri/Cargo.toml"
+  cargo clippy --fix --allow-dirty --manifest-path "src-tauri/Cargo.toml" --all-targets --all-features
 
 
 # Format only frontend

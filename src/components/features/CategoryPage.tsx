@@ -159,6 +159,8 @@ export function CategoryPage() {
         catch (err) {
           console.error('Failed to save/restart after deleting strategy:', err)
           toast.error('Ошибка сохранения после удаления стратегии')
+          skipNextAutosaveRef.current = false
+          await load()
         }
       }
       else {
