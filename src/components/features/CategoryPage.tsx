@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -191,6 +190,10 @@ export function CategoryPage() {
         }
         catch (err) {
           console.error('Failed to restart after deleting category:', err)
+          toast.error('Категория удалена, но не удалось применить изменения к активному подключению', {
+            description: err instanceof Error ? err.message : String(err),
+            duration: 8000,
+          })
         }
       }
       setDeleteDialogOpen(false)
@@ -323,9 +326,14 @@ export function CategoryPage() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Отмена</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDeleteCategory} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  <Button
+                    onClick={async () => {
+                      await handleDeleteCategory()
+                    }}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
                     Удалить
-                  </AlertDialogAction>
+                  </Button>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
