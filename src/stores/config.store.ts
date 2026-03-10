@@ -29,6 +29,7 @@ interface ConfigStore {
   addPlaceholder: (name: string, path: string) => void
   updatePlaceholder: (index: number, name: string, path: string) => void
   deletePlaceholder: (index: number) => void
+  setPlaceholders: (placeholders: Placeholder[]) => void
 }
 
 export const useConfigStore = create<ConfigStore>((set, get) => ({
@@ -272,6 +273,13 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     const { config } = get()
     if (config) {
       const placeholders = config.placeholders.filter((_, i) => i !== index)
+      set({ config: { ...config, placeholders } })
+    }
+  },
+
+  setPlaceholders: (placeholders) => {
+    const { config } = get()
+    if (config) {
       set({ config: { ...config, placeholders } })
     }
   },

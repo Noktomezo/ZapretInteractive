@@ -25,7 +25,7 @@ export function PlaceholdersPage() {
   const isInitialLoadRef = useRef(true)
   const isSavingRef = useRef(false)
 
-  const { config, loading, load, save, addPlaceholder, updatePlaceholder, deletePlaceholder }
+  const { config, loading, load, save, addPlaceholder, updatePlaceholder, deletePlaceholder, setPlaceholders }
     = useConfigStore()
 
   useEffect(() => {
@@ -41,6 +41,10 @@ export function PlaceholdersPage() {
   }, [config])
 
   const handleAdd = () => {
+    if (isSavingRef.current) {
+      toast.error('Подождите, выполняется сохранение')
+      return
+    }
     if (newName.trim() && newPath.trim()) {
       addPlaceholder(newName.trim(), newPath.trim())
       setNewName('')
@@ -56,6 +60,10 @@ export function PlaceholdersPage() {
   }
 
   const handleSaveEdit = () => {
+    if (isSavingRef.current) {
+      toast.error('Подождите, выполняется сохранение')
+      return
+    }
     if (editingIndex !== null) {
       const trimmedName = editName.trim()
       const trimmedPath = editPath.trim()
@@ -70,7 +78,7 @@ export function PlaceholdersPage() {
   const handleDelete = async (index: number) => {
     if (isSavingRef.current)
       return
-    const placeholderToDelete = config?.placeholders[index]
+    const prevPlaceholders = config?.placeholders?.slice() ?? []
     deletePlaceholder(index)
     isSavingRef.current = true
     try {
@@ -79,9 +87,7 @@ export function PlaceholdersPage() {
     }
     catch (e) {
       toast.error(`Ошибка сохранения: ${e}`)
-      if (placeholderToDelete) {
-        addPlaceholder(placeholderToDelete.name, placeholderToDelete.path)
-      }
+      setPlaceholders(prevPlaceholders)
     }
     finally {
       isSavingRef.current = false

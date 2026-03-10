@@ -229,7 +229,10 @@ export function CategoriesListPage() {
       return
     }
     if (config && !isInitialLoadRef.current) {
-      void save()
+      save().catch((err) => {
+        console.error('Autosave failed:', err)
+        toast.error('Ошибка автосохранения')
+      })
     }
   }, [config, save])
 
@@ -248,12 +251,21 @@ export function CategoriesListPage() {
       skipNextAutosaveRef.current = true
       clearAllActiveStrategies(categoryId)
       await save()
+    }
+    catch (err) {
+      console.error('Failed to save after deactivating strategy:', err)
+      toast.error('Ошибка сохранения после деактивации стратегии')
+      skipNextAutosaveRef.current = false
+      await load()
+      return
+    }
+    try {
       await restartIfConnected()
       notifyConfigApplied('Стратегия деактивирована')
     }
     catch (err) {
-      console.error('Failed to deactivate strategy:', err)
-      toast.error('Ошибка деактивации стратегии')
+      console.error('Failed to restart after deactivating strategy:', err)
+      notifyConfigApplied('Стратегия деактивирована, но не удалось переподключиться')
     }
     finally {
       skipNextAutosaveRef.current = false

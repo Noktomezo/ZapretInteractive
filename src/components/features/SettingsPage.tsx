@@ -344,6 +344,8 @@ export function SettingsPage() {
                   autostartEnabled ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
                   'grid transition-all duration-200 ease-out',
                 )}
+                aria-hidden={!autostartEnabled}
+                hidden={!autostartEnabled}
               >
                 <div className="overflow-hidden">
                   <div className="flex items-center justify-between gap-4 border-l border-border/60 pl-4">
@@ -356,7 +358,7 @@ export function SettingsPage() {
                     <Switch
                       id="connect-on-autostart"
                       checked={config.connectOnAutostart ?? false}
-                      disabled={autostartLoading}
+                      disabled={autostartLoading || !autostartEnabled}
                       onCheckedChange={setConnectOnAutostart}
                     />
                   </div>
@@ -370,7 +372,7 @@ export function SettingsPage() {
                     <Switch
                       id="launch-to-tray"
                       checked={config.launchToTray ?? false}
-                      disabled={autostartLoading}
+                      disabled={autostartLoading || !autostartEnabled}
                       onCheckedChange={setLaunchToTray}
                     />
                   </div>
@@ -412,8 +414,11 @@ export function SettingsPage() {
                   onFocus={() => { tcpFocusedRef.current = true }}
                   onBlur={async () => {
                     tcpFocusedRef.current = false
+                    const latestGlobalPorts = useConfigStore.getState().config?.global_ports ?? config.global_ports
+                    if (latestGlobalPorts.tcp === tcpDraft) {
+                      return
+                    }
                     if (isValidPortRange(tcpDraft)) {
-                      const latestGlobalPorts = useConfigStore.getState().config?.global_ports ?? config.global_ports
                       setGlobalPorts({ ...latestGlobalPorts, tcp: tcpDraft })
                       let wasConnected = false
                       try {
@@ -449,6 +454,10 @@ export function SettingsPage() {
                   onFocus={() => { udpFocusedRef.current = true }}
                   onBlur={async () => {
                     udpFocusedRef.current = false
+                    const latestGlobalPorts = useConfigStore.getState().config?.global_ports ?? config.global_ports
+                    if (latestGlobalPorts.udp === udpDraft) {
+                      return
+                    }
                     if (isValidPortRange(udpDraft)) {
                       const latestGlobalPorts = useConfigStore.getState().config?.global_ports ?? config.global_ports
                       setGlobalPorts({ ...latestGlobalPorts, udp: udpDraft })
