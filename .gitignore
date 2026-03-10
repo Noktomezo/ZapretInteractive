@@ -7,15 +7,16 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Libraries, build artifacts and cache
 node_modules
 dist
 dist-ssr
 *.local
+*.eslintcache
+*.tsbuildinfo
 
 # Editor directories and files
 .vscode/*
-.kilocode
-.codex
 **/telemetry-id
 !.vscode/extensions.json
 .idea
@@ -25,3 +26,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# AI
+.kilocode
+.codex
+.cursor
+.winsurf
+.opencode
+.claude

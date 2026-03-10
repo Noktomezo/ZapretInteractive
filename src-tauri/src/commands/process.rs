@@ -5,18 +5,18 @@ use std::sync::atomic::{AtomicU32, Ordering};
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 #[cfg(windows)]
-use windows::core::PCWSTR;
-#[cfg(windows)]
-use windows::Win32::Foundation::{CloseHandle, ERROR_FILE_NOT_FOUND, INVALID_HANDLE_VALUE, WIN32_ERROR};
+use windows::Win32::Foundation::{
+    CloseHandle, ERROR_FILE_NOT_FOUND, INVALID_HANDLE_VALUE, WIN32_ERROR,
+};
 #[cfg(windows)]
 use windows::Win32::System::Diagnostics::ToolHelp::{
-    CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
+    CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS,
 };
 #[cfg(windows)]
 use windows::Win32::System::Registry::{
-    RegCloseKey, RegCreateKeyExW, RegOpenKeyExW, RegQueryValueExW, RegSetValueExW, HKEY,
-    HKEY_LOCAL_MACHINE, KEY_QUERY_VALUE, KEY_SET_VALUE, KEY_WRITE, REG_DWORD,
-    REG_OPTION_NON_VOLATILE,
+    HKEY, HKEY_LOCAL_MACHINE, KEY_QUERY_VALUE, KEY_SET_VALUE, KEY_WRITE, REG_DWORD,
+    REG_OPTION_NON_VOLATILE, RegCloseKey, RegCreateKeyExW, RegOpenKeyExW, RegQueryValueExW,
+    RegSetValueExW,
 };
 #[cfg(windows)]
 use windows::Win32::System::Services::{
@@ -26,9 +26,11 @@ use windows::Win32::System::Services::{
 };
 #[cfg(windows)]
 use windows::Win32::System::Threading::{
-    GetExitCodeProcess, OpenProcess, TerminateProcess, PROCESS_QUERY_LIMITED_INFORMATION,
-    PROCESS_TERMINATE,
+    GetExitCodeProcess, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_TERMINATE,
+    TerminateProcess,
 };
+#[cfg(windows)]
+use windows::core::PCWSTR;
 
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -53,7 +55,6 @@ fn is_benign_service_delete_error(code: i32) -> bool {
     matches!(code as u32, 0x80070430 | 0x80070424)
 }
 
-
 #[cfg(windows)]
 fn to_wide(value: &str) -> Vec<u16> {
     value.encode_utf16().chain(std::iter::once(0)).collect()
@@ -62,8 +63,12 @@ fn to_wide(value: &str) -> Vec<u16> {
 #[cfg(windows)]
 fn terminate_process_by_pid(pid: u32) -> Result<(), String> {
     unsafe {
-        let handle = OpenProcess(PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
-            .map_err(|e| format!("Failed to open process {pid}: {e}"))?;
+        let handle = OpenProcess(
+            PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION,
+            false,
+            pid,
+        )
+        .map_err(|e| format!("Failed to open process {pid}: {e}"))?;
 
         let result = TerminateProcess(handle, 1);
         let _ = CloseHandle(handle);
@@ -80,7 +85,8 @@ fn is_process_running_by_pid(pid: u32) -> bool {
         };
 
         let mut exit_code = 0u32;
-        let result = GetExitCodeProcess(handle, &mut exit_code).is_ok() && exit_code == STILL_ACTIVE_EXIT_CODE;
+        let result = GetExitCodeProcess(handle, &mut exit_code).is_ok()
+            && exit_code == STILL_ACTIVE_EXIT_CODE;
         let _ = CloseHandle(handle);
         result
     }
@@ -181,7 +187,9 @@ fn read_tcp1323_opts() -> Result<u32, String> {
         );
 
         if open_result != WIN32_ERROR(0) {
-            return Err(format!("Failed to open TCP parameters registry key: {open_result:?}"));
+            return Err(format!(
+                "Failed to open TCP parameters registry key: {open_result:?}"
+            ));
         }
 
         let mut data: u32 = 0;
@@ -227,7 +235,9 @@ fn write_tcp1323_opts(value: u32) -> Result<(), String> {
         );
 
         if create_result != WIN32_ERROR(0) {
-            return Err(format!("Failed to open/create TCP parameters registry key: {create_result:?}"));
+            return Err(format!(
+                "Failed to open/create TCP parameters registry key: {create_result:?}"
+            ));
         }
 
         let bytes = value.to_ne_bytes();
@@ -387,5 +397,3 @@ pub fn check_and_recover_orphan() -> Option<u32> {
         None
     }
 }
-
-

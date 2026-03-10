@@ -38,7 +38,7 @@ function waitForConnectionStatus(
       return
     }
 
-    let unsubscribe = () => {}
+    let unsubscribe = () => { }
 
     const timeoutId = window.setTimeout(() => {
       unsubscribe()
@@ -72,7 +72,7 @@ function waitForTerminalConnectionStatus(timeoutMs = 15000): Promise<'connected'
       return
     }
 
-    let unsubscribe = () => {}
+    let unsubscribe = () => { }
 
     const timeoutId = window.setTimeout(() => {
       unsubscribe()
@@ -108,7 +108,7 @@ export function MainPage() {
     ? 'rgba(74, 222, 128, 0.18)'
     : status === 'connecting' || status === 'disconnecting'
       ? 'rgba(250, 204, 21, 0.16)'
-      : 'rgba(248, 113, 113, 0.14)'
+      : 'rgba(248, 113, 113, 0.35)'
 
   const handleListModeChange = (value: string) => {
     if (value) {
@@ -390,9 +390,9 @@ export function MainPage() {
                 status === 'connected'
                 && 'animate-pulse-glow bg-green-600 text-white hover:bg-green-500 dark:hover:bg-green-500',
                 status === 'connecting'
-                && 'bg-yellow-600 text-white hover:bg-yellow-500',
+                && 'animate-pulse-glow-yellow bg-yellow-600 text-white hover:bg-yellow-500',
                 status === 'disconnecting'
-                && 'bg-orange-600 text-white hover:bg-orange-500',
+                && 'animate-pulse-glow-yellow bg-orange-600 text-white hover:bg-orange-500',
                 status === 'error' && 'bg-red-600 text-white hover:bg-red-500',
                 status === 'disconnected'
                 && 'animate-pulse-glow-primary bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200',
@@ -400,9 +400,6 @@ export function MainPage() {
             >
               <Power className="size-12" />
             </Button>
-            {(status === 'connecting' || status === 'disconnecting') && (
-              <div className="absolute inset-0 rounded-full bg-yellow-500/30 animate-ping" />
-            )}
           </div>
 
           <div>

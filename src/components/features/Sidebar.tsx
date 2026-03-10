@@ -55,6 +55,7 @@ function SidebarNavItem({
   const binariesOk = useAppStore(state => state.binariesOk)
   const isActive = currentPath === path
   const isDisabled = requiresFiles && binariesOk === false
+
   const tooltipLabel = isDisabled
     ? `${label} недоступны, пока файлы приложения или фильтры отсутствуют`
     : label
@@ -67,8 +68,8 @@ function SidebarNavItem({
       <span className="min-w-0 flex-1 overflow-hidden">
         <span
           className={cn(
-            'block whitespace-nowrap text-left transition-[transform,opacity] duration-200 ease-out will-change-transform',
-            open ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0',
+            'block whitespace-nowrap text-left transition-all duration-200 ease-out',
+            open ? 'translate-x-0 opacity-100 delay-75' : '-translate-x-2 opacity-0',
           )}
           aria-hidden={!open}
         >
@@ -78,44 +79,57 @@ function SidebarNavItem({
     </>
   )
 
-  const button = isDisabled
-    ? (
-        <SidebarMenuButton
-          isActive={false}
-          aria-label={label}
-          aria-disabled="true"
-          tabIndex={0}
-          className="cursor-not-allowed opacity-45 hover:bg-transparent hover:text-sidebar-foreground"
-          onClick={(event) => {
-            event.preventDefault()
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault()
-            }
-          }}
-        >
-          {content}
-        </SidebarMenuButton>
-      )
-    : (
-        <SidebarMenuButton asChild isActive={isActive}>
-          <Link to={path} aria-label={label} className="flex w-full items-center overflow-hidden">
-            {content}
-          </Link>
-        </SidebarMenuButton>
-      )
+  if (isDisabled) {
+    return (
+      <SidebarMenuItem>
+        <Tooltip open={open ? false : undefined}>
+          <TooltipTrigger asChild>
+            <SidebarMenuButton
+              isActive={false}
+              aria-label={tooltipLabel}
+              aria-disabled="true"
+              tabIndex={0}
+              className="cursor-not-allowed opacity-45 hover:bg-transparent hover:text-sidebar-foreground"
+              onClick={(event) => {
+                event.preventDefault()
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                }
+              }}
+            >
+              {content}
+            </SidebarMenuButton>
+          </TooltipTrigger>
+          <TooltipContent side="right">{tooltipLabel}</TooltipContent>
+        </Tooltip>
+      </SidebarMenuItem>
+    )
+  }
+
+  const link = (
+    <Link
+      to={path}
+      aria-label={open ? label : tooltipLabel}
+      className="flex w-full items-center overflow-hidden"
+    >
+      {content}
+    </Link>
+  )
 
   return (
     <SidebarMenuItem>
-      {open
-        ? button
-        : (
-            <Tooltip>
-              <TooltipTrigger asChild>{button}</TooltipTrigger>
-              <TooltipContent side="right">{tooltipLabel}</TooltipContent>
-            </Tooltip>
-          )}
+      <Tooltip open={open ? false : undefined}>
+        <TooltipTrigger asChild>
+          <SidebarMenuButton asChild isActive={isActive}>
+            {link}
+          </SidebarMenuButton>
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          {tooltipLabel}
+        </TooltipContent>
+      </Tooltip>
     </SidebarMenuItem>
   )
 }

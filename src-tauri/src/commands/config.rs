@@ -78,7 +78,10 @@ pub struct AppConfig {
     pub minimize_to_tray: bool,
     #[serde(default = "default_launch_to_tray", rename = "launchToTray")]
     pub launch_to_tray: bool,
-    #[serde(default = "default_connect_on_autostart", rename = "connectOnAutostart")]
+    #[serde(
+        default = "default_connect_on_autostart",
+        rename = "connectOnAutostart"
+    )]
     pub connect_on_autostart: bool,
     #[serde(default, rename = "listMode")]
     pub list_mode: ListMode,
@@ -165,9 +168,8 @@ impl AppState {
 fn load_config_from_disk() -> Result<AppConfig, String> {
     let config_path = get_config_path();
 
-    match config_path.try_exists().map_err(|e| e.to_string())? {
-        false => return Ok(AppConfig::default()),
-        true => {}
+    if !config_path.try_exists().map_err(|e| e.to_string())? {
+        return Ok(AppConfig::default());
     }
 
     if !config_path.is_file() {
@@ -267,4 +269,3 @@ pub fn resolve_placeholders(content: String, placeholders: Vec<Placeholder>) -> 
 
     result
 }
-

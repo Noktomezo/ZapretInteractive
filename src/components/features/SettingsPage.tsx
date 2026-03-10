@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
 import * as tauri from '@/lib/tauri'
 import { cn } from '@/lib/utils'
@@ -25,6 +26,31 @@ import { useAppStore } from '@/stores/app.store'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
 import { useDownloadStore } from '@/stores/download.store'
+
+const RANGE_RE = /^\d+-\d+$/
+const PORT_RE = /^\d+$/
+
+function isValidPortRange(value: string): boolean {
+  if (!value.trim())
+    return true
+  const parts = value.split(',').map(p => p.trim())
+  for (const part of parts) {
+    if (RANGE_RE.test(part)) {
+      const [start, end] = part.split('-').map(p => Number.parseInt(p, 10))
+      if (start < 1 || end > 65535 || start > end)
+        return false
+    }
+    else if (PORT_RE.test(part)) {
+      const port = Number.parseInt(part, 10)
+      if (port < 1 || port > 65535)
+        return false
+    }
+    else {
+      return false
+    }
+  }
+  return true
+}
 
 function waitForConnectionStatus(
   expectedStatus: 'connected' | 'disconnected',
@@ -100,7 +126,12 @@ export function SettingsPage() {
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
   const [autostartEnabled, setAutostartEnabled] = useState(false)
   const [autostartLoading, setAutostartLoading] = useState(true)
+  const [tcpDraft, setTcpDraft] = useState('')
+  const [udpDraft, setUdpDraft] = useState('')
   const isInitialLoadRef = useRef(true)
+  const prevGlobalPortsRef = useRef<string | undefined>(undefined)
+  const tcpFocusedRef = useRef(false)
+  const udpFocusedRef = useRef(false)
 
   const {
     config,
@@ -115,7 +146,7 @@ export function SettingsPage() {
   } = useConfigStore()
   const { isDownloading, progress, reset: resetDownload } = useDownloadStore()
   const { binariesOk, availableUpdates } = useAppStore()
-  const { connect, disconnect } = useConnectionStore()
+  const { connect, disconnect, restartIfConnected } = useConnectionStore()
 
   useEffect(() => {
     let isMounted = true
@@ -161,6 +192,22 @@ export function SettingsPage() {
       isMounted = false
     }
   }, [])
+
+  useEffect(() => {
+    if (config?.global_ports) {
+      const currentPortsJson = JSON.stringify(config.global_ports)
+      if (prevGlobalPortsRef.current === currentPortsJson) {
+        return
+      }
+      prevGlobalPortsRef.current = currentPortsJson
+      if (!tcpFocusedRef.current) {
+        setTcpDraft(config.global_ports.tcp)
+      }
+      if (!udpFocusedRef.current) {
+        setUdpDraft(config.global_ports.udp)
+      }
+    }
+  }, [config?.global_ports])
 
   useEffect(() => {
     let isMounted = true
@@ -247,55 +294,58 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-medium">Настройки</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Глобальные параметры и управление файлами
-        </p>
-      </div>
+    <ScrollArea className="h-full">
+      <div className="space-y-6 p-6">
+        <div>
+          <h1 className="text-2xl font-medium">Настройки</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Глобальные параметры и управление файлами
+          </p>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Тема</CardTitle>
-          <CardDescription>
-            Внешний вид приложения
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ThemeSwitcher />
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Тема</CardTitle>
+            <CardDescription>
+              Внешний вид приложения
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ThemeSwitcher />
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Поведение</CardTitle>
-          <CardDescription>
-            Настройки запуска и закрытия приложения
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="autostart">Автозапуск с Windows</Label>
-                <p className="text-xs text-muted-foreground">
-                  Приложение будет запускаться автоматически при входе в систему
-                </p>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Поведение</CardTitle>
+            <CardDescription>
+              Настройки запуска и закрытия приложения
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor="autostart">Автозапуск с Windows</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Приложение будет запускаться автоматически при входе в систему
+                  </p>
+                </div>
+                <Switch
+                  id="autostart"
+                  checked={autostartEnabled}
+                  disabled={autostartLoading}
+                  onCheckedChange={handleAutostartChange}
+                />
               </div>
-              <Switch
-                id="autostart"
-                checked={autostartEnabled}
-                disabled={autostartLoading}
-                onCheckedChange={handleAutostartChange}
-              />
-            </div>
 
-            {autostartEnabled && (
               <div
                 className={cn(
-                  'grid grid-rows-[1fr] opacity-100 transition-all duration-200 ease-out',
+                  autostartEnabled ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
+                  'grid transition-all duration-200 ease-out',
                 )}
+                aria-hidden={!autostartEnabled}
+                hidden={!autostartEnabled}
               >
                 <div className="overflow-hidden">
                   <div className="flex items-center justify-between gap-4 border-l border-border/60 pl-4">
@@ -308,7 +358,7 @@ export function SettingsPage() {
                     <Switch
                       id="connect-on-autostart"
                       checked={config.connectOnAutostart ?? false}
-                      disabled={autostartLoading}
+                      disabled={autostartLoading || !autostartEnabled}
                       onCheckedChange={setConnectOnAutostart}
                     />
                   </div>
@@ -322,175 +372,236 @@ export function SettingsPage() {
                     <Switch
                       id="launch-to-tray"
                       checked={config.launchToTray ?? false}
-                      disabled={autostartLoading}
+                      disabled={autostartLoading || !autostartEnabled}
                       onCheckedChange={setLaunchToTray}
                     />
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="minimize-to-tray">Сворачивать в трей при закрытии</Label>
+                <p className="text-xs text-muted-foreground">
+                  При закрытии окно будет скрыто в системный трей вместо завершения работы
+                </p>
+              </div>
+              <Switch
+                id="minimize-to-tray"
+                checked={config.minimizeToTray ?? true}
+                onCheckedChange={setMinimizeToTray}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Порты</CardTitle>
+            <CardDescription>
+              Глобальные порты для фильтрации трафика
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="tcpPortsInput">TCP порты</Label>
+                <Input
+                  id="tcpPortsInput"
+                  value={tcpDraft}
+                  onChange={e => setTcpDraft(e.target.value)}
+                  onFocus={() => { tcpFocusedRef.current = true }}
+                  onBlur={async () => {
+                    tcpFocusedRef.current = false
+                    const latestGlobalPorts = useConfigStore.getState().config?.global_ports ?? config.global_ports
+                    if (latestGlobalPorts.tcp === tcpDraft) {
+                      return
+                    }
+                    if (isValidPortRange(tcpDraft)) {
+                      setGlobalPorts({ ...latestGlobalPorts, tcp: tcpDraft })
+                      let wasConnected = false
+                      try {
+                        const terminalStatus = await waitForTerminalConnectionStatus()
+                        wasConnected = terminalStatus === 'connected'
+                      }
+                      catch {
+                        // If we can't determine status, assume not connected
+                      }
+                      if (wasConnected) {
+                        try {
+                          await restartIfConnected()
+                        }
+                        catch (err) {
+                          console.error('Failed to restart after port change:', err)
+                          toast.error('Не удалось переподключиться с новыми портами')
+                        }
+                      }
+                    }
+                    else {
+                      toast.error('Неверный формат портов. Пример: 80,443 или 1000-2000')
+                    }
+                  }}
+                  placeholder="1-65535"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="udpPortsInput">UDP порты</Label>
+                <Input
+                  id="udpPortsInput"
+                  value={udpDraft}
+                  onChange={e => setUdpDraft(e.target.value)}
+                  onFocus={() => { udpFocusedRef.current = true }}
+                  onBlur={async () => {
+                    udpFocusedRef.current = false
+                    const latestGlobalPorts = useConfigStore.getState().config?.global_ports ?? config.global_ports
+                    if (latestGlobalPorts.udp === udpDraft) {
+                      return
+                    }
+                    if (isValidPortRange(udpDraft)) {
+                      const latestGlobalPorts = useConfigStore.getState().config?.global_ports ?? config.global_ports
+                      setGlobalPorts({ ...latestGlobalPorts, udp: udpDraft })
+                      let wasConnected = false
+                      try {
+                        const terminalStatus = await waitForTerminalConnectionStatus()
+                        wasConnected = terminalStatus === 'connected'
+                      }
+                      catch {
+                        // If we can't determine status, assume not connected
+                      }
+                      if (wasConnected) {
+                        try {
+                          await restartIfConnected()
+                        }
+                        catch (err) {
+                          console.error('Failed to restart after port change:', err)
+                          toast.error('Не удалось переподключиться с новыми портами')
+                        }
+                      }
+                    }
+                    else {
+                      toast.error('Неверный формат портов. Пример: 80,443 или 1000-2000')
+                    }
+                  }}
+                  placeholder="1-65535"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Бинарные файлы</CardTitle>
+            <CardDescription>
+              WinDivert, winws.exe, fake-файлы и списки
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-2">
+              <FolderOpen className="size-4 text-muted-foreground" />
+              <span className="font-mono text-sm">{zapretDir}</span>
+            </div>
+
+            {binariesOk === false && (
+              <Alert>
+                <AlertTitle>Файлы не найдены</AlertTitle>
+                <AlertDescription>
+                  Необходимые файлы отсутствуют или повреждены
+                </AlertDescription>
+              </Alert>
             )}
-          </div>
 
-          <div className="flex items-center justify-between gap-4">
-            <div className="space-y-0.5">
-              <Label htmlFor="minimize-to-tray">Сворачивать в трей при закрытии</Label>
-              <p className="text-xs text-muted-foreground">
-                При закрытии окно будет скрыто в системный трей вместо завершения работы
-              </p>
-            </div>
-            <Switch
-              id="minimize-to-tray"
-              checked={config.minimizeToTray ?? true}
-              onCheckedChange={setMinimizeToTray}
-            />
-          </div>
-        </CardContent>
-      </Card>
+            {binariesOk === true && availableUpdates.length > 0 && (
+              <Alert className="border-yellow-600 bg-yellow-600/10">
+                <AlertTitle>Доступно обновление файлов</AlertTitle>
+                <AlertDescription>
+                  {availableUpdates.length === 1
+                    ? `Доступно обновление: ${availableUpdates[0]}`
+                    : `Доступно обновление для ${availableUpdates.length} файлов`}
+                </AlertDescription>
+              </Alert>
+            )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Порты</CardTitle>
-          <CardDescription>
-            Глобальные порты для фильтрации трафика
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label htmlFor="tcpPortsInput" className="text-sm font-normal">TCP порты</label>
-              <Input
-                id="tcpPortsInput"
-                value={config.global_ports.tcp}
-                onChange={e =>
-                  setGlobalPorts({ ...config.global_ports, tcp: e.target.value })}
-                placeholder="1-65535"
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="udpPortsInput" className="text-sm font-normal">UDP порты</label>
-              <Input
-                id="udpPortsInput"
-                value={config.global_ports.udp}
-                onChange={e =>
-                  setGlobalPorts({ ...config.global_ports, udp: e.target.value })}
-                placeholder="1-65535"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            {binariesOk === true && availableUpdates.length === 0 && (
+              <Alert className="border-green-600 bg-green-600/10">
+                <AlertTitle>Файлы на месте</AlertTitle>
+                <AlertDescription>
+                  Все необходимые файлы найдены
+                </AlertDescription>
+              </Alert>
+            )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Бинарные файлы</CardTitle>
-          <CardDescription>
-            WinDivert, winws.exe, fake-файлы и списки
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-2">
-            <FolderOpen className="size-4 text-muted-foreground" />
-            <span className="font-mono text-sm">{zapretDir}</span>
-          </div>
-
-          {binariesOk === false && (
-            <Alert>
-              <AlertTitle>Файлы не найдены</AlertTitle>
-              <AlertDescription>
-                Необходимые файлы отсутствуют или повреждены
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {binariesOk === true && availableUpdates.length > 0 && (
-            <Alert className="border-yellow-600 bg-yellow-600/10">
-              <AlertTitle>Доступно обновление файлов</AlertTitle>
-              <AlertDescription>
-                {availableUpdates.length === 1
-                  ? `Доступно обновление: ${availableUpdates[0]}`
-                  : `Доступно обновление для ${availableUpdates.length} файлов`}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {binariesOk === true && availableUpdates.length === 0 && (
-            <Alert className="border-green-600 bg-green-600/10">
-              <AlertTitle>Файлы на месте</AlertTitle>
-              <AlertDescription>
-                Все необходимые файлы найдены
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {isDownloading && progress
-            ? (
-                <div className="space-y-2">
-                  <div className="h-2 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full bg-primary transition-all duration-300"
-                      style={{
-                        width: `${Math.max(0, Math.min(100, progress.total > 0 ? (progress.current / progress.total) * 100 : 0))}%`,
-                      }}
-                    />
+            {isDownloading && progress
+              ? (
+                  <div className="space-y-2">
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full bg-primary transition-all duration-300"
+                        style={{
+                          width: `${Math.max(0, Math.min(100, progress.total > 0 ? (progress.current / progress.total) * 100 : 0))}%`,
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {progress.current}
+                      /
+                      {progress.total}
+                      :
+                      {progress.filename}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {progress.current}
-                    /
-                    {progress.total}
-                    :
-                    {progress.filename}
-                  </p>
-                </div>
-              )
-            : (
-                <Button
-                  onClick={handleDownloadBinaries}
-                  disabled={isDownloading}
-                  variant={binariesOk === false ? 'default' : 'outline'}
-                >
-                  <Download className="mr-2 size-4" />
-                  {binariesOk === false
-                    ? 'Загрузить'
-                    : availableUpdates.length > 0
-                      ? 'Обновить'
-                      : 'Переустановить'}
-                </Button>
-              )}
-        </CardContent>
-      </Card>
+                )
+              : (
+                  <Button
+                    onClick={handleDownloadBinaries}
+                    disabled={isDownloading}
+                    variant={binariesOk === false ? 'default' : 'outline'}
+                  >
+                    <Download className="mr-2 size-4" />
+                    {binariesOk === false
+                      ? 'Загрузить'
+                      : availableUpdates.length > 0
+                        ? 'Обновить'
+                        : 'Переустановить'}
+                  </Button>
+                )}
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Сброс</CardTitle>
-          <CardDescription>
-            Возврат к настройкам по умолчанию
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive">
-                <RotateCcw className="mr-2 size-4" />
-                Сбросить настройки
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Сбросить настройки?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Все категории, стратегии и плейсхолдеры будут удалены и заменены на значения по умолчанию. Это действие нельзя отменить.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Отмена</AlertDialogCancel>
-                <AlertDialogAction onClick={handleReset} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                  Сбросить
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </CardContent>
-      </Card>
-    </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Сброс</CardTitle>
+            <CardDescription>
+              Возврат к настройкам по умолчанию
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive">
+                  <RotateCcw className="mr-2 size-4" />
+                  Сбросить настройки
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Сбросить настройки?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Все категории, стратегии, плейсхолдеры и фильтры будут удалены и заменены на значения по умолчанию. Это действие нельзя отменить.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Отмена</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleReset} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Сбросить
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </CardContent>
+        </Card>
+      </div>
+    </ScrollArea>
   )
 }

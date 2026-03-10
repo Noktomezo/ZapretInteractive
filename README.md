@@ -16,7 +16,7 @@ GUI-обёртка для [zapret-win-bundle](https://github.com/bol-van/zapret-
 ## 📸 Скриншот
 
 <div align="center">
-  <img src="assets/app-screenshot.png" alt="Screenshot" width="600">
+  <img src="assets/app-screenshot.png" alt="Screenshot" width="100%">
 </div>
 
 ## ⚡ Требования

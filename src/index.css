@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "overlayscrollbars/overlayscrollbars.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -212,6 +211,46 @@
 
   .animate-pulse-glow-primary {
     animation: pulse-glow-primary 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow-yellow {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7);
+    }
+    50% {
+      box-shadow: 0 0 0 20px rgba(234, 179, 8, 0);
+    }
+  }
+
+  .animate-pulse-glow-yellow {
+    animation: pulse-glow-yellow 2s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-pulse-glow-yellow {
+      animation: none;
+    }
+  }
+
+  @keyframes pulse-glow-yellow-dark {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 15px rgba(234, 179, 8, 0);
+    }
+  }
+
+  .dark .animate-pulse-glow-yellow {
+    animation: pulse-glow-yellow-dark 2s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dark .animate-pulse-glow-yellow {
+      animation: none;
+    }
   }
 
   .dark .animate-pulse-glow-primary {

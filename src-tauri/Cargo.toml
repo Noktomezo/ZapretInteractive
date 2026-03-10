@@ -1,18 +1,20 @@
 [package]
 name = "zapret-interactive"
 version = "1.0.5"
-description = "A Tauri App"
-authors = ["you"]
-edition = "2021"
+description = "📦 GUI-wrapper for zapret-win-bundle by bol-van"
+authors = ["Noktomezo <noktomezo@duck.com>"]
+edition = "2024"
 
 [lib]
 name = "zapret_interactive_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[profile.dev]
+
 [profile.release]
 overflow-checks = false
 codegen-units = 1
-opt-level = 3
+opt-level = "z"
 panic = "abort"
 strip = true
 lto = true
@@ -37,6 +39,7 @@ reqwest = { version = "0.13.2", features = ["blocking"] }
 regex = "1.12.3"
 notify = "8.2.0"
 tauri-plugin-devtools = "2.0.0"
+tauri-plugin-prevent-default = "2"
 futures = "0.3.31"
 
 [target.'cfg(windows)'.dependencies]
