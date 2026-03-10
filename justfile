@@ -29,7 +29,6 @@ build-uncompressed: gen-icons
 # Lint only backend
 lint-back:
   cargo clippy --manifest-path "src-tauri/Cargo.toml" --all-targets --all-features -- -D warnings
-  cargo check --manifest-path "src-tauri/Cargo.toml"
 
 # Lint only frontend
 lint-front:
@@ -41,8 +40,11 @@ lint: lint-back lint-front
 
 # Format only backend
 format-back:
-  cargo clippy --fix --allow-dirty --manifest-path "src-tauri/Cargo.toml"
   cargo fmt --manifest-path "src-tauri/Cargo.toml"
+
+# Apply clippy fixes to backend
+clippy-fix-back:
+  cargo clippy --fix --allow-dirty --manifest-path "src-tauri/Cargo.toml"
 
 
 # Format only frontend

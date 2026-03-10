@@ -149,16 +149,16 @@ export function CategoryPage() {
       const wasActive = strategy?.active ?? false
 
       if (wasActive) {
+        deleteStrategy(categoryId, strategyId)
         try {
           skipNextAutosaveRef.current = true
           await save()
           await restartIfConnected()
-          deleteStrategy(categoryId, strategyId)
           toast.success('Стратегия удалена')
         }
         catch (err) {
-          console.error('Failed to save/restart before deleting strategy:', err)
-          toast.error('Ошибка сохранения перед удалением стратегии')
+          console.error('Failed to save/restart after deleting strategy:', err)
+          toast.error('Ошибка сохранения после удаления стратегии')
         }
       }
       else {
@@ -180,6 +180,7 @@ export function CategoryPage() {
         console.error('Failed to save after deleting category:', err)
         toast.error('Ошибка сохранения после удаления категории')
         skipNextAutosaveRef.current = false
+        await load()
         return
       }
       if (hadActiveStrategy) {

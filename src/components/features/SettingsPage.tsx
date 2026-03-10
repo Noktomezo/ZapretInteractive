@@ -27,17 +27,20 @@ import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
 import { useDownloadStore } from '@/stores/download.store'
 
+const RANGE_RE = /^\d+-\d+$/
+const PORT_RE = /^\d+$/
+
 function isValidPortRange(value: string): boolean {
   if (!value.trim())
     return true
   const parts = value.split(',').map(p => p.trim())
   for (const part of parts) {
-    if (/^\d+-\d+$/.test(part)) {
+    if (RANGE_RE.test(part)) {
       const [start, end] = part.split('-').map(p => Number.parseInt(p, 10))
       if (start < 1 || end > 65535 || start > end)
         return false
     }
-    else if (/^\d+$/.test(part)) {
+    else if (PORT_RE.test(part)) {
       const port = Number.parseInt(part, 10)
       if (port < 1 || port > 65535)
         return false
@@ -400,10 +403,16 @@ export function SettingsPage() {
                       const wasConnected = useConnectionStore.getState().status === 'connected'
                       setGlobalPorts({ ...config.global_ports, tcp: tcpDraft })
                       if (wasConnected) {
-                        await disconnect()
-                        await waitForConnectionStatus('disconnected')
-                        await connect()
-                        await waitForConnectionStatus('connected')
+                        try {
+                          await disconnect()
+                          await waitForConnectionStatus('disconnected')
+                          await connect()
+                          await waitForConnectionStatus('connected')
+                        }
+                        catch (err) {
+                          console.error('Failed to reconnect after port change:', err)
+                          toast.error('Не удалось переподключиться с новыми портами')
+                        }
                       }
                     }
                     else {
@@ -424,10 +433,16 @@ export function SettingsPage() {
                       const wasConnected = useConnectionStore.getState().status === 'connected'
                       setGlobalPorts({ ...config.global_ports, udp: udpDraft })
                       if (wasConnected) {
-                        await disconnect()
-                        await waitForConnectionStatus('disconnected')
-                        await connect()
-                        await waitForConnectionStatus('connected')
+                        try {
+                          await disconnect()
+                          await waitForConnectionStatus('disconnected')
+                          await connect()
+                          await waitForConnectionStatus('connected')
+                        }
+                        catch (err) {
+                          console.error('Failed to reconnect after port change:', err)
+                          toast.error('Не удалось переподключиться с новыми портами')
+                        }
                       }
                     }
                     else {

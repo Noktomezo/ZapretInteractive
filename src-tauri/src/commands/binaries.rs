@@ -1099,7 +1099,16 @@ pub fn save_filter_file(filename: String, content: String) -> Result<(), String>
 
     let file_path = filters_dir.join(&filename);
     let temp_path = file_path.with_extension("tmp");
-    fs::write(&temp_path, &content).map_err(|e| format!("Failed to write temp file: {e}"))?;
+    use std::io::Write;
+    let mut temp_file =
+        fs::File::create(&temp_path).map_err(|e| format!("Failed to create temp file: {e}"))?;
+    temp_file
+        .write_all(content.as_bytes())
+        .map_err(|e| format!("Failed to write temp file: {e}"))?;
+    temp_file
+        .sync_all()
+        .map_err(|e| format!("Failed to sync temp file: {e}"))?;
+    drop(temp_file);
     fs::rename(&temp_path, &file_path).map_err(|e| format!("Failed to rename temp file: {e}"))?;
 
     if FILTERS.contains(&filename.as_str()) {
