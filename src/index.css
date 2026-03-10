@@ -227,6 +227,12 @@
     animation: pulse-glow-yellow 2s ease-in-out infinite;
   }
 
+  @media (prefers-reduced-motion: reduce) {
+    .animate-pulse-glow-yellow {
+      animation: none;
+    }
+  }
+
   @keyframes pulse-glow-yellow-dark {
     0%,
     100% {
@@ -239,6 +245,12 @@
 
   .dark .animate-pulse-glow-yellow {
     animation: pulse-glow-yellow-dark 2s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dark .animate-pulse-glow-yellow {
+      animation: none;
+    }
   }
 
   .dark .animate-pulse-glow-primary {

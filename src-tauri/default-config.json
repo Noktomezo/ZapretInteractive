@@ -422,5 +422,7 @@
     }
   ],
   "binaries_path": "",
-  "minimizeToTray": true
+  "minimizeToTray": true,
+  "launchToTray": false,
+  "connectOnAutostart": false
 }

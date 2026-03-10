@@ -121,7 +121,7 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<'li'>) {
   return <li data-slot="sidebar-menu-item" className={cn('group/menu-item relative', className)} {...props} />
 }
 
-const SidebarMenuButton = React.forwardRef<HTMLButtonElement, React.ComponentProps<'button'> & {
+const SidebarMenuButton = React.forwardRef<React.ElementRef<'button'>, React.ComponentProps<'button'> & {
   isActive?: boolean
   asChild?: boolean
 }>(({

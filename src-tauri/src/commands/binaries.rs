@@ -165,10 +165,6 @@ fn sanitize_filename(filename: &str) -> Result<String, String> {
         return Err("Invalid filename".to_string());
     }
 
-    if name.contains('/') || name.contains('\\') || name.contains("..") {
-        return Err("Filename contains path traversal".to_string());
-    }
-
     let file_stem = Path::new(name)
         .file_stem()
         .and_then(|s| s.to_str())
