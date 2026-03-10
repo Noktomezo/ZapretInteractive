@@ -147,20 +147,22 @@ export function CategoryPage() {
     if (categoryId) {
       const strategy = category?.strategies.find(s => s.id === strategyId)
       const wasActive = strategy?.active ?? false
-      deleteStrategy(categoryId, strategyId)
+
       if (wasActive) {
         try {
           skipNextAutosaveRef.current = true
           await save()
           await restartIfConnected()
+          deleteStrategy(categoryId, strategyId)
           toast.success('Стратегия удалена')
         }
         catch (err) {
-          console.error('Failed to save/restart after deleting strategy:', err)
-          toast.error('Ошибка сохранения после удаления стратегии')
+          console.error('Failed to save/restart before deleting strategy:', err)
+          toast.error('Ошибка сохранения перед удалением стратегии')
         }
       }
       else {
+        deleteStrategy(categoryId, strategyId)
         toast.success('Стратегия удалена')
       }
     }
@@ -169,6 +171,7 @@ export function CategoryPage() {
   const handleDeleteCategory = async () => {
     if (categoryId) {
       const hadActiveStrategy = category?.strategies.some(s => s.active) ?? false
+      skipNextAutosaveRef.current = true
       deleteCategory(categoryId)
       try {
         await save()
@@ -176,8 +179,9 @@ export function CategoryPage() {
       catch (err) {
         console.error('Failed to save after deleting category:', err)
         toast.error('Ошибка сохранения после удаления категории')
+        skipNextAutosaveRef.current = false
+        return
       }
-      setDeleteDialogOpen(false)
       if (hadActiveStrategy) {
         try {
           await restartIfConnected()
@@ -186,6 +190,7 @@ export function CategoryPage() {
           console.error('Failed to restart after deleting category:', err)
         }
       }
+      setDeleteDialogOpen(false)
       toast.success('Категория удалена')
       navigate({ to: '/strategies' })
     }

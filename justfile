@@ -12,6 +12,10 @@ gen-icons:
 dev:
   bun run tauri dev
 
+# Install developer hooks
+bootstrap:
+  bun run bootstrap
+
 # Final release build with UPX compression.
 # Use `just build-uncompressed` if you need an artifact without UPX packing.
 build: gen-icons
@@ -24,7 +28,7 @@ build-uncompressed: gen-icons
 
 # Lint only backend
 lint-back:
-  cargo clippy --manifest-path "src-tauri/Cargo.toml"
+  cargo clippy --manifest-path "src-tauri/Cargo.toml" --all-targets --all-features -- -D warnings
   cargo check --manifest-path "src-tauri/Cargo.toml"
 
 # Lint only frontend

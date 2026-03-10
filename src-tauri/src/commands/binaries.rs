@@ -923,7 +923,7 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
                         ..file
                     })
                 } else if hash_missing && file.dest_path.exists() {
-                    let local_hash = calculate_sha256(&file.dest_path).ok();
+                    let local_hash = calculate_sha256_async(file.dest_path.clone()).await.ok();
                     if let (Some(hash_key), Some(hash)) = (file.hash_key.as_ref(), local_hash) {
                         update_hashes(|hashes| {
                             hashes.insert(hash_key.clone(), hash);
@@ -1098,7 +1098,9 @@ pub fn save_filter_file(filename: String, content: String) -> Result<(), String>
     }
 
     let file_path = filters_dir.join(&filename);
-    fs::write(&file_path, content).map_err(|e| e.to_string())?;
+    let temp_path = file_path.with_extension("tmp");
+    fs::write(&temp_path, &content).map_err(|e| format!("Failed to write temp file: {e}"))?;
+    fs::rename(&temp_path, &file_path).map_err(|e| format!("Failed to rename temp file: {e}"))?;
 
     if FILTERS.contains(&filename.as_str()) {
         let hash = calculate_sha256(&file_path)?;

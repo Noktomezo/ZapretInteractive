@@ -32,15 +32,18 @@ function isValidPortRange(value: string): boolean {
     return true
   const parts = value.split(',').map(p => p.trim())
   for (const part of parts) {
-    if (part.includes('-')) {
-      const [start, end] = part.split('-').map(p => Number.parseInt(p.trim(), 10))
-      if (Number.isNaN(start) || Number.isNaN(end) || start < 1 || end > 65535 || start > end)
+    if (/^\d+-\d+$/.test(part)) {
+      const [start, end] = part.split('-').map(p => Number.parseInt(p, 10))
+      if (start < 1 || end > 65535 || start > end)
+        return false
+    }
+    else if (/^\d+$/.test(part)) {
+      const port = Number.parseInt(part, 10)
+      if (port < 1 || port > 65535)
         return false
     }
     else {
-      const port = Number.parseInt(part, 10)
-      if (Number.isNaN(port) || port < 1 || port > 65535)
-        return false
+      return false
     }
   }
   return true
@@ -392,9 +395,16 @@ export function SettingsPage() {
                   id="tcpPortsInput"
                   value={tcpDraft}
                   onChange={e => setTcpDraft(e.target.value)}
-                  onBlur={() => {
+                  onBlur={async () => {
                     if (isValidPortRange(tcpDraft)) {
+                      const wasConnected = useConnectionStore.getState().status === 'connected'
                       setGlobalPorts({ ...config.global_ports, tcp: tcpDraft })
+                      if (wasConnected) {
+                        await disconnect()
+                        await waitForConnectionStatus('disconnected')
+                        await connect()
+                        await waitForConnectionStatus('connected')
+                      }
                     }
                     else {
                       toast.error('Неверный формат портов. Пример: 80,443 или 1000-2000')
@@ -409,9 +419,16 @@ export function SettingsPage() {
                   id="udpPortsInput"
                   value={udpDraft}
                   onChange={e => setUdpDraft(e.target.value)}
-                  onBlur={() => {
+                  onBlur={async () => {
                     if (isValidPortRange(udpDraft)) {
+                      const wasConnected = useConnectionStore.getState().status === 'connected'
                       setGlobalPorts({ ...config.global_ports, udp: udpDraft })
+                      if (wasConnected) {
+                        await disconnect()
+                        await waitForConnectionStatus('disconnected')
+                        await connect()
+                        await waitForConnectionStatus('connected')
+                      }
                     }
                     else {
                       toast.error('Неверный формат портов. Пример: 80,443 или 1000-2000')
