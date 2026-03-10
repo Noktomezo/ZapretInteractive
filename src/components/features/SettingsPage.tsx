@@ -413,7 +413,8 @@ export function SettingsPage() {
                   onBlur={async () => {
                     tcpFocusedRef.current = false
                     if (isValidPortRange(tcpDraft)) {
-                      setGlobalPorts({ ...config.global_ports, tcp: tcpDraft })
+                      const latestGlobalPorts = useConfigStore.getState().config?.global_ports ?? config.global_ports
+                      setGlobalPorts({ ...latestGlobalPorts, tcp: tcpDraft })
                       let wasConnected = false
                       try {
                         const terminalStatus = await waitForTerminalConnectionStatus()
@@ -449,7 +450,8 @@ export function SettingsPage() {
                   onBlur={async () => {
                     udpFocusedRef.current = false
                     if (isValidPortRange(udpDraft)) {
-                      setGlobalPorts({ ...config.global_ports, udp: udpDraft })
+                      const latestGlobalPorts = useConfigStore.getState().config?.global_ports ?? config.global_ports
+                      setGlobalPorts({ ...latestGlobalPorts, udp: udpDraft })
                       let wasConnected = false
                       try {
                         const terminalStatus = await waitForTerminalConnectionStatus()

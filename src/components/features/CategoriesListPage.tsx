@@ -224,6 +224,10 @@ export function CategoriesListPage() {
   }, [load])
 
   useEffect(() => {
+    if (skipNextAutosaveRef.current) {
+      skipNextAutosaveRef.current = false
+      return
+    }
     if (config && !isInitialLoadRef.current) {
       void save()
     }
@@ -249,7 +253,7 @@ export function CategoriesListPage() {
     }
     catch (err) {
       console.error('Failed to deactivate strategy:', err)
-      notifyConfigApplied('Ошибка деактивации стратегии')
+      toast.error('Ошибка деактивации стратегии')
     }
     finally {
       skipNextAutosaveRef.current = false

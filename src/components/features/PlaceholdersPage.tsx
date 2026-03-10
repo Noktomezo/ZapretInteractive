@@ -68,6 +68,8 @@ export function PlaceholdersPage() {
   }
 
   const handleDelete = async (index: number) => {
+    if (isSavingRef.current)
+      return
     const placeholderToDelete = config?.placeholders[index]
     deletePlaceholder(index)
     isSavingRef.current = true
