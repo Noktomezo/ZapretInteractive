@@ -333,7 +333,7 @@ export function FiltersPage() {
               WinDivert фильтры для отсечения полезной нагрузки
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Button onClick={() => setCreateDialogOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Новый фильтр
@@ -375,7 +375,7 @@ export function FiltersPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 <Switch
                   id={filter.id}
                   checked={filter.active}
@@ -394,9 +394,9 @@ export function FiltersPage() {
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="icon"
-                      className="bg-red-500/10 text-red-600 hover:bg-red-500/20 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                      className="border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/20 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                       aria-label={`Удалить фильтр ${filter.name}`}
                       title={`Удалить фильтр ${filter.name}`}
                       disabled={deleteInFlightId === filter.id || editInFlight}

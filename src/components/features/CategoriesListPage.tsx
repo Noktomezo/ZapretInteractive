@@ -18,8 +18,20 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Link } from '@tanstack/react-router'
-import { BrushCleaning, ChevronRight, GripVertical, Loader2, Plus } from 'lucide-react'
+import { BrushCleaning, ChevronRight, GripVertical, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -37,6 +49,8 @@ import { useConnectionStore } from '@/stores/connection.store'
 interface SortableCategoryItemProps {
   category: Category
   onClearActive: (categoryId: string, e: React.MouseEvent) => void
+  onRename: (category: Category) => void
+  onDelete: (category: Category) => void
 }
 
 function formatStrategiesCount(count: number) {
@@ -52,7 +66,7 @@ function formatStrategiesCount(count: number) {
   return `${count} стратегий`
 }
 
-function SortableCategoryItem({ category, onClearActive }: SortableCategoryItemProps) {
+function SortableCategoryItem({ category, onClearActive, onRename, onDelete }: SortableCategoryItemProps) {
   const activeCount = category.strategies.filter(s => s.active).length
 
   const {
@@ -111,22 +125,71 @@ function SortableCategoryItem({ category, onClearActive }: SortableCategoryItemP
           <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
         </div>
       </Link>
-      {activeCount > 0 && (
+      <div className="flex items-center gap-1">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="outline"
               size="icon"
-              onClick={e => onClearActive(category.id, e)}
+              onClick={() => onRename(category)}
               className="cursor-pointer"
-              aria-label="Очистить стратегию"
+              aria-label={`Переименовать категорию ${category.name}`}
             >
-              <BrushCleaning className="w-4 h-4 text-red-600 dark:text-red-400" />
+              <Pencil className="w-4 h-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Деактивировать текущую стратегию</TooltipContent>
+          <TooltipContent>Переименовать</TooltipContent>
         </Tooltip>
-      )}
+        {activeCount > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={e => onClearActive(category.id, e)}
+                className="cursor-pointer"
+                aria-label="Очистить стратегию"
+              >
+                <BrushCleaning className="w-4 h-4 text-orange-500 dark:text-orange-400" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Деактивировать текущую стратегию</TooltipContent>
+          </Tooltip>
+        )}
+        <AlertDialog>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="cursor-pointer border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/20 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                  aria-label={`Удалить категорию ${category.name}`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </AlertDialogTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Удалить</TooltipContent>
+          </Tooltip>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Удалить категорию?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Категория «
+                {category.name}
+                » и все её стратегии будут удалены. Это действие нельзя отменить.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Отмена</AlertDialogCancel>
+              <AlertDialogAction onClick={() => onDelete(category)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Удалить
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </div>
   )
 }
@@ -134,10 +197,13 @@ function SortableCategoryItem({ category, onClearActive }: SortableCategoryItemP
 export function CategoriesListPage() {
   const [newCategoryOpen, setNewCategoryOpen] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false)
+  const [categoryToRename, setCategoryToRename] = useState<Category | null>(null)
+  const [newCategoryNameDraft, setNewCategoryNameDraft] = useState('')
   const isInitialLoadRef = useRef(true)
   const skipNextAutosaveRef = useRef(false)
 
-  const { config, loading, load, save, addCategory, clearAllActiveStrategies, reorderCategories } = useConfigStore()
+  const { config, loading, load, save, addCategory, updateCategory, deleteCategory, clearAllActiveStrategies, reorderCategories } = useConfigStore()
   const { restartIfConnected, notifyConfigApplied } = useConnectionStore()
 
   const sensors = useSensors(
@@ -202,6 +268,51 @@ export function CategoriesListPage() {
     }
   }
 
+  const handleOpenRenameDialog = (category: Category) => {
+    setCategoryToRename(category)
+    setNewCategoryNameDraft(category.name)
+    setRenameDialogOpen(true)
+  }
+
+  const handleRenameCategory = () => {
+    if (categoryToRename && newCategoryNameDraft.trim()) {
+      updateCategory(categoryToRename.id, newCategoryNameDraft.trim())
+      setRenameDialogOpen(false)
+      setCategoryToRename(null)
+      setNewCategoryNameDraft('')
+      toast.success('Категория переименована')
+    }
+  }
+
+  const handleDeleteCategory = async (category: Category) => {
+    const hadActiveStrategy = category.strategies.some(s => s.active)
+    skipNextAutosaveRef.current = true
+    deleteCategory(category.id)
+    try {
+      await save()
+    }
+    catch (err) {
+      console.error('Failed to save after deleting category:', err)
+      toast.error('Ошибка сохранения после удаления категории')
+      skipNextAutosaveRef.current = false
+      await load()
+      return
+    }
+    if (hadActiveStrategy) {
+      try {
+        await restartIfConnected()
+      }
+      catch (err) {
+        console.error('Failed to restart after deleting category:', err)
+        toast.error('Категория удалена, но не удалось применить изменения к активному подключению', {
+          description: err instanceof Error ? err.message : String(err),
+          duration: 8000,
+        })
+      }
+    }
+    toast.success('Категория удалена')
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -246,6 +357,8 @@ export function CategoriesListPage() {
                         key={category.id}
                         category={category}
                         onClearActive={handleClearActive}
+                        onRename={handleOpenRenameDialog}
+                        onDelete={handleDeleteCategory}
                       />
                     ))}
                   </SortableContext>
@@ -273,6 +386,30 @@ export function CategoriesListPage() {
                 Отмена
               </Button>
               <Button onClick={handleAddCategory}>Создать</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Переименовать категорию</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <label htmlFor="rename-category-name" className="text-sm font-normal">Название категории</label>
+              <Input
+                id="rename-category-name"
+                placeholder="Название категории"
+                value={newCategoryNameDraft}
+                onChange={e => setNewCategoryNameDraft(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleRenameCategory()}
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>
+                Отмена
+              </Button>
+              <Button onClick={handleRenameCategory}>Сохранить</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

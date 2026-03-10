@@ -104,7 +104,7 @@ export function PlaceholdersPage() {
               Замена плейсхолдеров на пути к бинарным файлам
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Button onClick={() => setAddOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Новый плейсхолдер
@@ -147,7 +147,7 @@ export function PlaceholdersPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-1">
                       <Button
                         variant="outline"
                         size="icon"
@@ -157,9 +157,9 @@ export function PlaceholdersPage() {
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="icon"
-                        className="bg-red-500/10 text-red-600 hover:bg-red-500/20 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                        className="border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/20 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                         aria-label={`Удалить плейсхолдер ${placeholder.name}`}
                         onClick={() => handleDelete(index)}
                       >

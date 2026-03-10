@@ -413,6 +413,7 @@ export function SettingsPage() {
                   onBlur={async () => {
                     tcpFocusedRef.current = false
                     if (isValidPortRange(tcpDraft)) {
+                      setGlobalPorts({ ...config.global_ports, tcp: tcpDraft })
                       let wasConnected = false
                       try {
                         const terminalStatus = await waitForTerminalConnectionStatus()
@@ -421,7 +422,6 @@ export function SettingsPage() {
                       catch {
                         // If we can't determine status, assume not connected
                       }
-                      setGlobalPorts({ ...config.global_ports, tcp: tcpDraft })
                       if (wasConnected) {
                         try {
                           await restartIfConnected()
@@ -449,6 +449,7 @@ export function SettingsPage() {
                   onBlur={async () => {
                     udpFocusedRef.current = false
                     if (isValidPortRange(udpDraft)) {
+                      setGlobalPorts({ ...config.global_ports, udp: udpDraft })
                       let wasConnected = false
                       try {
                         const terminalStatus = await waitForTerminalConnectionStatus()
@@ -457,7 +458,6 @@ export function SettingsPage() {
                       catch {
                         // If we can't determine status, assume not connected
                       }
-                      setGlobalPorts({ ...config.global_ports, udp: udpDraft })
                       if (wasConnected) {
                         try {
                           await restartIfConnected()

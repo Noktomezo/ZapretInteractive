@@ -266,7 +266,7 @@ export function CategoryPage() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button size="icon" onClick={() => setNewStrategyOpen(true)} aria-label="Новая стратегия">
@@ -293,7 +293,7 @@ export function CategoryPage() {
                     onClick={handleClearAllActive}
                     aria-label="Деактивировать текущую стратегию"
                   >
-                    <BrushCleaning className="w-4 h-4" />
+                    <BrushCleaning className="w-4 h-4 text-orange-500 dark:text-orange-400" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Деактивировать текущую стратегию</TooltipContent>
@@ -304,9 +304,9 @@ export function CategoryPage() {
                 <TooltipTrigger asChild>
                   <AlertDialogTrigger asChild>
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="icon"
-                      className="bg-red-500/10 text-red-600 hover:bg-red-500/20 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                      className={DEACTIVATE_BUTTON_CLASS}
                       aria-label={`Удалить категорию ${category.name}`}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -349,19 +349,21 @@ export function CategoryPage() {
                 category.strategies.map((strategy: Strategy) => (
                   <div
                     key={strategy.id}
-                    className="border border-border rounded-lg p-4 space-y-3"
+                    className={strategy.active
+                      ? 'border border-green-500/30 bg-green-500/10 rounded-lg p-4 space-y-3'
+                      : 'border border-border rounded-lg p-4 space-y-3'}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <span className="font-normal">{strategy.name}</span>
                         {strategy.active && (
-                          <span className="flex h-5 w-5 items-center justify-center rounded bg-green-600 text-white" aria-hidden="true">
-                            <Check className="h-3.5 w-3.5" />
+                          <span className="flex h-4 w-4 items-center justify-center rounded bg-green-600 text-white" aria-hidden="true">
+                            <Check className="h-3 w-3" />
                           </span>
                         )}
                         {strategy.active && <span className="sr-only">Активная стратегия</span>}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         {strategy.active
                           ? (
                               <Tooltip>
@@ -373,7 +375,7 @@ export function CategoryPage() {
                                     onClick={() => handleClearActive(strategy.id)}
                                     aria-label={`Деактивировать стратегию ${strategy.name}`}
                                   >
-                                    <BrushCleaning className="h-4 w-4" />
+                                    <BrushCleaning className="h-4 w-4 text-orange-500 dark:text-orange-400" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Деактивировать</TooltipContent>
@@ -410,9 +412,9 @@ export function CategoryPage() {
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="icon"
-                              className="bg-red-500/10 text-red-600 hover:bg-red-500/20 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                              className={DEACTIVATE_BUTTON_CLASS}
                               onClick={() => handleDeleteStrategy(strategy.id)}
                               aria-label={`Удалить стратегию ${strategy.name}`}
                             >
@@ -423,7 +425,7 @@ export function CategoryPage() {
                         </Tooltip>
                       </div>
                     </div>
-                    <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto">
+                    <pre className="text-xs text-muted-foreground bg-muted p-3 rounded-md overflow-x-auto">
                       {strategy.content}
                     </pre>
                   </div>

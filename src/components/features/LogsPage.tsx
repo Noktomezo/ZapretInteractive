@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react'
+import { BrushCleaning } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -74,12 +74,12 @@ export function LogsPage() {
         <Button
           type="button"
           variant="outline"
-          size="sm"
+          size="default"
           onClick={clearLogs}
           disabled={logs.length === 0}
           className="gap-2"
         >
-          <Trash2 className="h-4 w-4" />
+          <BrushCleaning className="h-4 w-4 text-orange-500 dark:text-orange-400" />
           Очистить
         </Button>
       </div>
