@@ -54,6 +54,6 @@ repos:
         entry: bunx eslint --fix
         language: system
         pass_filenames: true
-        files: \.(js|ts|jsx|tsx|vue|svelte|css|scss|html|json|md|yaml|yml)$
-        exclude: ^(node_modules|dist|src-tauri)/
+        files: \.(js|ts|jsx|tsx|vue|svelte|json|md|yaml|yml)$
+        exclude: (?:^|/)(?:node_modules|dist|src-tauri)/
         stages: [pre-commit]

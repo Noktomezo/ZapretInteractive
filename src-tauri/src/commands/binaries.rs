@@ -14,7 +14,6 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
-use tokio::fs as tokio_fs;
 use tokio::time::sleep;
 
 #[derive(Clone, serde::Serialize)]
@@ -793,9 +792,23 @@ pub async fn restore_default_filters_internal() -> Result<(), String> {
     for name in FILTERS {
         let dest_path = filters_dir.join(name);
         let bytes = download_bytes(&client, &format!("{FILTERS_BASE_URL}/{name}"), name).await?;
-        tokio_fs::write(&dest_path, &bytes)
+
+        let temp_path = dest_path.with_extension("tmp");
+        use tokio::io::AsyncWriteExt;
+        let mut temp_file = tokio::fs::File::create(&temp_path)
             .await
-            .map_err(|e| format!("Failed to write {name}: {e}"))?;
+            .map_err(|e| format!("Failed to create temp file for {name}: {e}"))?;
+        temp_file
+            .write_all(&bytes)
+            .await
+            .map_err(|e| format!("Failed to write temp file for {name}: {e}"))?;
+        temp_file
+            .sync_all()
+            .await
+            .map_err(|e| format!("Failed to sync temp file for {name}: {e}"))?;
+        tokio::fs::rename(&temp_path, &dest_path)
+            .await
+            .map_err(|e| format!("Failed to rename temp file for {name}: {e}"))?;
 
         let hash = calculate_sha256_async(dest_path).await?;
         update_hashes(|hashes| {
@@ -912,9 +925,10 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
                 } else if hash_missing && file.dest_path.exists() {
                     let local_hash = calculate_sha256(&file.dest_path).ok();
                     if let (Some(hash_key), Some(hash)) = (file.hash_key.as_ref(), local_hash) {
-                        let mut updated_hashes = (*stored_hashes).clone();
-                        updated_hashes.insert(hash_key.clone(), hash);
-                        save_stored_hashes(&updated_hashes).ok();
+                        update_hashes(|hashes| {
+                            hashes.insert(hash_key.clone(), hash);
+                            Ok(())
+                        })?;
                     }
                     None
                 } else {
@@ -989,8 +1003,28 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
             }
         };
 
-        if let Err(e) = tokio_fs::write(&file.dest_path, &bytes).await {
-            let err = format!("Failed to write {}: {}", file.name, e);
+        let temp_path = file.dest_path.with_extension("tmp");
+        use tokio::io::AsyncWriteExt;
+        let mut temp_file = match tokio::fs::File::create(&temp_path).await {
+            Ok(f) => f,
+            Err(e) => {
+                let err = format!("Failed to create temp file for {}: {}", file.name, e);
+                app.emit("download-error", err.clone()).ok();
+                return Err(err);
+            }
+        };
+        if let Err(e) = temp_file.write_all(&bytes).await {
+            let err = format!("Failed to write temp file for {}: {}", file.name, e);
+            app.emit("download-error", err.clone()).ok();
+            return Err(err);
+        }
+        if let Err(e) = temp_file.sync_all().await {
+            let err = format!("Failed to sync temp file for {}: {}", file.name, e);
+            app.emit("download-error", err.clone()).ok();
+            return Err(err);
+        }
+        if let Err(e) = tokio::fs::rename(&temp_path, &file.dest_path).await {
+            let err = format!("Failed to rename temp file for {}: {}", file.name, e);
             app.emit("download-error", err.clone()).ok();
             return Err(err);
         }

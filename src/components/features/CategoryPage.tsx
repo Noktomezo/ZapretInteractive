@@ -169,15 +169,6 @@ export function CategoryPage() {
   const handleDeleteCategory = async () => {
     if (categoryId) {
       const hadActiveStrategy = category?.strategies.some(s => s.active) ?? false
-      try {
-        skipNextAutosaveRef.current = true
-        await save()
-      }
-      catch (err) {
-        console.error('Failed to save before deleting category:', err)
-        toast.error('Ошибка сохранения перед удалением категории')
-        return
-      }
       deleteCategory(categoryId)
       try {
         await save()

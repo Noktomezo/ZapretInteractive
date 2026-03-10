@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "bun --bun eslint --cache .",
     "format": "bun --bun eslint --cache --fix .",
-    "prepare": "bun --bun prek install",
+    "bootstrap": "bun --bun prek install",
     "tauri": "tauri"
   },
   "dependencies": {

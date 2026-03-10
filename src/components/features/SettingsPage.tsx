@@ -387,7 +387,7 @@ export function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label htmlFor="tcpPortsInput" className="text-sm font-normal">TCP порты</label>
+                <Label htmlFor="tcpPortsInput">TCP порты</Label>
                 <Input
                   id="tcpPortsInput"
                   value={tcpDraft}
@@ -404,7 +404,7 @@ export function SettingsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="udpPortsInput" className="text-sm font-normal">UDP порты</label>
+                <Label htmlFor="udpPortsInput">UDP порты</Label>
                 <Input
                   id="udpPortsInput"
                   value={udpDraft}
