@@ -339,44 +339,43 @@ export function SettingsPage() {
                 />
               </div>
 
-              {autostartEnabled && (
-                <div
-                  className={cn(
-                    'grid grid-rows-[1fr] opacity-100 transition-all duration-200 ease-out',
-                  )}
-                >
-                  <div className="overflow-hidden">
-                    <div className="flex items-center justify-between gap-4 border-l border-border/60 pl-4">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="connect-on-autostart">Подключаться автоматически</Label>
-                        <p className="text-xs text-muted-foreground">
-                          При запуске из автозагрузки приложение будет сразу запускать подключение
-                        </p>
-                      </div>
-                      <Switch
-                        id="connect-on-autostart"
-                        checked={config.connectOnAutostart ?? false}
-                        disabled={autostartLoading}
-                        onCheckedChange={setConnectOnAutostart}
-                      />
+              <div
+                className={cn(
+                  autostartEnabled ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
+                  'grid transition-all duration-200 ease-out',
+                )}
+              >
+                <div className="overflow-hidden">
+                  <div className="flex items-center justify-between gap-4 border-l border-border/60 pl-4">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="connect-on-autostart">Подключаться автоматически</Label>
+                      <p className="text-xs text-muted-foreground">
+                        При запуске из автозагрузки приложение будет сразу запускать подключение
+                      </p>
                     </div>
-                    <div className="mt-3 flex items-center justify-between gap-4 border-l border-border/60 pl-4">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="launch-to-tray">Запускать свернутым в трей</Label>
-                        <p className="text-xs text-muted-foreground">
-                          При старте приложения основное окно будет скрыто, а доступ останется через иконку в трее
-                        </p>
-                      </div>
-                      <Switch
-                        id="launch-to-tray"
-                        checked={config.launchToTray ?? false}
-                        disabled={autostartLoading}
-                        onCheckedChange={setLaunchToTray}
-                      />
+                    <Switch
+                      id="connect-on-autostart"
+                      checked={config.connectOnAutostart ?? false}
+                      disabled={autostartLoading}
+                      onCheckedChange={setConnectOnAutostart}
+                    />
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-4 border-l border-border/60 pl-4">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="launch-to-tray">Запускать свернутым в трей</Label>
+                      <p className="text-xs text-muted-foreground">
+                        При старте приложения основное окно будет скрыто, а доступ останется через иконку в трее
+                      </p>
                     </div>
+                    <Switch
+                      id="launch-to-tray"
+                      checked={config.launchToTray ?? false}
+                      disabled={autostartLoading}
+                      onCheckedChange={setLaunchToTray}
+                    />
                   </div>
                 </div>
-              )}
+              </div>
             </div>
 
             <div className="flex items-center justify-between gap-4">
