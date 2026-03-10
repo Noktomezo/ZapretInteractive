@@ -142,12 +142,13 @@ const SidebarMenuButton = React.forwardRef<React.ElementRef<'button'>, React.Com
 
   if (asChild && React.isValidElement(children)) {
     const child = children as React.ReactElement<any>
+    const isButton = child.type === 'button' || child.type === 'input'
 
     return React.cloneElement(child, {
       ...props,
       ...child.props,
       ref,
-      type,
+      ...(isButton && { type }),
       'onClick': composeEventHandlers(onClick, child.props.onClick),
       'className': cn(classes, child.props.className),
       'data-slot': 'sidebar-menu-button',
