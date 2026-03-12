@@ -1,5 +1,6 @@
-import { check, type Update } from '@tauri-apps/plugin-updater'
+import type { Update } from '@tauri-apps/plugin-updater'
 import { relaunch } from '@tauri-apps/plugin-process'
+import { check } from '@tauri-apps/plugin-updater'
 import { toast } from 'sonner'
 import { create } from 'zustand'
 import * as tauri from '@/lib/tauri'
