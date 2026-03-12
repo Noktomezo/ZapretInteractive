@@ -387,10 +387,6 @@ interface Config {
   yGap: number
 }
 
-interface EffectiveConfig extends Config {
-  pointerEnabled: boolean
-}
-
 interface Bounding {
   width: number
   height: number
@@ -475,18 +471,17 @@ function Waves({
 
     const isPageVisible = () => document.visibilityState === 'visible'
 
-    function getEffectiveConfig(): EffectiveConfig {
-      return {
-        ...configRef.current,
-        pointerEnabled: true,
-      }
+    function getEffectiveConfig(): Config {
+      return configRef.current
     }
+
+    const touchListenerOptions: AddEventListenerOptions = { passive: true }
 
     function attachPointerListeners() {
       if (pointerListenersAttached)
         return
       window.addEventListener('mousemove', onMouseMove)
-      window.addEventListener('touchmove', onTouchMove)
+      window.addEventListener('touchmove', onTouchMove, touchListenerOptions)
       pointerListenersAttached = true
     }
 
@@ -494,7 +489,7 @@ function Waves({
       if (!pointerListenersAttached)
         return
       window.removeEventListener('mousemove', onMouseMove)
-      window.removeEventListener('touchmove', onTouchMove)
+      window.removeEventListener('touchmove', onTouchMove, touchListenerOptions)
       pointerListenersAttached = false
     }
 
@@ -556,7 +551,6 @@ function Waves({
         friction,
         tension,
         maxCursorMove,
-        pointerEnabled,
       } = getEffectiveConfig()
       lines.forEach((pts) => {
         pts.forEach((p) => {
@@ -564,17 +558,15 @@ function Waves({
           p.wave.x = Math.cos(move) * waveAmpX
           p.wave.y = Math.sin(move) * waveAmpY
 
-          if (pointerEnabled) {
-            const dx = p.x - mouse.sx
-            const dy = p.y - mouse.sy
-            const dist = Math.hypot(dx, dy)
-            const l = Math.max(175, mouse.vs)
-            if (dist < l) {
-              const s = 1 - dist / l
-              const f = Math.cos(dist * 0.001) * s
-              p.cursor.vx += Math.cos(mouse.a) * f * l * mouse.vs * 0.00065
-              p.cursor.vy += Math.sin(mouse.a) * f * l * mouse.vs * 0.00065
-            }
+          const dx = p.x - mouse.sx
+          const dy = p.y - mouse.sy
+          const dist = Math.hypot(dx, dy)
+          const l = Math.max(175, mouse.vs)
+          if (dist < l) {
+            const s = 1 - dist / l
+            const f = Math.cos(dist * 0.001) * s
+            p.cursor.vx += Math.cos(mouse.a) * f * l * mouse.vs * 0.00065
+            p.cursor.vy += Math.sin(mouse.a) * f * l * mouse.vs * 0.00065
           }
 
           p.cursor.vx += (0 - p.cursor.x) * tension
@@ -658,8 +650,8 @@ function Waves({
     function onMouseMove(e: MouseEvent) {
       updateMouse(e.clientX, e.clientY)
     }
-    function onTouchMove(e: TouchEvent) {
-      const touch = e.touches[0]
+    function onTouchMove(e: Event) {
+      const touch = (e as TouchEvent).touches[0]
       updateMouse(touch.clientX, touch.clientY)
     }
     function updateMouse(x: number, y: number) {

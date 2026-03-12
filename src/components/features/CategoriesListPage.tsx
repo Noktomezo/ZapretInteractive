@@ -203,7 +203,6 @@ export function CategoriesListPage() {
   const config = useConfigStore(state => state.config)
   const loading = useConfigStore(state => state.loading)
   const load = useConfigStore(state => state.load)
-  const reload = useConfigStore(state => state.reload)
   const saveNow = useConfigStore(state => state.saveNow)
   const addCategory = useConfigStore(state => state.addCategory)
   const revertTo = useConfigStore(state => state.revertTo)
@@ -259,6 +258,12 @@ export function CategoriesListPage() {
   const handleClearActive = async (categoryId: string, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    const currentConfig = useConfigStore.getState().config
+    if (!currentConfig) {
+      return
+    }
+
+    const previousConfig = structuredClone(currentConfig)
     try {
       clearAllActiveStrategies(categoryId)
       await saveNow()
@@ -268,9 +273,9 @@ export function CategoriesListPage() {
       }
     }
     catch (err) {
+      revertTo(previousConfig)
       console.error('Failed to save after deactivating strategy:', err)
       toast.error('Ошибка сохранения после деактивации стратегии')
-      await reload().catch(() => {})
       return
     }
     try {
@@ -344,15 +349,21 @@ export function CategoriesListPage() {
   }
 
   const handleDeleteCategory = async (category: Category) => {
+    const currentConfig = useConfigStore.getState().config
+    if (!currentConfig) {
+      return
+    }
+
+    const previousConfig = structuredClone(currentConfig)
     const hadActiveStrategy = category.strategies.some(s => s.active)
     deleteCategory(category.id)
     try {
       await saveNow()
     }
     catch (err) {
+      revertTo(previousConfig)
       console.error('Failed to save after deleting category:', err)
       toast.error('Ошибка сохранения после удаления категории')
-      await reload().catch(() => {})
       return
     }
     if (hadActiveStrategy) {

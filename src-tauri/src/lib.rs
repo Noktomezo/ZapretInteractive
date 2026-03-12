@@ -38,7 +38,10 @@ fn apply_list_mode(app: &tauri::AppHandle, mode: config::ListMode) {
     }
 
     let state = app.state::<config::AppState>();
-    let _ = config::update_list_mode(app.clone(), mode, state);
+    if let Err(error) = config::update_list_mode(app.clone(), mode, state) {
+        eprintln!("Failed to apply list mode from tray: {error}");
+        let _ = app.emit("list-mode-update-error", error);
+    }
 }
 
 fn should_minimize_to_tray(state: &config::AppState) -> bool {

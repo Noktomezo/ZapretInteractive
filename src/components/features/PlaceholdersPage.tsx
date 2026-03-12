@@ -105,7 +105,7 @@ export function PlaceholdersPage() {
     }
 
     const previousConfig = structuredClone(currentConfig)
-    const previousPlaceholder = config?.placeholders[editingIndex]
+    const previousPlaceholder = previousConfig.placeholders[editingIndex]
     updatePlaceholder(editingIndex, trimmedName, trimmedPath)
     isSavingRef.current = true
     try {

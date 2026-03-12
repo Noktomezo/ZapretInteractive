@@ -281,6 +281,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       set({ initialized: true, initializing: false, initializePromise: null })
     })().catch((error) => {
       set({ initializing: false, initializePromise: null })
+      get().teardownFilesWatcher()
       useConnectionStore.getState().teardownTrayListener()
       useDownloadStore.getState().cleanup()
       useConnectionStore.getState().addLog(`Ошибка инициализации приложения: ${error}`)

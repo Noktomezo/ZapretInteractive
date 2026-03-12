@@ -282,9 +282,12 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       get().toggle()
     })
     trayListenerCleanup = () => {
-      const cleanup = unlisten
-      trayListenerCleanup = null
-      cleanup()
+      try {
+        unlisten()
+      }
+      finally {
+        trayListenerCleanup = null
+      }
     }
     return trayListenerCleanup
   },
@@ -295,7 +298,11 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     }
 
     const cleanup = trayListenerCleanup
-    trayListenerCleanup = null
-    cleanup()
+    try {
+      cleanup()
+    }
+    finally {
+      trayListenerCleanup = null
+    }
   },
 }))

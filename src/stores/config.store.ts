@@ -182,7 +182,12 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   },
 
   revertTo: (config) => {
-    set({ config: cloneConfig(config), dirty: false, error: null })
+    if (saveTimeoutId !== null) {
+      window.clearTimeout(saveTimeoutId)
+      saveTimeoutId = null
+    }
+
+    set({ config: cloneConfig(config), dirty: false, error: null, isSaving: false })
   },
 
   reset: async () => {

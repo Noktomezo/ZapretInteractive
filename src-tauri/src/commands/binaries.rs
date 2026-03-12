@@ -455,6 +455,15 @@ fn inspect_local_files(
     Ok(inspections)
 }
 
+async fn inspect_local_files_async(
+    files: &[TrackedFile],
+) -> Result<HashMap<String, LocalFileInspection>, String> {
+    let owned_files = files.to_vec();
+    tauri::async_runtime::spawn_blocking(move || inspect_local_files(&owned_files))
+        .await
+        .map_err(|e| format!("Failed to join local file inspection task: {e}"))?
+}
+
 fn tracked_file_is_healthy(
     file: &TrackedFile,
     stored_hashes: &HashMap<String, String>,
@@ -535,12 +544,14 @@ struct LocalHealthSnapshotFields {
     lists_last_updated_at: Option<u64>,
 }
 
-fn build_local_health_snapshot(state: &AppState) -> Result<LocalHealthSnapshotFields, String> {
+fn build_local_health_snapshot_with_inspections(
+    state: &AppState,
+    files: &[TrackedFile],
+    inspections: &HashMap<String, LocalFileInspection>,
+) -> Result<LocalHealthSnapshotFields, String> {
     ensure_helper_files()?;
 
-    let files = tracked_files();
     let mut stored_hashes = load_stored_hashes()?;
-    let inspections = inspect_local_files(&files)?;
     if backfill_missing_core_hashes(&files, &stored_hashes, &inspections)? {
         stored_hashes = load_stored_hashes()?;
     }
@@ -571,12 +582,17 @@ fn build_local_health_snapshot(state: &AppState) -> Result<LocalHealthSnapshotFi
     })
 }
 
+fn build_local_health_snapshot(state: &AppState) -> Result<LocalHealthSnapshotFields, String> {
+    let files = tracked_files();
+    let inspections = inspect_local_files(&files)?;
+    build_local_health_snapshot_with_inspections(state, &files, &inspections)
+}
+
 async fn collect_available_updates_with_context(
     client: &reqwest::Client,
     files: &[TrackedFile],
     inspections: &HashMap<String, LocalFileInspection>,
 ) -> Result<Vec<String>, String> {
-    let client = client;
     let manual_update_files: Vec<_> = files
         .iter()
         .filter_map(|file| file.include_in_remote_updates.then_some(file.clone()))
@@ -953,12 +969,11 @@ async fn build_download_plan(
     }
 
     let mut stored_hashes = load_stored_hashes()?;
-    let inspections = inspect_local_files(files)?;
+    let inspections = inspect_local_files_async(files).await?;
     if backfill_missing_core_hashes(files, &stored_hashes, &inspections)? {
         stored_hashes = load_stored_hashes()?;
     }
 
-    let client = client;
     let stored_hashes = Arc::new(stored_hashes);
     let inspections = Arc::new(inspections);
     let results = stream::iter(candidates.drain(..).zip(files.iter().cloned()).map(
@@ -1232,9 +1247,9 @@ async fn build_app_health_snapshot(
     force_remote_updates: bool,
     state: &AppState,
 ) -> Result<AppHealthSnapshot, String> {
-    let local = build_local_health_snapshot(state)?;
     let files = tracked_files();
-    let inspections = inspect_local_files(&files)?;
+    let inspections = inspect_local_files_async(&files).await?;
+    let local = build_local_health_snapshot_with_inspections(state, &files, &inspections)?;
 
     let (available_updates, available_updates_checked) = if force_remote_updates {
         match create_http_client() {

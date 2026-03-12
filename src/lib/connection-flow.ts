@@ -72,6 +72,7 @@ export async function waitForTerminalConnectionStatus(timeoutMs = 15000): Promis
 export async function runWithPausedConnection(task: () => Promise<void>): Promise<void> {
   const { connect, disconnect } = useConnectionStore.getState()
   let shouldReconnect = false
+  let taskError: unknown = null
 
   let stableStatus = useConnectionStore.getState().status
   if (stableStatus === 'connecting' || stableStatus === 'disconnecting') {
@@ -87,10 +88,31 @@ export async function runWithPausedConnection(task: () => Promise<void>): Promis
   try {
     await task()
   }
-  finally {
-    if (shouldReconnect) {
+  catch (error) {
+    taskError = error
+  }
+
+  let reconnectError: unknown = null
+  if (shouldReconnect) {
+    try {
       await connect()
       await waitForConnectionStatus('connected')
     }
+    catch (error) {
+      reconnectError = error
+      useConnectionStore.getState().addLog(`Ошибка переподключения после временной паузы: ${error}`)
+    }
+  }
+
+  if (taskError && reconnectError) {
+    const taskMessage = taskError instanceof Error ? taskError.message : String(taskError)
+    const reconnectMessage = reconnectError instanceof Error ? reconnectError.message : String(reconnectError)
+    throw new Error(`Task failed: ${taskMessage}; reconnection failed: ${reconnectMessage}`)
+  }
+  if (taskError) {
+    throw taskError
+  }
+  if (reconnectError) {
+    throw reconnectError
   }
 }
