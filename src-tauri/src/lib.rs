@@ -14,21 +14,31 @@ use tauri_plugin_autostart::ManagerExt;
 
 static CONNECTED: AtomicBool = AtomicBool::new(false);
 
+pub(crate) fn sync_list_mode_ui(
+    app: &tauri::AppHandle,
+    mode: config::ListMode,
+) -> Result<(), String> {
+    let items = app.state::<ListModeItems>();
+    items
+        .ipset
+        .set_checked(mode == config::ListMode::Ipset)
+        .map_err(|e| e.to_string())?;
+    items
+        .exclude
+        .set_checked(mode == config::ListMode::Exclude)
+        .map_err(|e| e.to_string())?;
+    app.emit("list-mode-changed", mode.to_string())
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 fn apply_list_mode(app: &tauri::AppHandle, mode: config::ListMode) {
-    if !CONNECTED.load(Ordering::SeqCst) {
-        let state = app.state::<config::AppState>();
-        let save_result = {
-            let mut cfg = state.config.lock().unwrap_or_else(|e| e.into_inner());
-            cfg.list_mode = mode;
-            config::save_config_to_disk(&cfg)
-        };
-        if save_result.is_ok() {
-            let items = app.state::<ListModeItems>();
-            let _ = items.ipset.set_checked(mode == config::ListMode::Ipset);
-            let _ = items.exclude.set_checked(mode == config::ListMode::Exclude);
-            let _ = app.emit("list-mode-changed", mode.to_string());
-        }
+    if CONNECTED.load(Ordering::SeqCst) {
+        return;
     }
+
+    let state = app.state::<config::AppState>();
+    let _ = config::update_list_mode(app.clone(), mode, state);
 }
 
 fn should_minimize_to_tray(state: &config::AppState) -> bool {
@@ -214,6 +224,7 @@ pub fn run() {
             binaries::verify_binaries,
             binaries::get_missing_critical_files,
             binaries::get_available_updates,
+            binaries::get_app_health_snapshot,
             binaries::restore_hashes_from_disk,
             binaries::download_binaries,
             binaries::refresh_lists_if_stale,

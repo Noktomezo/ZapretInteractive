@@ -45,8 +45,14 @@ const emptyDraft: FilterDraft = {
 }
 
 export function FiltersPage() {
-  const { config, loading, load, setFilters } = useConfigStore()
-  const { restartIfConnected, notifyConfigApplied } = useConnectionStore()
+  const config = useConfigStore(state => state.config)
+  const loading = useConfigStore(state => state.loading)
+  const load = useConfigStore(state => state.load)
+  const setFilters = useConfigStore(state => state.setFilters)
+  const saveNow = useConfigStore(state => state.saveNow)
+  const restartIfConnected = useConnectionStore(state => state.restartIfConnected)
+  const notifyConfigApplied = useConnectionStore(state => state.notifyConfigApplied)
+  const addConfigLog = useConnectionStore(state => state.addConfigLog)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingFilterId, setEditingFilterId] = useState<string | null>(null)
@@ -59,14 +65,11 @@ export function FiltersPage() {
   const [editInFlight, setEditInFlight] = useState(false)
   const [deleteInFlightId, setDeleteInFlightId] = useState<string | null>(null)
   const [reservedBundledFilenames, setReservedBundledFilenames] = useState<Set<string>>(new Set())
-  const isInitialLoadRef = useRef(true)
   const latestMutationIdRef = useRef(0)
 
   useEffect(() => {
     Promise.all([
-      load().then(() => {
-        isInitialLoadRef.current = false
-      }),
+      load(),
       tauri.getReservedFilterFilenames().then((names) => {
         setReservedBundledFilenames(new Set(names.map(name => name.trim().toLowerCase())))
       }),
@@ -118,7 +121,7 @@ export function FiltersPage() {
     const mutationId = ++latestMutationIdRef.current
     setFilters(nextFilters)
     try {
-      await useConfigStore.getState().save()
+      await saveNow()
     }
     catch (e) {
       if (latestMutationIdRef.current === mutationId) {
@@ -130,17 +133,23 @@ export function FiltersPage() {
 
   const handleToggleFilter = (filterId: string) => {
     const currentFilters = useConfigStore.getState().config?.filters || []
+    const targetFilter = currentFilters.find(filter => filter.id === filterId)
     const updatedFilters = currentFilters.map(filter =>
       filter.id === filterId ? { ...filter, active: !filter.active } : filter,
     )
     void persistFilters(updatedFilters, currentFilters)
-      .then(() => restartIfConnected()
-        .then(() => {
-          notifyConfigApplied('Фильтр обновлён')
-        })
-        .catch((e) => {
-          toast.error(`Ошибка применения фильтров: ${e instanceof Error ? e.message : String(e)}`)
-        }))
+      .then(() => {
+        if (targetFilter) {
+          addConfigLog(`фильтр "${targetFilter.name}" ${targetFilter.active ? 'отключён' : 'включён'}`)
+        }
+        return restartIfConnected()
+          .then(() => {
+            notifyConfigApplied('Фильтр обновлён')
+          })
+          .catch((e) => {
+            toast.error(`Ошибка применения фильтров: ${e instanceof Error ? e.message : String(e)}`)
+          })
+      })
       .catch((e) => {
         toast.error(`Ошибка сохранения фильтров: ${e instanceof Error ? e.message : String(e)}`)
       })
@@ -169,6 +178,7 @@ export function FiltersPage() {
 
       const currentFilters = useConfigStore.getState().config?.filters || []
       await persistFilters([...currentFilters, newFilter], currentFilters)
+      addConfigLog(`добавлен фильтр "${newFilter.name}" (${newFilter.filename})`)
       resetDraft()
       setCreateDialogOpen(false)
       toast.success('Фильтр создан')
@@ -263,6 +273,11 @@ export function FiltersPage() {
       )
 
       await persistFilters(updatedFilters, currentFilters)
+      addConfigLog(
+        renamed
+          ? `фильтр "${targetFilter.name}" обновлён, файл переименован с ${targetFilter.filename} на ${nextFilename}`
+          : `обновлён фильтр "${draft.name.trim()}"`,
+      )
       resetDraft()
       setEditDialogOpen(false)
       toast.success('Фильтр сохранён')
@@ -305,6 +320,7 @@ export function FiltersPage() {
         resetDraft()
         setEditDialogOpen(false)
       }
+      addConfigLog(`удалён фильтр "${filter.name}" (${filter.filename})`)
       toast.success('Фильтр удалён')
     }
     catch (e) {

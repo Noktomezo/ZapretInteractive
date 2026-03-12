@@ -188,7 +188,15 @@ pub fn save_config_to_disk(config: &AppConfig) -> Result<(), String> {
     }
     let config_path = get_config_path();
     let content = serde_json::to_string_pretty(&config).map_err(|e| e.to_string())?;
-    fs::write(&config_path, content).map_err(|e| e.to_string())?;
+    let temp_path = config_path.with_extension("json.tmp");
+    let mut temp_file = fs::File::create(&temp_path).map_err(|e| e.to_string())?;
+    use std::io::Write;
+    temp_file
+        .write_all(content.as_bytes())
+        .map_err(|e| e.to_string())?;
+    temp_file.sync_all().map_err(|e| e.to_string())?;
+    drop(temp_file);
+    fs::rename(&temp_path, &config_path).map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -209,26 +217,46 @@ pub fn load_config(state: tauri::State<'_, AppState>) -> Result<AppConfig, Strin
 
 #[tauri::command]
 pub fn save_config(config: AppConfig, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    save_config_to_disk(&config)?;
     let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
     *cfg = config;
-    save_config_to_disk(&cfg)?;
     Ok(())
 }
 
 #[tauri::command]
 pub fn reset_config(state: tauri::State<'_, AppState>) -> Result<AppConfig, String> {
     let default_config = AppConfig::default();
+    save_config_to_disk(&default_config)?;
     let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
     *cfg = default_config.clone();
-    save_config_to_disk(&cfg)?;
     Ok(default_config)
 }
 
 #[tauri::command]
-pub fn update_list_mode(mode: ListMode, state: tauri::State<'_, AppState>) -> Result<(), String> {
+pub fn update_list_mode(
+    app: tauri::AppHandle,
+    mode: ListMode,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), String> {
+    let next_config = {
+        let cfg = state.config.lock().map_err(|e| e.to_string())?;
+        if cfg.list_mode == mode {
+            drop(cfg);
+            crate::sync_list_mode_ui(&app, mode)?;
+            return Ok(());
+        }
+
+        let mut next = cfg.clone();
+        next.list_mode = mode;
+        next
+    };
+
+    save_config_to_disk(&next_config)?;
+
     let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
-    cfg.list_mode = mode;
-    save_config_to_disk(&cfg)?;
+    *cfg = next_config;
+    drop(cfg);
+    crate::sync_list_mode_ui(&app, mode)?;
     Ok(())
 }
 

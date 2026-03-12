@@ -1,6 +1,8 @@
 import { create } from 'zustand'
+import { useConnectionStore } from './connection.store'
 
 type Theme = 'light' | 'dark' | 'system'
+let themeMediaCleanup: (() => void) | null = null
 
 interface ThemeStore {
   theme: Theme
@@ -32,14 +34,23 @@ export const useThemeStore = create<ThemeStore>((set, get) => ({
     applyTheme(resolved)
     set({ theme, resolvedTheme: resolved })
 
+    if (themeMediaCleanup) {
+      return
+    }
+
     const media = window.matchMedia('(prefers-color-scheme: dark)')
-    media.addEventListener('change', (e) => {
+    const handleChange = (e: MediaQueryListEvent) => {
       if (get().theme === 'system') {
         const resolved = e.matches ? 'dark' : 'light'
         applyTheme(resolved)
         set({ resolvedTheme: resolved })
       }
-    })
+    }
+
+    media.addEventListener('change', handleChange)
+    themeMediaCleanup = () => {
+      media.removeEventListener('change', handleChange)
+    }
   },
 
   setTheme: (theme) => {
@@ -47,5 +58,12 @@ export const useThemeStore = create<ThemeStore>((set, get) => ({
     applyTheme(resolved)
     localStorage.setItem('theme', theme)
     set({ theme, resolvedTheme: resolved })
+    useConnectionStore.getState().addConfigLog(
+      theme === 'light'
+        ? 'тема переключена на светлую'
+        : theme === 'dark'
+          ? 'тема переключена на тёмную'
+          : 'тема переключена на системную',
+    )
   },
 }))

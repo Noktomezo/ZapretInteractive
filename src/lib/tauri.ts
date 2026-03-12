@@ -1,4 +1,4 @@
-import type { AppConfig, ListMode } from './types'
+import type { AppConfig, AppHealthSnapshot, ListMode } from './types'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 
@@ -21,6 +21,7 @@ export const getHomeDirectory = (): Promise<string> => invoke<string>('get_zapre
 export const verifyBinaries = (): Promise<boolean> => invoke('verify_binaries')
 export const getMissingCriticalFiles = (): Promise<string[]> => invoke('get_missing_critical_files')
 export const getAvailableUpdates = (): Promise<string[]> => invoke('get_available_updates')
+export const getAppHealthSnapshot = (forceRemoteUpdates = false): Promise<AppHealthSnapshot> => invoke('get_app_health_snapshot', { forceRemoteUpdates })
 export const restoreHashesFromDisk = (): Promise<void> => invoke('restore_hashes_from_disk')
 export const downloadBinaries = async (forceAll = false): Promise<void> => invoke('download_binaries', { forceAll })
 export const refreshListsIfStale = (): Promise<number> => invoke('refresh_lists_if_stale')

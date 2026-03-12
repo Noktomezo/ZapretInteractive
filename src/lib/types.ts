@@ -10,6 +10,15 @@ export interface DownloadProgress {
   phase: 'binaries' | 'fake' | 'lists' | 'filters'
 }
 
+export interface AppHealthSnapshot {
+  binaries_ok: boolean
+  missing_critical_files: string[]
+  available_updates: string[]
+  available_updates_checked: boolean
+  config_missing: boolean
+  lists_last_updated_at?: number | null
+}
+
 export interface Strategy {
   id: string
   name: string

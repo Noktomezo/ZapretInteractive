@@ -16,6 +16,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import Waves from '@/components/Waves'
+import { runWithPausedConnection } from '@/lib/connection-flow'
 import * as tauri from '@/lib/tauri'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app.store'
@@ -23,86 +24,28 @@ import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
 import { useDownloadStore } from '@/stores/download.store'
 
-function waitForConnectionStatus(
-  expectedStatus: 'connected' | 'disconnected',
-  timeoutMs = 15000,
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const currentStatus = useConnectionStore.getState().status
-    if (currentStatus === expectedStatus) {
-      resolve()
-      return
-    }
-    if (currentStatus === 'error') {
-      reject(new Error(`Connection entered error state while waiting for ${expectedStatus}`))
-      return
-    }
-
-    let unsubscribe = () => { }
-
-    const timeoutId = window.setTimeout(() => {
-      unsubscribe()
-      reject(new Error(`Timeout waiting for connection status: ${expectedStatus}`))
-    }, timeoutMs)
-
-    unsubscribe = useConnectionStore.subscribe((state) => {
-      if (state.status === expectedStatus) {
-        window.clearTimeout(timeoutId)
-        unsubscribe()
-        resolve()
-      }
-      else if (state.status === 'error') {
-        window.clearTimeout(timeoutId)
-        unsubscribe()
-        reject(new Error(`Connection entered error state while waiting for ${expectedStatus}`))
-      }
-    })
-  })
-}
-
-function waitForTerminalConnectionStatus(timeoutMs = 15000): Promise<'connected' | 'disconnected'> {
-  return new Promise((resolve, reject) => {
-    const currentStatus = useConnectionStore.getState().status
-    if (currentStatus === 'connected' || currentStatus === 'disconnected') {
-      resolve(currentStatus)
-      return
-    }
-    if (currentStatus === 'error') {
-      reject(new Error('Connection entered error state while waiting for terminal status'))
-      return
-    }
-
-    let unsubscribe = () => { }
-
-    const timeoutId = window.setTimeout(() => {
-      unsubscribe()
-      reject(new Error('Timeout waiting for terminal connection status'))
-    }, timeoutMs)
-
-    unsubscribe = useConnectionStore.subscribe((state) => {
-      if (state.status === 'connected' || state.status === 'disconnected') {
-        window.clearTimeout(timeoutId)
-        unsubscribe()
-        resolve(state.status)
-      }
-      else if (state.status === 'error') {
-        window.clearTimeout(timeoutId)
-        unsubscribe()
-        reject(new Error('Connection entered error state while waiting for terminal status'))
-      }
-    })
-  })
-}
-
 export function MainPage() {
   const availableUpdatesPromptKeyRef = useRef('')
   const [initError, setInitError] = useState<string | null>(null)
-  const { config, setListMode } = useConfigStore()
-  const { status, connect, disconnect } = useConnectionStore()
-  const { isDownloading, progress, reset }
-    = useDownloadStore()
-  const { initialized, isElevated, binariesOk, missingCriticalFiles, availableUpdates, configMissing, initialize, setConfigMissing }
-    = useAppStore()
+  const [listModeUpdating, setListModeUpdating] = useState(false)
+  const config = useConfigStore(state => state.config)
+  const applyPersistedListMode = useConfigStore(state => state.applyPersistedListMode)
+  const saveNow = useConfigStore(state => state.saveNow)
+  const status = useConnectionStore(state => state.status)
+  const connect = useConnectionStore(state => state.connect)
+  const disconnect = useConnectionStore(state => state.disconnect)
+  const isDownloading = useDownloadStore(state => state.isDownloading)
+  const progress = useDownloadStore(state => state.progress)
+  const resetDownload = useDownloadStore(state => state.reset)
+  const initialized = useAppStore(state => state.initialized)
+  const isElevated = useAppStore(state => state.isElevated)
+  const binariesOk = useAppStore(state => state.binariesOk)
+  const missingCriticalFiles = useAppStore(state => state.missingCriticalFiles)
+  const availableUpdates = useAppStore(state => state.availableUpdates)
+  const configMissing = useAppStore(state => state.configMissing)
+  const initialize = useAppStore(state => state.initialize)
+  const setConfigMissing = useAppStore(state => state.setConfigMissing)
+  const addConfigLog = useConnectionStore(state => state.addConfigLog)
 
   const waveColor = status === 'connected'
     ? 'rgba(74, 222, 128, 0.18)'
@@ -110,10 +53,25 @@ export function MainPage() {
       ? 'rgba(250, 204, 21, 0.16)'
       : 'rgba(248, 113, 113, 0.35)'
 
-  const handleListModeChange = (value: string) => {
-    if (value) {
-      setListMode(value as ListMode)
-      useConfigStore.getState().save()
+  const handleListModeChange = async (value: string) => {
+    if (!value || !config || listModeUpdating || value === config.listMode) {
+      return
+    }
+
+    setListModeUpdating(true)
+    try {
+      await tauri.updateListMode(value as ListMode)
+      addConfigLog(
+        value === 'ipset'
+          ? 'режим списков переключён на "Только заблокированные"'
+          : 'режим списков переключён на "Исключения"',
+      )
+    }
+    catch (e) {
+      toast.error(`Не удалось переключить режим списков: ${e instanceof Error ? e.message : String(e)}`)
+    }
+    finally {
+      setListModeUpdating(false)
     }
   }
 
@@ -124,13 +82,13 @@ export function MainPage() {
     })
 
     const unlistenListMode = tauri.onListModeChanged((mode) => {
-      setListMode(mode)
+      applyPersistedListMode(mode)
     })
 
     return () => {
       unlistenListMode()
     }
-  }, [])
+  }, [applyPersistedListMode, initialize])
 
   const handleToggleConnection = async () => {
     const attemptedAction = status === 'connected' ? 'отключение' : 'подключение'
@@ -141,7 +99,7 @@ export function MainPage() {
       else {
         await connect()
       }
-      await useConfigStore.getState().save()
+      await saveNow()
     }
     catch (e) {
       toast.error(`Ошибка при ${attemptedAction} или сохранении конфигурации: ${e}`)
@@ -149,34 +107,17 @@ export function MainPage() {
   }
 
   const handleDownloadBinaries = useCallback(async () => {
-    const { status: currentStatus } = useConnectionStore.getState()
     try {
-      let shouldReconnect = false
-
-      let stableStatus = currentStatus
-      if (currentStatus === 'connecting' || currentStatus === 'disconnecting') {
-        stableStatus = await waitForTerminalConnectionStatus()
-      }
-
-      if (stableStatus === 'connected') {
-        shouldReconnect = true
-        await disconnect()
-        await waitForConnectionStatus('disconnected')
-      }
-
-      await tauri.downloadBinaries()
-
-      if (shouldReconnect) {
-        await connect()
-        await waitForConnectionStatus('connected')
-      }
+      await runWithPausedConnection(async () => {
+        await tauri.downloadBinaries()
+      })
     }
     catch (e) {
       console.error(e)
-      reset()
+      resetDownload()
       toast.error(`Ошибка загрузки файлов: ${e}`)
     }
-  }, [connect, disconnect, reset])
+  }, [resetDownload])
 
   const onDownloadBinaries = useCallback(() => {
     void handleDownloadBinaries()
@@ -187,6 +128,7 @@ export function MainPage() {
       await useConfigStore.getState().reset()
       await tauri.restoreDefaultFilters()
       setConfigMissing(false)
+      addConfigLog('восстановлена конфигурация по умолчанию')
       toast.success('Конфигурация по умолчанию восстановлена')
     }
     catch (e) {
@@ -421,7 +363,7 @@ export function MainPage() {
             value={config?.listMode ?? 'ipset'}
             onValueChange={handleListModeChange}
             className="justify-center gap-1"
-            disabled={status !== 'disconnected'}
+            disabled={status !== 'disconnected' || listModeUpdating}
           >
             {status === 'disconnected'
               ? (
@@ -430,6 +372,7 @@ export function MainPage() {
                       <div>
                         <ToggleGroupItem
                           value="ipset"
+                          disabled={listModeUpdating}
                           className="px-3 py-1.5 text-xs data-[state=on]:bg-green-500/20 data-[state=on]:text-green-600 dark:data-[state=on]:text-green-400 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Только заблокированные
@@ -444,6 +387,7 @@ export function MainPage() {
               : (
                   <ToggleGroupItem
                     value="ipset"
+                    disabled={listModeUpdating}
                     className="px-3 py-1.5 text-xs data-[state=on]:bg-green-500/20 data-[state=on]:text-green-600 dark:data-[state=on]:text-green-400 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Только заблокированные
@@ -456,6 +400,7 @@ export function MainPage() {
                       <div>
                         <ToggleGroupItem
                           value="exclude"
+                          disabled={listModeUpdating}
                           className="px-3 py-1.5 text-xs data-[state=on]:bg-amber-500/20 data-[state=on]:text-amber-600 dark:data-[state=on]:text-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Исключения
@@ -470,6 +415,7 @@ export function MainPage() {
               : (
                   <ToggleGroupItem
                     value="exclude"
+                    disabled={listModeUpdating}
                     className="px-3 py-1.5 text-xs data-[state=on]:bg-amber-500/20 data-[state=on]:text-amber-600 dark:data-[state=on]:text-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Исключения

@@ -387,6 +387,10 @@ interface Config {
   yGap: number
 }
 
+interface EffectiveConfig extends Config {
+  pointerEnabled: boolean
+}
+
 interface Bounding {
   width: number
   height: number
@@ -467,6 +471,44 @@ function Waves({
       return
 
     ctxRef.current = ctx
+    let pointerListenersAttached = false
+
+    const isPageVisible = () => document.visibilityState === 'visible'
+
+    function getEffectiveConfig(): EffectiveConfig {
+      return {
+        ...configRef.current,
+        pointerEnabled: true,
+      }
+    }
+
+    function attachPointerListeners() {
+      if (pointerListenersAttached)
+        return
+      window.addEventListener('mousemove', onMouseMove)
+      window.addEventListener('touchmove', onTouchMove)
+      pointerListenersAttached = true
+    }
+
+    function detachPointerListeners() {
+      if (!pointerListenersAttached)
+        return
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('touchmove', onTouchMove)
+      pointerListenersAttached = false
+    }
+
+    function stopAnimation() {
+      if (frameIdRef.current !== null) {
+        cancelAnimationFrame(frameIdRef.current)
+        frameIdRef.current = null
+      }
+    }
+
+    function startAnimation() {
+      if (frameIdRef.current === null)
+        frameIdRef.current = requestAnimationFrame(tick)
+    }
 
     function setSize() {
       const c = canvasRef.current
@@ -506,22 +548,33 @@ function Waves({
       const lines = linesRef.current
       const mouse = mouseRef.current
       const noise = noiseRef.current
-      const { waveSpeedX, waveSpeedY, waveAmpX, waveAmpY, friction, tension, maxCursorMove } = configRef.current
+      const {
+        waveSpeedX,
+        waveSpeedY,
+        waveAmpX,
+        waveAmpY,
+        friction,
+        tension,
+        maxCursorMove,
+        pointerEnabled,
+      } = getEffectiveConfig()
       lines.forEach((pts) => {
         pts.forEach((p) => {
           const move = noise.perlin2((p.x + time * waveSpeedX) * 0.002, (p.y + time * waveSpeedY) * 0.0015) * 12
           p.wave.x = Math.cos(move) * waveAmpX
           p.wave.y = Math.sin(move) * waveAmpY
 
-          const dx = p.x - mouse.sx
-          const dy = p.y - mouse.sy
-          const dist = Math.hypot(dx, dy)
-          const l = Math.max(175, mouse.vs)
-          if (dist < l) {
-            const s = 1 - dist / l
-            const f = Math.cos(dist * 0.001) * s
-            p.cursor.vx += Math.cos(mouse.a) * f * l * mouse.vs * 0.00065
-            p.cursor.vy += Math.sin(mouse.a) * f * l * mouse.vs * 0.00065
+          if (pointerEnabled) {
+            const dx = p.x - mouse.sx
+            const dy = p.y - mouse.sy
+            const dist = Math.hypot(dx, dy)
+            const l = Math.max(175, mouse.vs)
+            if (dist < l) {
+              const s = 1 - dist / l
+              const f = Math.cos(dist * 0.001) * s
+              p.cursor.vx += Math.cos(mouse.a) * f * l * mouse.vs * 0.00065
+              p.cursor.vy += Math.sin(mouse.a) * f * l * mouse.vs * 0.00065
+            }
           }
 
           p.cursor.vx += (0 - p.cursor.x) * tension
@@ -567,6 +620,12 @@ function Waves({
     }
 
     function tick(t: number) {
+      frameIdRef.current = null
+      if (!isPageVisible()) {
+        drawLines()
+        return
+      }
+
       const mouse = mouseRef.current
       const cont = containerRef.current
       if (!cont)
@@ -588,12 +647,13 @@ function Waves({
 
       movePoints(t)
       drawLines()
-      frameIdRef.current = requestAnimationFrame(tick)
+      startAnimation()
     }
 
     function onResize() {
       setSize()
       setLines()
+      drawLines()
     }
     function onMouseMove(e: MouseEvent) {
       updateMouse(e.clientX, e.clientY)
@@ -616,19 +676,30 @@ function Waves({
       }
     }
 
+    function syncAnimationState() {
+      if (!isPageVisible()) {
+        detachPointerListeners()
+        stopAnimation()
+        drawLines()
+        return
+      }
+
+      attachPointerListeners()
+      startAnimation()
+    }
+
     setSize()
     setLines()
-    frameIdRef.current = requestAnimationFrame(tick)
     window.addEventListener('resize', onResize)
-    window.addEventListener('mousemove', onMouseMove)
-    window.addEventListener('touchmove', onTouchMove)
+    document.addEventListener('visibilitychange', syncAnimationState)
+    drawLines()
+    syncAnimationState()
 
     return () => {
       window.removeEventListener('resize', onResize)
-      window.removeEventListener('mousemove', onMouseMove)
-      window.removeEventListener('touchmove', onTouchMove)
-      if (frameIdRef.current !== null)
-        cancelAnimationFrame(frameIdRef.current)
+      document.removeEventListener('visibilitychange', syncAnimationState)
+      detachPointerListeners()
+      stopAnimation()
     }
   }, [])
 
