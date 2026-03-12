@@ -71,6 +71,7 @@ export function SettingsPage() {
   const saveNow = useConfigStore(state => state.saveNow)
   const scheduleSave = useConfigStore(state => state.scheduleSave)
   const setGlobalPorts = useConfigStore(state => state.setGlobalPorts)
+  const setCoreFileUpdatePromptsEnabled = useConfigStore(state => state.setCoreFileUpdatePromptsEnabled)
   const setMinimizeToTray = useConfigStore(state => state.setMinimizeToTray)
   const setLaunchToTray = useConfigStore(state => state.setLaunchToTray)
   const setConnectOnAutostart = useConfigStore(state => state.setConnectOnAutostart)
@@ -170,7 +171,7 @@ export function SettingsPage() {
   const handleReset = async () => {
     try {
       await reset()
-      await tauri.restoreDefaultFilters()
+      await tauri.ensureManagedFiles()
       setResetDialogOpen(false)
       addConfigLog('конфигурация сброшена к значениям по умолчанию')
       toast.success('Настройки сброшены')
@@ -217,6 +218,14 @@ export function SettingsPage() {
     addConfigLog(checked
       ? 'сворачивание в трей при закрытии включено'
       : 'сворачивание в трей при закрытии отключено')
+  }
+
+  const handleCoreFileUpdatePromptsChange = (checked: boolean) => {
+    setCoreFileUpdatePromptsEnabled(checked)
+    scheduleSave('core-file-update-prompts')
+    addConfigLog(checked
+      ? 'автопредложения обновления winws/fake файлов включены'
+      : 'автопредложения обновления winws/fake файлов отключены')
   }
 
   if (loading || !config) {
@@ -424,6 +433,20 @@ export function SettingsPage() {
             <div className="flex items-center gap-2">
               <FolderOpen className="size-4 text-muted-foreground" />
               <span className="font-mono text-sm">{zapretDir}</span>
+            </div>
+
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="core-file-update-prompts">Предлагать обновления winws/fake файлов</Label>
+                <p className="text-xs text-muted-foreground">
+                  Фоновые проверки обновлений останутся, но можно скрыть автоматические предложения обновить файлы
+                </p>
+              </div>
+              <Switch
+                id="core-file-update-prompts"
+                checked={config.coreFileUpdatePromptsEnabled ?? true}
+                onCheckedChange={handleCoreFileUpdatePromptsChange}
+              />
             </div>
 
             {binariesOk === false && (

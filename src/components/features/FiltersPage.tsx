@@ -172,6 +172,7 @@ export function FiltersPage() {
         name: draft.name.trim(),
         filename: nextFilename,
         active: true,
+        content: draft.content ?? '',
       }
 
       await tauri.saveFilterFile(nextFilename, draft.content ?? '')
@@ -203,7 +204,7 @@ export function FiltersPage() {
     setDraft({
       name: filter.name,
       filename: filter.filename,
-      content: '',
+      content: filter.content,
     })
 
     try {
@@ -268,6 +269,7 @@ export function FiltersPage() {
               ...filter,
               name: draft.name.trim(),
               filename: nextFilename,
+              content: draft.content,
             }
           : filter,
       )

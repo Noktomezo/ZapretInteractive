@@ -26,11 +26,14 @@ import { useDownloadStore } from '@/stores/download.store'
 
 export function MainPage() {
   const availableUpdatesPromptKeyRef = useRef('')
+  const dismissedPromptKeysRef = useRef<Set<string>>(new Set())
+  const activeUpdateToastIdRef = useRef<string | number | null>(null)
   const [initError, setInitError] = useState<string | null>(null)
   const [listModeUpdating, setListModeUpdating] = useState(false)
   const config = useConfigStore(state => state.config)
   const applyPersistedListMode = useConfigStore(state => state.applyPersistedListMode)
   const saveNow = useConfigStore(state => state.saveNow)
+  const setCoreFileUpdatePromptsEnabled = useConfigStore(state => state.setCoreFileUpdatePromptsEnabled)
   const status = useConnectionStore(state => state.status)
   const connect = useConnectionStore(state => state.connect)
   const disconnect = useConnectionStore(state => state.disconnect)
@@ -119,14 +122,48 @@ export function MainPage() {
     }
   }, [resetDownload])
 
-  const onDownloadBinaries = useCallback(() => {
-    void handleDownloadBinaries()
-  }, [handleDownloadBinaries])
+  const dismissActiveUpdateToast = useCallback(() => {
+    if (activeUpdateToastIdRef.current !== null) {
+      toast.dismiss(activeUpdateToastIdRef.current)
+      activeUpdateToastIdRef.current = null
+    }
+  }, [])
+
+  const handleApplyCoreFileUpdates = useCallback(async () => {
+    try {
+      await runWithPausedConnection(async () => {
+        await tauri.applyCoreFileUpdates()
+      })
+      dismissActiveUpdateToast()
+    }
+    catch (e) {
+      console.error(e)
+      resetDownload()
+      toast.error(`Ошибка обновления файлов: ${e}`)
+    }
+  }, [dismissActiveUpdateToast, resetDownload])
+
+  const handleDisableCoreFileUpdatePrompts = useCallback(async () => {
+    if (!config)
+      return
+
+    const previous = config.coreFileUpdatePromptsEnabled ?? true
+    setCoreFileUpdatePromptsEnabled(false)
+    try {
+      await saveNow()
+      addConfigLog('автопредложения обновления winws/fake файлов отключены')
+      dismissActiveUpdateToast()
+    }
+    catch (e) {
+      setCoreFileUpdatePromptsEnabled(previous)
+      toast.error(`Не удалось отключить предложения обновления: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }, [addConfigLog, config, dismissActiveUpdateToast, saveNow, setCoreFileUpdatePromptsEnabled])
 
   const handleRestoreDefaultConfig = async () => {
     try {
       await useConfigStore.getState().reset()
-      await tauri.restoreDefaultFilters()
+      await tauri.ensureManagedFiles()
       setConfigMissing(false)
       addConfigLog('восстановлена конфигурация по умолчанию')
       toast.success('Конфигурация по умолчанию восстановлена')
@@ -148,24 +185,60 @@ export function MainPage() {
   }
 
   useEffect(() => {
-    if (!initialized || binariesOk !== true || availableUpdates.length === 0)
+    const promptEnabled = config?.coreFileUpdatePromptsEnabled ?? true
+
+    if (!initialized || binariesOk !== true || availableUpdates.length === 0 || !promptEnabled) {
+      dismissActiveUpdateToast()
       return
+    }
 
     const promptKey = availableUpdates.join('|')
-    if (availableUpdatesPromptKeyRef.current === promptKey)
+    if (dismissedPromptKeysRef.current.has(promptKey))
       return
 
+    if (availableUpdatesPromptKeyRef.current === promptKey && activeUpdateToastIdRef.current !== null)
+      return
+
+    dismissActiveUpdateToast()
     availableUpdatesPromptKeyRef.current = promptKey
-    toast('Доступны обновления файлов', {
-      description: availableUpdates.length === 1
-        ? availableUpdates[0]
-        : `${availableUpdates.length} файлов: ${availableUpdates.slice(0, 4).join(', ')}${availableUpdates.length > 4 ? '…' : ''}`,
-      action: {
-        label: 'Обновить',
-        onClick: onDownloadBinaries,
-      },
-    })
-  }, [availableUpdates, binariesOk, initialized, onDownloadBinaries])
+    activeUpdateToastIdRef.current = toast.custom(() => (
+      <div className="w-[420px] rounded-lg border bg-background p-4 shadow-lg">
+        <div className="space-y-1">
+          <p className="text-sm font-medium">Доступны обновления файлов</p>
+          <p className="text-xs text-muted-foreground">
+            {availableUpdates.length === 1
+              ? availableUpdates[0]
+              : `${availableUpdates.length} файлов: ${availableUpdates.slice(0, 4).join(', ')}${availableUpdates.length > 4 ? '…' : ''}`}
+          </p>
+        </div>
+        <div className="mt-3 flex gap-2">
+          <Button size="sm" onClick={() => { void handleApplyCoreFileUpdates() }}>
+            Обновить
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              dismissedPromptKeysRef.current.add(promptKey)
+              dismissActiveUpdateToast()
+            }}
+          >
+            Не сейчас
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => { void handleDisableCoreFileUpdatePrompts() }}>
+            Не предлагать
+          </Button>
+        </div>
+      </div>
+    ), { duration: Number.POSITIVE_INFINITY })
+  }, [availableUpdates, binariesOk, config?.coreFileUpdatePromptsEnabled, dismissActiveUpdateToast, handleApplyCoreFileUpdates, handleDisableCoreFileUpdatePrompts, initialized])
+
+  useEffect(() => {
+    if (availableUpdates.length === 0) {
+      availableUpdatesPromptKeyRef.current = ''
+      dismissActiveUpdateToast()
+    }
+  }, [availableUpdates.length, dismissActiveUpdateToast])
 
   if (initError) {
     return (
@@ -250,13 +323,13 @@ export function MainPage() {
             <AlertCircle className="h-8 w-8 text-muted-foreground" />
           </div>
           <div>
-            <h2 className="text-lg font-medium">Отсутствует конфигурация</h2>
+            <h2 className="text-lg font-medium">Не удалось автоматически восстановить конфигурацию</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Файл
               {' '}
               <code>config.json</code>
               {' '}
-              был удалён или недоступен. Можно восстановить конфигурацию по умолчанию.
+              недоступен или не был восстановлен автоматически. Можно повторить восстановление дефолтного конфига вручную.
             </p>
           </div>
           <Button onClick={handleRestoreDefaultConfig} className="w-full">

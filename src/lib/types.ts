@@ -42,6 +42,7 @@ export interface Filter {
   name: string
   filename: string
   active: boolean
+  content: string
 }
 
 export type ListMode = 'exclude' | 'ipset'
@@ -56,4 +57,12 @@ export interface AppConfig {
   minimizeToTray?: boolean
   launchToTray?: boolean
   connectOnAutostart?: boolean
+  coreFileUpdatePromptsEnabled?: boolean
+}
+
+export interface EnsureManagedFilesResult {
+  restored_files: string[]
+  config_restored: boolean
+  config_reloaded: boolean
+  unrecoverable_filters: string[]
 }

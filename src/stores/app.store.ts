@@ -1,4 +1,5 @@
 import type { AppHealthSnapshot } from '@/lib/types'
+import { toast } from 'sonner'
 import { create } from 'zustand'
 import * as tauri from '../lib/tauri'
 import { useConfigStore } from './config.store'
@@ -143,14 +144,27 @@ export const useAppStore = create<AppStore>((set, get) => ({
           set({ timestampsOk: true })
         }
 
-        const configExists = await tauri.configExists()
+        useConnectionStore.getState().addLog('Проверяю и восстанавливаю управляемые файлы')
+        const ensured = await tauri.ensureManagedFiles()
+        if (ensured.config_restored) {
+          useConnectionStore.getState().addLog('config.json был автоматически восстановлен из дефолтного конфига')
+        }
+        if (ensured.config_reloaded) {
+          useConnectionStore.getState().addLog('Конфигурация была нормализована и повторно загружена с диска')
+        }
+        if (ensured.restored_files.length > 0) {
+          useConnectionStore.getState().addLog(`Автоматически восстановлены файлы: ${ensured.restored_files.join(', ')}`)
+        }
+        if (ensured.unrecoverable_filters.length > 0) {
+          useConnectionStore.getState().addLog(`Не удалось автоматически восстановить фильтры: ${ensured.unrecoverable_filters.join(', ')}`)
+          toast.error(`Не удалось автоматически восстановить фильтры: ${ensured.unrecoverable_filters.join(', ')}`)
+        }
+
         useConnectionStore.getState().addLog('Загружаю конфигурацию')
         await useConfigStore.getState().load()
         if (useConfigStore.getState().config) {
-          set({ configMissing: !configExists })
+          set({ configMissing: false })
           useConnectionStore.getState().addLog('Конфигурация загружена')
-          if (!configExists)
-            useConnectionStore.getState().addLog('Файл config.json отсутствует, ожидаю подтверждения на восстановление дефолтного конфига')
         }
         else {
           set({ configMissing: true })
@@ -185,9 +199,34 @@ export const useAppStore = create<AppStore>((set, get) => ({
         })
 
         if (!get().filesWatcherCleanup) {
-          const offHealthChanged = tauri.onFilesHealthChanged(({ binaries_ok, lists_changed, config_missing }) => {
+          const offHealthChanged = tauri.onFilesHealthChanged(({ binaries_ok, lists_changed, config_missing, config_restored, config_reloaded, restored_files, unrecoverable_filters }) => {
             const previousState = get().binariesOk
             set({ configMissing: config_missing })
+
+            if (config_restored || config_reloaded) {
+              void useConfigStore.getState().reload().catch((error) => {
+                useConnectionStore.getState().addLog(`Не удалось перезагрузить конфигурацию после watcher-события: ${error}`)
+              })
+            }
+
+            if (config_restored) {
+              useConnectionStore.getState().addLog('Watcher восстановил config.json из дефолтного конфига')
+            }
+
+            if (config_reloaded && !config_restored) {
+              useConnectionStore.getState().addLog('Watcher перезагрузил config.json после внешнего изменения')
+            }
+
+            if (restored_files.length > 0) {
+              useConnectionStore.getState().addLog(`Watcher восстановил файлы: ${restored_files.join(', ')}`)
+            }
+
+            if (unrecoverable_filters.length > 0) {
+              const message = `Не удалось автоматически восстановить фильтры: ${unrecoverable_filters.join(', ')}`
+              useConnectionStore.getState().addLog(message)
+              toast.error(message)
+            }
+
             get().refreshLocalState().catch((error) => {
               useConnectionStore.getState().addLog(`Не удалось обновить состояние файлов приложения: ${error}`)
             })
@@ -195,8 +234,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
             if (previousState !== binaries_ok) {
               useConnectionStore.getState().addLog(
                 binaries_ok
-                  ? 'Локальные файлы приложения снова в порядке'
-                  : 'Обнаружено локальное изменение: файлы приложения или списки отсутствуют либо повреждены',
+                  ? 'Локальные управляемые файлы снова в порядке'
+                  : 'Обнаружено локальное изменение: один или несколько управляемых файлов отсутствуют либо повреждены',
               )
             }
 
@@ -205,7 +244,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
             }
 
             if (config_missing) {
-              useConnectionStore.getState().addLog('Обнаружено локальное удаление config.json')
+              useConnectionStore.getState().addLog('config.json отсутствует и не был автоматически восстановлен')
             }
           })
 

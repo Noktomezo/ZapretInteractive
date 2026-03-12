@@ -47,6 +47,7 @@ interface ConfigStore {
   setFilters: (filters: Filter[]) => void
   setListMode: (mode: ListMode) => void
   applyPersistedListMode: (mode: ListMode) => void
+  setCoreFileUpdatePromptsEnabled: (enabled: boolean) => void
   setMinimizeToTray: (enabled: boolean) => void
   setLaunchToTray: (enabled: boolean) => void
   setConnectOnAutostart: (enabled: boolean) => void
@@ -218,6 +219,12 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     const { config } = get()
     if (config)
       set({ config: { ...config, listMode: mode } })
+  },
+
+  setCoreFileUpdatePromptsEnabled: (enabled) => {
+    const { config } = get()
+    if (config)
+      set({ config: { ...config, coreFileUpdatePromptsEnabled: enabled }, dirty: true })
   },
 
   setMinimizeToTray: (enabled) => {
