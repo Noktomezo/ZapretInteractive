@@ -92,6 +92,12 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   },
 
   reload: async () => {
+    if (saveTimeoutId !== null) {
+      window.clearTimeout(saveTimeoutId)
+      saveTimeoutId = null
+    }
+
+    lastAutosaveErrorKey = null
     set({ error: null })
     try {
       const config = await tauri.loadConfig()

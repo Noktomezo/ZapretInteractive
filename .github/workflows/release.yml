@@ -48,7 +48,7 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'Zapret Interactive ${{ github.ref_name }}'
           releaseBody: GUI-обёртка для zapret-win-bundle от bol-van. Смотри ассеты ниже.
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           uploadUpdaterJson: true
           updaterJsonPreferNsis: true

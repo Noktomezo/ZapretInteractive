@@ -68,10 +68,6 @@ async function replacePendingUpdateHandle(nextUpdate: Update | null): Promise<vo
   }
 }
 
-function setIntervalCleanup(cleanup: (() => void) | null) {
-  useUpdaterStore.setState({ intervalCleanup: cleanup })
-}
-
 export const useUpdaterStore = create<UpdaterStore>((set, get) => ({
   initialized: false,
   checking: false,
@@ -311,7 +307,7 @@ export const useUpdaterStore = create<UpdaterStore>((set, get) => ({
     if (cleanup) {
       cleanup()
     }
-    setIntervalCleanup(null)
+    set({ intervalCleanup: null })
 
     if (configSubscriptionCleanup) {
       configSubscriptionCleanup()
@@ -335,3 +331,7 @@ export const useUpdaterStore = create<UpdaterStore>((set, get) => ({
     })
   },
 }))
+
+function setIntervalCleanup(cleanup: (() => void) | null) {
+  useUpdaterStore.setState({ intervalCleanup: cleanup })
+}

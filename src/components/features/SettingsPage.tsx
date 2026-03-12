@@ -546,7 +546,6 @@ export function SettingsPage() {
                       return
                     }
                     if (isValidPortRange(udpDraft)) {
-                      const latestGlobalPorts = useConfigStore.getState().config?.global_ports ?? config.global_ports
                       setGlobalPorts({ ...latestGlobalPorts, udp: udpDraft })
                       try {
                         await saveNow()
