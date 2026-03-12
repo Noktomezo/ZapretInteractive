@@ -20,7 +20,6 @@ export const getZapretDirectory = (): Promise<string> => invoke('get_zapret_dire
 export const getHomeDirectory = (): Promise<string> => invoke<string>('get_zapret_directory').then((dir: string) => dir.replace(ZAPRET_SUFFIX_RE, ''))
 export const verifyBinaries = (): Promise<boolean> => invoke('verify_binaries')
 export const getMissingCriticalFiles = (): Promise<string[]> => invoke('get_missing_critical_files')
-export const getAvailableUpdates = (): Promise<string[]> => invoke('get_available_updates')
 export const getAppHealthSnapshot = (forceRemoteUpdates = false): Promise<AppHealthSnapshot> => invoke('get_app_health_snapshot', { forceRemoteUpdates })
 export const restoreHashesFromDisk = (): Promise<void> => invoke('restore_hashes_from_disk')
 export const downloadBinaries = async (forceAll = false): Promise<void> => invoke('download_binaries', { forceAll })

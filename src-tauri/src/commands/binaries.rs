@@ -46,20 +46,6 @@ pub struct AppHealthSnapshot {
     pub lists_last_updated_at: Option<u64>,
 }
 
-#[derive(Clone, serde::Deserialize)]
-struct RemoteManifestEntry {
-    sha256: String,
-    url: String,
-    group: String,
-}
-
-#[derive(Clone, serde::Deserialize)]
-struct RemoteManifest {
-    version: String,
-    generated_at: u64,
-    files: HashMap<String, RemoteManifestEntry>,
-}
-
 #[derive(Clone)]
 struct TrackedFile {
     name: &'static str,
@@ -67,6 +53,7 @@ struct TrackedFile {
     dest_path: PathBuf,
     url: String,
     required_for_health: bool,
+    include_in_remote_updates: bool,
 }
 
 #[derive(Clone)]
@@ -159,8 +146,6 @@ const FILTERS: &[&str] = &[
 const LISTS_REFRESH_INTERVAL_SECS: u64 = 60 * 60 * 3;
 const WATCH_DEBOUNCE_MS: u64 = 800;
 const FILES_CONCURRENCY_LIMIT: usize = 6;
-const REMOTE_MANIFEST_URL: &str =
-    "https://raw.githubusercontent.com/Noktomezo/ZIStorage/main/manifest.json";
 static FILES_WATCHER_STARTED: AtomicBool = AtomicBool::new(false);
 static HASHES_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 static WATCHER_STATE: LazyLock<Mutex<WatcherTrackedState>> =
@@ -375,6 +360,7 @@ fn tracked_files() -> Vec<TrackedFile> {
             dest_path: get_zapret_dir().join(name),
             url: url.to_string(),
             required_for_health: true,
+            include_in_remote_updates: true,
         });
     }
 
@@ -385,6 +371,7 @@ fn tracked_files() -> Vec<TrackedFile> {
             dest_path: get_fake_dir().join(name),
             url: format!("{FAKE_FILES_BASE_URL}/{name}"),
             required_for_health: true,
+            include_in_remote_updates: true,
         });
     }
 
@@ -395,6 +382,7 @@ fn tracked_files() -> Vec<TrackedFile> {
             dest_path: get_filters_dir().join(name),
             url: format!("{FILTERS_BASE_URL}/{name}"),
             required_for_health: false,
+            include_in_remote_updates: true,
         });
     }
 
@@ -405,6 +393,7 @@ fn tracked_files() -> Vec<TrackedFile> {
             dest_path: get_lists_dir().join(name),
             url: format!("{LISTS_BASE_URL}/{name}"),
             required_for_health: true,
+            include_in_remote_updates: false,
         });
     }
 
@@ -473,73 +462,17 @@ fn compute_health_snapshot_fields(
     (missing_critical_files.is_empty(), missing_critical_files)
 }
 
-async fn load_remote_manifest(client: &reqwest::Client) -> Result<Option<RemoteManifest>, String> {
-    let response = client
-        .get(REMOTE_MANIFEST_URL)
-        .send()
-        .await
-        .map_err(|e| format!("Failed to fetch manifest.json: {e}"))?;
-
-    if response.status() == reqwest::StatusCode::NOT_FOUND {
-        return Ok(None);
-    }
-
-    if !response.status().is_success() {
-        return Err(format!(
-            "Failed to load manifest.json: HTTP {}",
-            response.status()
-        ));
-    }
-
-    let manifest_bytes = response
-        .bytes()
-        .await
-        .map_err(|e| format!("Failed to read manifest.json body: {e}"))?;
-    let manifest = serde_json::from_slice::<RemoteManifest>(&manifest_bytes)
-        .map_err(|e| format!("Failed to parse manifest.json: {e}"))?;
-
-    let _ = (&manifest.version, manifest.generated_at);
-
-    Ok(Some(manifest))
-}
-
-async fn collect_available_updates_from_manifest(
-    manifest: &RemoteManifest,
-    files: &[TrackedFile],
-    inspections: &HashMap<String, LocalFileInspection>,
-) -> Vec<String> {
-    let mut updates = Vec::new();
-
-    for file in files {
-        let Some(entry) = manifest.files.get(&tracked_key(file)) else {
-            continue;
-        };
-        if entry.group != file.group {
-            continue;
-        }
-
-        let inspection = inspections.get(&tracked_key(file));
-        let local_hash = inspection.and_then(|value| value.hash.as_deref());
-        if local_hash != Some(entry.sha256.as_str()) {
-            updates.push(file.name.to_string());
-        }
-    }
-
-    updates.sort();
-    updates
-}
-
 async fn collect_available_updates_with_context(
     client: &reqwest::Client,
     files: &[TrackedFile],
     inspections: &HashMap<String, LocalFileInspection>,
 ) -> Result<Vec<String>, String> {
-    if let Some(manifest) = load_remote_manifest(client).await? {
-        return Ok(collect_available_updates_from_manifest(&manifest, files, inspections).await);
-    }
-
     let client = client;
-    let results = stream::iter(files.iter().cloned().map(|file| {
+    let manual_update_files: Vec<_> = files
+        .iter()
+        .filter_map(|file| file.include_in_remote_updates.then_some(file.clone()))
+        .collect();
+    let results = stream::iter(manual_update_files.into_iter().map(|file| {
         let local_hash = inspections
             .get(&tracked_key(&file))
             .and_then(|value| value.hash.clone());
@@ -659,14 +592,6 @@ async fn check_remote_file(
     let remote_hash = calculate_sha256_bytes(&bytes);
     let changed = local_hash != remote_hash;
     Ok((changed, changed.then_some(bytes)))
-}
-
-async fn collect_available_updates() -> Result<Vec<String>, String> {
-    ensure_helper_files()?;
-    let client = create_http_client()?;
-    let files = tracked_files();
-    let inspections = inspect_local_files(&files)?;
-    collect_available_updates_with_context(&client, &files, &inspections).await
 }
 
 fn path_is_inside(path: &Path, dir: &Path) -> bool {
@@ -1096,11 +1021,6 @@ pub fn get_missing_critical_files() -> Result<Vec<String>, String> {
 }
 
 #[tauri::command]
-pub async fn get_available_updates() -> Result<Vec<String>, String> {
-    collect_available_updates().await
-}
-
-#[tauri::command]
 pub async fn get_app_health_snapshot(
     force_remote_updates: Option<bool>,
 ) -> Result<AppHealthSnapshot, String> {
@@ -1118,31 +1038,16 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
     let force_all = force_all.unwrap_or(false);
 
     let client = create_http_client()?;
-    let manifest = match load_remote_manifest(&client).await {
-        Ok(manifest) => manifest,
-        Err(e) => {
-            eprintln!("Failed to load manifest.json, falling back to direct file checks: {e}");
-            None
-        }
-    };
     let tracked = tracked_files();
     let mut candidates: Vec<FileToDownload> = tracked
         .iter()
-        .map(|file| {
-            let manifest_entry = manifest
-                .as_ref()
-                .and_then(|value| value.files.get(&tracked_key(file)))
-                .filter(|entry| entry.group == file.group);
-            FileToDownload {
-                name: file.name.to_string(),
-                url: manifest_entry
-                    .map(|entry| entry.url.clone())
-                    .unwrap_or_else(|| file.url.clone()),
-                dest_path: file.dest_path.clone(),
-                hash_key: Some(hash_key(file.group, file.name)),
-                phase: file.group.to_string(),
-                cached_bytes: None,
-            }
+        .map(|file| FileToDownload {
+            name: file.name.to_string(),
+            url: file.url.clone(),
+            dest_path: file.dest_path.clone(),
+            hash_key: Some(hash_key(file.group, file.name)),
+            phase: file.group.to_string(),
+            cached_bytes: None,
         })
         .collect();
 
@@ -1152,28 +1057,25 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
         let client = &client;
         let stored_hashes = Arc::new(load_stored_hashes()?);
         let inspections = Arc::new(inspect_local_files(&tracked)?);
-        let manifest = manifest.clone();
         let results = stream::iter(candidates.drain(..).zip(tracked.into_iter()).map(
             |(file, tracked_file)| {
                 let stored_hashes = stored_hashes.clone();
                 let inspections = inspections.clone();
-                let manifest = manifest.clone();
                 async move {
                     let local_inspection = inspections.get(&tracked_key(&tracked_file));
                     let local_hash = local_inspection.and_then(|value| value.hash.as_deref());
-                    let checked = if let Some(entry) = manifest
-                        .as_ref()
-                        .and_then(|value| value.files.get(&tracked_key(&tracked_file)))
-                        .filter(|entry| entry.group == tracked_file.group)
+                    let checked = if tracked_file.include_in_remote_updates && local_hash.is_some()
                     {
-                        let needs_download = local_hash != Some(entry.sha256.as_str());
-                        (needs_download, None)
-                    } else if local_hash.is_some() {
                         let (needs_download, cached_bytes) =
                             check_remote_file(client, &file.url, &file.name, local_hash).await?;
                         (needs_download, cached_bytes)
-                    } else {
+                    } else if tracked_file.include_in_remote_updates {
                         (true, None)
+                    } else {
+                        (
+                            !tracked_file_is_healthy(&tracked_file, &stored_hashes, &inspections),
+                            None,
+                        )
                     };
 
                     let (needs_download, cached_bytes) = checked;

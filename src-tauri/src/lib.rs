@@ -223,7 +223,6 @@ pub fn run() {
             config::update_list_mode,
             binaries::verify_binaries,
             binaries::get_missing_critical_files,
-            binaries::get_available_updates,
             binaries::get_app_health_snapshot,
             binaries::restore_hashes_from_disk,
             binaries::download_binaries,
