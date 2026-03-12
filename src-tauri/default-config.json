@@ -425,5 +425,6 @@
   "minimizeToTray": true,
   "launchToTray": false,
   "connectOnAutostart": false,
-  "coreFileUpdatePromptsEnabled": true
+  "coreFileUpdatePromptsEnabled": true,
+  "appAutoUpdatesEnabled": true
 }

@@ -27,6 +27,7 @@ import { useAppStore } from '@/stores/app.store'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
 import { useDownloadStore } from '@/stores/download.store'
+import { useUpdaterStore } from '@/stores/updater.store'
 
 const RANGE_RE = /^\d+-\d+$/
 const PORT_RE = /^\d+$/
@@ -72,6 +73,7 @@ export function SettingsPage() {
   const scheduleSave = useConfigStore(state => state.scheduleSave)
   const setGlobalPorts = useConfigStore(state => state.setGlobalPorts)
   const setCoreFileUpdatePromptsEnabled = useConfigStore(state => state.setCoreFileUpdatePromptsEnabled)
+  const setAppAutoUpdatesEnabled = useConfigStore(state => state.setAppAutoUpdatesEnabled)
   const setMinimizeToTray = useConfigStore(state => state.setMinimizeToTray)
   const setLaunchToTray = useConfigStore(state => state.setLaunchToTray)
   const setConnectOnAutostart = useConfigStore(state => state.setConnectOnAutostart)
@@ -83,6 +85,16 @@ export function SettingsPage() {
   const availableUpdates = useAppStore(state => state.availableUpdates)
   const restartIfConnected = useConnectionStore(state => state.restartIfConnected)
   const addConfigLog = useConnectionStore(state => state.addConfigLog)
+  const initUpdater = useUpdaterStore(state => state.init)
+  const currentAppVersion = useUpdaterStore(state => state.currentVersion)
+  const appUpdate = useUpdaterStore(state => state.availableUpdate)
+  const appUpdateChecking = useUpdaterStore(state => state.checking)
+  const appUpdateDownloading = useUpdaterStore(state => state.downloading)
+  const appUpdateInstalling = useUpdaterStore(state => state.installing)
+  const lastAppUpdateCheckError = useUpdaterStore(state => state.lastCheckError)
+  const lastAppUpdateCheckedAt = useUpdaterStore(state => state.lastCheckedAt)
+  const checkForAppUpdates = useUpdaterStore(state => state.checkForUpdates)
+  const installAvailableAppUpdate = useUpdaterStore(state => state.installAvailableUpdate)
 
   const refreshAutostartState = async (isMounted = true) => {
     try {
@@ -106,6 +118,7 @@ export function SettingsPage() {
     const init = async () => {
       try {
         await load()
+        await initUpdater()
 
         try {
           const dir = await tauri.getZapretDirectory()
@@ -133,7 +146,7 @@ export function SettingsPage() {
     return () => {
       isMounted = false
     }
-  }, [load])
+  }, [initUpdater, load])
 
   useEffect(() => {
     if (config?.global_ports) {
@@ -228,6 +241,44 @@ export function SettingsPage() {
       : 'автопредложения обновления winws/fake файлов отключены')
   }
 
+  const handleAppAutoUpdatesChange = async (checked: boolean) => {
+    if (!config) {
+      return
+    }
+
+    const previous = config.appAutoUpdatesEnabled ?? true
+    setAppAutoUpdatesEnabled(checked)
+    try {
+      await saveNow()
+      addConfigLog(checked
+        ? 'автоматическая проверка обновлений приложения включена'
+        : 'автоматическая проверка обновлений приложения отключена')
+      toast.success(checked ? 'Автообновления приложения включены' : 'Автообновления приложения отключены')
+    }
+    catch (e) {
+      setAppAutoUpdatesEnabled(previous)
+      toast.error(`Ошибка настройки автообновлений приложения: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
+  const handleManualAppUpdateCheck = async () => {
+    try {
+      await checkForAppUpdates({ manual: true, silent: false })
+    }
+    catch (e) {
+      console.error('Failed to check app updates:', e)
+    }
+  }
+
+  const handleInstallAppUpdate = async () => {
+    try {
+      await installAvailableAppUpdate()
+    }
+    catch (e) {
+      console.error('Failed to install app update:', e)
+    }
+  }
+
   if (loading || !config) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -255,6 +306,102 @@ export function SettingsPage() {
           </CardHeader>
           <CardContent>
             <ThemeSwitcher />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Обновление приложения</CardTitle>
+            <CardDescription>
+              Автоматическая и ручная проверка новых версий Zapret Interactive
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="app-auto-updates">Автоматически проверять обновления приложения</Label>
+                <p className="text-xs text-muted-foreground">
+                  При запуске и каждые 5 минут приложение будет проверять наличие новой версии
+                </p>
+              </div>
+              <Switch
+                id="app-auto-updates"
+                checked={config.appAutoUpdatesEnabled ?? true}
+                disabled={appUpdateChecking || appUpdateDownloading || appUpdateInstalling}
+                onCheckedChange={handleAppAutoUpdatesChange}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-sm font-medium">
+                Текущая версия:
+                {' '}
+                <span className="font-mono">{currentAppVersion ?? '...'}</span>
+              </p>
+              {appUpdateChecking && (
+                <p className="text-xs text-muted-foreground">Проверяю наличие новой версии...</p>
+              )}
+              {!appUpdateChecking && appUpdateInstalling && (
+                <p className="text-xs text-muted-foreground">Устанавливаю обновление приложения...</p>
+              )}
+              {!appUpdateChecking && !appUpdateInstalling && appUpdateDownloading && (
+                <p className="text-xs text-muted-foreground">Загружаю обновление приложения...</p>
+              )}
+              {!appUpdateChecking && !appUpdateDownloading && !appUpdateInstalling && appUpdate && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  Доступна версия
+                  {' '}
+                  {appUpdate.version}
+                </p>
+              )}
+              {!appUpdateChecking && !appUpdateDownloading && !appUpdateInstalling && !appUpdate && lastAppUpdateCheckError && (
+                <p className="text-xs text-red-600 dark:text-red-400">
+                  Ошибка проверки:
+                  {' '}
+                  {lastAppUpdateCheckError}
+                </p>
+              )}
+              {!appUpdateChecking && !appUpdateDownloading && !appUpdateInstalling && !appUpdate && !lastAppUpdateCheckError && lastAppUpdateCheckedAt && (
+                <p className="text-xs text-muted-foreground">Новых версий не найдено</p>
+              )}
+            </div>
+
+            {appUpdate && (
+              <Alert className="border-yellow-600 bg-yellow-600/10">
+                <AlertTitle>Доступна новая версия приложения</AlertTitle>
+                <AlertDescription className="space-y-2">
+                  <p>
+                    Доступна версия
+                    {' '}
+                    {appUpdate.version}
+                    {appUpdate.date ? ` (${appUpdate.date})` : ''}
+                  </p>
+                  {appUpdate.notes && (
+                    <p className="line-clamp-4 whitespace-pre-wrap text-xs text-muted-foreground">
+                      {appUpdate.notes}
+                    </p>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={() => { void handleManualAppUpdateCheck() }}
+                disabled={appUpdateChecking || appUpdateDownloading || appUpdateInstalling}
+              >
+                Проверить обновления
+              </Button>
+              {appUpdate && (
+                <Button
+                  onClick={() => { void handleInstallAppUpdate() }}
+                  disabled={appUpdateChecking || appUpdateDownloading || appUpdateInstalling}
+                >
+                  Установить обновление
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
 

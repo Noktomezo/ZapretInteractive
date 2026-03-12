@@ -58,6 +58,7 @@ export interface AppConfig {
   launchToTray?: boolean
   connectOnAutostart?: boolean
   coreFileUpdatePromptsEnabled?: boolean
+  appAutoUpdatesEnabled?: boolean
 }
 
 export interface EnsureManagedFilesResult {

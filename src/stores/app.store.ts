@@ -6,6 +6,7 @@ import { useConfigStore } from './config.store'
 import { useConnectionStore } from './connection.store'
 import { useDownloadStore } from './download.store'
 import { useThemeStore } from './theme.store'
+import { useUpdaterStore } from './updater.store'
 
 let shutdownCleanupRegistered = false
 
@@ -113,6 +114,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
           get().teardownFilesWatcher()
           useConnectionStore.getState().teardownTrayListener()
           useDownloadStore.getState().cleanup()
+          useUpdaterStore.getState().cleanup()
         })
       }
 
@@ -277,6 +279,15 @@ export const useAppStore = create<AppStore>((set, get) => ({
         }
       }
 
+      if (useConfigStore.getState().config) {
+        try {
+          await useUpdaterStore.getState().init()
+        }
+        catch (error) {
+          useConnectionStore.getState().addLog(`Не удалось инициализировать автообновления приложения: ${error}`)
+        }
+      }
+
       useConnectionStore.getState().addLog('Инициализация приложения завершена')
       set({ initialized: true, initializing: false, initializePromise: null })
     })().catch((error) => {
@@ -284,6 +295,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       get().teardownFilesWatcher()
       useConnectionStore.getState().teardownTrayListener()
       useDownloadStore.getState().cleanup()
+      useUpdaterStore.getState().cleanup()
       useConnectionStore.getState().addLog(`Ошибка инициализации приложения: ${error}`)
       throw error
     })

@@ -23,17 +23,21 @@ import { useAppStore } from '@/stores/app.store'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
 import { useDownloadStore } from '@/stores/download.store'
+import { useUpdaterStore } from '@/stores/updater.store'
 
 export function MainPage() {
   const availableUpdatesPromptKeyRef = useRef('')
   const dismissedPromptKeysRef = useRef<Set<string>>(new Set())
   const activeUpdateToastIdRef = useRef<string | number | null>(null)
+  const appUpdatePromptKeyRef = useRef('')
+  const activeAppUpdateToastIdRef = useRef<string | number | null>(null)
   const [initError, setInitError] = useState<string | null>(null)
   const [listModeUpdating, setListModeUpdating] = useState(false)
   const config = useConfigStore(state => state.config)
   const applyPersistedListMode = useConfigStore(state => state.applyPersistedListMode)
   const saveNow = useConfigStore(state => state.saveNow)
   const setCoreFileUpdatePromptsEnabled = useConfigStore(state => state.setCoreFileUpdatePromptsEnabled)
+  const setAppAutoUpdatesEnabled = useConfigStore(state => state.setAppAutoUpdatesEnabled)
   const status = useConnectionStore(state => state.status)
   const connect = useConnectionStore(state => state.connect)
   const disconnect = useConnectionStore(state => state.disconnect)
@@ -49,6 +53,12 @@ export function MainPage() {
   const initialize = useAppStore(state => state.initialize)
   const setConfigMissing = useAppStore(state => state.setConfigMissing)
   const addConfigLog = useConnectionStore(state => state.addConfigLog)
+  const appUpdate = useUpdaterStore(state => state.availableUpdate)
+  const appUpdateDownloading = useUpdaterStore(state => state.downloading)
+  const appUpdateInstalling = useUpdaterStore(state => state.installing)
+  const dismissedAppUpdateVersion = useUpdaterStore(state => state.dismissedVersionThisSession)
+  const installAvailableAppUpdate = useUpdaterStore(state => state.installAvailableUpdate)
+  const dismissCurrentAppUpdate = useUpdaterStore(state => state.dismissCurrentVersionUntilRestart)
 
   const waveColor = status === 'connected'
     ? 'rgba(74, 222, 128, 0.18)'
@@ -129,6 +139,13 @@ export function MainPage() {
     }
   }, [])
 
+  const dismissActiveAppUpdateToast = useCallback(() => {
+    if (activeAppUpdateToastIdRef.current !== null) {
+      toast.dismiss(activeAppUpdateToastIdRef.current)
+      activeAppUpdateToastIdRef.current = null
+    }
+  }, [])
+
   const handleApplyCoreFileUpdates = useCallback(async () => {
     try {
       await runWithPausedConnection(async () => {
@@ -159,6 +176,34 @@ export function MainPage() {
       toast.error(`Не удалось отключить предложения обновления: ${e instanceof Error ? e.message : String(e)}`)
     }
   }, [addConfigLog, config, dismissActiveUpdateToast, saveNow, setCoreFileUpdatePromptsEnabled])
+
+  const handleInstallAppUpdate = useCallback(async () => {
+    try {
+      await installAvailableAppUpdate()
+      dismissActiveAppUpdateToast()
+    }
+    catch (e) {
+      console.error(e)
+    }
+  }, [dismissActiveAppUpdateToast, installAvailableAppUpdate])
+
+  const handleDisableAppAutoUpdates = useCallback(async () => {
+    if (!config) {
+      return
+    }
+
+    const previous = config.appAutoUpdatesEnabled ?? true
+    setAppAutoUpdatesEnabled(false)
+    try {
+      await saveNow()
+      addConfigLog('автоматическая проверка обновлений приложения отключена')
+      dismissActiveAppUpdateToast()
+    }
+    catch (e) {
+      setAppAutoUpdatesEnabled(previous)
+      toast.error(`Не удалось отключить автообновления приложения: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }, [addConfigLog, config, dismissActiveAppUpdateToast, saveNow, setAppAutoUpdatesEnabled])
 
   const handleRestoreDefaultConfig = async () => {
     try {
@@ -239,6 +284,83 @@ export function MainPage() {
       dismissActiveUpdateToast()
     }
   }, [availableUpdates.length, dismissActiveUpdateToast])
+
+  useEffect(() => {
+    const appUpdatesEnabled = config?.appAutoUpdatesEnabled ?? true
+
+    if (
+      !initialized
+      || !appUpdate
+      || !appUpdatesEnabled
+      || dismissedAppUpdateVersion === appUpdate.version
+      || appUpdateDownloading
+      || appUpdateInstalling
+    ) {
+      dismissActiveAppUpdateToast()
+      return
+    }
+
+    const promptKey = `app-update:${appUpdate.version}`
+    if (appUpdatePromptKeyRef.current === promptKey && activeAppUpdateToastIdRef.current !== null) {
+      return
+    }
+
+    const notesPreview = appUpdate.notes?.split('\n').find(line => line.trim().length > 0)?.trim()
+
+    dismissActiveAppUpdateToast()
+    appUpdatePromptKeyRef.current = promptKey
+    activeAppUpdateToastIdRef.current = toast.custom(() => (
+      <div className="w-[420px] rounded-lg border bg-background p-4 shadow-lg">
+        <div className="space-y-1">
+          <p className="text-sm font-medium">Доступна новая версия приложения</p>
+          <p className="text-xs text-muted-foreground">
+            Доступна версия
+            {' '}
+            {appUpdate.version}
+          </p>
+          {notesPreview && (
+            <p className="text-xs text-muted-foreground line-clamp-2">{notesPreview}</p>
+          )}
+        </div>
+        <div className="mt-3 flex gap-2">
+          <Button size="sm" onClick={() => { void handleInstallAppUpdate() }}>
+            Да
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              dismissCurrentAppUpdate()
+              dismissActiveAppUpdateToast()
+            }}
+          >
+            Нет
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => { void handleDisableAppAutoUpdates() }}>
+            Отключить автообновления
+          </Button>
+        </div>
+      </div>
+    ), { duration: Number.POSITIVE_INFINITY })
+  }, [
+    appUpdate,
+    appUpdateDownloading,
+    appUpdateInstalling,
+    config?.appAutoUpdatesEnabled,
+    dismissActiveAppUpdateToast,
+    dismissCurrentAppUpdate,
+    dismissedAppUpdateVersion,
+    handleDisableAppAutoUpdates,
+    handleInstallAppUpdate,
+    initialized,
+  ])
+
+  useEffect(() => {
+    if (!appUpdate) {
+      appUpdatePromptKeyRef.current = ''
+      dismissActiveAppUpdateToast()
+    }
+  }, [appUpdate, dismissActiveAppUpdateToast])
 
   if (initError) {
     return (

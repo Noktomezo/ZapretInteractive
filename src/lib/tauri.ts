@@ -1,4 +1,5 @@
 import type { AppConfig, AppHealthSnapshot, EnsureManagedFilesResult, ListMode } from './types'
+import { getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 
@@ -44,6 +45,7 @@ export const getReservedFilterFilenames = (): Promise<string[]> => invoke('get_r
 export const isAutostartEnabled = (): Promise<boolean> => invoke('is_autostart_enabled')
 export const setAutostartEnabled = (enabled: boolean): Promise<void> => invoke('set_autostart_enabled', { enabled })
 export const wasLaunchedFromAutostart = (): Promise<boolean> => invoke('was_launched_from_autostart')
+export const getAppVersion = (): Promise<string> => getVersion()
 
 export function saveFilterFile(filename: string, content: string): Promise<void> {
   return invoke('save_filter_file', { filename, content })

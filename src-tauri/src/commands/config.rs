@@ -100,6 +100,11 @@ pub struct AppConfig {
         rename = "coreFileUpdatePromptsEnabled"
     )]
     pub core_file_update_prompts_enabled: bool,
+    #[serde(
+        default = "default_app_auto_updates_enabled",
+        rename = "appAutoUpdatesEnabled"
+    )]
+    pub app_auto_updates_enabled: bool,
 }
 
 pub struct ConfigEnsureResult {
@@ -128,6 +133,10 @@ fn default_connect_on_autostart() -> bool {
 }
 
 fn default_core_file_update_prompts_enabled() -> bool {
+    true
+}
+
+fn default_app_auto_updates_enabled() -> bool {
     true
 }
 

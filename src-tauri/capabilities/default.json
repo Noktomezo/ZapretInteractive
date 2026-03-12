@@ -33,6 +33,8 @@
     "fs:allow-exists",
     "fs:allow-mkdir",
     "notification:default",
+    "process:default",
+    "updater:default",
     "autostart:allow-enable",
     "autostart:allow-disable",
     "autostart:allow-is-enabled"
