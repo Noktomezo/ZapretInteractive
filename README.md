@@ -1,7 +1,24 @@
 <div align="center">
   <img src="assets/thumbnail.png" alt="Zapret Interactive">
 
-GUI-обёртка для [zapret-win-bundle](https://github.com/bol-van/zapret-win-bundle) с предустановленными стретегиями, фильтрами и другими файлами/настройками, предоставляющая удобный графический интерфейс для их редактирования/добавления/удаления
+  <p>
+    GUI-обёртка для <a href="https://github.com/bol-van/zapret-win-bundle">zapret-win-bundle</a> с предустановленными стретегиями, фильтрами и другими файлами/настройками, предоставляющая удобный графический интерфейс для их редактирования/добавления/удаления
+  </p>
+
+  <p>
+    <a href="https://github.com/Noktomezo/ZapretInteractive/releases/latest">
+      <img alt="Latest release" src="https://img.shields.io/github/v/release/Noktomezo/ZapretInteractive?style=flat&logo=github&label=%D0%B2%D0%B5%D1%80%D1%81%D0%B8%D1%8F&labelColor=1f2937&color=3b82f6&logoColor=white">
+    </a>
+    <a href="https://github.com/Noktomezo/ZapretInteractive/stargazers">
+      <img alt="GitHub stars" src="https://img.shields.io/github/stars/Noktomezo/ZapretInteractive?style=flat&logo=github&label=%D0%B7%D0%B2%D1%91%D0%B7%D0%B4%D1%8B&labelColor=1f2937&color=f59e0b&logoColor=white">
+    </a>
+    <a href="https://github.com/Noktomezo/ZapretInteractive/releases">
+      <img alt="GitHub all releases downloads" src="https://img.shields.io/github/downloads/Noktomezo/ZapretInteractive/total?style=flat&logo=github&label=%D1%81%D0%BA%D0%B0%D1%87%D0%B8%D0%B2%D0%B0%D0%BD%D0%B8%D1%8F&labelColor=1f2937&color=14b8a6&logoColor=white">
+    </a>
+    <a href="https://github.com/Noktomezo/ZapretInteractive/blob/main/LICENSE">
+      <img alt="License" src="https://img.shields.io/github/license/Noktomezo/ZapretInteractive?style=flat&label=%D0%BB%D0%B8%D1%86%D0%B5%D0%BD%D0%B7%D0%B8%D1%8F&labelColor=1f2937&color=64748b">
+    </a>
+  </p>
 
 </div>
 
