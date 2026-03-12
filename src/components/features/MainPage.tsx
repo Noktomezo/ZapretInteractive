@@ -16,93 +16,49 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import Waves from '@/components/Waves'
+import { runWithPausedConnection } from '@/lib/connection-flow'
 import * as tauri from '@/lib/tauri'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app.store'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
 import { useDownloadStore } from '@/stores/download.store'
-
-function waitForConnectionStatus(
-  expectedStatus: 'connected' | 'disconnected',
-  timeoutMs = 15000,
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const currentStatus = useConnectionStore.getState().status
-    if (currentStatus === expectedStatus) {
-      resolve()
-      return
-    }
-    if (currentStatus === 'error') {
-      reject(new Error(`Connection entered error state while waiting for ${expectedStatus}`))
-      return
-    }
-
-    let unsubscribe = () => { }
-
-    const timeoutId = window.setTimeout(() => {
-      unsubscribe()
-      reject(new Error(`Timeout waiting for connection status: ${expectedStatus}`))
-    }, timeoutMs)
-
-    unsubscribe = useConnectionStore.subscribe((state) => {
-      if (state.status === expectedStatus) {
-        window.clearTimeout(timeoutId)
-        unsubscribe()
-        resolve()
-      }
-      else if (state.status === 'error') {
-        window.clearTimeout(timeoutId)
-        unsubscribe()
-        reject(new Error(`Connection entered error state while waiting for ${expectedStatus}`))
-      }
-    })
-  })
-}
-
-function waitForTerminalConnectionStatus(timeoutMs = 15000): Promise<'connected' | 'disconnected'> {
-  return new Promise((resolve, reject) => {
-    const currentStatus = useConnectionStore.getState().status
-    if (currentStatus === 'connected' || currentStatus === 'disconnected') {
-      resolve(currentStatus)
-      return
-    }
-    if (currentStatus === 'error') {
-      reject(new Error('Connection entered error state while waiting for terminal status'))
-      return
-    }
-
-    let unsubscribe = () => { }
-
-    const timeoutId = window.setTimeout(() => {
-      unsubscribe()
-      reject(new Error('Timeout waiting for terminal connection status'))
-    }, timeoutMs)
-
-    unsubscribe = useConnectionStore.subscribe((state) => {
-      if (state.status === 'connected' || state.status === 'disconnected') {
-        window.clearTimeout(timeoutId)
-        unsubscribe()
-        resolve(state.status)
-      }
-      else if (state.status === 'error') {
-        window.clearTimeout(timeoutId)
-        unsubscribe()
-        reject(new Error('Connection entered error state while waiting for terminal status'))
-      }
-    })
-  })
-}
+import { useUpdaterStore } from '@/stores/updater.store'
 
 export function MainPage() {
   const availableUpdatesPromptKeyRef = useRef('')
+  const dismissedPromptKeysRef = useRef<Set<string>>(new Set())
+  const activeUpdateToastIdRef = useRef<string | number | null>(null)
+  const appUpdatePromptKeyRef = useRef('')
+  const activeAppUpdateToastIdRef = useRef<string | number | null>(null)
   const [initError, setInitError] = useState<string | null>(null)
-  const { config, setListMode } = useConfigStore()
-  const { status, connect, disconnect } = useConnectionStore()
-  const { isDownloading, progress, reset }
-    = useDownloadStore()
-  const { initialized, isElevated, binariesOk, missingCriticalFiles, availableUpdates, configMissing, initialize, setConfigMissing }
-    = useAppStore()
+  const [listModeUpdating, setListModeUpdating] = useState(false)
+  const config = useConfigStore(state => state.config)
+  const applyPersistedListMode = useConfigStore(state => state.applyPersistedListMode)
+  const saveNow = useConfigStore(state => state.saveNow)
+  const setCoreFileUpdatePromptsEnabled = useConfigStore(state => state.setCoreFileUpdatePromptsEnabled)
+  const setAppAutoUpdatesEnabled = useConfigStore(state => state.setAppAutoUpdatesEnabled)
+  const status = useConnectionStore(state => state.status)
+  const connect = useConnectionStore(state => state.connect)
+  const disconnect = useConnectionStore(state => state.disconnect)
+  const isDownloading = useDownloadStore(state => state.isDownloading)
+  const progress = useDownloadStore(state => state.progress)
+  const resetDownload = useDownloadStore(state => state.reset)
+  const initialized = useAppStore(state => state.initialized)
+  const isElevated = useAppStore(state => state.isElevated)
+  const binariesOk = useAppStore(state => state.binariesOk)
+  const missingCriticalFiles = useAppStore(state => state.missingCriticalFiles)
+  const availableUpdates = useAppStore(state => state.availableUpdates)
+  const configMissing = useAppStore(state => state.configMissing)
+  const initialize = useAppStore(state => state.initialize)
+  const setConfigMissing = useAppStore(state => state.setConfigMissing)
+  const addConfigLog = useConnectionStore(state => state.addConfigLog)
+  const appUpdate = useUpdaterStore(state => state.availableUpdate)
+  const appUpdateDownloading = useUpdaterStore(state => state.downloading)
+  const appUpdateInstalling = useUpdaterStore(state => state.installing)
+  const dismissedAppUpdateVersion = useUpdaterStore(state => state.dismissedVersionThisSession)
+  const installAvailableAppUpdate = useUpdaterStore(state => state.installAvailableUpdate)
+  const dismissCurrentAppUpdate = useUpdaterStore(state => state.dismissCurrentVersionUntilRestart)
 
   const waveColor = status === 'connected'
     ? 'rgba(74, 222, 128, 0.18)'
@@ -110,10 +66,25 @@ export function MainPage() {
       ? 'rgba(250, 204, 21, 0.16)'
       : 'rgba(248, 113, 113, 0.35)'
 
-  const handleListModeChange = (value: string) => {
-    if (value) {
-      setListMode(value as ListMode)
-      useConfigStore.getState().save()
+  const handleListModeChange = async (value: string) => {
+    if (!value || !config || listModeUpdating || value === config.listMode) {
+      return
+    }
+
+    setListModeUpdating(true)
+    try {
+      await tauri.updateListMode(value as ListMode)
+      addConfigLog(
+        value === 'ipset'
+          ? 'режим списков переключён на "Только заблокированные"'
+          : 'режим списков переключён на "Исключения"',
+      )
+    }
+    catch (e) {
+      toast.error(`Не удалось переключить режим списков: ${e instanceof Error ? e.message : String(e)}`)
+    }
+    finally {
+      setListModeUpdating(false)
     }
   }
 
@@ -124,13 +95,13 @@ export function MainPage() {
     })
 
     const unlistenListMode = tauri.onListModeChanged((mode) => {
-      setListMode(mode)
+      applyPersistedListMode(mode)
     })
 
     return () => {
       unlistenListMode()
     }
-  }, [])
+  }, [applyPersistedListMode, initialize])
 
   const handleToggleConnection = async () => {
     const attemptedAction = status === 'connected' ? 'отключение' : 'подключение'
@@ -141,7 +112,7 @@ export function MainPage() {
       else {
         await connect()
       }
-      await useConfigStore.getState().save()
+      await saveNow()
     }
     catch (e) {
       toast.error(`Ошибка при ${attemptedAction} или сохранении конфигурации: ${e}`)
@@ -149,44 +120,97 @@ export function MainPage() {
   }
 
   const handleDownloadBinaries = useCallback(async () => {
-    const { status: currentStatus } = useConnectionStore.getState()
     try {
-      let shouldReconnect = false
-
-      let stableStatus = currentStatus
-      if (currentStatus === 'connecting' || currentStatus === 'disconnecting') {
-        stableStatus = await waitForTerminalConnectionStatus()
-      }
-
-      if (stableStatus === 'connected') {
-        shouldReconnect = true
-        await disconnect()
-        await waitForConnectionStatus('disconnected')
-      }
-
-      await tauri.downloadBinaries()
-
-      if (shouldReconnect) {
-        await connect()
-        await waitForConnectionStatus('connected')
-      }
+      await runWithPausedConnection(async () => {
+        await tauri.downloadBinaries()
+      })
     }
     catch (e) {
       console.error(e)
-      reset()
+      resetDownload()
       toast.error(`Ошибка загрузки файлов: ${e}`)
     }
-  }, [connect, disconnect, reset])
+  }, [resetDownload])
 
-  const onDownloadBinaries = useCallback(() => {
-    void handleDownloadBinaries()
-  }, [handleDownloadBinaries])
+  const dismissActiveUpdateToast = useCallback(() => {
+    if (activeUpdateToastIdRef.current !== null) {
+      toast.dismiss(activeUpdateToastIdRef.current)
+      activeUpdateToastIdRef.current = null
+    }
+  }, [])
+
+  const dismissActiveAppUpdateToast = useCallback(() => {
+    if (activeAppUpdateToastIdRef.current !== null) {
+      toast.dismiss(activeAppUpdateToastIdRef.current)
+      activeAppUpdateToastIdRef.current = null
+    }
+  }, [])
+
+  const handleApplyCoreFileUpdates = useCallback(async () => {
+    try {
+      await runWithPausedConnection(async () => {
+        await tauri.applyCoreFileUpdates()
+      })
+      dismissActiveUpdateToast()
+    }
+    catch (e) {
+      console.error(e)
+      resetDownload()
+      toast.error(`Ошибка обновления файлов: ${e}`)
+    }
+  }, [dismissActiveUpdateToast, resetDownload])
+
+  const handleDisableCoreFileUpdatePrompts = useCallback(async () => {
+    if (!config)
+      return
+
+    const previous = config.coreFileUpdatePromptsEnabled ?? true
+    setCoreFileUpdatePromptsEnabled(false)
+    try {
+      await saveNow()
+      addConfigLog('автопредложения обновления winws/fake файлов отключены')
+      dismissActiveUpdateToast()
+    }
+    catch (e) {
+      setCoreFileUpdatePromptsEnabled(previous)
+      toast.error(`Не удалось отключить предложения обновления: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }, [addConfigLog, config, dismissActiveUpdateToast, saveNow, setCoreFileUpdatePromptsEnabled])
+
+  const handleInstallAppUpdate = useCallback(async () => {
+    try {
+      await installAvailableAppUpdate()
+      dismissActiveAppUpdateToast()
+    }
+    catch (e) {
+      console.error(e)
+    }
+  }, [dismissActiveAppUpdateToast, installAvailableAppUpdate])
+
+  const handleDisableAppAutoUpdates = useCallback(async () => {
+    if (!config) {
+      return
+    }
+
+    const previous = config.appAutoUpdatesEnabled ?? true
+    setAppAutoUpdatesEnabled(false)
+    try {
+      await saveNow()
+      addConfigLog('автоматическая проверка обновлений приложения отключена')
+      dismissActiveAppUpdateToast()
+    }
+    catch (e) {
+      setAppAutoUpdatesEnabled(previous)
+      toast.error(`Не удалось отключить автообновления приложения: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }, [addConfigLog, config, dismissActiveAppUpdateToast, saveNow, setAppAutoUpdatesEnabled])
 
   const handleRestoreDefaultConfig = async () => {
     try {
       await useConfigStore.getState().reset()
-      await tauri.restoreDefaultFilters()
+      await tauri.ensureManagedFiles()
       setConfigMissing(false)
+      addConfigLog('восстановлена конфигурация по умолчанию')
       toast.success('Конфигурация по умолчанию восстановлена')
     }
     catch (e) {
@@ -206,24 +230,137 @@ export function MainPage() {
   }
 
   useEffect(() => {
-    if (!initialized || binariesOk !== true || availableUpdates.length === 0)
+    const promptEnabled = config?.coreFileUpdatePromptsEnabled ?? true
+
+    if (!initialized || binariesOk !== true || availableUpdates.length === 0 || !promptEnabled) {
+      dismissActiveUpdateToast()
       return
+    }
 
     const promptKey = availableUpdates.join('|')
-    if (availableUpdatesPromptKeyRef.current === promptKey)
+    if (dismissedPromptKeysRef.current.has(promptKey))
       return
 
+    if (availableUpdatesPromptKeyRef.current === promptKey && activeUpdateToastIdRef.current !== null)
+      return
+
+    dismissActiveUpdateToast()
     availableUpdatesPromptKeyRef.current = promptKey
-    toast('Доступны обновления файлов', {
-      description: availableUpdates.length === 1
-        ? availableUpdates[0]
-        : `${availableUpdates.length} файлов: ${availableUpdates.slice(0, 4).join(', ')}${availableUpdates.length > 4 ? '…' : ''}`,
-      action: {
-        label: 'Обновить',
-        onClick: onDownloadBinaries,
-      },
-    })
-  }, [availableUpdates, binariesOk, initialized, onDownloadBinaries])
+    activeUpdateToastIdRef.current = toast.custom(() => (
+      <div className="w-[420px] rounded-lg border bg-background p-4 shadow-lg">
+        <div className="space-y-1">
+          <p className="text-sm font-medium">Доступны обновления файлов</p>
+          <p className="text-xs text-muted-foreground">
+            {availableUpdates.length === 1
+              ? availableUpdates[0]
+              : `${availableUpdates.length} файлов: ${availableUpdates.slice(0, 4).join(', ')}${availableUpdates.length > 4 ? '…' : ''}`}
+          </p>
+        </div>
+        <div className="mt-3 flex gap-2">
+          <Button size="sm" onClick={() => { void handleApplyCoreFileUpdates() }}>
+            Обновить
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              dismissedPromptKeysRef.current.add(promptKey)
+              dismissActiveUpdateToast()
+            }}
+          >
+            Не сейчас
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => { void handleDisableCoreFileUpdatePrompts() }}>
+            Не предлагать
+          </Button>
+        </div>
+      </div>
+    ), { duration: Number.POSITIVE_INFINITY })
+  }, [availableUpdates, binariesOk, config?.coreFileUpdatePromptsEnabled, dismissActiveUpdateToast, handleApplyCoreFileUpdates, handleDisableCoreFileUpdatePrompts, initialized])
+
+  useEffect(() => {
+    if (availableUpdates.length === 0) {
+      availableUpdatesPromptKeyRef.current = ''
+      dismissActiveUpdateToast()
+    }
+  }, [availableUpdates.length, dismissActiveUpdateToast])
+
+  useEffect(() => {
+    const appUpdatesEnabled = config?.appAutoUpdatesEnabled ?? true
+
+    if (
+      !initialized
+      || !appUpdate
+      || !appUpdatesEnabled
+      || dismissedAppUpdateVersion === appUpdate.version
+      || appUpdateDownloading
+      || appUpdateInstalling
+    ) {
+      dismissActiveAppUpdateToast()
+      return
+    }
+
+    const promptKey = `app-update:${appUpdate.version}`
+    if (appUpdatePromptKeyRef.current === promptKey && activeAppUpdateToastIdRef.current !== null) {
+      return
+    }
+
+    const notesPreview = appUpdate.notes?.split('\n').find(line => line.trim().length > 0)?.trim()
+
+    dismissActiveAppUpdateToast()
+    appUpdatePromptKeyRef.current = promptKey
+    activeAppUpdateToastIdRef.current = toast.custom(() => (
+      <div className="w-[420px] rounded-lg border bg-background p-4 shadow-lg">
+        <div className="space-y-1">
+          <p className="text-sm font-medium">Доступна новая версия приложения</p>
+          <p className="text-xs text-muted-foreground">
+            Доступна версия
+            {' '}
+            {appUpdate.version}
+          </p>
+          {notesPreview && (
+            <p className="text-xs text-muted-foreground line-clamp-2">{notesPreview}</p>
+          )}
+        </div>
+        <div className="mt-3 flex gap-2">
+          <Button size="sm" onClick={() => { void handleInstallAppUpdate() }}>
+            Да
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              dismissCurrentAppUpdate()
+              dismissActiveAppUpdateToast()
+            }}
+          >
+            Нет
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => { void handleDisableAppAutoUpdates() }}>
+            Отключить автообновления
+          </Button>
+        </div>
+      </div>
+    ), { duration: Number.POSITIVE_INFINITY })
+  }, [
+    appUpdate,
+    appUpdateDownloading,
+    appUpdateInstalling,
+    config?.appAutoUpdatesEnabled,
+    dismissActiveAppUpdateToast,
+    dismissCurrentAppUpdate,
+    dismissedAppUpdateVersion,
+    handleDisableAppAutoUpdates,
+    handleInstallAppUpdate,
+    initialized,
+  ])
+
+  useEffect(() => {
+    if (!appUpdate) {
+      appUpdatePromptKeyRef.current = ''
+      dismissActiveAppUpdateToast()
+    }
+  }, [appUpdate, dismissActiveAppUpdateToast])
 
   if (initError) {
     return (
@@ -308,13 +445,13 @@ export function MainPage() {
             <AlertCircle className="h-8 w-8 text-muted-foreground" />
           </div>
           <div>
-            <h2 className="text-lg font-medium">Отсутствует конфигурация</h2>
+            <h2 className="text-lg font-medium">Не удалось автоматически восстановить конфигурацию</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Файл
               {' '}
               <code>config.json</code>
               {' '}
-              был удалён или недоступен. Можно восстановить конфигурацию по умолчанию.
+              недоступен или не был восстановлен автоматически. Можно повторить восстановление дефолтного конфига вручную.
             </p>
           </div>
           <Button onClick={handleRestoreDefaultConfig} className="w-full">
@@ -421,7 +558,7 @@ export function MainPage() {
             value={config?.listMode ?? 'ipset'}
             onValueChange={handleListModeChange}
             className="justify-center gap-1"
-            disabled={status !== 'disconnected'}
+            disabled={status !== 'disconnected' || listModeUpdating}
           >
             {status === 'disconnected'
               ? (
@@ -430,6 +567,7 @@ export function MainPage() {
                       <div>
                         <ToggleGroupItem
                           value="ipset"
+                          disabled={listModeUpdating}
                           className="px-3 py-1.5 text-xs data-[state=on]:bg-green-500/20 data-[state=on]:text-green-600 dark:data-[state=on]:text-green-400 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Только заблокированные
@@ -444,6 +582,7 @@ export function MainPage() {
               : (
                   <ToggleGroupItem
                     value="ipset"
+                    disabled={listModeUpdating}
                     className="px-3 py-1.5 text-xs data-[state=on]:bg-green-500/20 data-[state=on]:text-green-600 dark:data-[state=on]:text-green-400 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Только заблокированные
@@ -456,6 +595,7 @@ export function MainPage() {
                       <div>
                         <ToggleGroupItem
                           value="exclude"
+                          disabled={listModeUpdating}
                           className="px-3 py-1.5 text-xs data-[state=on]:bg-amber-500/20 data-[state=on]:text-amber-600 dark:data-[state=on]:text-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Исключения
@@ -470,6 +610,7 @@ export function MainPage() {
               : (
                   <ToggleGroupItem
                     value="exclude"
+                    disabled={listModeUpdating}
                     className="px-3 py-1.5 text-xs data-[state=on]:bg-amber-500/20 data-[state=on]:text-amber-600 dark:data-[state=on]:text-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Исключения

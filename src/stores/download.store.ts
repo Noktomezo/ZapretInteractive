@@ -2,8 +2,8 @@ import type { DownloadProgress } from '@/lib/types'
 import { listen } from '@tauri-apps/api/event'
 import { toast } from 'sonner'
 import { create } from 'zustand'
-import * as tauri from '../lib/tauri'
 import { useAppStore } from './app.store'
+import { useConnectionStore } from './connection.store'
 
 interface DownloadStore {
   isDownloading: boolean
@@ -39,39 +39,13 @@ export const useDownloadStore = create<DownloadStore>(set => ({
 
       const unlistenComplete = await listen('download-complete', async () => {
         try {
-          const version = useAppStore.getState().refreshVersion + 1
-          useAppStore.setState({ refreshVersion: version })
-          const binaries = await tauri.verifyBinaries()
-          const missingCriticalFiles = await tauri.getMissingCriticalFiles()
-          if (useAppStore.getState().refreshVersion !== version) {
-            return
-          }
-          useAppStore.getState().setBinariesOk(binaries)
-          useAppStore.getState().setMissingCriticalFiles(missingCriticalFiles)
-          if (binaries) {
-            try {
-              const availableUpdates = await tauri.getAvailableUpdates()
-              if (useAppStore.getState().refreshVersion !== version) {
-                return
-              }
-              useAppStore.getState().setAvailableUpdates(availableUpdates)
-            }
-            catch (e) {
-              if (useAppStore.getState().refreshVersion !== version) {
-                return
-              }
-              useAppStore.getState().setAvailableUpdates([])
-              toast.error(`Ошибка проверки обновлений файлов: ${e}`)
-            }
-          }
-          else {
-            useAppStore.getState().setAvailableUpdates([])
-          }
+          await useAppStore.getState().refreshLocalState()
+          void useAppStore.getState().refreshRemoteState().catch((error) => {
+            useConnectionStore.getState().addLog(`Не удалось обновить удалённое состояние файлов после загрузки: ${error}`)
+          })
         }
         catch (e) {
-          useAppStore.getState().setBinariesOk(false)
-          useAppStore.getState().setMissingCriticalFiles([])
-          useAppStore.getState().setAvailableUpdates([])
+          useConnectionStore.getState().addLog(`Не удалось обновить локальное состояние файлов после загрузки: ${e}`)
           toast.error(`Ошибка проверки файлов: ${e}`)
         }
         finally {

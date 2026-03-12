@@ -27,6 +27,10 @@ dist-ssr
 *.sln
 *.sw?
 
+# Updater keys
+src-tauri/updater.key
+src-tauri/updater.key.pub
+
 # AI
 .kilocode
 .codex

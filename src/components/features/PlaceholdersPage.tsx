@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import * as tauri from '@/lib/tauri'
 import { useConfigStore } from '@/stores/config.store'
+import { useConnectionStore } from '@/stores/connection.store'
 
 export function PlaceholdersPage() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -22,34 +23,57 @@ export function PlaceholdersPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [newName, setNewName] = useState('')
   const [newPath, setNewPath] = useState('')
-  const isInitialLoadRef = useRef(true)
   const isSavingRef = useRef(false)
 
-  const { config, loading, load, save, addPlaceholder, updatePlaceholder, deletePlaceholder, setPlaceholders }
-    = useConfigStore()
+  const config = useConfigStore(state => state.config)
+  const loading = useConfigStore(state => state.loading)
+  const load = useConfigStore(state => state.load)
+  const saveNow = useConfigStore(state => state.saveNow)
+  const addPlaceholder = useConfigStore(state => state.addPlaceholder)
+  const revertTo = useConfigStore(state => state.revertTo)
+  const updatePlaceholder = useConfigStore(state => state.updatePlaceholder)
+  const deletePlaceholder = useConfigStore(state => state.deletePlaceholder)
+  const setPlaceholders = useConfigStore(state => state.setPlaceholders)
+  const addConfigLog = useConnectionStore(state => state.addConfigLog)
 
   useEffect(() => {
-    load().then(() => {
-      isInitialLoadRef.current = false
-    }).catch(console.error)
-  }, [])
+    void load().catch(console.error)
+  }, [load])
 
-  useEffect(() => {
-    if (config && !isInitialLoadRef.current && !isSavingRef.current) {
-      save().catch(console.error)
-    }
-  }, [config])
-
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (isSavingRef.current) {
       toast.error('Подождите, выполняется сохранение')
       return
     }
-    if (newName.trim() && newPath.trim()) {
-      addPlaceholder(newName.trim(), newPath.trim())
+
+    if (!newName.trim() || !newPath.trim()) {
+      return
+    }
+
+    const currentConfig = useConfigStore.getState().config
+    if (!currentConfig) {
+      return
+    }
+
+    const previousConfig = structuredClone(currentConfig)
+    const placeholderName = newName.trim()
+    const placeholderPath = newPath.trim()
+    addPlaceholder(placeholderName, placeholderPath)
+    isSavingRef.current = true
+    try {
+      await saveNow()
+      addConfigLog(`добавлен плейсхолдер "{{${placeholderName}}}" -> ${placeholderPath}`)
       setNewName('')
       setNewPath('')
       setAddOpen(false)
+      toast.success('Плейсхолдер добавлен')
+    }
+    catch (e) {
+      revertTo(previousConfig)
+      toast.error(`Ошибка сохранения плейсхолдера: ${e instanceof Error ? e.message : String(e)}`)
+    }
+    finally {
+      isSavingRef.current = false
     }
   }
 
@@ -59,19 +83,49 @@ export function PlaceholdersPage() {
     setEditPath(placeholder.path)
   }
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (isSavingRef.current) {
       toast.error('Подождите, выполняется сохранение')
       return
     }
-    if (editingIndex !== null) {
-      const trimmedName = editName.trim()
-      const trimmedPath = editPath.trim()
-      if (!trimmedName || !trimmedPath) {
-        return
+
+    if (editingIndex === null) {
+      return
+    }
+
+    const trimmedName = editName.trim()
+    const trimmedPath = editPath.trim()
+    if (!trimmedName || !trimmedPath) {
+      return
+    }
+
+    const currentConfig = useConfigStore.getState().config
+    if (!currentConfig) {
+      return
+    }
+
+    const previousConfig = structuredClone(currentConfig)
+    const previousPlaceholder = previousConfig.placeholders[editingIndex]
+    updatePlaceholder(editingIndex, trimmedName, trimmedPath)
+    isSavingRef.current = true
+    try {
+      await saveNow()
+      if (previousPlaceholder) {
+        addConfigLog(
+          previousPlaceholder.name !== trimmedName
+            ? `обновлён плейсхолдер "{{${previousPlaceholder.name}}}" -> "{{${trimmedName}}}"`
+            : `путь плейсхолдера "{{${trimmedName}}}" изменён на ${trimmedPath}`,
+        )
       }
-      updatePlaceholder(editingIndex, trimmedName, trimmedPath)
       setEditingIndex(null)
+      toast.success('Плейсхолдер сохранён')
+    }
+    catch (e) {
+      revertTo(previousConfig)
+      toast.error(`Ошибка сохранения плейсхолдера: ${e instanceof Error ? e.message : String(e)}`)
+    }
+    finally {
+      isSavingRef.current = false
     }
   }
 
@@ -79,10 +133,14 @@ export function PlaceholdersPage() {
     if (isSavingRef.current)
       return
     const prevPlaceholders = config?.placeholders?.slice() ?? []
+    const deletedPlaceholder = prevPlaceholders[index]
     deletePlaceholder(index)
     isSavingRef.current = true
     try {
-      await save()
+      await saveNow()
+      if (deletedPlaceholder) {
+        addConfigLog(`удалён плейсхолдер "{{${deletedPlaceholder.name}}}"`)
+      }
       toast.success('Плейсхолдер удалён')
     }
     catch (e) {

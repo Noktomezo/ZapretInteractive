@@ -1,5 +1,8 @@
 use crate::commands::process::kill_windivert_service;
-use crate::config::{get_config_path, get_zapret_dir};
+use crate::config::{
+    AppConfig, AppState, current_config, ensure_config_exists_and_loaded, get_config_path,
+    get_zapret_dir,
+};
 use futures::stream::{self, StreamExt};
 use notify::{Config as NotifyConfig, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use sha2::{Digest, Sha256};
@@ -11,7 +14,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{LazyLock, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 use tokio::time::sleep;
@@ -29,11 +32,56 @@ pub struct FileHealthChangedPayload {
     pub binaries_ok: bool,
     pub lists_changed: bool,
     pub config_missing: bool,
+    pub config_restored: bool,
+    pub config_reloaded: bool,
+    pub restored_files: Vec<String>,
+    pub unrecoverable_filters: Vec<String>,
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 struct ListsState {
     last_updated_at: Option<u64>,
+}
+
+#[derive(Clone, serde::Serialize)]
+pub struct AppHealthSnapshot {
+    pub binaries_ok: bool,
+    pub missing_critical_files: Vec<String>,
+    pub available_updates: Vec<String>,
+    pub available_updates_checked: bool,
+    pub config_missing: bool,
+    pub lists_last_updated_at: Option<u64>,
+}
+
+#[derive(Clone, serde::Serialize, Default)]
+pub struct EnsureManagedFilesResult {
+    pub restored_files: Vec<String>,
+    pub config_restored: bool,
+    pub config_reloaded: bool,
+    pub unrecoverable_filters: Vec<String>,
+}
+
+#[derive(Clone)]
+struct TrackedFile {
+    name: &'static str,
+    group: &'static str,
+    dest_path: PathBuf,
+    url: String,
+    required_for_health: bool,
+    include_in_remote_updates: bool,
+}
+
+#[derive(Clone)]
+struct ConfiguredFilterFile {
+    filename: String,
+    content: String,
+    dest_path: PathBuf,
+}
+
+#[derive(Clone)]
+struct LocalFileInspection {
+    exists: bool,
+    hash: Option<String>,
 }
 
 const BINARIES: [(&str, &str); 4] = [
@@ -102,7 +150,6 @@ const LISTS: &[&str] = &[
     "zapret-ip-user.txt",
 ];
 
-const FILTERS_BASE_URL: &str = "https://raw.githubusercontent.com/bol-van/zapret-win-bundle/master/zapret-winws/windivert.filter";
 const FILTERS: &[&str] = &[
     "windivert_part.dht.txt",
     "windivert_part.discord_media.txt",
@@ -124,6 +171,14 @@ struct FileToDownload {
     hash_key: Option<String>,
     phase: String,
     cached_bytes: Option<Vec<u8>>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum DownloadMode {
+    RepairManaged,
+    RepairOrUpdate,
+    ReinstallAll,
+    ApplyCoreUpdates,
 }
 
 fn get_fake_dir() -> PathBuf {
@@ -187,12 +242,6 @@ fn calculate_sha256(file_path: &PathBuf) -> Result<String, String> {
     let mut file = fs::File::open(file_path).map_err(|e| e.to_string())?;
     std::io::copy(&mut file, &mut hasher).map_err(|e| e.to_string())?;
     Ok(format!("{:x}", hasher.finalize()))
-}
-
-struct RemoteCheckTarget {
-    name: String,
-    url: String,
-    dest_path: PathBuf,
 }
 
 fn calculate_sha256_bytes(bytes: &[u8]) -> String {
@@ -286,13 +335,6 @@ fn rebuild_hashes_from_disk() -> Result<(), String> {
         }
     }
 
-    for name in FILTERS {
-        let path = get_filters_dir().join(name);
-        if path.exists() {
-            hashes.insert(hash_key("filters", name), calculate_sha256(&path)?);
-        }
-    }
-
     for name in LISTS {
         let path = get_lists_dir().join(name);
         if path.exists() {
@@ -322,6 +364,268 @@ fn hash_key(group: &str, name: &str) -> String {
     format!("{group}:{name}")
 }
 
+fn tracked_files() -> Vec<TrackedFile> {
+    let mut files = Vec::new();
+
+    for (name, url) in BINARIES {
+        files.push(TrackedFile {
+            name,
+            group: "binaries",
+            dest_path: get_zapret_dir().join(name),
+            url: url.to_string(),
+            required_for_health: true,
+            include_in_remote_updates: true,
+        });
+    }
+
+    for name in FAKE_FILES {
+        files.push(TrackedFile {
+            name,
+            group: "fake",
+            dest_path: get_fake_dir().join(name),
+            url: format!("{FAKE_FILES_BASE_URL}/{name}"),
+            required_for_health: true,
+            include_in_remote_updates: true,
+        });
+    }
+
+    for name in LISTS {
+        files.push(TrackedFile {
+            name,
+            group: "lists",
+            dest_path: get_lists_dir().join(name),
+            url: format!("{LISTS_BASE_URL}/{name}"),
+            required_for_health: true,
+            include_in_remote_updates: false,
+        });
+    }
+
+    files
+}
+
+fn tracked_key(file: &TrackedFile) -> String {
+    hash_key(file.group, file.name)
+}
+
+fn configured_filter_files(config: &AppConfig) -> Vec<ConfiguredFilterFile> {
+    config
+        .filters
+        .iter()
+        .map(|filter| ConfiguredFilterFile {
+            filename: filter.filename.clone(),
+            content: filter.content.clone(),
+            dest_path: get_filters_dir().join(&filter.filename),
+        })
+        .collect()
+}
+
+fn configured_filter_display_name(filename: &str) -> String {
+    format!("filters/{filename}")
+}
+
+fn configured_filter_is_healthy(file: &ConfiguredFilterFile) -> Result<bool, String> {
+    if !file.dest_path.exists() {
+        return Ok(false);
+    }
+    let actual = calculate_sha256(&file.dest_path)?;
+    let expected = calculate_sha256_bytes(file.content.as_bytes());
+    Ok(actual == expected)
+}
+
+fn inspect_local_files(
+    files: &[TrackedFile],
+) -> Result<HashMap<String, LocalFileInspection>, String> {
+    let mut inspections = HashMap::new();
+
+    for file in files {
+        let inspection = if file.dest_path.exists() {
+            LocalFileInspection {
+                exists: true,
+                hash: Some(calculate_sha256(&file.dest_path)?),
+            }
+        } else {
+            LocalFileInspection {
+                exists: false,
+                hash: None,
+            }
+        };
+        inspections.insert(tracked_key(file), inspection);
+    }
+
+    Ok(inspections)
+}
+
+async fn inspect_local_files_async(
+    files: &[TrackedFile],
+) -> Result<HashMap<String, LocalFileInspection>, String> {
+    let owned_files = files.to_vec();
+    tauri::async_runtime::spawn_blocking(move || inspect_local_files(&owned_files))
+        .await
+        .map_err(|e| format!("Failed to join local file inspection task: {e}"))?
+}
+
+fn tracked_file_is_healthy(
+    file: &TrackedFile,
+    stored_hashes: &HashMap<String, String>,
+    inspections: &HashMap<String, LocalFileInspection>,
+) -> bool {
+    let Some(inspection) = inspections.get(&tracked_key(file)) else {
+        return false;
+    };
+    if !inspection.exists {
+        return false;
+    }
+
+    let Some(expected) = expected_hash(stored_hashes, file.group, file.name) else {
+        return false;
+    };
+
+    inspection.hash.as_deref() == Some(expected.as_str())
+}
+
+fn compute_health_snapshot_fields(
+    files: &[TrackedFile],
+    stored_hashes: &HashMap<String, String>,
+    inspections: &HashMap<String, LocalFileInspection>,
+) -> (bool, Vec<String>) {
+    let mut missing_critical_files = Vec::new();
+
+    for file in files.iter().filter(|file| file.required_for_health) {
+        if !tracked_file_is_healthy(file, stored_hashes, inspections) {
+            missing_critical_files.push(file.name.to_string());
+        }
+    }
+
+    (missing_critical_files.is_empty(), missing_critical_files)
+}
+
+fn backfill_missing_core_hashes(
+    files: &[TrackedFile],
+    stored_hashes: &HashMap<String, String>,
+    inspections: &HashMap<String, LocalFileInspection>,
+) -> Result<bool, String> {
+    let mut additions = Vec::new();
+
+    for file in files {
+        let Some(inspection) = inspections.get(&tracked_key(file)) else {
+            continue;
+        };
+        if !inspection.exists || inspection.hash.is_none() {
+            continue;
+        }
+        if expected_hash(stored_hashes, file.group, file.name).is_some() {
+            continue;
+        }
+
+        additions.push((
+            hash_key(file.group, file.name),
+            inspection.hash.clone().unwrap_or_default(),
+        ));
+    }
+
+    if additions.is_empty() {
+        return Ok(false);
+    }
+
+    update_hashes(|hashes| {
+        for (key, value) in additions {
+            hashes.insert(key, value);
+        }
+        Ok(())
+    })?;
+
+    Ok(true)
+}
+
+struct LocalHealthSnapshotFields {
+    binaries_ok: bool,
+    missing_critical_files: Vec<String>,
+    config_missing: bool,
+    lists_last_updated_at: Option<u64>,
+}
+
+fn build_local_health_snapshot_with_inspections(
+    state: &AppState,
+    files: &[TrackedFile],
+    inspections: &HashMap<String, LocalFileInspection>,
+) -> Result<LocalHealthSnapshotFields, String> {
+    ensure_helper_files()?;
+
+    let mut stored_hashes = load_stored_hashes()?;
+    if backfill_missing_core_hashes(&files, &stored_hashes, &inspections)? {
+        stored_hashes = load_stored_hashes()?;
+    }
+
+    let (_, mut missing_critical_files) =
+        compute_health_snapshot_fields(&files, &stored_hashes, &inspections);
+    let config = current_config(state)?;
+
+    for filter in configured_filter_files(&config) {
+        if !configured_filter_is_healthy(&filter)? {
+            missing_critical_files.push(configured_filter_display_name(&filter.filename));
+        }
+    }
+
+    let config_missing = !get_config_path().exists();
+    if config_missing {
+        missing_critical_files.push("config.json".to_string());
+    }
+
+    missing_critical_files.sort();
+    missing_critical_files.dedup();
+
+    Ok(LocalHealthSnapshotFields {
+        binaries_ok: missing_critical_files.is_empty(),
+        missing_critical_files,
+        config_missing,
+        lists_last_updated_at: load_lists_state().unwrap_or_default().last_updated_at,
+    })
+}
+
+fn build_local_health_snapshot(state: &AppState) -> Result<LocalHealthSnapshotFields, String> {
+    let files = tracked_files();
+    let inspections = inspect_local_files(&files)?;
+    build_local_health_snapshot_with_inspections(state, &files, &inspections)
+}
+
+async fn collect_available_updates_with_context(
+    client: &reqwest::Client,
+    files: &[TrackedFile],
+    inspections: &HashMap<String, LocalFileInspection>,
+) -> Result<Vec<String>, String> {
+    let manual_update_files: Vec<_> = files
+        .iter()
+        .filter_map(|file| file.include_in_remote_updates.then_some(file.clone()))
+        .collect();
+    let results = stream::iter(manual_update_files.into_iter().map(|file| {
+        let local_hash = inspections
+            .get(&tracked_key(&file))
+            .and_then(|value| value.hash.clone());
+        async move {
+            let (changed, _) =
+                check_remote_file(client, &file.url, file.name, local_hash.as_deref()).await?;
+            Ok::<Option<String>, String>(if changed {
+                Some(file.name.to_string())
+            } else {
+                None
+            })
+        }
+    }))
+    .buffer_unordered(FILES_CONCURRENCY_LIMIT)
+    .collect::<Vec<_>>()
+    .await;
+
+    let mut updates = Vec::new();
+    for result in results {
+        if let Some(name) = result? {
+            updates.push(name);
+        }
+    }
+
+    updates.sort();
+    Ok(updates)
+}
+
 fn expected_hash<'a>(
     hashes: &'a HashMap<String, String>,
     group: &str,
@@ -334,29 +638,6 @@ fn expected_hash<'a>(
             None
         }
     })
-}
-
-fn file_needs_download(
-    file_path: &Path,
-    group: &str,
-    name: &str,
-    hashes: &HashMap<String, String>,
-    requires_hash: bool,
-) -> Result<bool, String> {
-    if !file_path.exists() {
-        return Ok(true);
-    }
-
-    if !requires_hash {
-        return Ok(false);
-    }
-
-    let Some(expected) = expected_hash(hashes, group, name) else {
-        return Ok(true);
-    };
-
-    let actual = calculate_sha256(&file_path.to_path_buf())?;
-    Ok(actual != *expected)
 }
 
 fn verify_group(
@@ -407,134 +688,27 @@ fn binary_names() -> Vec<&'static str> {
     BINARIES.iter().map(|(name, _)| *name).collect()
 }
 
-fn critical_files_ok() -> Result<bool, String> {
-    ensure_helper_files()?;
-    let stored_hashes = load_stored_hashes()?;
-    if !verify_group(
-        &get_zapret_dir(),
-        "binaries",
-        &binary_names(),
-        &stored_hashes,
-    )? {
-        return Ok(false);
-    }
-    if !verify_group(&get_fake_dir(), "fake", FAKE_FILES, &stored_hashes)? {
-        return Ok(false);
-    }
-    if !verify_group(&get_lists_dir(), "lists", LISTS, &stored_hashes)? {
-        return Ok(false);
-    }
-    Ok(true)
+fn critical_files_ok(state: &AppState) -> Result<bool, String> {
+    Ok(build_local_health_snapshot(state)?.binaries_ok)
 }
 
-fn collect_missing_critical_files() -> Result<Vec<String>, String> {
-    ensure_helper_files()?;
-    let stored_hashes = load_stored_hashes()?;
-    let mut missing = Vec::new();
-
-    for name in binary_names() {
-        if file_needs_download(
-            &get_zapret_dir().join(name),
-            "binaries",
-            name,
-            &stored_hashes,
-            true,
-        )? {
-            missing.push(name.to_string());
-        }
-    }
-
-    for name in FAKE_FILES {
-        if file_needs_download(
-            &get_fake_dir().join(name),
-            "fake",
-            name,
-            &stored_hashes,
-            true,
-        )? {
-            missing.push((*name).to_string());
-        }
-    }
-
-    for name in LISTS {
-        if file_needs_download(
-            &get_lists_dir().join(name),
-            "lists",
-            name,
-            &stored_hashes,
-            true,
-        )? {
-            missing.push((*name).to_string());
-        }
-    }
-
-    Ok(missing)
+fn collect_missing_critical_files(state: &AppState) -> Result<Vec<String>, String> {
+    Ok(build_local_health_snapshot(state)?.missing_critical_files)
 }
 
 async fn check_remote_file(
-    file_path: PathBuf,
     client: &reqwest::Client,
     url: &str,
     name: &str,
+    local_hash: Option<&str>,
 ) -> Result<(bool, Option<Vec<u8>>), String> {
-    if !file_path.exists() {
+    let Some(local_hash) = local_hash else {
         return Ok((true, None));
-    }
-
-    let local_hash = calculate_sha256_async(file_path).await?;
+    };
     let bytes = download_bytes(client, url, name).await?;
     let remote_hash = calculate_sha256_bytes(&bytes);
     let changed = local_hash != remote_hash;
     Ok((changed, changed.then_some(bytes)))
-}
-
-async fn collect_available_updates() -> Result<Vec<String>, String> {
-    ensure_helper_files()?;
-    let client = create_http_client()?;
-    let stored_hashes = load_stored_hashes()?;
-    let mut targets = Vec::new();
-
-    for (name, url) in BINARIES {
-        let path = get_zapret_dir().join(name);
-        if !file_needs_download(&path, "binaries", name, &stored_hashes, true)? {
-            targets.push(RemoteCheckTarget {
-                name: name.to_string(),
-                url: url.to_string(),
-                dest_path: path,
-            });
-        }
-    }
-
-    for name in FAKE_FILES {
-        let path = get_fake_dir().join(name);
-        if !file_needs_download(&path, "fake", name, &stored_hashes, true)? {
-            targets.push(RemoteCheckTarget {
-                name: (*name).to_string(),
-                url: format!("{FAKE_FILES_BASE_URL}/{name}"),
-                dest_path: path,
-            });
-        }
-    }
-
-    let client = &client;
-    let results = stream::iter(targets.into_iter().map(|target| async move {
-        let (changed, _) =
-            check_remote_file(target.dest_path, client, &target.url, &target.name).await?;
-        Ok::<Option<String>, String>(if changed { Some(target.name) } else { None })
-    }))
-    .buffer_unordered(FILES_CONCURRENCY_LIMIT)
-    .collect::<Vec<_>>()
-    .await;
-
-    let mut updates = Vec::new();
-    for result in results {
-        if let Some(name) = result? {
-            updates.push(name);
-        }
-    }
-
-    updates.sort();
-    Ok(updates)
 }
 
 fn path_is_inside(path: &Path, dir: &Path) -> bool {
@@ -549,25 +723,22 @@ fn event_affects_lists(paths: &[PathBuf]) -> bool {
 fn event_affects_tracked_files(paths: &[PathBuf]) -> bool {
     let base_dir = get_zapret_dir();
     let fake_dir = get_fake_dir();
+    let filters_dir = get_filters_dir();
     let hashes_path = get_hashes_path();
     let lists_state_path = get_lists_state_path();
     let config_path = get_config_path();
     let critical_binary_names = binary_names();
     paths.iter().any(|path| {
         path_is_inside(path, &fake_dir)
+            || path_is_inside(path, &filters_dir)
             || path == &hashes_path
             || path == &lists_state_path
             || path == &config_path
             || critical_binary_names
                 .iter()
                 .any(|name| path == &base_dir.join(name))
+            || LISTS.iter().any(|name| path == &get_lists_dir().join(name))
     })
-}
-
-async fn calculate_sha256_async(file_path: PathBuf) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || calculate_sha256(&file_path))
-        .await
-        .map_err(|e| format!("Failed to join SHA-256 task: {e}"))?
 }
 
 pub fn start_files_watcher(app: AppHandle) -> Result<(), String> {
@@ -647,47 +818,54 @@ pub fn start_files_watcher(app: AppHandle) -> Result<(), String> {
 
             let tracked_files_changed = event_affects_tracked_files(&changed_paths);
             let lists_changed = event_affects_lists(&changed_paths);
-            let lists_state_changed = changed_paths
-                .iter()
-                .any(|path| path == &get_lists_state_path());
 
             if !tracked_files_changed && !lists_changed {
                 continue;
             }
 
-            if lists_state_changed
-                && !get_lists_state_path().exists()
-                && let Err(e) = rebuild_lists_state()
-            {
-                let _ = app.emit(
-                    "files-health-watch-error",
-                    format!("Не удалось пересоздать lists-state.json: {e}"),
-                );
-            }
+            let state = app.state::<AppState>();
+            let ensured =
+                match tauri::async_runtime::block_on(ensure_managed_files_internal(&state)) {
+                    Ok(result) => result,
+                    Err(error) => {
+                        let _ = app.emit(
+                            "files-health-watch-error",
+                            format!("Не удалось восстановить управляемые файлы: {error}"),
+                        );
+                        continue;
+                    }
+                };
 
-            let binaries_ok = match critical_files_ok() {
-                Ok(ok) => ok,
-                Err(e) => {
+            let payload = match build_local_health_snapshot(&state) {
+                Ok(snapshot) => FileHealthChangedPayload {
+                    binaries_ok: snapshot.binaries_ok,
+                    lists_changed,
+                    config_missing: snapshot.config_missing,
+                    config_restored: ensured.config_restored,
+                    config_reloaded: ensured.config_reloaded,
+                    restored_files: ensured.restored_files.clone(),
+                    unrecoverable_filters: ensured.unrecoverable_filters.clone(),
+                },
+                Err(error) => {
                     let _ = app.emit(
                         "files-health-watch-error",
-                        format!("Не удалось перепроверить файлы: {e}"),
+                        format!("Не удалось получить локальный снимок файлов: {error}"),
                     );
                     continue;
                 }
             };
 
-            let _ = app.emit(
-                "files-health-changed",
-                FileHealthChangedPayload {
-                    binaries_ok,
-                    lists_changed,
-                    config_missing: !get_config_path().exists(),
-                },
-            );
+            let _ = app.emit("files-health-changed", payload);
         }
     });
 
     Ok(())
+}
+
+async fn calculate_sha256_async(file_path: PathBuf) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || calculate_sha256(&file_path))
+        .await
+        .map_err(|e| format!("Failed to join SHA-256 task: {e}"))?
 }
 
 async fn download_bytes(
@@ -711,6 +889,275 @@ async fn download_bytes(
         .await
         .map(|bytes| bytes.to_vec())
         .map_err(|e| format!("Failed to read {name} body: {e}"))
+}
+
+async fn write_bytes_atomic(dest_path: &Path, bytes: &[u8], name: &str) -> Result<(), String> {
+    if let Some(parent) = dest_path.parent()
+        && !parent.exists()
+    {
+        tokio::fs::create_dir_all(parent)
+            .await
+            .map_err(|e| format!("Failed to create parent directory for {name}: {e}"))?;
+    }
+
+    let temp_path = dest_path.with_extension("tmp");
+    use tokio::io::AsyncWriteExt;
+    let mut temp_file = tokio::fs::File::create(&temp_path)
+        .await
+        .map_err(|e| format!("Failed to create temp file for {name}: {e}"))?;
+    temp_file
+        .write_all(bytes)
+        .await
+        .map_err(|e| format!("Failed to write temp file for {name}: {e}"))?;
+    temp_file
+        .sync_all()
+        .await
+        .map_err(|e| format!("Failed to sync temp file for {name}: {e}"))?;
+    tokio::fs::rename(&temp_path, dest_path)
+        .await
+        .map_err(|e| format!("Failed to rename temp file for {name}: {e}"))?;
+    Ok(())
+}
+
+fn configs_equal(left: &AppConfig, right: &AppConfig) -> bool {
+    serde_json::to_string(left).ok() == serde_json::to_string(right).ok()
+}
+
+async fn sync_configured_filter_files(
+    config: &AppConfig,
+    force_rewrite: bool,
+) -> Result<Vec<String>, String> {
+    let mut restored_files = Vec::new();
+
+    for filter in configured_filter_files(config) {
+        let healthy = configured_filter_is_healthy(&filter)?;
+        if !force_rewrite && healthy {
+            continue;
+        }
+
+        write_bytes_atomic(
+            &filter.dest_path,
+            filter.content.as_bytes(),
+            &configured_filter_display_name(&filter.filename),
+        )
+        .await?;
+        restored_files.push(configured_filter_display_name(&filter.filename));
+    }
+
+    Ok(restored_files)
+}
+
+async fn build_download_plan(
+    mode: DownloadMode,
+    client: &reqwest::Client,
+    files: &[TrackedFile],
+) -> Result<Vec<FileToDownload>, String> {
+    let mut candidates: Vec<FileToDownload> = files
+        .iter()
+        .map(|file| FileToDownload {
+            name: file.name.to_string(),
+            url: file.url.clone(),
+            dest_path: file.dest_path.clone(),
+            hash_key: Some(hash_key(file.group, file.name)),
+            phase: file.group.to_string(),
+            cached_bytes: None,
+        })
+        .collect();
+
+    if mode == DownloadMode::ReinstallAll {
+        return Ok(candidates);
+    }
+
+    let mut stored_hashes = load_stored_hashes()?;
+    let inspections = inspect_local_files_async(files).await?;
+    if backfill_missing_core_hashes(files, &stored_hashes, &inspections)? {
+        stored_hashes = load_stored_hashes()?;
+    }
+
+    let stored_hashes = Arc::new(stored_hashes);
+    let inspections = Arc::new(inspections);
+    let results = stream::iter(candidates.drain(..).zip(files.iter().cloned()).map(
+        |(file, tracked_file)| {
+            let stored_hashes = stored_hashes.clone();
+            let inspections = inspections.clone();
+            async move {
+                let local_inspection = inspections.get(&tracked_key(&tracked_file));
+                let local_hash = local_inspection.and_then(|value| value.hash.as_deref());
+                let is_healthy =
+                    tracked_file_is_healthy(&tracked_file, &stored_hashes, &inspections);
+
+                let checked = match mode {
+                    DownloadMode::RepairManaged => {
+                        if is_healthy {
+                            (false, None)
+                        } else {
+                            (true, None)
+                        }
+                    }
+                    DownloadMode::RepairOrUpdate => {
+                        if !is_healthy {
+                            (true, None)
+                        } else if tracked_file.include_in_remote_updates && local_hash.is_some() {
+                            check_remote_file(client, &file.url, &file.name, local_hash).await?
+                        } else if tracked_file.include_in_remote_updates {
+                            (true, None)
+                        } else {
+                            (false, None)
+                        }
+                    }
+                    DownloadMode::ApplyCoreUpdates => {
+                        if !tracked_file.include_in_remote_updates {
+                            (false, None)
+                        } else if local_hash.is_some() {
+                            check_remote_file(client, &file.url, &file.name, local_hash).await?
+                        } else {
+                            (true, None)
+                        }
+                    }
+                    DownloadMode::ReinstallAll => (true, None),
+                };
+
+                Ok::<Option<FileToDownload>, String>(if checked.0 || checked.1.is_some() {
+                    Some(FileToDownload {
+                        cached_bytes: checked.1,
+                        ..file
+                    })
+                } else {
+                    None
+                })
+            }
+        },
+    ))
+    .buffer_unordered(FILES_CONCURRENCY_LIMIT)
+    .collect::<Vec<_>>()
+    .await;
+
+    let mut filtered = Vec::new();
+    for result in results {
+        if let Some(file) = result? {
+            filtered.push(file);
+        }
+    }
+
+    Ok(filtered)
+}
+
+async fn execute_download_plan(
+    app: Option<&AppHandle>,
+    client: &reqwest::Client,
+    files_to_download: &[FileToDownload],
+) -> Result<Vec<String>, String> {
+    let total_files = files_to_download.len();
+    if let Some(app) = app {
+        app.emit("download-start", total_files).ok();
+    }
+
+    if total_files == 0 {
+        if let Some(app) = app {
+            app.emit("download-complete", ()).ok();
+        }
+        return Ok(Vec::new());
+    }
+
+    #[cfg(windows)]
+    {
+        if let Err(e) = kill_windivert_service() {
+            if e.contains("does not exist") || e.contains("marked for deletion") {
+                eprintln!("Non-fatal WinDivert service state before download: {e}");
+            } else {
+                if let Some(app) = app {
+                    app.emit(
+                        "download-error",
+                        format!("Failed to stop WinDivert service before download: {e}"),
+                    )
+                    .ok();
+                }
+                return Err(format!(
+                    "Failed to stop WinDivert service before download: {e}"
+                ));
+            }
+        }
+        sleep(Duration::from_millis(300)).await;
+    }
+
+    let mut downloaded = Vec::new();
+    let downloaded_lists = files_to_download.iter().any(|file| file.phase == "lists");
+
+    for (current, file) in files_to_download.iter().enumerate() {
+        if let Some(app) = app {
+            app.emit(
+                "download-progress",
+                DownloadProgress {
+                    current: current + 1,
+                    total: total_files,
+                    filename: file.name.clone(),
+                    phase: file.phase.clone(),
+                },
+            )
+            .ok();
+        }
+
+        let bytes = if let Some(bytes) = &file.cached_bytes {
+            bytes.clone()
+        } else {
+            download_bytes(client, &file.url, &file.name).await?
+        };
+
+        write_bytes_atomic(&file.dest_path, &bytes, &file.name).await?;
+
+        if let Some(hash_key) = &file.hash_key {
+            let hash = calculate_sha256_async(file.dest_path.clone()).await?;
+            update_hashes(|hashes| {
+                hashes.insert(hash_key.clone(), hash);
+                Ok(())
+            })?;
+        }
+
+        downloaded.push(match file.phase.as_str() {
+            "fake" => format!("fake/{}", file.name),
+            "lists" => format!("lists/{}", file.name),
+            _ => file.name.clone(),
+        });
+    }
+
+    if downloaded_lists {
+        save_lists_state(&ListsState {
+            last_updated_at: Some(current_timestamp()),
+        })?;
+    }
+
+    if let Some(app) = app {
+        app.emit("download-complete", ()).ok();
+    }
+
+    Ok(downloaded)
+}
+
+async fn ensure_managed_files_internal(
+    state: &AppState,
+) -> Result<EnsureManagedFilesResult, String> {
+    ensure_base_directories()?;
+
+    let previous_config = current_config(state)?;
+    let ensured_config = ensure_config_exists_and_loaded(state)?;
+    let config = ensured_config.config.clone();
+    let config_reloaded = !ensured_config.restored_default
+        && (ensured_config.normalized_and_persisted || !configs_equal(&previous_config, &config));
+
+    let client = create_http_client()?;
+    let core_downloads =
+        build_download_plan(DownloadMode::RepairManaged, &client, &tracked_files()).await?;
+    let mut restored_files = execute_download_plan(None, &client, &core_downloads).await?;
+    restored_files.extend(sync_configured_filter_files(&config, false).await?);
+    restored_files.sort();
+    restored_files.dedup();
+
+    Ok(EnsureManagedFilesResult {
+        restored_files,
+        config_restored: ensured_config.restored_default,
+        config_reloaded,
+        unrecoverable_filters: ensured_config.unrecoverable_filters,
+    })
 }
 
 async fn refresh_lists_internal(force: bool) -> Result<usize, String> {
@@ -782,53 +1229,116 @@ async fn refresh_lists_internal(force: bool) -> Result<usize, String> {
 
 pub async fn restore_default_filters_internal() -> Result<(), String> {
     ensure_base_directories()?;
-    let client = create_http_client()?;
-    let filters_dir = get_filters_dir();
-
-    for name in FILTERS {
-        let dest_path = filters_dir.join(name);
-        let bytes = download_bytes(&client, &format!("{FILTERS_BASE_URL}/{name}"), name).await?;
-
-        let temp_path = dest_path.with_extension("tmp");
-        use tokio::io::AsyncWriteExt;
-        let mut temp_file = tokio::fs::File::create(&temp_path)
-            .await
-            .map_err(|e| format!("Failed to create temp file for {name}: {e}"))?;
-        temp_file
-            .write_all(&bytes)
-            .await
-            .map_err(|e| format!("Failed to write temp file for {name}: {e}"))?;
-        temp_file
-            .sync_all()
-            .await
-            .map_err(|e| format!("Failed to sync temp file for {name}: {e}"))?;
-        tokio::fs::rename(&temp_path, &dest_path)
-            .await
-            .map_err(|e| format!("Failed to rename temp file for {name}: {e}"))?;
-
-        let hash = calculate_sha256_async(dest_path).await?;
-        update_hashes(|hashes| {
-            hashes.insert(hash_key("filters", name), hash);
-            Ok(())
-        })?;
-    }
-
+    let default_config = AppConfig::default();
+    let built_in_filters: Vec<_> = default_config
+        .filters
+        .into_iter()
+        .filter(|filter| FILTERS.contains(&filter.filename.as_str()))
+        .collect();
+    let config = AppConfig {
+        filters: built_in_filters,
+        ..AppConfig::default()
+    };
+    sync_configured_filter_files(&config, true).await?;
     Ok(())
 }
 
-#[tauri::command]
-pub fn verify_binaries() -> Result<bool, String> {
-    critical_files_ok()
+async fn build_app_health_snapshot(
+    force_remote_updates: bool,
+    state: &AppState,
+) -> Result<AppHealthSnapshot, String> {
+    let files = tracked_files();
+    let inspections = inspect_local_files_async(&files).await?;
+    let local = build_local_health_snapshot_with_inspections(state, &files, &inspections)?;
+
+    let (available_updates, available_updates_checked) = if force_remote_updates {
+        match create_http_client() {
+            Ok(client) => {
+                match collect_available_updates_with_context(&client, &files, &inspections).await {
+                    Ok(updates) => (updates, true),
+                    Err(error) => {
+                        eprintln!(
+                            "Failed to collect remote available updates while building health snapshot: {error}"
+                        );
+                        (Vec::new(), false)
+                    }
+                }
+            }
+            Err(error) => {
+                eprintln!("Failed to create HTTP client while building health snapshot: {error}");
+                (Vec::new(), false)
+            }
+        }
+    } else {
+        (Vec::new(), false)
+    };
+
+    Ok(AppHealthSnapshot {
+        binaries_ok: local.binaries_ok,
+        missing_critical_files: local.missing_critical_files,
+        available_updates,
+        available_updates_checked,
+        config_missing: local.config_missing,
+        lists_last_updated_at: local.lists_last_updated_at,
+    })
 }
 
 #[tauri::command]
-pub fn get_missing_critical_files() -> Result<Vec<String>, String> {
-    collect_missing_critical_files()
+pub fn verify_binaries(state: tauri::State<'_, AppState>) -> Result<bool, String> {
+    critical_files_ok(&state)
 }
 
 #[tauri::command]
-pub async fn get_available_updates() -> Result<Vec<String>, String> {
-    collect_available_updates().await
+pub fn get_missing_critical_files(
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<String>, String> {
+    collect_missing_critical_files(&state)
+}
+
+#[tauri::command]
+pub async fn get_app_health_snapshot(
+    force_remote_updates: Option<bool>,
+    state: tauri::State<'_, AppState>,
+) -> Result<AppHealthSnapshot, String> {
+    build_app_health_snapshot(force_remote_updates.unwrap_or(false), &state).await
+}
+
+#[tauri::command]
+pub async fn ensure_managed_files(
+    state: tauri::State<'_, AppState>,
+) -> Result<EnsureManagedFilesResult, String> {
+    ensure_managed_files_internal(&state).await
+}
+
+#[tauri::command]
+pub async fn apply_core_file_updates(app: AppHandle) -> Result<(), String> {
+    ensure_helper_files()?;
+    let client = create_http_client()?;
+    let files = tracked_files();
+    let files_to_download =
+        build_download_plan(DownloadMode::ApplyCoreUpdates, &client, &files).await?;
+    let updated_files = execute_download_plan(Some(&app), &client, &files_to_download).await?;
+
+    if updated_files.is_empty() {
+        let _ = app
+            .notification()
+            .builder()
+            .title("Готово")
+            .body("Удалённых обновлений для winws/fake файлов не найдено")
+            .show();
+    } else {
+        let _ = app
+            .notification()
+            .builder()
+            .title("Готово")
+            .body(format!(
+                "Обновлено {} файлов приложения",
+                updated_files.len()
+            ))
+            .show();
+    }
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -841,211 +1351,31 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
     ensure_helper_files()?;
     let force_all = force_all.unwrap_or(false);
 
-    let dir = get_zapret_dir();
-    let fake_dir = get_fake_dir();
-    let lists_dir = get_lists_dir();
-    let filters_dir = get_filters_dir();
     let client = create_http_client()?;
-    let mut candidates: Vec<FileToDownload> = vec![];
-
-    for (name, url) in BINARIES {
-        candidates.push(FileToDownload {
-            name: name.to_string(),
-            url: url.to_string(),
-            dest_path: dir.join(name),
-            hash_key: Some(hash_key("binaries", name)),
-            phase: "binaries".to_string(),
-            cached_bytes: None,
-        });
-    }
-    for name in FAKE_FILES {
-        candidates.push(FileToDownload {
-            name: name.to_string(),
-            url: format!("{FAKE_FILES_BASE_URL}/{name}"),
-            dest_path: fake_dir.join(name),
-            hash_key: Some(hash_key("fake", name)),
-            phase: "fake".to_string(),
-            cached_bytes: None,
-        });
-    }
-    for name in FILTERS {
-        candidates.push(FileToDownload {
-            name: name.to_string(),
-            url: format!("{FILTERS_BASE_URL}/{name}"),
-            dest_path: filters_dir.join(name),
-            hash_key: Some(hash_key("filters", name)),
-            phase: "filters".to_string(),
-            cached_bytes: None,
-        });
-    }
-    for name in LISTS {
-        candidates.push(FileToDownload {
-            name: name.to_string(),
-            url: format!("{LISTS_BASE_URL}/{name}"),
-            dest_path: lists_dir.join(name),
-            hash_key: Some(hash_key("lists", name)),
-            phase: "lists".to_string(),
-            cached_bytes: None,
-        });
-    }
-
+    let files = tracked_files();
     let files_to_download = if force_all {
-        candidates
+        build_download_plan(DownloadMode::ReinstallAll, &client, &files).await?
     } else {
-        let client = &client;
-        let stored_hashes = Arc::new(load_stored_hashes()?);
-        let results = stream::iter(candidates.into_iter().map(|file| {
-            let stored_hashes = stored_hashes.clone();
-            async move {
-                let checked = if file.dest_path.exists() {
-                    let (needs_download, cached_bytes) =
-                        check_remote_file(file.dest_path.clone(), client, &file.url, &file.name)
-                            .await?;
-                    (needs_download, cached_bytes)
-                } else {
-                    (true, None)
-                };
-
-                let (needs_download, cached_bytes) = checked;
-                let hash_missing = file
-                    .hash_key
-                    .as_ref()
-                    .map(|key| !stored_hashes.contains_key(key))
-                    .unwrap_or(false);
-
-                Ok::<Option<FileToDownload>, String>(if needs_download || cached_bytes.is_some() {
-                    Some(FileToDownload {
-                        cached_bytes,
-                        ..file
-                    })
-                } else if hash_missing && file.dest_path.exists() {
-                    let local_hash = calculate_sha256_async(file.dest_path.clone()).await.ok();
-                    if let (Some(hash_key), Some(hash)) = (file.hash_key.as_ref(), local_hash) {
-                        update_hashes(|hashes| {
-                            hashes.insert(hash_key.clone(), hash);
-                            Ok(())
-                        })?;
-                    }
-                    None
-                } else {
-                    None
-                })
-            }
-        }))
-        .buffer_unordered(FILES_CONCURRENCY_LIMIT)
-        .collect::<Vec<_>>()
-        .await;
-
-        let mut filtered = Vec::new();
-        for result in results {
-            if let Some(file) = result? {
-                filtered.push(file);
-            }
-        }
-        filtered
+        build_download_plan(DownloadMode::RepairOrUpdate, &client, &files).await?
     };
+    let mut updated_files = execute_download_plan(Some(&app), &client, &files_to_download).await?;
+    let filter_config = AppConfig {
+        filters: current_config(&app.state::<AppState>())?.filters,
+        ..AppConfig::default()
+    };
+    updated_files.extend(sync_configured_filter_files(&filter_config, force_all).await?);
+    updated_files.sort();
+    updated_files.dedup();
 
-    let total_files = files_to_download.len();
-    app.emit("download-start", total_files).ok();
-
-    if total_files == 0 {
-        app.emit("download-complete", ()).ok();
-        let _ = app
-            .notification()
-            .builder()
-            .title("Готово")
-            .body("Все файлы уже актуальны")
-            .show();
-        return Ok(());
-    }
-
-    #[cfg(windows)]
-    {
-        if let Err(e) = kill_windivert_service() {
-            if e.contains("does not exist") || e.contains("marked for deletion") {
-                eprintln!("Non-fatal WinDivert service state before download: {e}");
-            } else {
-                let err = format!("Failed to stop WinDivert service before download: {e}");
-                app.emit("download-error", err.clone()).ok();
-                return Err(err);
-            }
-        }
-        sleep(Duration::from_millis(300)).await;
-    }
-
-    let downloaded_lists = files_to_download.iter().any(|file| file.phase == "lists");
-
-    for (current, file) in files_to_download.iter().enumerate() {
-        app.emit(
-            "download-progress",
-            DownloadProgress {
-                current: current + 1,
-                total: total_files,
-                filename: file.name.clone(),
-                phase: file.phase.clone(),
-            },
-        )
-        .ok();
-
-        let bytes = if let Some(bytes) = &file.cached_bytes {
-            bytes.clone()
-        } else {
-            match download_bytes(&client, &file.url, &file.name).await {
-                Ok(bytes) => bytes,
-                Err(err) => {
-                    app.emit("download-error", err.clone()).ok();
-                    return Err(err);
-                }
-            }
-        };
-
-        let temp_path = file.dest_path.with_extension("tmp");
-        use tokio::io::AsyncWriteExt;
-        let mut temp_file = match tokio::fs::File::create(&temp_path).await {
-            Ok(f) => f,
-            Err(e) => {
-                let err = format!("Failed to create temp file for {}: {}", file.name, e);
-                app.emit("download-error", err.clone()).ok();
-                return Err(err);
-            }
-        };
-        if let Err(e) = temp_file.write_all(&bytes).await {
-            let err = format!("Failed to write temp file for {}: {}", file.name, e);
-            app.emit("download-error", err.clone()).ok();
-            return Err(err);
-        }
-        if let Err(e) = temp_file.sync_all().await {
-            let err = format!("Failed to sync temp file for {}: {}", file.name, e);
-            app.emit("download-error", err.clone()).ok();
-            return Err(err);
-        }
-        if let Err(e) = tokio::fs::rename(&temp_path, &file.dest_path).await {
-            let err = format!("Failed to rename temp file for {}: {}", file.name, e);
-            app.emit("download-error", err.clone()).ok();
-            return Err(err);
-        }
-
-        if let Some(hash_key) = &file.hash_key {
-            let hash = calculate_sha256_async(file.dest_path.clone()).await?;
-            update_hashes(|hashes| {
-                hashes.insert(hash_key.clone(), hash);
-                Ok(())
-            })?;
-        }
-    }
-
-    if downloaded_lists {
-        save_lists_state(&ListsState {
-            last_updated_at: Some(current_timestamp()),
-        })?;
-    }
-
-    app.emit("download-complete", ()).ok();
     let _ = app
         .notification()
         .builder()
         .title("Готово")
-        .body(format!("Обновлено {} файлов приложения", total_files))
+        .body(if updated_files.is_empty() {
+            "Все управляемые файлы уже актуальны".to_string()
+        } else {
+            format!("Обновлено {} файлов приложения", updated_files.len())
+        })
         .show();
     Ok(())
 }
@@ -1107,14 +1437,6 @@ pub fn save_filter_file(filename: String, content: String) -> Result<(), String>
     drop(temp_file);
     fs::rename(&temp_path, &file_path).map_err(|e| format!("Failed to rename temp file: {e}"))?;
 
-    if FILTERS.contains(&filename.as_str()) {
-        let hash = calculate_sha256(&file_path)?;
-        update_hashes(|hashes| {
-            hashes.insert(hash_key("filters", &filename), hash);
-            Ok(())
-        })?;
-    }
-
     Ok(())
 }
 
@@ -1131,10 +1453,6 @@ pub fn delete_filter_file(filename: String) -> Result<(), String> {
     if file_path.exists() {
         fs::remove_file(file_path).map_err(|e| e.to_string())?;
     }
-    update_hashes(|hashes| {
-        hashes.remove(&hash_key("filters", &filename));
-        Ok(())
-    })?;
     Ok(())
 }
 

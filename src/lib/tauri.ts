@@ -1,4 +1,5 @@
-import type { AppConfig, ListMode } from './types'
+import type { AppConfig, AppHealthSnapshot, EnsureManagedFilesResult, ListMode } from './types'
+import { getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 
@@ -8,6 +9,10 @@ export interface FileHealthChangedPayload {
   binaries_ok: boolean
   lists_changed: boolean
   config_missing: boolean
+  config_restored: boolean
+  config_reloaded: boolean
+  restored_files: string[]
+  unrecoverable_filters: string[]
 }
 
 export const isElevated = (): Promise<boolean> => invoke('is_elevated')
@@ -20,9 +25,11 @@ export const getZapretDirectory = (): Promise<string> => invoke('get_zapret_dire
 export const getHomeDirectory = (): Promise<string> => invoke<string>('get_zapret_directory').then((dir: string) => dir.replace(ZAPRET_SUFFIX_RE, ''))
 export const verifyBinaries = (): Promise<boolean> => invoke('verify_binaries')
 export const getMissingCriticalFiles = (): Promise<string[]> => invoke('get_missing_critical_files')
-export const getAvailableUpdates = (): Promise<string[]> => invoke('get_available_updates')
+export const getAppHealthSnapshot = (forceRemoteUpdates = false): Promise<AppHealthSnapshot> => invoke('get_app_health_snapshot', { forceRemoteUpdates })
+export const ensureManagedFiles = (): Promise<EnsureManagedFilesResult> => invoke('ensure_managed_files')
 export const restoreHashesFromDisk = (): Promise<void> => invoke('restore_hashes_from_disk')
 export const downloadBinaries = async (forceAll = false): Promise<void> => invoke('download_binaries', { forceAll })
+export const applyCoreFileUpdates = async (): Promise<void> => invoke('apply_core_file_updates')
 export const refreshListsIfStale = (): Promise<number> => invoke('refresh_lists_if_stale')
 export const restoreDefaultFilters = (): Promise<void> => invoke('restore_default_filters')
 export const getWinwsPath = (): Promise<string> => invoke('get_winws_path')
@@ -38,6 +45,7 @@ export const getReservedFilterFilenames = (): Promise<string[]> => invoke('get_r
 export const isAutostartEnabled = (): Promise<boolean> => invoke('is_autostart_enabled')
 export const setAutostartEnabled = (enabled: boolean): Promise<void> => invoke('set_autostart_enabled', { enabled })
 export const wasLaunchedFromAutostart = (): Promise<boolean> => invoke('was_launched_from_autostart')
+export const getAppVersion = (): Promise<string> => getVersion()
 
 export function saveFilterFile(filename: string, content: string): Promise<void> {
   return invoke('save_filter_file', { filename, content })

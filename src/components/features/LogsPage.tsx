@@ -54,7 +54,7 @@ export function LogsPage() {
     }
 
     if (isPinnedToBottom) {
-      viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' })
+      viewport.scrollTo({ top: viewport.scrollHeight })
       setHasUnreadLogs(false)
     }
     else if (logs.length > 0) {
@@ -95,7 +95,7 @@ export function LogsPage() {
               const viewport = scrollAreaRef.current?.querySelector('[data-slot="scroll-area-viewport"]') as HTMLDivElement | null
               if (!viewport)
                 return
-              viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' })
+              viewport.scrollTo({ top: viewport.scrollHeight })
               setIsPinnedToBottom(true)
               setHasUnreadLogs(false)
             }}

@@ -1,7 +1,7 @@
 import type { Strategy } from '@/lib/types'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { ArrowLeft, BrushCleaning, Check, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -44,37 +44,56 @@ export function CategoryPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [renameDialogOpen, setRenameDialogOpen] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
-  const isInitialLoadRef = useRef(true)
-  const skipNextAutosaveRef = useRef(false)
-
-  const { config, loading, load, save, updateCategory, deleteCategory, addStrategy, updateStrategy, deleteStrategy, setActiveStrategy, clearActiveStrategy, clearAllActiveStrategies } = useConfigStore()
-  const { restartIfConnected, notifyConfigApplied } = useConnectionStore()
+  const config = useConfigStore(state => state.config)
+  const loading = useConfigStore(state => state.loading)
+  const load = useConfigStore(state => state.load)
+  const reload = useConfigStore(state => state.reload)
+  const saveNow = useConfigStore(state => state.saveNow)
+  const revertTo = useConfigStore(state => state.revertTo)
+  const updateCategory = useConfigStore(state => state.updateCategory)
+  const deleteCategory = useConfigStore(state => state.deleteCategory)
+  const addStrategy = useConfigStore(state => state.addStrategy)
+  const updateStrategy = useConfigStore(state => state.updateStrategy)
+  const deleteStrategy = useConfigStore(state => state.deleteStrategy)
+  const setActiveStrategy = useConfigStore(state => state.setActiveStrategy)
+  const clearActiveStrategy = useConfigStore(state => state.clearActiveStrategy)
+  const clearAllActiveStrategies = useConfigStore(state => state.clearAllActiveStrategies)
+  const restartIfConnected = useConnectionStore(state => state.restartIfConnected)
+  const notifyConfigApplied = useConnectionStore(state => state.notifyConfigApplied)
+  const addConfigLog = useConnectionStore(state => state.addConfigLog)
 
   useEffect(() => {
-    load().then(() => {
-      isInitialLoadRef.current = false
-    })
+    void load()
   }, [load])
-
-  useEffect(() => {
-    if (skipNextAutosaveRef.current) {
-      skipNextAutosaveRef.current = false
-      return
-    }
-
-    if (config && !isInitialLoadRef.current) {
-      void save()
-    }
-  }, [config, save])
 
   const category = config?.categories.find(c => c.id === categoryId)
 
-  const handleAddStrategy = () => {
-    if (newStrategyName.trim() && newStrategyContent.trim() && categoryId) {
-      addStrategy(categoryId, newStrategyName.trim(), newStrategyContent.trim())
+  const handleAddStrategy = async () => {
+    if (!newStrategyName.trim() || !newStrategyContent.trim() || !categoryId) {
+      return
+    }
+
+    const currentConfig = useConfigStore.getState().config
+    if (!currentConfig) {
+      return
+    }
+
+    const previousConfig = structuredClone(currentConfig)
+    const strategyName = newStrategyName.trim()
+    addStrategy(categoryId, strategyName, newStrategyContent.trim())
+    try {
+      await saveNow()
+      if (category) {
+        addConfigLog(`добавлена стратегия "${strategyName}" в категории "${category.name}"`)
+      }
       setNewStrategyName('')
       setNewStrategyContent('')
       setNewStrategyOpen(false)
+      toast.success('Стратегия добавлена')
+    }
+    catch (e) {
+      revertTo(previousConfig)
+      toast.error(`Ошибка сохранения стратегии: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
@@ -84,13 +103,38 @@ export function CategoryPage() {
     setEditingContent(strategy.content)
   }
 
-  const handleSaveEdit = () => {
-    if (editingStrategy && categoryId) {
-      updateStrategy(categoryId, editingStrategy.id, {
-        name: editingName,
-        content: editingContent,
-      })
+  const handleSaveEdit = async () => {
+    if (!editingStrategy || !categoryId) {
+      return
+    }
+
+    const currentConfig = useConfigStore.getState().config
+    if (!currentConfig) {
+      return
+    }
+
+    const previousConfig = structuredClone(currentConfig)
+    const previousName = editingStrategy.name
+    const nextName = editingName.trim()
+    updateStrategy(categoryId, editingStrategy.id, {
+      name: nextName,
+      content: editingContent,
+    })
+    try {
+      await saveNow()
+      if (category) {
+        addConfigLog(
+          previousName !== nextName
+            ? `стратегия "${previousName}" переименована в "${nextName}" в категории "${category.name}"`
+            : `обновлена стратегия "${previousName}" в категории "${category.name}"`,
+        )
+      }
       setEditingStrategy(null)
+      toast.success('Стратегия сохранена')
+    }
+    catch (e) {
+      revertTo(previousConfig)
+      toast.error(`Ошибка сохранения стратегии: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
@@ -99,9 +143,14 @@ export function CategoryPage() {
       return
 
     try {
-      skipNextAutosaveRef.current = true
       setActiveStrategy(categoryId, strategyId)
-      await save()
+      await saveNow()
+      if (category) {
+        const strategy = category.strategies.find(item => item.id === strategyId)
+        if (strategy) {
+          addConfigLog(`стратегия "${strategy.name}" активирована в категории "${category.name}"`)
+        }
+      }
       await restartIfConnected()
       notifyConfigApplied('Стратегия активирована')
     }
@@ -115,9 +164,14 @@ export function CategoryPage() {
       return
 
     try {
-      skipNextAutosaveRef.current = true
       clearActiveStrategy(categoryId, strategyId)
-      await save()
+      await saveNow()
+      if (category) {
+        const strategy = category.strategies.find(item => item.id === strategyId)
+        if (strategy) {
+          addConfigLog(`стратегия "${strategy.name}" деактивирована в категории "${category.name}"`)
+        }
+      }
       await restartIfConnected()
       notifyConfigApplied('Стратегия деактивирована')
     }
@@ -131,9 +185,11 @@ export function CategoryPage() {
       return
 
     try {
-      skipNextAutosaveRef.current = true
       clearAllActiveStrategies(categoryId)
-      await save()
+      await saveNow()
+      if (category) {
+        addConfigLog(`все активные стратегии отключены в категории "${category.name}"`)
+      }
       await restartIfConnected()
       notifyConfigApplied('Активные стратегии отключены')
     }
@@ -150,21 +206,48 @@ export function CategoryPage() {
       if (wasActive) {
         deleteStrategy(categoryId, strategyId)
         try {
-          skipNextAutosaveRef.current = true
-          await save()
-          await restartIfConnected()
+          await saveNow()
+          if (category && strategy) {
+            addConfigLog(`удалена стратегия "${strategy.name}" из категории "${category.name}"`)
+          }
           toast.success('Стратегия удалена')
         }
         catch (err) {
-          console.error('Failed to save/restart after deleting strategy:', err)
+          console.error('Failed to save after deleting strategy:', err)
           toast.error('Ошибка сохранения после удаления стратегии')
-          skipNextAutosaveRef.current = false
-          await load()
+          await reload().catch(() => {})
+          return
+        }
+        try {
+          await restartIfConnected()
+        }
+        catch (err) {
+          console.error('Failed to restart after deleting strategy:', err)
+          toast.error('Стратегия удалена, но не удалось применить изменения к активному подключению', {
+            description: err instanceof Error ? err.message : String(err),
+            duration: 8000,
+          })
         }
       }
       else {
+        const currentConfig = useConfigStore.getState().config
+        if (!currentConfig) {
+          return
+        }
+
+        const previousConfig = structuredClone(currentConfig)
         deleteStrategy(categoryId, strategyId)
-        toast.success('Стратегия удалена')
+        try {
+          await saveNow()
+          if (category && strategy) {
+            addConfigLog(`удалена стратегия "${strategy.name}" из категории "${category.name}"`)
+          }
+          toast.success('Стратегия удалена')
+        }
+        catch (e) {
+          revertTo(previousConfig)
+          toast.error(`Ошибка сохранения после удаления стратегии: ${e instanceof Error ? e.message : String(e)}`)
+        }
       }
     }
   }
@@ -172,16 +255,15 @@ export function CategoryPage() {
   const handleDeleteCategory = async () => {
     if (categoryId) {
       const hadActiveStrategy = category?.strategies.some(s => s.active) ?? false
-      skipNextAutosaveRef.current = true
+      const categoryName = category?.name
       deleteCategory(categoryId)
       try {
-        await save()
+        await saveNow()
       }
       catch (err) {
         console.error('Failed to save after deleting category:', err)
         toast.error('Ошибка сохранения после удаления категории')
-        skipNextAutosaveRef.current = false
-        await load()
+        await reload().catch(() => {})
         return
       }
       if (hadActiveStrategy) {
@@ -196,16 +278,40 @@ export function CategoryPage() {
           })
         }
       }
+      if (categoryName) {
+        addConfigLog(`удалена категория "${categoryName}"`)
+      }
       setDeleteDialogOpen(false)
       toast.success('Категория удалена')
       navigate({ to: '/strategies' })
     }
   }
 
-  const handleRenameCategory = () => {
-    if (categoryId && newCategoryName.trim()) {
-      updateCategory(categoryId, newCategoryName.trim())
+  const handleRenameCategory = async () => {
+    if (!categoryId || !newCategoryName.trim()) {
+      return
+    }
+
+    const currentConfig = useConfigStore.getState().config
+    if (!currentConfig) {
+      return
+    }
+
+    const previousConfig = structuredClone(currentConfig)
+    const previousName = category?.name
+    const nextName = newCategoryName.trim()
+    updateCategory(categoryId, nextName)
+    try {
+      await saveNow()
+      if (previousName) {
+        addConfigLog(`категория "${previousName}" переименована в "${nextName}"`)
+      }
       setRenameDialogOpen(false)
+      toast.success('Категория переименована')
+    }
+    catch (e) {
+      revertTo(previousConfig)
+      toast.error(`Ошибка сохранения категории: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 

@@ -1,9 +1,12 @@
+import type { AppHealthSnapshot } from '@/lib/types'
+import { toast } from 'sonner'
 import { create } from 'zustand'
 import * as tauri from '../lib/tauri'
 import { useConfigStore } from './config.store'
 import { useConnectionStore } from './connection.store'
 import { useDownloadStore } from './download.store'
 import { useThemeStore } from './theme.store'
+import { useUpdaterStore } from './updater.store'
 
 let shutdownCleanupRegistered = false
 
@@ -11,6 +14,7 @@ interface AppStore {
   initialized: boolean
   initializing: boolean
   isElevated: boolean | null
+  healthSnapshot: AppHealthSnapshot | null
   binariesOk: boolean | null
   timestampsOk: boolean | null
   missingCriticalFiles: string[]
@@ -22,7 +26,9 @@ interface AppStore {
   refreshVersion: number
 
   initialize: () => Promise<void>
+  refreshLocalState: () => Promise<void>
   refreshRemoteState: () => Promise<void>
+  applyHealthSnapshot: (snapshot: AppHealthSnapshot) => void
   setBinariesOk: (ok: boolean) => void
   setMissingCriticalFiles: (files: string[]) => void
   setAvailableUpdates: (files: string[]) => void
@@ -34,6 +40,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   initialized: false,
   initializing: false,
   isElevated: null,
+  healthSnapshot: null,
   binariesOk: null,
   timestampsOk: null,
   missingCriticalFiles: [],
@@ -55,6 +62,17 @@ export const useAppStore = create<AppStore>((set, get) => ({
       set({ backgroundChecksCleanup: null })
     }
   },
+  refreshLocalState: async () => {
+    const version = get().refreshVersion + 1
+    set({ refreshVersion: version })
+
+    const snapshot = await tauri.getAppHealthSnapshot(false)
+    if (get().refreshVersion !== version) {
+      return
+    }
+
+    get().applyHealthSnapshot(snapshot)
+  },
   refreshRemoteState: async () => {
     const version = get().refreshVersion + 1
     set({ refreshVersion: version })
@@ -69,30 +87,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
       useConnectionStore.getState().addLog(`Не удалось автоматически обновить списки: ${e}`)
     }
 
-    const stillHealthy = await tauri.verifyBinaries()
-    const missingFiles = await tauri.getMissingCriticalFiles()
+    const snapshot = await tauri.getAppHealthSnapshot(true)
     if (get().refreshVersion !== version) {
       return
     }
 
-    if (stillHealthy) {
-      try {
-        const availableUpdates = await tauri.getAvailableUpdates()
-        if (get().refreshVersion !== version) {
-          return
-        }
-        set({ binariesOk: stillHealthy, missingCriticalFiles: missingFiles, availableUpdates })
-      }
-      catch (e) {
-        if (get().refreshVersion !== version) {
-          return
-        }
-        set({ binariesOk: stillHealthy, missingCriticalFiles: missingFiles, availableUpdates: [] })
-        useConnectionStore.getState().addLog(`Не удалось проверить обновления файлов: ${e}`)
-      }
-    }
-    else {
-      set({ binariesOk: stillHealthy, missingCriticalFiles: missingFiles, availableUpdates: [] })
+    get().applyHealthSnapshot(snapshot)
+    if (!snapshot.available_updates_checked) {
+      useConnectionStore.getState().addLog('Не удалось получить удалённые обновления файлов, использую локальное состояние')
     }
   },
 
@@ -110,7 +112,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
         shutdownCleanupRegistered = true
         window.addEventListener('beforeunload', () => {
           get().teardownFilesWatcher()
+          useConnectionStore.getState().teardownTrayListener()
           useDownloadStore.getState().cleanup()
+          useUpdaterStore.getState().cleanup()
         })
       }
 
@@ -142,14 +146,27 @@ export const useAppStore = create<AppStore>((set, get) => ({
           set({ timestampsOk: true })
         }
 
-        const configExists = await tauri.configExists()
+        useConnectionStore.getState().addLog('Проверяю и восстанавливаю управляемые файлы')
+        const ensured = await tauri.ensureManagedFiles()
+        if (ensured.config_restored) {
+          useConnectionStore.getState().addLog('config.json был автоматически восстановлен из дефолтного конфига')
+        }
+        if (ensured.config_reloaded) {
+          useConnectionStore.getState().addLog('Конфигурация была нормализована и повторно загружена с диска')
+        }
+        if (ensured.restored_files.length > 0) {
+          useConnectionStore.getState().addLog(`Автоматически восстановлены файлы: ${ensured.restored_files.join(', ')}`)
+        }
+        if (ensured.unrecoverable_filters.length > 0) {
+          useConnectionStore.getState().addLog(`Не удалось автоматически восстановить фильтры: ${ensured.unrecoverable_filters.join(', ')}`)
+          toast.error(`Не удалось автоматически восстановить фильтры: ${ensured.unrecoverable_filters.join(', ')}`)
+        }
+
         useConnectionStore.getState().addLog('Загружаю конфигурацию')
         await useConfigStore.getState().load()
         if (useConfigStore.getState().config) {
-          set({ configMissing: !configExists })
+          set({ configMissing: false })
           useConnectionStore.getState().addLog('Конфигурация загружена')
-          if (!configExists)
-            useConnectionStore.getState().addLog('Файл config.json отсутствует, ожидаю подтверждения на восстановление дефолтного конфига')
         }
         else {
           set({ configMissing: true })
@@ -157,11 +174,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
           throw new Error('Config not loaded')
         }
 
-        const binaries = await tauri.verifyBinaries()
-        const missingCriticalFiles = await tauri.getMissingCriticalFiles()
-        set({ binariesOk: binaries, missingCriticalFiles })
+        const snapshot = await tauri.getAppHealthSnapshot(false)
+        get().applyHealthSnapshot(snapshot)
         useConnectionStore.getState().addLog(
-          binaries
+          snapshot.binaries_ok
             ? 'Файлы приложения и списки прошли проверку целостности'
             : 'Файлы приложения или списки отсутствуют либо повреждены',
         )
@@ -185,45 +201,43 @@ export const useAppStore = create<AppStore>((set, get) => ({
         })
 
         if (!get().filesWatcherCleanup) {
-          const offHealthChanged = tauri.onFilesHealthChanged(({ binaries_ok, lists_changed, config_missing }) => {
+          const offHealthChanged = tauri.onFilesHealthChanged(({ binaries_ok, lists_changed, config_missing, config_restored, config_reloaded, restored_files, unrecoverable_filters }) => {
             const previousState = get().binariesOk
-            const version = get().refreshVersion + 1
-            set({ binariesOk: binaries_ok, configMissing: config_missing, refreshVersion: version })
-            tauri.getMissingCriticalFiles().then((files) => {
-              if (get().refreshVersion !== version) {
-                return
-              }
-              set({ missingCriticalFiles: files })
-            }).catch((error) => {
-              if (get().refreshVersion !== version) {
-                return
-              }
-              set({ missingCriticalFiles: [] })
-              useConnectionStore.getState().addLog(`Не удалось получить список отсутствующих файлов: ${error}`)
-            })
-            if (binaries_ok) {
-              tauri.getAvailableUpdates().then((files) => {
-                if (get().refreshVersion !== version) {
-                  return
-                }
-                set({ availableUpdates: files })
-              }).catch((error) => {
-                if (get().refreshVersion !== version) {
-                  return
-                }
-                set({ availableUpdates: [] })
-                useConnectionStore.getState().addLog(`Не удалось получить список обновлений файлов: ${error}`)
+            set({ configMissing: config_missing })
+
+            if (config_restored || config_reloaded) {
+              void useConfigStore.getState().reload().catch((error) => {
+                useConnectionStore.getState().addLog(`Не удалось перезагрузить конфигурацию после watcher-события: ${error}`)
               })
             }
-            else {
-              set({ availableUpdates: [] })
+
+            if (config_restored) {
+              useConnectionStore.getState().addLog('Watcher восстановил config.json из дефолтного конфига')
             }
+
+            if (config_reloaded && !config_restored) {
+              useConnectionStore.getState().addLog('Watcher перезагрузил config.json после внешнего изменения')
+            }
+
+            if (restored_files.length > 0) {
+              useConnectionStore.getState().addLog(`Watcher восстановил файлы: ${restored_files.join(', ')}`)
+            }
+
+            if (unrecoverable_filters.length > 0) {
+              const message = `Не удалось автоматически восстановить фильтры: ${unrecoverable_filters.join(', ')}`
+              useConnectionStore.getState().addLog(message)
+              toast.error(message)
+            }
+
+            get().refreshLocalState().catch((error) => {
+              useConnectionStore.getState().addLog(`Не удалось обновить состояние файлов приложения: ${error}`)
+            })
 
             if (previousState !== binaries_ok) {
               useConnectionStore.getState().addLog(
                 binaries_ok
-                  ? 'Локальные файлы приложения снова в порядке'
-                  : 'Обнаружено локальное изменение: файлы приложения или списки отсутствуют либо повреждены',
+                  ? 'Локальные управляемые файлы снова в порядке'
+                  : 'Обнаружено локальное изменение: один или несколько управляемых файлов отсутствуют либо повреждены',
               )
             }
 
@@ -232,7 +246,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
             }
 
             if (config_missing) {
-              useConnectionStore.getState().addLog('Обнаружено локальное удаление config.json')
+              useConnectionStore.getState().addLog('config.json отсутствует и не был автоматически восстановлен')
             }
           })
 
@@ -265,10 +279,23 @@ export const useAppStore = create<AppStore>((set, get) => ({
         }
       }
 
+      if (useConfigStore.getState().config) {
+        try {
+          await useUpdaterStore.getState().init()
+        }
+        catch (error) {
+          useConnectionStore.getState().addLog(`Не удалось инициализировать автообновления приложения: ${error}`)
+        }
+      }
+
       useConnectionStore.getState().addLog('Инициализация приложения завершена')
       set({ initialized: true, initializing: false, initializePromise: null })
     })().catch((error) => {
       set({ initializing: false, initializePromise: null })
+      get().teardownFilesWatcher()
+      useConnectionStore.getState().teardownTrayListener()
+      useDownloadStore.getState().cleanup()
+      useUpdaterStore.getState().cleanup()
       useConnectionStore.getState().addLog(`Ошибка инициализации приложения: ${error}`)
       throw error
     })
@@ -277,6 +304,24 @@ export const useAppStore = create<AppStore>((set, get) => ({
     return initializePromise
   },
 
+  applyHealthSnapshot: (snapshot) => {
+    set((state) => {
+      const nextAvailableUpdates = snapshot.available_updates_checked
+        ? snapshot.available_updates
+        : state.availableUpdates
+
+      return {
+        healthSnapshot: {
+          ...snapshot,
+          available_updates: nextAvailableUpdates,
+        },
+        binariesOk: snapshot.binaries_ok,
+        missingCriticalFiles: snapshot.missing_critical_files,
+        availableUpdates: nextAvailableUpdates,
+        configMissing: snapshot.config_missing,
+      }
+    })
+  },
   setBinariesOk: ok => set({ binariesOk: ok }),
   setMissingCriticalFiles: files => set({ missingCriticalFiles: files }),
   setAvailableUpdates: files => set({ availableUpdates: files }),

@@ -19,7 +19,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { Link } from '@tanstack/react-router'
 import { BrushCleaning, ChevronRight, GripVertical, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -200,11 +200,19 @@ export function CategoriesListPage() {
   const [renameDialogOpen, setRenameDialogOpen] = useState(false)
   const [categoryToRename, setCategoryToRename] = useState<Category | null>(null)
   const [newCategoryNameDraft, setNewCategoryNameDraft] = useState('')
-  const isInitialLoadRef = useRef(true)
-  const skipNextAutosaveRef = useRef(false)
-
-  const { config, loading, load, save, addCategory, updateCategory, deleteCategory, clearAllActiveStrategies, reorderCategories } = useConfigStore()
-  const { restartIfConnected, notifyConfigApplied } = useConnectionStore()
+  const config = useConfigStore(state => state.config)
+  const loading = useConfigStore(state => state.loading)
+  const load = useConfigStore(state => state.load)
+  const saveNow = useConfigStore(state => state.saveNow)
+  const addCategory = useConfigStore(state => state.addCategory)
+  const revertTo = useConfigStore(state => state.revertTo)
+  const updateCategory = useConfigStore(state => state.updateCategory)
+  const deleteCategory = useConfigStore(state => state.deleteCategory)
+  const clearAllActiveStrategies = useConfigStore(state => state.clearAllActiveStrategies)
+  const reorderCategories = useConfigStore(state => state.reorderCategories)
+  const restartIfConnected = useConnectionStore(state => state.restartIfConnected)
+  const notifyConfigApplied = useConnectionStore(state => state.notifyConfigApplied)
+  const addConfigLog = useConnectionStore(state => state.addConfigLog)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -218,45 +226,56 @@ export function CategoriesListPage() {
   )
 
   useEffect(() => {
-    load().finally(() => {
-      isInitialLoadRef.current = false
-    })
+    void load()
   }, [load])
 
-  useEffect(() => {
-    if (skipNextAutosaveRef.current) {
-      skipNextAutosaveRef.current = false
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) {
       return
     }
-    if (config && !isInitialLoadRef.current) {
-      save().catch((err) => {
-        console.error('Autosave failed:', err)
-        toast.error('Ошибка автосохранения')
-      })
-    }
-  }, [config, save])
 
-  const handleAddCategory = () => {
-    if (newCategoryName.trim()) {
-      addCategory(newCategoryName.trim())
+    const currentConfig = useConfigStore.getState().config
+    if (!currentConfig) {
+      return
+    }
+
+    const previousConfig = structuredClone(currentConfig)
+    const categoryName = newCategoryName.trim()
+    addCategory(categoryName)
+    try {
+      await saveNow()
+      addConfigLog(`добавлена категория "${categoryName}"`)
       setNewCategoryName('')
       setNewCategoryOpen(false)
+      toast.success('Категория добавлена')
+    }
+    catch (e) {
+      revertTo(previousConfig)
+      toast.error(`Ошибка сохранения категории: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
   const handleClearActive = async (categoryId: string, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    const currentConfig = useConfigStore.getState().config
+    if (!currentConfig) {
+      return
+    }
+
+    const previousConfig = structuredClone(currentConfig)
     try {
-      skipNextAutosaveRef.current = true
       clearAllActiveStrategies(categoryId)
-      await save()
+      await saveNow()
+      const category = config?.categories.find(item => item.id === categoryId)
+      if (category) {
+        addConfigLog(`активные стратегии отключены в категории "${category.name}"`)
+      }
     }
     catch (err) {
+      revertTo(previousConfig)
       console.error('Failed to save after deactivating strategy:', err)
       toast.error('Ошибка сохранения после деактивации стратегии')
-      skipNextAutosaveRef.current = false
-      await load()
       return
     }
     try {
@@ -267,19 +286,31 @@ export function CategoriesListPage() {
       console.error('Failed to restart after deactivating strategy:', err)
       notifyConfigApplied('Стратегия деактивирована, но не удалось переподключиться')
     }
-    finally {
-      skipNextAutosaveRef.current = false
-    }
   }
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
 
     if (over && active.id !== over.id) {
+      const currentConfig = useConfigStore.getState().config
+      if (!currentConfig) {
+        return
+      }
+
+      const previousConfig = structuredClone(currentConfig)
       const oldIndex = config?.categories.findIndex(c => c.id === active.id) ?? -1
       const newIndex = config?.categories.findIndex(c => c.id === over.id) ?? -1
       if (oldIndex !== -1 && newIndex !== -1) {
         reorderCategories(oldIndex, newIndex)
+        try {
+          await saveNow()
+          addConfigLog('изменён порядок категорий')
+          toast.success('Порядок категорий сохранён')
+        }
+        catch (e) {
+          revertTo(previousConfig)
+          toast.error(`Ошибка сохранения порядка категорий: ${e instanceof Error ? e.message : String(e)}`)
+        }
       }
     }
   }
@@ -290,28 +321,49 @@ export function CategoriesListPage() {
     setRenameDialogOpen(true)
   }
 
-  const handleRenameCategory = () => {
-    if (categoryToRename && newCategoryNameDraft.trim()) {
-      updateCategory(categoryToRename.id, newCategoryNameDraft.trim())
+  const handleRenameCategory = async () => {
+    if (!categoryToRename || !newCategoryNameDraft.trim()) {
+      return
+    }
+
+    const currentConfig = useConfigStore.getState().config
+    if (!currentConfig) {
+      return
+    }
+
+    const previousConfig = structuredClone(currentConfig)
+    const nextName = newCategoryNameDraft.trim()
+    updateCategory(categoryToRename.id, nextName)
+    try {
+      await saveNow()
+      addConfigLog(`категория "${categoryToRename.name}" переименована в "${nextName}"`)
       setRenameDialogOpen(false)
       setCategoryToRename(null)
       setNewCategoryNameDraft('')
       toast.success('Категория переименована')
     }
+    catch (e) {
+      revertTo(previousConfig)
+      toast.error(`Ошибка сохранения категории: ${e instanceof Error ? e.message : String(e)}`)
+    }
   }
 
   const handleDeleteCategory = async (category: Category) => {
+    const currentConfig = useConfigStore.getState().config
+    if (!currentConfig) {
+      return
+    }
+
+    const previousConfig = structuredClone(currentConfig)
     const hadActiveStrategy = category.strategies.some(s => s.active)
-    skipNextAutosaveRef.current = true
     deleteCategory(category.id)
     try {
-      await save()
+      await saveNow()
     }
     catch (err) {
+      revertTo(previousConfig)
       console.error('Failed to save after deleting category:', err)
       toast.error('Ошибка сохранения после удаления категории')
-      skipNextAutosaveRef.current = false
-      await load()
       return
     }
     if (hadActiveStrategy) {
@@ -326,6 +378,7 @@ export function CategoriesListPage() {
         })
       }
     }
+    addConfigLog(`удалена категория "${category.name}"`)
     toast.success('Категория удалена')
   }
 

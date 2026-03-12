@@ -10,6 +10,15 @@ export interface DownloadProgress {
   phase: 'binaries' | 'fake' | 'lists' | 'filters'
 }
 
+export interface AppHealthSnapshot {
+  binaries_ok: boolean
+  missing_critical_files: string[]
+  available_updates: string[]
+  available_updates_checked: boolean
+  config_missing: boolean
+  lists_last_updated_at?: number | null
+}
+
 export interface Strategy {
   id: string
   name: string
@@ -33,6 +42,7 @@ export interface Filter {
   name: string
   filename: string
   active: boolean
+  content: string
 }
 
 export type ListMode = 'exclude' | 'ipset'
@@ -47,4 +57,13 @@ export interface AppConfig {
   minimizeToTray?: boolean
   launchToTray?: boolean
   connectOnAutostart?: boolean
+  coreFileUpdatePromptsEnabled?: boolean
+  appAutoUpdatesEnabled?: boolean
+}
+
+export interface EnsureManagedFilesResult {
+  restored_files: string[]
+  config_restored: boolean
+  config_reloaded: boolean
+  unrecoverable_filters: string[]
 }

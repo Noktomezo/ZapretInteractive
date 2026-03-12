@@ -8,6 +8,7 @@ type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'disconnec
 const MAX_LOGS = 500
 let trayUpdatePromise: Promise<void> = Promise.resolve()
 let restartPromise: Promise<void> | null = null
+let trayListenerCleanup: (() => void) | null = null
 
 export interface LogEntry {
   seq: number
@@ -30,11 +31,13 @@ interface ConnectionStore {
   restartIfConnected: () => Promise<void>
   notifyConfigApplied: (message?: string) => void
   toggle: () => Promise<void>
+  addConfigLog: (message: string) => void
   addLog: (message: string) => void
   clearLogs: () => void
   setError: (error: string | null) => void
   setRecovered: (recovered: boolean) => void
   initTrayListener: () => () => void
+  teardownTrayListener: () => void
 }
 
 export const useConnectionStore = create<ConnectionStore>((set, get) => ({
@@ -240,6 +243,10 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     toast.success(message)
   },
 
+  addConfigLog: (message) => {
+    get().addLog(`Изменение настроек: ${message}`)
+  },
+
   addLog: (message) => {
     set((state) => {
       const lastLog = state.logs.length > 0 ? state.logs[state.logs.length - 1] : undefined
@@ -265,10 +272,37 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
   },
 
   initTrayListener: () => {
+    if (trayListenerCleanup) {
+      return trayListenerCleanup
+    }
+
     get().addLog('Подписка на события трея инициализирована')
-    return tauri.onTrayConnectToggle(() => {
+    const unlisten = tauri.onTrayConnectToggle(() => {
       get().addLog('Получена команда переключения из трея')
       get().toggle()
     })
+    trayListenerCleanup = () => {
+      try {
+        unlisten()
+      }
+      finally {
+        trayListenerCleanup = null
+      }
+    }
+    return trayListenerCleanup
+  },
+
+  teardownTrayListener: () => {
+    if (!trayListenerCleanup) {
+      return
+    }
+
+    const cleanup = trayListenerCleanup
+    try {
+      cleanup()
+    }
+    finally {
+      trayListenerCleanup = null
+    }
   },
 }))

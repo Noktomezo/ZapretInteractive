@@ -20,12 +20,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
+import { runWithPausedConnection } from '@/lib/connection-flow'
 import * as tauri from '@/lib/tauri'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app.store'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
 import { useDownloadStore } from '@/stores/download.store'
+import { useUpdaterStore } from '@/stores/updater.store'
 
 const RANGE_RE = /^\d+-\d+$/
 const PORT_RE = /^\d+$/
@@ -52,101 +54,63 @@ function isValidPortRange(value: string): boolean {
   return true
 }
 
-function waitForConnectionStatus(
-  expectedStatus: 'connected' | 'disconnected',
-  timeoutMs = 15000,
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const currentStatus = useConnectionStore.getState().status
-    if (currentStatus === expectedStatus) {
-      resolve()
-      return
-    }
-    if (currentStatus === 'error') {
-      reject(new Error(`Connection entered error state while waiting for ${expectedStatus}`))
-      return
-    }
-
-    let unsubscribe = () => {}
-    const timeoutId = window.setTimeout(() => {
-      unsubscribe()
-      reject(new Error(`Timeout waiting for connection status: ${expectedStatus}`))
-    }, timeoutMs)
-
-    unsubscribe = useConnectionStore.subscribe((state) => {
-      if (state.status === expectedStatus) {
-        window.clearTimeout(timeoutId)
-        unsubscribe()
-        resolve()
-      }
-      else if (state.status === 'error') {
-        window.clearTimeout(timeoutId)
-        unsubscribe()
-        reject(new Error(`Connection entered error state while waiting for ${expectedStatus}`))
-      }
-    })
-  })
-}
-
-function waitForTerminalConnectionStatus(timeoutMs = 15000): Promise<'connected' | 'disconnected'> {
-  return new Promise((resolve, reject) => {
-    const currentStatus = useConnectionStore.getState().status
-    if (currentStatus === 'connected' || currentStatus === 'disconnected') {
-      resolve(currentStatus)
-      return
-    }
-    if (currentStatus === 'error') {
-      reject(new Error('Connection entered error state while waiting for terminal status'))
-      return
-    }
-
-    let unsubscribe = () => {}
-    const timeoutId = window.setTimeout(() => {
-      unsubscribe()
-      reject(new Error('Timeout waiting for terminal connection status'))
-    }, timeoutMs)
-
-    unsubscribe = useConnectionStore.subscribe((state) => {
-      if (state.status === 'connected' || state.status === 'disconnected') {
-        window.clearTimeout(timeoutId)
-        unsubscribe()
-        resolve(state.status)
-      }
-      else if (state.status === 'error') {
-        window.clearTimeout(timeoutId)
-        unsubscribe()
-        reject(new Error('Connection entered error state while waiting for terminal status'))
-      }
-    })
-  })
-}
-
 export function SettingsPage() {
   const [zapretDir, setZapretDir] = useState<string>('')
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
   const [autostartEnabled, setAutostartEnabled] = useState(false)
+  const [autostartKnown, setAutostartKnown] = useState(false)
   const [autostartLoading, setAutostartLoading] = useState(true)
   const [tcpDraft, setTcpDraft] = useState('')
   const [udpDraft, setUdpDraft] = useState('')
-  const isInitialLoadRef = useRef(true)
   const prevGlobalPortsRef = useRef<string | undefined>(undefined)
   const tcpFocusedRef = useRef(false)
   const udpFocusedRef = useRef(false)
 
-  const {
-    config,
-    loading,
-    load,
-    save,
-    setGlobalPorts,
-    setMinimizeToTray,
-    setLaunchToTray,
-    setConnectOnAutostart,
-    reset,
-  } = useConfigStore()
-  const { isDownloading, progress, reset: resetDownload } = useDownloadStore()
-  const { binariesOk, availableUpdates } = useAppStore()
-  const { connect, disconnect, restartIfConnected } = useConnectionStore()
+  const config = useConfigStore(state => state.config)
+  const loading = useConfigStore(state => state.loading)
+  const load = useConfigStore(state => state.load)
+  const saveNow = useConfigStore(state => state.saveNow)
+  const scheduleSave = useConfigStore(state => state.scheduleSave)
+  const setGlobalPorts = useConfigStore(state => state.setGlobalPorts)
+  const setCoreFileUpdatePromptsEnabled = useConfigStore(state => state.setCoreFileUpdatePromptsEnabled)
+  const setAppAutoUpdatesEnabled = useConfigStore(state => state.setAppAutoUpdatesEnabled)
+  const setMinimizeToTray = useConfigStore(state => state.setMinimizeToTray)
+  const setLaunchToTray = useConfigStore(state => state.setLaunchToTray)
+  const setConnectOnAutostart = useConfigStore(state => state.setConnectOnAutostart)
+  const reset = useConfigStore(state => state.reset)
+  const isDownloading = useDownloadStore(state => state.isDownloading)
+  const progress = useDownloadStore(state => state.progress)
+  const resetDownload = useDownloadStore(state => state.reset)
+  const binariesOk = useAppStore(state => state.binariesOk)
+  const availableUpdates = useAppStore(state => state.availableUpdates)
+  const restartIfConnected = useConnectionStore(state => state.restartIfConnected)
+  const addConfigLog = useConnectionStore(state => state.addConfigLog)
+  const initUpdater = useUpdaterStore(state => state.init)
+  const currentAppVersion = useUpdaterStore(state => state.currentVersion)
+  const appUpdate = useUpdaterStore(state => state.availableUpdate)
+  const appUpdateChecking = useUpdaterStore(state => state.checking)
+  const appUpdateDownloading = useUpdaterStore(state => state.downloading)
+  const appUpdateInstalling = useUpdaterStore(state => state.installing)
+  const lastAppUpdateCheckError = useUpdaterStore(state => state.lastCheckError)
+  const lastAppUpdateCheckedAt = useUpdaterStore(state => state.lastCheckedAt)
+  const checkForAppUpdates = useUpdaterStore(state => state.checkForUpdates)
+  const installAvailableAppUpdate = useUpdaterStore(state => state.installAvailableUpdate)
+
+  const refreshAutostartState = async (isMounted = true) => {
+    try {
+      const autostart = await tauri.isAutostartEnabled()
+      if (isMounted) {
+        setAutostartEnabled(autostart)
+        setAutostartKnown(true)
+      }
+    }
+    catch (e) {
+      if (isMounted) {
+        setAutostartKnown(false)
+        toast.error(`Не удалось определить статус автозапуска: ${e}`)
+      }
+    }
+  }
 
   useEffect(() => {
     let isMounted = true
@@ -154,6 +118,7 @@ export function SettingsPage() {
     const init = async () => {
       try {
         await load()
+        await initUpdater()
 
         try {
           const dir = await tauri.getZapretDirectory()
@@ -165,21 +130,11 @@ export function SettingsPage() {
             toast.error(`Ошибка получения директории Zapret: ${e}`)
         }
 
-        try {
-          const autostart = await tauri.isAutostartEnabled()
-          if (isMounted)
-            setAutostartEnabled(autostart)
-        }
-        catch {
-          if (isMounted)
-            setAutostartEnabled(false)
-        }
+        await refreshAutostartState(isMounted)
       }
       finally {
-        if (isMounted) {
-          isInitialLoadRef.current = false
+        if (isMounted)
           setAutostartLoading(false)
-        }
       }
     }
 
@@ -191,7 +146,7 @@ export function SettingsPage() {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [initUpdater, load])
 
   useEffect(() => {
     if (config?.global_ports) {
@@ -209,59 +164,29 @@ export function SettingsPage() {
     }
   }, [config?.global_ports])
 
-  useEffect(() => {
-    let isMounted = true
-    if (config && !isInitialLoadRef.current) {
-      save().catch((e) => {
-        if (isMounted)
-          toast.error(`Ошибка сохранения настроек: ${e}`)
-      })
-    }
-    return () => {
-      isMounted = false
-    }
-  }, [config, save])
-
   const handleDownloadBinaries = async () => {
     const forceAll = binariesOk === true && availableUpdates.length === 0
-    let shouldReconnect = false
     try {
-      let stableStatus = useConnectionStore.getState().status
-      if (stableStatus === 'connecting' || stableStatus === 'disconnecting') {
-        stableStatus = await waitForTerminalConnectionStatus()
-      }
-
-      if (stableStatus === 'connected') {
-        shouldReconnect = true
-        await disconnect()
-        await waitForConnectionStatus('disconnected')
-      }
-
-      await tauri.downloadBinaries(forceAll)
+      addConfigLog(forceAll
+        ? 'запущена переустановка файлов приложения'
+        : 'запущено обновление файлов приложения')
+      await runWithPausedConnection(async () => {
+        await tauri.downloadBinaries(forceAll)
+      })
     }
     catch (e) {
       console.error(e)
       resetDownload()
       toast.error(`Ошибка загрузки файлов: ${e}`)
     }
-    finally {
-      if (shouldReconnect) {
-        try {
-          await connect()
-          await waitForConnectionStatus('connected')
-        }
-        catch (e) {
-          toast.error(`Ошибка восстановления подключения: ${e}`)
-        }
-      }
-    }
   }
 
   const handleReset = async () => {
     try {
       await reset()
-      await tauri.restoreDefaultFilters()
+      await tauri.ensureManagedFiles()
       setResetDialogOpen(false)
+      addConfigLog('конфигурация сброшена к значениям по умолчанию')
       toast.success('Настройки сброшены')
     }
     catch (e) {
@@ -274,6 +199,7 @@ export function SettingsPage() {
     setAutostartEnabled(checked)
     try {
       await tauri.setAutostartEnabled(checked)
+      addConfigLog(checked ? 'автозапуск Windows включён' : 'автозапуск Windows отключён')
       toast.success(checked ? 'Автозапуск включен' : 'Автозапуск отключен')
     }
     catch (e) {
@@ -282,6 +208,74 @@ export function SettingsPage() {
     }
     finally {
       setAutostartLoading(false)
+    }
+  }
+
+  const handleConnectOnAutostartChange = (checked: boolean) => {
+    setConnectOnAutostart(checked)
+    scheduleSave('connect-on-autostart')
+    addConfigLog(checked
+      ? 'автоподключение из автозагрузки включено'
+      : 'автоподключение из автозагрузки отключено')
+  }
+
+  const handleLaunchToTrayChange = (checked: boolean) => {
+    setLaunchToTray(checked)
+    scheduleSave('launch-to-tray')
+    addConfigLog(checked ? 'запуск в трей включён' : 'запуск в трей отключён')
+  }
+
+  const handleMinimizeToTrayChange = (checked: boolean) => {
+    setMinimizeToTray(checked)
+    scheduleSave('minimize-to-tray')
+    addConfigLog(checked
+      ? 'сворачивание в трей при закрытии включено'
+      : 'сворачивание в трей при закрытии отключено')
+  }
+
+  const handleCoreFileUpdatePromptsChange = (checked: boolean) => {
+    setCoreFileUpdatePromptsEnabled(checked)
+    scheduleSave('core-file-update-prompts')
+    addConfigLog(checked
+      ? 'автопредложения обновления winws/fake файлов включены'
+      : 'автопредложения обновления winws/fake файлов отключены')
+  }
+
+  const handleAppAutoUpdatesChange = async (checked: boolean) => {
+    if (!config) {
+      return
+    }
+
+    const previous = config.appAutoUpdatesEnabled ?? true
+    setAppAutoUpdatesEnabled(checked)
+    try {
+      await saveNow()
+      addConfigLog(checked
+        ? 'автоматическая проверка обновлений приложения включена'
+        : 'автоматическая проверка обновлений приложения отключена')
+      toast.success(checked ? 'Автообновления приложения включены' : 'Автообновления приложения отключены')
+    }
+    catch (e) {
+      setAppAutoUpdatesEnabled(previous)
+      toast.error(`Ошибка настройки автообновлений приложения: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
+  const handleManualAppUpdateCheck = async () => {
+    try {
+      await checkForAppUpdates({ manual: true, silent: false })
+    }
+    catch (e) {
+      console.error('Failed to check app updates:', e)
+    }
+  }
+
+  const handleInstallAppUpdate = async () => {
+    try {
+      await installAvailableAppUpdate()
+    }
+    catch (e) {
+      console.error('Failed to install app update:', e)
     }
   }
 
@@ -317,6 +311,102 @@ export function SettingsPage() {
 
         <Card>
           <CardHeader>
+            <CardTitle className="text-lg">Обновление приложения</CardTitle>
+            <CardDescription>
+              Автоматическая и ручная проверка новых версий Zapret Interactive
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="app-auto-updates">Автоматически проверять обновления приложения</Label>
+                <p className="text-xs text-muted-foreground">
+                  При запуске и каждые 5 минут приложение будет проверять наличие новой версии
+                </p>
+              </div>
+              <Switch
+                id="app-auto-updates"
+                checked={config.appAutoUpdatesEnabled ?? true}
+                disabled={appUpdateChecking || appUpdateDownloading || appUpdateInstalling}
+                onCheckedChange={handleAppAutoUpdatesChange}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-sm font-medium">
+                Текущая версия:
+                {' '}
+                <span className="font-mono">{currentAppVersion ?? '...'}</span>
+              </p>
+              {appUpdateChecking && (
+                <p className="text-xs text-muted-foreground">Проверяю наличие новой версии...</p>
+              )}
+              {!appUpdateChecking && appUpdateInstalling && (
+                <p className="text-xs text-muted-foreground">Устанавливаю обновление приложения...</p>
+              )}
+              {!appUpdateChecking && !appUpdateInstalling && appUpdateDownloading && (
+                <p className="text-xs text-muted-foreground">Загружаю обновление приложения...</p>
+              )}
+              {!appUpdateChecking && !appUpdateDownloading && !appUpdateInstalling && appUpdate && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  Доступна версия
+                  {' '}
+                  {appUpdate.version}
+                </p>
+              )}
+              {!appUpdateChecking && !appUpdateDownloading && !appUpdateInstalling && !appUpdate && lastAppUpdateCheckError && (
+                <p className="text-xs text-red-600 dark:text-red-400">
+                  Ошибка проверки:
+                  {' '}
+                  {lastAppUpdateCheckError}
+                </p>
+              )}
+              {!appUpdateChecking && !appUpdateDownloading && !appUpdateInstalling && !appUpdate && !lastAppUpdateCheckError && lastAppUpdateCheckedAt && (
+                <p className="text-xs text-muted-foreground">Новых версий не найдено</p>
+              )}
+            </div>
+
+            {appUpdate && (
+              <Alert className="border-yellow-600 bg-yellow-600/10">
+                <AlertTitle>Доступна новая версия приложения</AlertTitle>
+                <AlertDescription className="space-y-2">
+                  <p>
+                    Доступна версия
+                    {' '}
+                    {appUpdate.version}
+                    {appUpdate.date ? ` (${appUpdate.date})` : ''}
+                  </p>
+                  {appUpdate.notes && (
+                    <p className="line-clamp-4 whitespace-pre-wrap text-xs text-muted-foreground">
+                      {appUpdate.notes}
+                    </p>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={() => { void handleManualAppUpdateCheck() }}
+                disabled={appUpdateChecking || appUpdateDownloading || appUpdateInstalling}
+              >
+                Проверить обновления
+              </Button>
+              {appUpdate && (
+                <Button
+                  onClick={() => { void handleInstallAppUpdate() }}
+                  disabled={appUpdateChecking || appUpdateDownloading || appUpdateInstalling}
+                >
+                  Установить обновление
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle className="text-lg">Поведение</CardTitle>
             <CardDescription>
               Настройки запуска и закрытия приложения
@@ -334,10 +424,15 @@ export function SettingsPage() {
                 <Switch
                   id="autostart"
                   checked={autostartEnabled}
-                  disabled={autostartLoading}
+                  disabled={autostartLoading || !autostartKnown}
                   onCheckedChange={handleAutostartChange}
                 />
               </div>
+              {!autostartKnown && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  Не удалось определить текущий статус автозапуска. Перезайдите на страницу позже.
+                </p>
+              )}
 
               <div
                 className={cn(
@@ -359,7 +454,7 @@ export function SettingsPage() {
                       id="connect-on-autostart"
                       checked={config.connectOnAutostart ?? false}
                       disabled={autostartLoading || !autostartEnabled}
-                      onCheckedChange={setConnectOnAutostart}
+                      onCheckedChange={handleConnectOnAutostartChange}
                     />
                   </div>
                   <div className="mt-3 flex items-center justify-between gap-4 border-l border-border/60 pl-4">
@@ -373,7 +468,7 @@ export function SettingsPage() {
                       id="launch-to-tray"
                       checked={config.launchToTray ?? false}
                       disabled={autostartLoading || !autostartEnabled}
-                      onCheckedChange={setLaunchToTray}
+                      onCheckedChange={handleLaunchToTrayChange}
                     />
                   </div>
                 </div>
@@ -390,7 +485,7 @@ export function SettingsPage() {
               <Switch
                 id="minimize-to-tray"
                 checked={config.minimizeToTray ?? true}
-                onCheckedChange={setMinimizeToTray}
+                onCheckedChange={handleMinimizeToTrayChange}
               />
             </div>
           </CardContent>
@@ -420,22 +515,14 @@ export function SettingsPage() {
                     }
                     if (isValidPortRange(tcpDraft)) {
                       setGlobalPorts({ ...latestGlobalPorts, tcp: tcpDraft })
-                      let wasConnected = false
                       try {
-                        const terminalStatus = await waitForTerminalConnectionStatus()
-                        wasConnected = terminalStatus === 'connected'
+                        await saveNow()
+                        addConfigLog(`TCP порты изменены с ${latestGlobalPorts.tcp} на ${tcpDraft}`)
+                        await restartIfConnected()
                       }
-                      catch {
-                        // If we can't determine status, assume not connected
-                      }
-                      if (wasConnected) {
-                        try {
-                          await restartIfConnected()
-                        }
-                        catch (err) {
-                          console.error('Failed to restart after port change:', err)
-                          toast.error('Не удалось переподключиться с новыми портами')
-                        }
+                      catch (err) {
+                        console.error('Failed to apply TCP port change:', err)
+                        toast.error('Не удалось применить новые TCP порты')
                       }
                     }
                     else {
@@ -459,24 +546,15 @@ export function SettingsPage() {
                       return
                     }
                     if (isValidPortRange(udpDraft)) {
-                      const latestGlobalPorts = useConfigStore.getState().config?.global_ports ?? config.global_ports
                       setGlobalPorts({ ...latestGlobalPorts, udp: udpDraft })
-                      let wasConnected = false
                       try {
-                        const terminalStatus = await waitForTerminalConnectionStatus()
-                        wasConnected = terminalStatus === 'connected'
+                        await saveNow()
+                        addConfigLog(`UDP порты изменены с ${latestGlobalPorts.udp} на ${udpDraft}`)
+                        await restartIfConnected()
                       }
-                      catch {
-                        // If we can't determine status, assume not connected
-                      }
-                      if (wasConnected) {
-                        try {
-                          await restartIfConnected()
-                        }
-                        catch (err) {
-                          console.error('Failed to restart after port change:', err)
-                          toast.error('Не удалось переподключиться с новыми портами')
-                        }
+                      catch (err) {
+                        console.error('Failed to apply UDP port change:', err)
+                        toast.error('Не удалось применить новые UDP порты')
                       }
                     }
                     else {
@@ -501,6 +579,20 @@ export function SettingsPage() {
             <div className="flex items-center gap-2">
               <FolderOpen className="size-4 text-muted-foreground" />
               <span className="font-mono text-sm">{zapretDir}</span>
+            </div>
+
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="core-file-update-prompts">Предлагать обновления winws/fake файлов</Label>
+                <p className="text-xs text-muted-foreground">
+                  Фоновые проверки обновлений останутся, но можно скрыть автоматические предложения обновить файлы
+                </p>
+              </div>
+              <Switch
+                id="core-file-update-prompts"
+                checked={config.coreFileUpdatePromptsEnabled ?? true}
+                onCheckedChange={handleCoreFileUpdatePromptsChange}
+              />
             </div>
 
             {binariesOk === false && (

@@ -424,5 +424,7 @@
   "binaries_path": "",
   "minimizeToTray": true,
   "launchToTray": false,
-  "connectOnAutostart": false
+  "connectOnAutostart": false,
+  "coreFileUpdatePromptsEnabled": true,
+  "appAutoUpdatesEnabled": true
 }

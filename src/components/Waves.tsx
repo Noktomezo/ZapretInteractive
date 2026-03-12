@@ -467,6 +467,43 @@ function Waves({
       return
 
     ctxRef.current = ctx
+    let pointerListenersAttached = false
+
+    const isPageVisible = () => document.visibilityState === 'visible'
+
+    function getEffectiveConfig(): Config {
+      return configRef.current
+    }
+
+    const touchListenerOptions: AddEventListenerOptions = { passive: true }
+
+    function attachPointerListeners() {
+      if (pointerListenersAttached)
+        return
+      window.addEventListener('mousemove', onMouseMove)
+      window.addEventListener('touchmove', onTouchMove, touchListenerOptions)
+      pointerListenersAttached = true
+    }
+
+    function detachPointerListeners() {
+      if (!pointerListenersAttached)
+        return
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('touchmove', onTouchMove, touchListenerOptions)
+      pointerListenersAttached = false
+    }
+
+    function stopAnimation() {
+      if (frameIdRef.current !== null) {
+        cancelAnimationFrame(frameIdRef.current)
+        frameIdRef.current = null
+      }
+    }
+
+    function startAnimation() {
+      if (frameIdRef.current === null)
+        frameIdRef.current = requestAnimationFrame(tick)
+    }
 
     function setSize() {
       const c = canvasRef.current
@@ -506,7 +543,15 @@ function Waves({
       const lines = linesRef.current
       const mouse = mouseRef.current
       const noise = noiseRef.current
-      const { waveSpeedX, waveSpeedY, waveAmpX, waveAmpY, friction, tension, maxCursorMove } = configRef.current
+      const {
+        waveSpeedX,
+        waveSpeedY,
+        waveAmpX,
+        waveAmpY,
+        friction,
+        tension,
+        maxCursorMove,
+      } = getEffectiveConfig()
       lines.forEach((pts) => {
         pts.forEach((p) => {
           const move = noise.perlin2((p.x + time * waveSpeedX) * 0.002, (p.y + time * waveSpeedY) * 0.0015) * 12
@@ -567,6 +612,12 @@ function Waves({
     }
 
     function tick(t: number) {
+      frameIdRef.current = null
+      if (!isPageVisible()) {
+        drawLines()
+        return
+      }
+
       const mouse = mouseRef.current
       const cont = containerRef.current
       if (!cont)
@@ -588,18 +639,19 @@ function Waves({
 
       movePoints(t)
       drawLines()
-      frameIdRef.current = requestAnimationFrame(tick)
+      startAnimation()
     }
 
     function onResize() {
       setSize()
       setLines()
+      drawLines()
     }
     function onMouseMove(e: MouseEvent) {
       updateMouse(e.clientX, e.clientY)
     }
-    function onTouchMove(e: TouchEvent) {
-      const touch = e.touches[0]
+    function onTouchMove(e: Event) {
+      const touch = (e as TouchEvent).touches[0]
       updateMouse(touch.clientX, touch.clientY)
     }
     function updateMouse(x: number, y: number) {
@@ -616,19 +668,30 @@ function Waves({
       }
     }
 
+    function syncAnimationState() {
+      if (!isPageVisible()) {
+        detachPointerListeners()
+        stopAnimation()
+        drawLines()
+        return
+      }
+
+      attachPointerListeners()
+      startAnimation()
+    }
+
     setSize()
     setLines()
-    frameIdRef.current = requestAnimationFrame(tick)
     window.addEventListener('resize', onResize)
-    window.addEventListener('mousemove', onMouseMove)
-    window.addEventListener('touchmove', onTouchMove)
+    document.addEventListener('visibilitychange', syncAnimationState)
+    drawLines()
+    syncAnimationState()
 
     return () => {
       window.removeEventListener('resize', onResize)
-      window.removeEventListener('mousemove', onMouseMove)
-      window.removeEventListener('touchmove', onTouchMove)
-      if (frameIdRef.current !== null)
-        cancelAnimationFrame(frameIdRef.current)
+      document.removeEventListener('visibilitychange', syncAnimationState)
+      detachPointerListeners()
+      stopAnimation()
     }
   }, [])
 
