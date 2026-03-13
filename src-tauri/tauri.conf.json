@@ -30,6 +30,9 @@
   },
   "bundle": {
     "publisher": "Noktomezo",
+    "shortDescription": "GUI for zapret-win-bundle",
+    "longDescription": "Desktop GUI for managing zapret strategies, filters, placeholders, file recovery and updates.",
+    "copyright": "Copyright © 2026 Noktomezo",
     "active": true,
     "targets": "nsis",
     "createUpdaterArtifacts": true,

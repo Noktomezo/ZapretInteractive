@@ -552,12 +552,12 @@ fn build_local_health_snapshot_with_inspections(
     ensure_helper_files()?;
 
     let mut stored_hashes = load_stored_hashes()?;
-    if backfill_missing_core_hashes(&files, &stored_hashes, &inspections)? {
+    if backfill_missing_core_hashes(files, &stored_hashes, inspections)? {
         stored_hashes = load_stored_hashes()?;
     }
 
     let (_, mut missing_critical_files) =
-        compute_health_snapshot_fields(&files, &stored_hashes, &inspections);
+        compute_health_snapshot_fields(files, &stored_hashes, inspections);
     let config = current_config(state)?;
 
     for filter in configured_filter_files(&config) {
