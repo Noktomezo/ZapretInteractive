@@ -1,4 +1,4 @@
-import { createRootRoute, Outlet } from '@tanstack/react-router'
+import { createRootRoute, Outlet, useLocation } from '@tanstack/react-router'
 import { Toaster } from 'sonner'
 import { Sidebar } from '@/components/features/Sidebar'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
@@ -8,6 +8,7 @@ import { TitleBar } from '../components/features/TitleBar'
 
 function RootLayout() {
   const { collapsed, setCollapsed } = useSidebarStore()
+  const location = useLocation()
 
   return (
     <TooltipProvider>
@@ -18,7 +19,10 @@ function RootLayout() {
             <Sidebar />
             <SidebarInset className="h-full min-h-0 overflow-hidden rounded-tl-lg">
               <div className="h-full min-h-0 flex-1 overflow-hidden">
-                <div className="flex h-full min-h-0 flex-col animate-in fade-in duration-200">
+                <div
+                  key={location.pathname}
+                  className="page-fade-in flex h-full min-h-0 flex-col"
+                >
                   <Outlet />
                 </div>
               </div>
