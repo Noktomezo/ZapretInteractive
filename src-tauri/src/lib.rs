@@ -7,10 +7,11 @@ use tauri::{
     image::Image,
     menu::{CheckMenuItem, Menu, MenuItem, Submenu},
     tray::{MouseButton, TrayIconBuilder},
-    window::{Effect, EffectsBuilder},
 };
 #[cfg(desktop)]
 use tauri_plugin_autostart::ManagerExt;
+#[cfg(target_os = "windows")]
+use window_vibrancy::{apply_acrylic, clear_acrylic};
 
 static CONNECTED: AtomicBool = AtomicBool::new(false);
 
@@ -50,6 +51,20 @@ fn should_minimize_to_tray(state: &config::AppState) -> bool {
         .lock()
         .map(|cfg| cfg.minimize_to_tray)
         .unwrap_or_else(|poisoned| poisoned.into_inner().minimize_to_tray)
+}
+
+#[cfg(target_os = "windows")]
+fn apply_window_transparency(window: &tauri::WebviewWindow, enabled: bool) -> Result<(), String> {
+    if enabled {
+        apply_acrylic(window, None).map_err(|e| e.to_string())
+    } else {
+        clear_acrylic(window).map_err(|e| e.to_string())
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn apply_window_transparency(_window: &tauri::WebviewWindow, _enabled: bool) -> Result<(), String> {
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -177,15 +192,16 @@ pub fn run() {
             }
 
             if let Some(window) = app.get_webview_window("main") {
-                #[cfg(target_os = "windows")]
-                {
-                    let _ = window
-                        .set_effects(Some(EffectsBuilder::new().effect(Effect::Acrylic).build()));
-                }
+                let state = app.state::<config::AppState>();
+                let window_acrylic_enabled = state
+                    .config
+                    .lock()
+                    .map(|cfg| cfg.window_acrylic_enabled)
+                    .unwrap_or_else(|poisoned| poisoned.into_inner().window_acrylic_enabled);
+                let _ = apply_window_transparency(&window, window_acrylic_enabled);
 
                 let window_clone = window.clone();
                 let app_handle = app.handle().clone();
-                let state = app.state::<config::AppState>();
                 let launch_to_tray = state
                     .config
                     .lock()
@@ -254,6 +270,7 @@ pub fn run() {
             set_connected_state,
             is_autostart_enabled,
             set_autostart_enabled,
+            set_window_transparency_enabled,
             was_launched_from_autostart,
         ])
         .run(tauri::generate_context!())
@@ -326,4 +343,19 @@ fn set_autostart_enabled(app: tauri::AppHandle, enabled: bool) -> Result<(), Str
 #[tauri::command]
 fn was_launched_from_autostart() -> bool {
     std::env::args().any(|arg| arg == "--autostart")
+}
+
+#[tauri::command]
+fn set_window_transparency_enabled(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, config::AppState>,
+    enabled: bool,
+) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        apply_window_transparency(&window, enabled)?;
+    }
+
+    let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
+    cfg.window_acrylic_enabled = enabled;
+    config::save_config_to_disk(&cfg)
 }

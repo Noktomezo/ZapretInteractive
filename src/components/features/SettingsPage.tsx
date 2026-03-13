@@ -68,6 +68,7 @@ export function SettingsPage() {
   const setGlobalPorts = useConfigStore(state => state.setGlobalPorts)
   const setCoreFileUpdatePromptsEnabled = useConfigStore(state => state.setCoreFileUpdatePromptsEnabled)
   const setAppAutoUpdatesEnabled = useConfigStore(state => state.setAppAutoUpdatesEnabled)
+  const setWindowAcrylicEnabled = useConfigStore(state => state.setWindowAcrylicEnabled)
   const setMinimizeToTray = useConfigStore(state => state.setMinimizeToTray)
   const setLaunchToTray = useConfigStore(state => state.setLaunchToTray)
   const setConnectOnAutostart = useConfigStore(state => state.setConnectOnAutostart)
@@ -208,6 +209,30 @@ export function SettingsPage() {
     }
   }
 
+  const handleWindowAcrylicChange = async (checked: boolean) => {
+    const previous = config?.windowAcrylicEnabled ?? true
+    setWindowAcrylicEnabled(checked)
+
+    try {
+      await tauri.setWindowTransparencyEnabled(checked)
+      await saveNow()
+      addConfigLog(checked
+        ? 'акриловый материал и прозрачность окна включены'
+        : 'акриловый материал и прозрачность окна отключены')
+      toast.success(checked ? 'Прозрачность окна включена' : 'Прозрачность окна отключена')
+    }
+    catch (e) {
+      setWindowAcrylicEnabled(previous)
+      try {
+        await tauri.setWindowTransparencyEnabled(previous)
+      }
+      catch (restoreError) {
+        console.error('Failed to restore window transparency state:', restoreError)
+      }
+      toast.error(`Ошибка настройки прозрачности окна: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
   if (loading || !config) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -234,7 +259,23 @@ export function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ThemeSwitcher />
+            <div className="space-y-4">
+              <ThemeSwitcher />
+
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor="window-acrylic-enabled">Акриловый материал и прозрачность окна</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Полностью включает или отключает стеклянный эффект окна и полупрозрачность интерфейса
+                  </p>
+                </div>
+                <Switch
+                  id="window-acrylic-enabled"
+                  checked={config.windowAcrylicEnabled ?? true}
+                  onCheckedChange={handleWindowAcrylicChange}
+                />
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -248,20 +289,6 @@ export function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between gap-4">
               <div className="space-y-0.5">
-                <Label htmlFor="core-file-update-prompts">Предлагать обновления winws/fake файлов</Label>
-                <p className="text-xs text-muted-foreground">
-                  Фоновые проверки обновлений останутся, но можно скрыть автоматические предложения обновить файлы
-                </p>
-              </div>
-              <Switch
-                id="core-file-update-prompts"
-                checked={config.coreFileUpdatePromptsEnabled ?? true}
-                onCheckedChange={handleCoreFileUpdatePromptsChange}
-              />
-            </div>
-
-            <div className="flex items-center justify-between gap-4">
-              <div className="space-y-0.5">
                 <Label htmlFor="app-auto-updates">Автоматически проверять обновления приложения</Label>
                 <p className="text-xs text-muted-foreground">
                   При запуске и каждые 5 минут приложение будет проверять наличие новой версии
@@ -271,6 +298,20 @@ export function SettingsPage() {
                 id="app-auto-updates"
                 checked={config.appAutoUpdatesEnabled ?? true}
                 onCheckedChange={handleAppAutoUpdatesChange}
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="core-file-update-prompts">Уведомлять об обновлениях критических файлов</Label>
+                <p className="text-xs text-muted-foreground">
+                  Отключает только предложения обновить файлы, не саму проверку
+                </p>
+              </div>
+              <Switch
+                id="core-file-update-prompts"
+                checked={config.coreFileUpdatePromptsEnabled ?? true}
+                onCheckedChange={handleCoreFileUpdatePromptsChange}
               />
             </div>
           </CardContent>

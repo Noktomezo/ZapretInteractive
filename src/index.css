@@ -171,6 +171,10 @@
   @apply bg-background/40 backdrop-blur-xl;
 }
 
+.app-opaque-surface {
+  @apply bg-background;
+}
+
   @keyframes pulse-glow {
     0%,
     100% {

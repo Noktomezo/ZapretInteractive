@@ -10,13 +10,13 @@ import {
   Shield,
   UserRound,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { toast } from 'sonner'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { MarkdownContent } from '@/components/ui/markdown'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { runWithPausedConnection } from '@/lib/connection-flow'
 import * as tauri from '@/lib/tauri'
 import { useAppStore } from '@/stores/app.store'
@@ -38,8 +38,16 @@ const APP_LINKS = [
 ]
 
 const APP_FOUNDATIONS = [
-  { label: 'zapret', href: 'https://github.com/bol-van/zapret' },
-  { label: 'zapret-win-bundle', href: 'https://github.com/bol-van/zapret-win-bundle' },
+  {
+    label: 'zapret',
+    value: 'Базовый DPI-bypass toolkit',
+    href: 'https://github.com/bol-van/zapret',
+  },
+  {
+    label: 'zapret-win-bundle',
+    value: 'Windows bundle и служебные файлы',
+    href: 'https://github.com/bol-van/zapret-win-bundle',
+  },
 ]
 
 function MetaItem({
@@ -63,7 +71,6 @@ function MetaItem({
 }
 
 export function AboutPage() {
-  const [zapretDir, setZapretDir] = useState('')
   const loading = useConfigStore(state => state.loading)
   const load = useConfigStore(state => state.load)
   const binariesOk = useAppStore(state => state.binariesOk)
@@ -80,6 +87,8 @@ export function AboutPage() {
   const appUpdateInstalling = useUpdaterStore(state => state.installing)
   const checkForAppUpdates = useUpdaterStore(state => state.checkForUpdates)
   const installAvailableAppUpdate = useUpdaterStore(state => state.installAvailableUpdate)
+  const showBinaryStatusText = binariesOk === false || availableUpdates.length > 0
+  const showBinaryDetails = showBinaryStatusText || Boolean(isDownloading && progress)
 
   useEffect(() => {
     let isMounted = true
@@ -88,10 +97,6 @@ export function AboutPage() {
       try {
         await load()
         await initUpdater()
-
-        const dir = await tauri.getZapretDirectory()
-        if (isMounted)
-          setZapretDir(dir)
       }
       catch (e) {
         if (isMounted)
@@ -147,6 +152,15 @@ export function AboutPage() {
     }
     catch (e) {
       toast.error(`Не удалось открыть ссылку: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
+  const handleOpenZapretDirectory = async () => {
+    try {
+      await tauri.openZapretDirectory()
+    }
+    catch (e) {
+      toast.error(`Ошибка открытия папки: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
@@ -257,74 +271,50 @@ export function AboutPage() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Бинарные файлы</CardTitle>
-            <CardDescription>
-              WinDivert, winws.exe, fake-файлы и списки
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-2">
-              <FolderOpen className="size-4 text-muted-foreground" />
-              <span className="font-mono text-sm">{zapretDir}</span>
-            </div>
+          <CardHeader className="space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="mb-2 flex items-center gap-2">
+                  <CardTitle className="text-lg">Файлы приложения</CardTitle>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span
+                        className={[
+                          'rounded-[4px] border px-2 py-0.5 text-[10px] leading-none font-medium',
+                          binariesOk === false
+                            ? 'border-red-600/40 bg-red-600/10 text-red-700 dark:text-red-300'
+                            : availableUpdates.length > 0
+                              ? 'border-yellow-600/50 bg-yellow-600/10 text-amber-700 dark:text-amber-300'
+                              : 'border-green-600/40 bg-green-600/10 text-green-700 dark:text-green-300',
+                        ].join(' ')}
+                      >
+                        {binariesOk === false ? 'Не найдены' : availableUpdates.length > 0 ? 'Есть обновления' : 'Актуально'}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent sideOffset={6}>
+                      {binariesOk === false
+                        ? 'Необходимые файлы отсутствуют или повреждены'
+                        : availableUpdates.length === 1
+                          ? `Доступно обновление: ${availableUpdates[0]}`
+                          : availableUpdates.length > 1
+                            ? `Доступно обновление для ${availableUpdates.length} файлов`
+                            : 'Все необходимые файлы найдены'}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <CardDescription>
+                  WinDivert, winws.exe, fake-файлы и списки
+                </CardDescription>
+              </div>
 
-            {binariesOk === false && (
-              <Alert>
-                <AlertTitle>Файлы не найдены</AlertTitle>
-                <AlertDescription>
-                  Необходимые файлы отсутствуют или повреждены
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {binariesOk === true && availableUpdates.length > 0 && (
-              <Alert className="border-yellow-600 bg-yellow-600/10">
-                <AlertTitle>Доступно обновление файлов</AlertTitle>
-                <AlertDescription>
-                  {availableUpdates.length === 1
-                    ? `Доступно обновление: ${availableUpdates[0]}`
-                    : `Доступно обновление для ${availableUpdates.length} файлов`}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {binariesOk === true && availableUpdates.length === 0 && (
-              <Alert className="border-green-600 bg-green-600/10">
-                <AlertTitle>Файлы на месте</AlertTitle>
-                <AlertDescription>
-                  Все необходимые файлы найдены
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {isDownloading && progress
-              ? (
-                  <div className="space-y-2">
-                    <div className="h-2 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full bg-primary transition-all duration-300"
-                        style={{
-                          width: `${Math.max(0, Math.min(100, progress.total > 0 ? (progress.current / progress.total) * 100 : 0))}%`,
-                        }}
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {progress.current}
-                      /
-                      {progress.total}
-                      :
-                      {progress.filename}
-                    </p>
-                  </div>
-                )
-              : (
+              <div className="flex shrink-0 flex-wrap items-center gap-2 self-start">
+                {!isDownloading && (
                   <Button
                     onClick={handleDownloadBinaries}
                     disabled={isDownloading}
                     variant={binariesOk === false ? 'default' : 'outline'}
                   >
-                    <Download className="mr-2 size-4" />
+                    <Download className="size-4" />
                     {binariesOk === false
                       ? 'Загрузить'
                       : availableUpdates.length > 0
@@ -332,7 +322,58 @@ export function AboutPage() {
                         : 'Переустановить'}
                   </Button>
                 )}
-          </CardContent>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label="Открыть папку ~/.zapret"
+                      onClick={() => { void handleOpenZapretDirectory() }}
+                    >
+                      <FolderOpen className="size-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent sideOffset={6}>Открыть папку ~/.zapret</TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
+          </CardHeader>
+          {showBinaryDetails && (
+            <CardContent className="space-y-4 pt-0">
+              {showBinaryStatusText && (
+                <p className="text-sm text-muted-foreground">
+                  {binariesOk === false
+                    ? 'Необходимые файлы отсутствуют или повреждены'
+                    : availableUpdates.length === 1
+                      ? `Доступно обновление: ${availableUpdates[0]}`
+                      : `Доступно обновление для ${availableUpdates.length} файлов`}
+                </p>
+              )}
+
+              {isDownloading && progress
+                ? (
+                    <div className="space-y-2">
+                      <div className="h-2 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full bg-primary transition-all duration-300"
+                          style={{
+                            width: `${Math.max(0, Math.min(100, progress.total > 0 ? (progress.current / progress.total) * 100 : 0))}%`,
+                          }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {progress.current}
+                        /
+                        {progress.total}
+                        :
+                        {progress.filename}
+                      </p>
+                    </div>
+                  )
+                : null}
+            </CardContent>
+          )}
         </Card>
 
         <Card>
@@ -360,27 +401,22 @@ export function AboutPage() {
                   </span>
                 </button>
               ))}
-            </div>
-
-            <div className="rounded-xl border border-border/60 bg-muted/25 p-4">
-              <p className="text-sm font-medium">Основа проекта</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Zapret Interactive опирается на экосистему zapret и zapret-win-bundle.
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {APP_FOUNDATIONS.map(item => (
-                  <Button
-                    key={item.label}
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => { void handleOpenExternal(item.href) }}
-                  >
+              {APP_FOUNDATIONS.map(item => (
+                <button
+                  key={item.label}
+                  type="button"
+                  className="flex w-full cursor-pointer items-start justify-between rounded-xl border border-border/60 bg-muted/25 p-4 text-left transition-colors hover:bg-muted/45"
+                  onClick={() => { void handleOpenExternal(item.href) }}
+                >
+                  <div>
+                    <p className="text-sm font-medium">{item.label}</p>
+                    <p className="mt-1 text-xs break-all text-muted-foreground">{item.value}</p>
+                  </div>
+                  <span className="ml-3 flex size-8 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-background/70">
                     <ExternalLink className="size-4" />
-                    {item.label}
-                  </Button>
-                ))}
-              </div>
+                  </span>
+                </button>
+              ))}
             </div>
           </CardContent>
         </Card>

@@ -105,6 +105,11 @@ pub struct AppConfig {
         rename = "appAutoUpdatesEnabled"
     )]
     pub app_auto_updates_enabled: bool,
+    #[serde(
+        default = "default_window_acrylic_enabled",
+        rename = "windowAcrylicEnabled"
+    )]
+    pub window_acrylic_enabled: bool,
 }
 
 pub struct ConfigEnsureResult {
@@ -137,6 +142,10 @@ fn default_core_file_update_prompts_enabled() -> bool {
 }
 
 fn default_app_auto_updates_enabled() -> bool {
+    true
+}
+
+fn default_window_acrylic_enabled() -> bool {
     true
 }
 
