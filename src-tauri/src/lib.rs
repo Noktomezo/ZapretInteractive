@@ -67,6 +67,14 @@ fn apply_window_transparency(_window: &tauri::WebviewWindow, _enabled: bool) -> 
     Ok(())
 }
 
+fn report_window_transparency_error(app: &tauri::AppHandle, window_label: &str, error: &str) {
+    eprintln!("Failed to apply window transparency for '{window_label}': {error}");
+    let _ = app.emit(
+        "window-transparency-error",
+        format!("{window_label}: {error}"),
+    );
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[cfg(debug_assertions)]
@@ -198,7 +206,31 @@ pub fn run() {
                     .lock()
                     .map(|cfg| cfg.window_acrylic_enabled)
                     .unwrap_or_else(|poisoned| poisoned.into_inner().window_acrylic_enabled);
-                let _ = apply_window_transparency(&window, window_acrylic_enabled);
+                if let Err(error) = apply_window_transparency(&window, window_acrylic_enabled) {
+                    report_window_transparency_error(app.handle(), "main", &error);
+
+                    if window_acrylic_enabled {
+                        let mut fallback_config = match state.config.lock() {
+                            Ok(cfg) => cfg.clone(),
+                            Err(poisoned) => poisoned.into_inner().clone(),
+                        };
+                        fallback_config.window_acrylic_enabled = false;
+
+                        if let Err(save_error) = config::save_config_to_disk(&fallback_config) {
+                            eprintln!(
+                                "Failed to persist disabled window transparency after startup error: {save_error}"
+                            );
+                        }
+
+                        match state.config.lock() {
+                            Ok(mut cfg) => *cfg = fallback_config,
+                            Err(poisoned) => {
+                                let mut cfg = poisoned.into_inner();
+                                *cfg = fallback_config;
+                            }
+                        }
+                    }
+                }
 
                 let window_clone = window.clone();
                 let app_handle = app.handle().clone();
@@ -351,11 +383,48 @@ fn set_window_transparency_enabled(
     state: tauri::State<'_, config::AppState>,
     enabled: bool,
 ) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window("main") {
-        apply_window_transparency(&window, enabled)?;
+    let current_config = state
+        .config
+        .lock()
+        .map(|cfg| cfg.clone())
+        .unwrap_or_else(|poisoned| poisoned.into_inner().clone());
+
+    let mut next_config = current_config.clone();
+    next_config.window_acrylic_enabled = enabled;
+
+    config::save_config_to_disk(&next_config)?;
+
+    {
+        let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
+        *cfg = next_config.clone();
     }
 
-    let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
-    cfg.window_acrylic_enabled = enabled;
-    config::save_config_to_disk(&cfg)
+    if let Some(window) = app.get_webview_window("main")
+        && let Err(error) = apply_window_transparency(&window, enabled)
+    {
+        let rollback_result = (|| -> Result<(), String> {
+            config::save_config_to_disk(&current_config)?;
+            let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
+            *cfg = current_config.clone();
+            Ok(())
+        })();
+
+        if let Err(rollback_error) = rollback_result {
+            report_window_transparency_error(
+                &app,
+                "main",
+                &format!(
+                    "{error}; also failed to rollback window transparency config: {rollback_error}"
+                ),
+            );
+            return Err(format!(
+                "{error}; также не удалось откатить настройку: {rollback_error}"
+            ));
+        }
+
+        report_window_transparency_error(&app, "main", &error);
+        return Err(error);
+    }
+
+    Ok(())
 }

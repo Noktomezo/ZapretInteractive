@@ -14,7 +14,7 @@ function RootLayout() {
   const location = useLocation()
   const config = useConfigStore(state => state.config)
   const loadConfig = useConfigStore(state => state.load)
-  const acrylicEnabled = config?.windowAcrylicEnabled ?? true
+  const acrylicEnabled = config?.windowAcrylicEnabled
 
   useEffect(() => {
     void loadConfig()
@@ -22,7 +22,7 @@ function RootLayout() {
 
   return (
     <TooltipProvider>
-      <div className={cn('min-h-full', acrylicEnabled ? 'app-glass-surface bg-transparent' : 'app-opaque-surface bg-background')}>
+      <div className={cn('min-h-full', acrylicEnabled === true ? 'app-glass-surface bg-transparent' : 'app-opaque-surface bg-background')}>
         <SidebarProvider className="flex-col" open={!collapsed} onOpenChange={open => setCollapsed(!open)}>
           <TitleBar />
           <div className="flex h-screen overflow-hidden pt-10">
