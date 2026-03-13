@@ -95,7 +95,7 @@ export function AboutPage() {
       }
       catch (e) {
         if (isMounted)
-          toast.error(`Ошибка инициализации страницы: ${e}`)
+          toast.error(`Ошибка инициализации страницы: ${e instanceof Error ? e.message : String(e)}`)
       }
     }
 
@@ -128,7 +128,7 @@ export function AboutPage() {
     catch (e) {
       console.error(e)
       resetDownload()
-      toast.error(`Ошибка загрузки файлов: ${e}`)
+      toast.error(`Ошибка загрузки файлов: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
