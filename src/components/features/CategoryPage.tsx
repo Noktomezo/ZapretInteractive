@@ -332,7 +332,7 @@ export function CategoryPage() {
 
   if (!category) {
     return (
-      <ScrollArea className="h-full">
+      <ScrollArea className="h-full min-h-0">
         <div className="p-6 space-y-6">
           <Link to="/strategies" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
             <ArrowLeft className="w-4 h-4" />
@@ -345,7 +345,7 @@ export function CategoryPage() {
   }
 
   return (
-    <ScrollArea className="h-full">
+    <ScrollArea className="h-full min-h-0">
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">

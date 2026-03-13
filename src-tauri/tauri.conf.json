@@ -33,6 +33,13 @@
     "active": true,
     "targets": "nsis",
     "createUpdaterArtifacts": true,
+    "windows": {
+      "nsis": {
+        "installerIcon": "windows/nsis/installer-icon.ico",
+        "headerImage": "windows/nsis/header.bmp",
+        "sidebarImage": "windows/nsis/sidebar.bmp"
+      }
+    },
     "icon": [
       "icons/100x100.png",
       "icons/icon.ico"

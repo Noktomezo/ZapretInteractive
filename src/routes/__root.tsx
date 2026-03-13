@@ -17,8 +17,8 @@ function RootLayout() {
           <div className="flex h-screen overflow-hidden pt-10">
             <Sidebar />
             <SidebarInset className="h-full min-h-0 overflow-hidden rounded-tl-lg">
-              <div className="h-full min-h-0 flex-1 overflow-auto">
-                <div className="h-full min-h-full animate-in fade-in duration-200">
+              <div className="h-full min-h-0 flex-1 overflow-hidden">
+                <div className="flex h-full min-h-0 flex-col animate-in fade-in duration-200">
                   <Outlet />
                 </div>
               </div>

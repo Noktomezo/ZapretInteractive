@@ -18,13 +18,16 @@ bootstrap:
 
 # Final release build with UPX compression.
 # Use `just build-uncompressed` if you need an artifact without UPX packing.
+# These recipes keep updater artifacts enabled and therefore expect signing env vars.
 build: gen-icons
-  bun run tauri build
+  bun tauri build
   upx --best --lzma "src-tauri/target/release/Zapret Interactive.exe"
 
-# Final release build without UPX compression
-build-uncompressed: gen-icons
-  bun run tauri build
+# Local installer build without updater artifacts/latest.json.
+# Use this when you want to verify NSIS visuals without a local signing key.
+build-local: gen-icons
+  bun tauri build --no-sign
+  upx --best --lzma "src-tauri/target/release/Zapret Interactive.exe"
 
 # Lint only backend
 lint-back:
