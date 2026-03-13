@@ -61,7 +61,7 @@ export function MainPage() {
   const dismissCurrentAppUpdate = useUpdaterStore(state => state.dismissCurrentVersionUntilRestart)
 
   const waveColor = status === 'connected'
-    ? 'rgba(74, 222, 128, 0.18)'
+    ? 'rgba(74, 222, 128, 0.26)'
     : status === 'connecting' || status === 'disconnecting'
       ? 'rgba(250, 204, 21, 0.16)'
       : 'rgba(248, 113, 113, 0.35)'

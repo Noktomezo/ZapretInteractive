@@ -171,6 +171,10 @@
   @apply bg-background/40 backdrop-blur-xl;
 }
 
+.app-opaque-surface {
+  @apply bg-background;
+}
+
   @keyframes pulse-glow {
     0%,
     100% {
@@ -227,12 +231,6 @@
     animation: pulse-glow-yellow 2s ease-in-out infinite;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .animate-pulse-glow-yellow {
-      animation: none;
-    }
-  }
-
   @keyframes pulse-glow-yellow-dark {
     0%,
     100% {
@@ -247,14 +245,22 @@
     animation: pulse-glow-yellow-dark 2s ease-in-out infinite;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .dark .animate-pulse-glow-yellow {
-      animation: none;
+  .dark .animate-pulse-glow-primary {
+    animation: pulse-glow-primary-dark 2s ease-in-out infinite;
+  }
+
+  @keyframes page-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
     }
   }
 
-  .dark .animate-pulse-glow-primary {
-    animation: pulse-glow-primary-dark 2s ease-in-out infinite;
+  .page-fade-in {
+    animation: page-fade-in 320ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: opacity;
   }
 
   @keyframes pulse-glow-primary-dark {

@@ -59,6 +59,7 @@ export interface AppConfig {
   connectOnAutostart?: boolean
   coreFileUpdatePromptsEnabled?: boolean
   appAutoUpdatesEnabled?: boolean
+  windowAcrylicEnabled?: boolean
 }
 
 export interface EnsureManagedFilesResult {

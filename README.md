@@ -1,8 +1,8 @@
 <div align="center">
-  <img src="assets/thumbnail.png" alt="Zapret Interactive">
+  <img src="assets/app-thumbnail.png" alt="Zapret Interactive">
 
   <p>
-    GUI-обёртка для <a href="https://github.com/bol-van/zapret-win-bundle">zapret-win-bundle</a> с предустановленными стретегиями, фильтрами и другими файлами/настройками, предоставляющая удобный графический интерфейс для их редактирования/добавления/удаления
+    <strong>Zapret Interactive</strong> — desktop GUI для <a href="https://github.com/bol-van/zapret-win-bundle">zapret-win-bundle</a> с готовыми стратегиями, фильтрами и файлами, удобным редактированием конфигурации и встроенным управлением обновлениями.
   </p>
 
   <p>
@@ -12,15 +12,21 @@
     <a href="https://github.com/Noktomezo/ZapretInteractive/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/Noktomezo/ZapretInteractive?style=flat&logo=github&label=%D0%BB%D0%B8%D1%86%D0%B5%D0%BD%D0%B7%D0%B8%D1%8F&labelColor=1f2937&color=64748b&logoColor=white"></a>
   </p>
 
+  <p>
+    Windows-only · Tauri + React · Стратегии, фильтры, плейсхолдеры, автообновления и восстановление файлов
+  </p>
+
 </div>
 
-## ✨ Фичи
+## ✨ Что умеет
 
-- 🗂️ Удобное управление стратегиями, фильтрами и другими параметрами прямо из GUI
-- 📜 Отдельная страница логов с быстрым просмотром состояния подключения
+- 🗂️ Управление категориями и стратегиями прямо из GUI без ручного редактирования файлов
+- 🧩 Редактирование фильтров и плейсхолдеров в одном интерфейсе
+- 🔄 Автоматическое восстановление важных файлов в `~/.zapret`
+- ⬆️ Проверка обновлений приложения, `winws` и связанных файлов
+- 📜 Отдельная страница логов для состояния подключения и внутренних событий
 - ⚙️ Автозапуск, запуск в трей и автоподключение
-- 🔄 Автоматическая проверка, обновление и восстановление нужных файлов
-- 🖥️ Современный desktop UI на Tauri + React
+- 🖥️ Нативный desktop UI на Tauri + React под Windows
 
 ## 📸 Скриншот
 
@@ -28,37 +34,60 @@
   <img src="assets/app-screenshot.png" alt="Screenshot" width="100%">
 </div>
 
-## ⚡ Требования
+## 📦 Установка
+
+Скачать готовый установщик можно в [последних релизах](https://github.com/Noktomezo/ZapretInteractive/releases).
+
+После установки:
+
+- запусти приложение от имени администратора
+- дождись проверки и восстановления нужных файлов
+- выбери стратегию и включи подключение
+
+## ⚡ Требования для запуска
 
 - Windows 10/11 x64
 - Запуск от имени администратора (для WinDivert драйвера)
 - WebView2 Runtime (устанавливается автоматически)
 
-## 📥 Установка
+## 🧠 Что внутри
 
-Готовый установщик можно скачать из [последних релизов](https://github.com/Noktomezo/ZapretInteractive/releases).
+- стратегии для разных сервисов и сценариев
+- управление списками, фильтрами и плейсхолдерами
+- самовосстановление `config.json`, `fake/`, `lists/` и других критичных файлов
+- ручные и автоматические сценарии обновления
+- NSIS installer и автообновление самого приложения
 
 ## 🛠️ Разработка
 
-### Требования
+### Зависимости
 
 - [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) с выбранным **Desktop development with C++** (MSVC + Windows SDK)
 - [Bun](https://bun.com/)
+- [Just](https://github.com/casey/just)
 
-### Команды
+### Основные команды
 
 ```bash
 # Установка зависимостей
-bun install
+just bootstrap
 
 # Запуск в режиме разработки
-bun tauri dev
+just dev
 
 # Сборка релиза
-bun tauri build
+just build
 ```
 
-## 🙏 Респект
+### Локальная сборка installer без signing key
+
+```bash
+just build-local
+```
+
+Этот путь отключает локальную генерацию updater artifacts и нужен для проверки installer UI без приватного ключа.
+
+## 🙏 Основа проекта
 
 - [bol-van/zapret](https://github.com/bol-van/zapret)
 - [bol-van/zapret-win-bundle](https://github.com/bol-van/zapret-win-bundle)

@@ -1,8 +1,7 @@
-import { Download, FolderOpen, Loader2, RotateCcw } from 'lucide-react'
+import { Loader2, RotateCcw } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { ThemeSwitcher } from '@/components/ThemeSwitcher'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,14 +19,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
-import { runWithPausedConnection } from '@/lib/connection-flow'
 import * as tauri from '@/lib/tauri'
 import { cn } from '@/lib/utils'
-import { useAppStore } from '@/stores/app.store'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
-import { useDownloadStore } from '@/stores/download.store'
-import { useUpdaterStore } from '@/stores/updater.store'
 
 const RANGE_RE = /^\d+-\d+$/
 const PORT_RE = /^\d+$/
@@ -55,7 +50,6 @@ function isValidPortRange(value: string): boolean {
 }
 
 export function SettingsPage() {
-  const [zapretDir, setZapretDir] = useState<string>('')
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
   const [autostartEnabled, setAutostartEnabled] = useState(false)
   const [autostartKnown, setAutostartKnown] = useState(false)
@@ -74,27 +68,13 @@ export function SettingsPage() {
   const setGlobalPorts = useConfigStore(state => state.setGlobalPorts)
   const setCoreFileUpdatePromptsEnabled = useConfigStore(state => state.setCoreFileUpdatePromptsEnabled)
   const setAppAutoUpdatesEnabled = useConfigStore(state => state.setAppAutoUpdatesEnabled)
+  const setWindowAcrylicEnabled = useConfigStore(state => state.setWindowAcrylicEnabled)
   const setMinimizeToTray = useConfigStore(state => state.setMinimizeToTray)
   const setLaunchToTray = useConfigStore(state => state.setLaunchToTray)
   const setConnectOnAutostart = useConfigStore(state => state.setConnectOnAutostart)
   const reset = useConfigStore(state => state.reset)
-  const isDownloading = useDownloadStore(state => state.isDownloading)
-  const progress = useDownloadStore(state => state.progress)
-  const resetDownload = useDownloadStore(state => state.reset)
-  const binariesOk = useAppStore(state => state.binariesOk)
-  const availableUpdates = useAppStore(state => state.availableUpdates)
   const restartIfConnected = useConnectionStore(state => state.restartIfConnected)
   const addConfigLog = useConnectionStore(state => state.addConfigLog)
-  const initUpdater = useUpdaterStore(state => state.init)
-  const currentAppVersion = useUpdaterStore(state => state.currentVersion)
-  const appUpdate = useUpdaterStore(state => state.availableUpdate)
-  const appUpdateChecking = useUpdaterStore(state => state.checking)
-  const appUpdateDownloading = useUpdaterStore(state => state.downloading)
-  const appUpdateInstalling = useUpdaterStore(state => state.installing)
-  const lastAppUpdateCheckError = useUpdaterStore(state => state.lastCheckError)
-  const lastAppUpdateCheckedAt = useUpdaterStore(state => state.lastCheckedAt)
-  const checkForAppUpdates = useUpdaterStore(state => state.checkForUpdates)
-  const installAvailableAppUpdate = useUpdaterStore(state => state.installAvailableUpdate)
 
   const refreshAutostartState = async (isMounted = true) => {
     try {
@@ -118,17 +98,6 @@ export function SettingsPage() {
     const init = async () => {
       try {
         await load()
-        await initUpdater()
-
-        try {
-          const dir = await tauri.getZapretDirectory()
-          if (isMounted)
-            setZapretDir(dir)
-        }
-        catch (e) {
-          if (isMounted)
-            toast.error(`Ошибка получения директории Zapret: ${e}`)
-        }
 
         await refreshAutostartState(isMounted)
       }
@@ -146,7 +115,7 @@ export function SettingsPage() {
     return () => {
       isMounted = false
     }
-  }, [initUpdater, load])
+  }, [load])
 
   useEffect(() => {
     if (config?.global_ports) {
@@ -163,23 +132,6 @@ export function SettingsPage() {
       }
     }
   }, [config?.global_ports])
-
-  const handleDownloadBinaries = async () => {
-    const forceAll = binariesOk === true && availableUpdates.length === 0
-    try {
-      addConfigLog(forceAll
-        ? 'запущена переустановка файлов приложения'
-        : 'запущено обновление файлов приложения')
-      await runWithPausedConnection(async () => {
-        await tauri.downloadBinaries(forceAll)
-      })
-    }
-    catch (e) {
-      console.error(e)
-      resetDownload()
-      toast.error(`Ошибка загрузки файлов: ${e}`)
-    }
-  }
 
   const handleReset = async () => {
     try {
@@ -242,11 +194,7 @@ export function SettingsPage() {
   }
 
   const handleAppAutoUpdatesChange = async (checked: boolean) => {
-    if (!config) {
-      return
-    }
-
-    const previous = config.appAutoUpdatesEnabled ?? true
+    const previous = config?.appAutoUpdatesEnabled ?? true
     setAppAutoUpdatesEnabled(checked)
     try {
       await saveNow()
@@ -261,21 +209,27 @@ export function SettingsPage() {
     }
   }
 
-  const handleManualAppUpdateCheck = async () => {
-    try {
-      await checkForAppUpdates({ manual: true, silent: false })
-    }
-    catch (e) {
-      console.error('Failed to check app updates:', e)
-    }
-  }
+  const handleWindowAcrylicChange = async (checked: boolean) => {
+    const previous = config?.windowAcrylicEnabled ?? true
+    setWindowAcrylicEnabled(checked)
 
-  const handleInstallAppUpdate = async () => {
     try {
-      await installAvailableAppUpdate()
+      await tauri.setWindowTransparencyEnabled(checked)
+      await saveNow()
+      addConfigLog(checked
+        ? 'акриловый материал и прозрачность окна включены'
+        : 'акриловый материал и прозрачность окна отключены')
+      toast.success(checked ? 'Прозрачность окна включена' : 'Прозрачность окна отключена')
     }
     catch (e) {
-      console.error('Failed to install app update:', e)
+      setWindowAcrylicEnabled(previous)
+      try {
+        await tauri.setWindowTransparencyEnabled(previous)
+      }
+      catch (restoreError) {
+        console.error('Failed to restore window transparency state:', restoreError)
+      }
+      toast.error(`Ошибка настройки прозрачности окна: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
@@ -288,12 +242,12 @@ export function SettingsPage() {
   }
 
   return (
-    <ScrollArea className="h-full">
+    <ScrollArea className="h-full min-h-0">
       <div className="space-y-6 p-6">
         <div>
           <h1 className="text-2xl font-medium">Настройки</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Глобальные параметры и управление файлами
+            Глобальные параметры приложения
           </p>
         </div>
 
@@ -305,15 +259,31 @@ export function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ThemeSwitcher />
+            <div className="space-y-4">
+              <ThemeSwitcher />
+
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor="window-acrylic-enabled">Акриловый материал и прозрачность окна</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Полностью включает или отключает стеклянный эффект окна и полупрозрачность интерфейса
+                  </p>
+                </div>
+                <Switch
+                  id="window-acrylic-enabled"
+                  checked={config.windowAcrylicEnabled ?? true}
+                  onCheckedChange={handleWindowAcrylicChange}
+                />
+              </div>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Обновление приложения</CardTitle>
+            <CardTitle className="text-lg">Обновления</CardTitle>
             <CardDescription>
-              Автоматическая и ручная проверка новых версий Zapret Interactive
+              Настройки фоновых проверок и автоматических предложений
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -327,80 +297,22 @@ export function SettingsPage() {
               <Switch
                 id="app-auto-updates"
                 checked={config.appAutoUpdatesEnabled ?? true}
-                disabled={appUpdateChecking || appUpdateDownloading || appUpdateInstalling}
                 onCheckedChange={handleAppAutoUpdatesChange}
               />
             </div>
 
-            <div className="space-y-1">
-              <p className="text-sm font-medium">
-                Текущая версия:
-                {' '}
-                <span className="font-mono">{currentAppVersion ?? '...'}</span>
-              </p>
-              {appUpdateChecking && (
-                <p className="text-xs text-muted-foreground">Проверяю наличие новой версии...</p>
-              )}
-              {!appUpdateChecking && appUpdateInstalling && (
-                <p className="text-xs text-muted-foreground">Устанавливаю обновление приложения...</p>
-              )}
-              {!appUpdateChecking && !appUpdateInstalling && appUpdateDownloading && (
-                <p className="text-xs text-muted-foreground">Загружаю обновление приложения...</p>
-              )}
-              {!appUpdateChecking && !appUpdateDownloading && !appUpdateInstalling && appUpdate && (
-                <p className="text-xs text-amber-600 dark:text-amber-400">
-                  Доступна версия
-                  {' '}
-                  {appUpdate.version}
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="core-file-update-prompts">Уведомлять об обновлениях критических файлов</Label>
+                <p className="text-xs text-muted-foreground">
+                  Отключает только предложения обновить файлы, не саму проверку
                 </p>
-              )}
-              {!appUpdateChecking && !appUpdateDownloading && !appUpdateInstalling && !appUpdate && lastAppUpdateCheckError && (
-                <p className="text-xs text-red-600 dark:text-red-400">
-                  Ошибка проверки:
-                  {' '}
-                  {lastAppUpdateCheckError}
-                </p>
-              )}
-              {!appUpdateChecking && !appUpdateDownloading && !appUpdateInstalling && !appUpdate && !lastAppUpdateCheckError && lastAppUpdateCheckedAt && (
-                <p className="text-xs text-muted-foreground">Новых версий не найдено</p>
-              )}
-            </div>
-
-            {appUpdate && (
-              <Alert className="border-yellow-600 bg-yellow-600/10">
-                <AlertTitle>Доступна новая версия приложения</AlertTitle>
-                <AlertDescription className="space-y-2">
-                  <p>
-                    Доступна версия
-                    {' '}
-                    {appUpdate.version}
-                    {appUpdate.date ? ` (${appUpdate.date})` : ''}
-                  </p>
-                  {appUpdate.notes && (
-                    <p className="line-clamp-4 whitespace-pre-wrap text-xs text-muted-foreground">
-                      {appUpdate.notes}
-                    </p>
-                  )}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                onClick={() => { void handleManualAppUpdateCheck() }}
-                disabled={appUpdateChecking || appUpdateDownloading || appUpdateInstalling}
-              >
-                Проверить обновления
-              </Button>
-              {appUpdate && (
-                <Button
-                  onClick={() => { void handleInstallAppUpdate() }}
-                  disabled={appUpdateChecking || appUpdateDownloading || appUpdateInstalling}
-                >
-                  Установить обновление
-                </Button>
-              )}
+              </div>
+              <Switch
+                id="core-file-update-prompts"
+                checked={config.coreFileUpdatePromptsEnabled ?? true}
+                onCheckedChange={handleCoreFileUpdatePromptsChange}
+              />
             </div>
           </CardContent>
         </Card>
@@ -565,99 +477,6 @@ export function SettingsPage() {
                 />
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Бинарные файлы</CardTitle>
-            <CardDescription>
-              WinDivert, winws.exe, fake-файлы и списки
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-2">
-              <FolderOpen className="size-4 text-muted-foreground" />
-              <span className="font-mono text-sm">{zapretDir}</span>
-            </div>
-
-            <div className="flex items-center justify-between gap-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="core-file-update-prompts">Предлагать обновления winws/fake файлов</Label>
-                <p className="text-xs text-muted-foreground">
-                  Фоновые проверки обновлений останутся, но можно скрыть автоматические предложения обновить файлы
-                </p>
-              </div>
-              <Switch
-                id="core-file-update-prompts"
-                checked={config.coreFileUpdatePromptsEnabled ?? true}
-                onCheckedChange={handleCoreFileUpdatePromptsChange}
-              />
-            </div>
-
-            {binariesOk === false && (
-              <Alert>
-                <AlertTitle>Файлы не найдены</AlertTitle>
-                <AlertDescription>
-                  Необходимые файлы отсутствуют или повреждены
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {binariesOk === true && availableUpdates.length > 0 && (
-              <Alert className="border-yellow-600 bg-yellow-600/10">
-                <AlertTitle>Доступно обновление файлов</AlertTitle>
-                <AlertDescription>
-                  {availableUpdates.length === 1
-                    ? `Доступно обновление: ${availableUpdates[0]}`
-                    : `Доступно обновление для ${availableUpdates.length} файлов`}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {binariesOk === true && availableUpdates.length === 0 && (
-              <Alert className="border-green-600 bg-green-600/10">
-                <AlertTitle>Файлы на месте</AlertTitle>
-                <AlertDescription>
-                  Все необходимые файлы найдены
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {isDownloading && progress
-              ? (
-                  <div className="space-y-2">
-                    <div className="h-2 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full bg-primary transition-all duration-300"
-                        style={{
-                          width: `${Math.max(0, Math.min(100, progress.total > 0 ? (progress.current / progress.total) * 100 : 0))}%`,
-                        }}
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {progress.current}
-                      /
-                      {progress.total}
-                      :
-                      {progress.filename}
-                    </p>
-                  </div>
-                )
-              : (
-                  <Button
-                    onClick={handleDownloadBinaries}
-                    disabled={isDownloading}
-                    variant={binariesOk === false ? 'default' : 'outline'}
-                  >
-                    <Download className="mr-2 size-4" />
-                    {binariesOk === false
-                      ? 'Загрузить'
-                      : availableUpdates.length > 0
-                        ? 'Обновить'
-                        : 'Переустановить'}
-                  </Button>
-                )}
           </CardContent>
         </Card>
 

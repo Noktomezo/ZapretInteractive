@@ -426,5 +426,6 @@
   "launchToTray": false,
   "connectOnAutostart": false,
   "coreFileUpdatePromptsEnabled": true,
-  "appAutoUpdatesEnabled": true
+  "appAutoUpdatesEnabled": true,
+  "windowAcrylicEnabled": true
 }

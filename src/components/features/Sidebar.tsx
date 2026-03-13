@@ -4,6 +4,7 @@ import {
   FileCode,
   Filter,
   Home,
+  Info,
   Layers,
   Logs,
   Settings,
@@ -36,7 +37,10 @@ const mainNavItems = [
   { path: '/logs', label: 'Логи', icon: Logs },
 ]
 
-const footerNavItem = { path: '/settings', label: 'Настройки', icon: Settings }
+const footerNavItems = [
+  { path: '/settings', label: 'Настройки', icon: Settings },
+  { path: '/about', label: 'О программе', icon: Info },
+]
 
 function SidebarNavItem({
   path,
@@ -156,7 +160,9 @@ export function Sidebar() {
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
-          <SidebarNavItem {...footerNavItem} />
+          {footerNavItems.map(item => (
+            <SidebarNavItem key={item.path} {...item} />
+          ))}
         </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />

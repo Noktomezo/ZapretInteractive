@@ -14,17 +14,18 @@ dev:
 
 # Install developer hooks
 bootstrap:
-  bun run bootstrap
+  bun install
+  cargo check --manifest-path "src-tauri/Cargo.toml"
 
 # Final release build with UPX compression.
-# Use `just build-uncompressed` if you need an artifact without UPX packing.
 build: gen-icons
-  bun run tauri build
+  bun tauri build
   upx --best --lzma "src-tauri/target/release/Zapret Interactive.exe"
 
-# Final release build without UPX compression
-build-uncompressed: gen-icons
-  bun run tauri build
+# Local installer build without updater artifacts/latest.json.
+build-local: gen-icons
+  bun tauri build --no-sign
+  upx --best --lzma "src-tauri/target/release/Zapret Interactive.exe"
 
 # Lint only backend
 lint-back:
@@ -40,12 +41,8 @@ lint: lint-back lint-front
 
 # Format only backend
 format-back:
-  cargo fmt --manifest-path "src-tauri/Cargo.toml"
-
-# Apply clippy fixes to backend
-clippy-fix-back:
   cargo clippy --fix --allow-dirty --manifest-path "src-tauri/Cargo.toml" --all-targets --all-features
-
+  cargo fmt --manifest-path "src-tauri/Cargo.toml"
 
 # Format only frontend
 format-front:
@@ -53,3 +50,6 @@ format-front:
 
 # Format both backend and frontend
 format: format-back format-front
+
+clean:
+  bunx poof dist src-tauri/target
