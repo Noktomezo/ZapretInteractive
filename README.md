@@ -2,7 +2,7 @@
   <img src="assets/app-thumbnail.png" alt="Zapret Interactive">
 
   <p>
-    <strong>Zapret Interactive</strong> — desktop GUI для <a href="https://github.com/bol-van/zapret-win-bundle">zapret-win-bundle</a> с готовыми стратегиями, фильтрами и файлами, удобным редактированием конфигурации и встроенным управлением обновлениями.
+    <strong>Настольный GUI для <a href="https://github.com/bol-van/zapret-win-bundle">zapret-win-bundle</a> с готовыми стратегиями, удобным редактированием конфигурации и встроенным управлением обновлениями.
   </p>
 
   <p>
