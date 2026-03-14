@@ -19,11 +19,6 @@ bootstrap:
 
 # Final release build with UPX compression.
 build: gen-icons
-  bun tauri build
-  upx --best --lzma "src-tauri/target/release/Zapret Interactive.exe"
-
-# Local installer build without updater artifacts/latest.json.
-build-local: gen-icons
   bun tauri build --no-sign
   upx --best --lzma "src-tauri/target/release/Zapret Interactive.exe"
 
