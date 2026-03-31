@@ -50,7 +50,8 @@
 
 ### Зависимости
 
-- [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) с выбранным **Desktop development with C++** (MSVC + Windows SDK)
+- [Rust](https://rust-lang.org/) >= 1.8
+- [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) с выбранным `Desktop development with C++ (MSVC + Windows SDK)`
 - [Bun](https://bun.com/)
 - [Just](https://github.com/casey/just)
 
