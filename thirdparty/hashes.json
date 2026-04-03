@@ -9,7 +9,7 @@
   "fake:discord-ip-discovery-with-port.bin": "073e84935196ec6a9701e6ad0df21de2b5fbfb7e3fd3ce6c5d9bba8e8654eb14",
   "fake:discord-ip-discovery-without-port.bin": "3f63c3a0cc63b90a6a8c50ffc61a32cc7d1f1b60457a96b90719256744df0e96",
   "fake:dtls_clienthello_w3_org.bin": "5bacd8cb6bd451f2374e55bc066b632e3c88fb852e3a44f19e6246c04d127be5",
-  "fake:http_iana_org.bin": "b9496089885d860bc08f4a7781864b3f4f7d7938a4c6abc7c8bd78a36b839bbc",
+  "fake:http_iana_org.bin": "c2644b8d95c9c561c0f994fce541600e3727860b078a7e7603003d696482459e",
   "fake:isakmp_initiator_request.bin": "45a73a6a414c9cbe032a44cabf20e98f67a652924072add0f105109f17f9b2ec",
   "fake:max.bin": "741bf7660081fe572f93582735d2c36ffbb93a0e59ff8bd7a6bced05ca8ade49",
   "fake:quic_initial_facebook_com.bin": "d6504305e15e6f63930d24ced9045001e345d3c1aeb56b1b4c329d51c7dea274",
@@ -39,7 +39,7 @@
   "fake:zero_1024.bin": "5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
   "fake:zero_256.bin": "5341e6b2646979a70e57653007a1f310169421ec9bdd9f1a5648f75ade005af1",
   "fake:zero_512.bin": "076a27c79e5ace2a3d47f9dd2e83e4ff6ea8872b3c2218f66c92b89b55f36560",
-  "lists:zapret-hosts-google.txt": "3c0e45fd82f052defcb5ff76f9e868fc70393e481c28074736d3c49755fa6b6a",
+  "lists:zapret-hosts-google.txt": "f83a38144f7f65f51dc4996414ec8b6b6eef29524e6a8cfe0ec15078c9699dc1",
   "lists:zapret-hosts-user-exclude.txt": "349e60a74a1a4a37526f570108019a8d1f81f86654635e15e0cdd62ac287a223",
   "lists:zapret-ip-user.txt": "84c70c9d255496c7c226f4c1b4082bd40699cc162139676ff09577db72e4956d"
 }
