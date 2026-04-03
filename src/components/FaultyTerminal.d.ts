@@ -1,6 +1,6 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, HTMLAttributes } from 'react'
 
-declare interface FaultyTerminalProps {
+declare interface FaultyTerminalProps extends HTMLAttributes<HTMLDivElement> {
   scale?: number
   gridMul?: [number, number]
   digitSize?: number

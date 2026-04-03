@@ -261,6 +261,15 @@ export default function FaultyTerminal({
   const timeScaleRef = useRef(timeScale)
   const mouseReactRef = useRef(mouseReact)
   const pageLoadAnimationRef = useRef(pageLoadAnimation)
+  const previousPageLoadAnimationRef = useRef(pageLoadAnimation)
+  const currentTintRef = useRef([1, 1, 1])
+  const targetTintRef = useRef([1, 1, 1])
+  const currentBackgroundRef = useRef([0, 0, 0])
+  const targetBackgroundRef = useRef([0, 0, 0])
+  const currentCurvatureRef = useRef(curvature)
+  const targetCurvatureRef = useRef(curvature)
+  const currentScanlineRef = useRef(scanlineIntensity)
+  const targetScanlineRef = useRef(scanlineIntensity)
 
   const tintVec = useMemo(() => hexToRgb(tint), [tint])
   const backgroundVec = useMemo(() => hexToRgb(backgroundTint), [backgroundTint])
@@ -288,6 +297,60 @@ export default function FaultyTerminal({
     mouseReactRef.current = mouseReact
     pageLoadAnimationRef.current = pageLoadAnimation
   }, [mouseReact, pageLoadAnimation, pause, timeScale])
+
+  useEffect(() => {
+    const program = programRef.current
+    const wasEnabled = previousPageLoadAnimationRef.current
+    previousPageLoadAnimationRef.current = pageLoadAnimation
+
+    if (!program) {
+      if (pageLoadAnimation) {
+        loadAnimationStartRef.current = 0
+      }
+      return
+    }
+
+    if (!wasEnabled && pageLoadAnimation) {
+      loadAnimationStartRef.current = 0
+      program.uniforms.uPageLoadProgress.value = 0
+      program.uniforms.uUsePageLoadAnimation.value = 1
+      return
+    }
+
+    if (!pageLoadAnimation) {
+      loadAnimationStartRef.current = 0
+      program.uniforms.uPageLoadProgress.value = 1
+      program.uniforms.uUsePageLoadAnimation.value = 0
+    }
+  }, [pageLoadAnimation])
+
+  useEffect(() => {
+    targetTintRef.current = [...tintVec]
+    if (!programRef.current) {
+      currentTintRef.current = [...tintVec]
+    }
+  }, [tintVec])
+
+  useEffect(() => {
+    targetBackgroundRef.current = [...backgroundVec]
+    if (!programRef.current) {
+      currentBackgroundRef.current = [...backgroundVec]
+    }
+  }, [backgroundVec])
+
+  useEffect(() => {
+    targetCurvatureRef.current = curvature
+    if (!programRef.current) {
+      currentCurvatureRef.current = curvature
+    }
+  }, [curvature])
+
+  useEffect(() => {
+    targetScanlineRef.current = scanlineIntensity
+    if (!programRef.current) {
+      currentScanlineRef.current = scanlineIntensity
+    }
+  }, [scanlineIntensity])
 
   useEffect(() => {
     const ctn = containerRef.current
@@ -336,15 +399,15 @@ export default function FaultyTerminal({
 
           uGridMul: { value: new Float32Array(gridMul) },
           uDigitSize: { value: digitSize },
-          uScanlineIntensity: { value: scanlineIntensity },
+          uScanlineIntensity: { value: currentScanlineRef.current },
           uGlitchAmount: { value: glitchAmount },
           uFlickerAmount: { value: flickerAmount },
           uNoiseAmp: { value: noiseAmp },
           uChromaticAberration: { value: chromaticAberration },
           uDither: { value: ditherValue },
-          uCurvature: { value: curvature },
-          uTint: { value: new Color(tintVec[0], tintVec[1], tintVec[2]) },
-          uBackground: { value: new Color(backgroundVec[0], backgroundVec[1], backgroundVec[2]) },
+          uCurvature: { value: currentCurvatureRef.current },
+          uTint: { value: new Color(currentTintRef.current[0], currentTintRef.current[1], currentTintRef.current[2]) },
+          uBackground: { value: new Color(currentBackgroundRef.current[0], currentBackgroundRef.current[1], currentBackgroundRef.current[2]) },
           uMouse: {
             value: new Float32Array([smoothMouseRef.current.x, smoothMouseRef.current.y]),
           },
@@ -444,6 +507,26 @@ export default function FaultyTerminal({
         mouseUniform[1] = smoothMouse.y
       }
 
+      const colorDamping = 0.1
+      for (let i = 0; i < 3; i++) {
+        currentTintRef.current[i] += (targetTintRef.current[i] - currentTintRef.current[i]) * colorDamping
+        currentBackgroundRef.current[i] += (targetBackgroundRef.current[i] - currentBackgroundRef.current[i]) * colorDamping
+      }
+      currentCurvatureRef.current += (targetCurvatureRef.current - currentCurvatureRef.current) * colorDamping
+      currentScanlineRef.current += (targetScanlineRef.current - currentScanlineRef.current) * colorDamping
+      currentProgram.uniforms.uTint.value = new Color(
+        currentTintRef.current[0],
+        currentTintRef.current[1],
+        currentTintRef.current[2],
+      )
+      currentProgram.uniforms.uBackground.value = new Color(
+        currentBackgroundRef.current[0],
+        currentBackgroundRef.current[1],
+        currentBackgroundRef.current[2],
+      )
+      currentProgram.uniforms.uCurvature.value = currentCurvatureRef.current
+      currentProgram.uniforms.uScanlineIntensity.value = currentScanlineRef.current
+
       currentRenderer.render({ scene: currentMesh })
     }
     rafRef.current = requestAnimationFrame(update)
@@ -462,15 +545,11 @@ export default function FaultyTerminal({
     program.uniforms.uScale.value = scale
     program.uniforms.uGridMul.value = new Float32Array(gridMul)
     program.uniforms.uDigitSize.value = digitSize
-    program.uniforms.uScanlineIntensity.value = scanlineIntensity
     program.uniforms.uGlitchAmount.value = glitchAmount
     program.uniforms.uFlickerAmount.value = flickerAmount
     program.uniforms.uNoiseAmp.value = noiseAmp
     program.uniforms.uChromaticAberration.value = chromaticAberration
     program.uniforms.uDither.value = ditherValue
-    program.uniforms.uCurvature.value = curvature
-    program.uniforms.uTint.value = new Color(tintVec[0], tintVec[1], tintVec[2])
-    program.uniforms.uBackground.value = new Color(backgroundVec[0], backgroundVec[1], backgroundVec[2])
     program.uniforms.uMouseStrength.value = mouseStrength
     program.uniforms.uUseMouse.value = mouseReact ? 1 : 0
     program.uniforms.uUsePageLoadAnimation.value = pageLoadAnimation ? 1 : 0

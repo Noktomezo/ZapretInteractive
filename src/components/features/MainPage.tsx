@@ -33,6 +33,7 @@ export function MainPage() {
   const activeUpdateToastIdRef = useRef<string | number | null>(null)
   const appUpdatePromptKeyRef = useRef('')
   const activeAppUpdateToastIdRef = useRef<string | number | null>(null)
+  const listModeButtonRefs = useRef<Array<HTMLButtonElement | null>>([])
   const [initError, setInitError] = useState<string | null>(null)
   const [listModeUpdating, setListModeUpdating] = useState(false)
   const config = useConfigStore(state => state.config)
@@ -75,8 +76,12 @@ export function MainPage() {
           ? '#946200'
           : '#B23A3A')
   const terminalBackgroundTint = resolvedTheme === 'dark' ? '#090C0A' : '#F6F7F4'
+  const terminalFlickerAmount = status === 'connected' ? 0 : 1
+  const terminalCurvature = status === 'connected' ? 0 : 0.1
+  const terminalScanlineIntensity = status === 'disconnected' ? 0.22 : 0
   const selectedListMode = config?.listMode ?? 'ipset'
-  const listModeDisabled = status !== 'disconnected' || listModeUpdating
+  const [focusedListModeIndex, setFocusedListModeIndex] = useState(selectedListMode === 'exclude' ? 1 : 0)
+  const listModeDisabled = !config || status !== 'disconnected' || listModeUpdating
 
   const handleListModeChange = async (value: string) => {
     if (!value || !config || listModeUpdating || value === config.listMode) {
@@ -98,6 +103,43 @@ export function MainPage() {
     finally {
       setListModeUpdating(false)
     }
+  }
+
+  useEffect(() => {
+    setFocusedListModeIndex(selectedListMode === 'exclude' ? 1 : 0)
+  }, [selectedListMode])
+
+  const handleListModeKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (listModeDisabled) {
+      return
+    }
+
+    const modes: ListMode[] = ['ipset', 'exclude']
+    let nextIndex: number | null = null
+
+    switch (event.key) {
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        nextIndex = (index + modes.length - 1) % modes.length
+        break
+      case 'ArrowRight':
+      case 'ArrowDown':
+        nextIndex = (index + 1) % modes.length
+        break
+      case 'Home':
+        nextIndex = 0
+        break
+      case 'End':
+        nextIndex = modes.length - 1
+        break
+      default:
+        return
+    }
+
+    event.preventDefault()
+    setFocusedListModeIndex(nextIndex)
+    listModeButtonRefs.current[nextIndex]?.focus()
+    void handleListModeChange(modes[nextIndex])
   }
 
   useEffect(() => {
@@ -511,18 +553,19 @@ export function MainPage() {
     <div className="relative flex h-full flex-col">
       <div className="absolute inset-0 overflow-hidden">
         <FaultyTerminal
+          aria-hidden="true"
           scale={1.5}
           gridMul={terminalGridMul}
           digitSize={1.2}
-          timeScale={0.5}
+          timeScale={0.1}
           pause={false}
-          scanlineIntensity={0}
+          scanlineIntensity={terminalScanlineIntensity}
           glitchAmount={1}
-          flickerAmount={1}
+          flickerAmount={terminalFlickerAmount}
           noiseAmp={1}
           chromaticAberration={0}
           dither={0}
-          curvature={0.1}
+          curvature={terminalCurvature}
           tint={terminalTint}
           backgroundTint={terminalBackgroundTint}
           mouseReact
@@ -530,6 +573,8 @@ export function MainPage() {
           pageLoadAnimation
           brightness={0.55}
           className="pointer-events-auto opacity-90"
+          role="presentation"
+          tabIndex={-1}
         />
       </div>
       <div className="relative z-10 flex flex-1 items-center justify-center p-8">
@@ -542,7 +587,7 @@ export function MainPage() {
               }
               variant="ghost"
               className={cn(
-                'h-32 w-32 rounded-full transition-all duration-300',
+                'h-32 w-32 rounded-full transition-[background-color,color,box-shadow,transform] duration-500 ease-out',
                 status === 'connected'
                 && 'animate-pulse-glow bg-green-600 text-white hover:bg-green-500 dark:hover:bg-green-500',
                 status === 'connecting'
@@ -590,10 +635,16 @@ export function MainPage() {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
+                        ref={(element) => {
+                          listModeButtonRefs.current[0] = element
+                        }}
                         type="button"
                         role="radio"
                         aria-checked={selectedListMode === 'ipset'}
                         disabled={listModeDisabled}
+                        tabIndex={focusedListModeIndex === 0 ? 0 : -1}
+                        onFocus={() => setFocusedListModeIndex(0)}
+                        onKeyDown={event => handleListModeKeyDown(event, 0)}
                         onClick={() => void handleListModeChange('ipset')}
                         className={cn(
                           'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
@@ -613,10 +664,16 @@ export function MainPage() {
                 )
               : (
                   <button
+                    ref={(element) => {
+                      listModeButtonRefs.current[0] = element
+                    }}
                     type="button"
                     role="radio"
                     aria-checked={selectedListMode === 'ipset'}
                     disabled={listModeDisabled}
+                    tabIndex={focusedListModeIndex === 0 ? 0 : -1}
+                    onFocus={() => setFocusedListModeIndex(0)}
+                    onKeyDown={event => handleListModeKeyDown(event, 0)}
                     onClick={() => void handleListModeChange('ipset')}
                     className={cn(
                       'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
@@ -634,10 +691,16 @@ export function MainPage() {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
+                        ref={(element) => {
+                          listModeButtonRefs.current[1] = element
+                        }}
                         type="button"
                         role="radio"
                         aria-checked={selectedListMode === 'exclude'}
                         disabled={listModeDisabled}
+                        tabIndex={focusedListModeIndex === 1 ? 0 : -1}
+                        onFocus={() => setFocusedListModeIndex(1)}
+                        onKeyDown={event => handleListModeKeyDown(event, 1)}
                         onClick={() => void handleListModeChange('exclude')}
                         className={cn(
                           'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
@@ -657,10 +720,16 @@ export function MainPage() {
                 )
               : (
                   <button
+                    ref={(element) => {
+                      listModeButtonRefs.current[1] = element
+                    }}
                     type="button"
                     role="radio"
                     aria-checked={selectedListMode === 'exclude'}
                     disabled={listModeDisabled}
+                    tabIndex={focusedListModeIndex === 1 ? 0 : -1}
+                    onFocus={() => setFocusedListModeIndex(1)}
+                    onKeyDown={event => handleListModeKeyDown(event, 1)}
                     onClick={() => void handleListModeChange('exclude')}
                     className={cn(
                       'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',

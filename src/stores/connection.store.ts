@@ -6,9 +6,22 @@ import { useConfigStore } from './config.store'
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'disconnecting' | 'error'
 const MAX_LOGS = 500
+const CONNECTION_TRANSITION_DELAY_MS = 1000
 let trayUpdatePromise: Promise<void> = Promise.resolve()
 let restartPromise: Promise<void> | null = null
 let trayListenerCleanup: (() => void) | null = null
+
+function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function ensureMinimumTransition(startedAt: number) {
+  const elapsed = Date.now() - startedAt
+  const remaining = CONNECTION_TRANSITION_DELAY_MS - elapsed
+  if (remaining > 0) {
+    await delay(remaining)
+  }
+}
 
 export interface LogEntry {
   seq: number
@@ -97,6 +110,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       return
     }
 
+    const transitionStartedAt = Date.now()
     set({ status: 'connecting', error: null })
     get().addLog('Начинаю подключение')
     get().addLog(`Режим списков: ${config.listMode}`)
@@ -130,6 +144,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
         config.global_ports.tcp,
         config.global_ports.udp,
       )
+      await ensureMinimumTransition(transitionStartedAt)
       set({ status: 'connected', pid })
       get().updateTrayState(true)
       get().addLog(`Подключение установлено, PID: ${pid}`)
@@ -140,6 +155,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       }
     }
     catch (e) {
+      await ensureMinimumTransition(transitionStartedAt)
       set({ status: 'error', error: String(e) })
       get().updateTrayState(false)
       get().addLog(`Ошибка подключения: ${e}`)
@@ -148,6 +164,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
 
   disconnect: async () => {
     const { pid } = get()
+    const transitionStartedAt = Date.now()
     set({ status: 'disconnecting' })
     get().addLog('Начинаю отключение')
 
@@ -160,11 +177,13 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
         get().addLog('PID не найден, выполняю очистку службы WinDivert')
         await tauri.killWindivertService()
       }
+      await ensureMinimumTransition(transitionStartedAt)
       set({ status: 'disconnected', pid: null })
       get().updateTrayState(false)
       get().addLog('Подключение остановлено')
     }
     catch (e) {
+      await ensureMinimumTransition(transitionStartedAt)
       set({ status: 'error', error: String(e) })
       get().updateTrayState(false)
       get().addLog(`Ошибка отключения: ${e}`)
