@@ -1,0 +1,7 @@
+thirdparty/*.dll binary
+thirdparty/*.exe binary
+thirdparty/*.sys binary
+thirdparty/fake/*.bin binary
+thirdparty/lists/*.txt text eol=lf
+thirdparty/hashes.json text eol=lf
+scripts/*.py text eol=lf
