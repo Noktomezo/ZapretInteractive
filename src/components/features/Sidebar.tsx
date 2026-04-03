@@ -66,14 +66,18 @@ function SidebarNavItem({
 
   const content = (
     <>
-      <span className="flex size-7 shrink-0 items-center justify-center">
-        <Icon className="size-4 shrink-0" />
+      <span className="flex size-6 shrink-0 items-center justify-center">
+        <Icon className="size-[0.9rem] shrink-0" />
       </span>
-      <span className="min-w-0 flex-1 overflow-hidden">
+      <span
+        className={cn(
+          'min-w-0 overflow-hidden transition-[max-width,margin,opacity] duration-200 ease-out',
+          open ? 'ml-1.5 max-w-40 flex-1 opacity-100' : 'ml-0 max-w-0 opacity-0',
+        )}
+      >
         <span
           className={cn(
-            'block whitespace-nowrap text-left transition-all duration-200 ease-out',
-            open ? 'translate-x-0 opacity-100 delay-75' : '-translate-x-2 opacity-0',
+            'block whitespace-nowrap text-left',
           )}
           aria-hidden={!open}
         >

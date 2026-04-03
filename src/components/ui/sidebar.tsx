@@ -61,8 +61,8 @@ function SidebarProvider({
       <div
         data-slot="sidebar-provider"
         style={{
-          '--sidebar-width': '13rem',
-          '--sidebar-width-icon': '3.5rem',
+          '--sidebar-width': '14.25rem',
+          '--sidebar-width-icon': '3.25rem',
           ...style,
         } as React.CSSProperties}
         className={cn('group/sidebar-wrapper flex h-full min-h-0 w-full', className)}
@@ -82,7 +82,7 @@ function Sidebar({ className, children, ...props }: React.ComponentProps<'aside'
       data-slot="sidebar"
       data-state={open ? 'expanded' : 'collapsed'}
       className={cn(
-        'relative hidden h-full shrink-0 bg-transparent text-sidebar-foreground transition-[width] duration-250 ease-out md:flex',
+        'relative hidden h-full shrink-0 bg-sidebar text-sidebar-foreground transition-[width] duration-250 ease-out md:flex',
         open ? 'w-[var(--sidebar-width)]' : 'w-[var(--sidebar-width-icon)]',
         className,
       )}
@@ -94,7 +94,7 @@ function Sidebar({ className, children, ...props }: React.ComponentProps<'aside'
 }
 
 function SidebarHeader({ className, ...props }: React.ComponentProps<'div'>) {
-  return <div data-slot="sidebar-header" className={cn('flex items-center gap-2 border-b border-sidebar-border p-2', className)} {...props} />
+  return <div data-slot="sidebar-header" className={cn('flex items-center gap-2 border-b border-sidebar-border/80 p-2', className)} {...props} />
 }
 
 function SidebarContent({ className, ...props }: React.ComponentProps<'div'>) {
@@ -102,7 +102,7 @@ function SidebarContent({ className, ...props }: React.ComponentProps<'div'>) {
 }
 
 function SidebarFooter({ className, ...props }: React.ComponentProps<'div'>) {
-  return <div data-slot="sidebar-footer" className={cn('mt-auto border-t border-sidebar-border p-2', className)} {...props} />
+  return <div data-slot="sidebar-footer" className={cn('mt-auto border-t border-sidebar-border/80 p-2', className)} {...props} />
 }
 
 function SidebarGroup({ className, ...props }: React.ComponentProps<'div'>) {
@@ -134,9 +134,10 @@ const SidebarMenuButton = React.forwardRef<React.ElementRef<'button'>, React.Com
   ...props
 }, ref) => {
   const classes = cn(
-    'flex h-10 w-full items-center overflow-hidden rounded-lg px-1.5 text-left text-sm font-normal outline-none transition-[background-color,color,box-shadow] duration-200 ease-out',
+    'flex h-9 w-full items-center overflow-hidden rounded-md border border-transparent text-left text-[13px] font-medium tracking-[-0.015em] outline-none transition-[background-color,border-color,color,transform] duration-200 ease-out',
+    'px-1.5',
     'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-    'data-[active=true]:bg-sidebar-primary data-[active=true]:text-sidebar-primary-foreground data-[active=true]:shadow-sm',
+    'data-[active=true]:border-white/8 data-[active=true]:bg-sidebar-primary data-[active=true]:text-sidebar-primary-foreground',
     className,
   )
 
@@ -180,14 +181,14 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<'
     <button
       data-slot="sidebar-trigger"
       type="button"
-      className={cn('inline-flex size-9 cursor-pointer items-center justify-center rounded-md text-foreground transition-colors hover:text-foreground', className)}
+      className={cn('inline-flex size-7 cursor-pointer items-center justify-center rounded-md bg-transparent text-foreground/82 transition-colors hover:bg-accent/70 hover:text-foreground', className)}
       onClick={composeEventHandlers(onClick, (event) => {
         if (!event.defaultPrevented)
           toggleSidebar()
       })}
       {...props}
     >
-      <Icon className="size-4" aria-hidden="true" />
+      <Icon className="size-[0.9rem]" aria-hidden="true" />
       <span className="sr-only">{open ? 'Collapse Sidebar' : 'Expand Sidebar'}</span>
     </button>
   )
@@ -214,7 +215,7 @@ function SidebarRail({ className, onClick, ...props }: React.ComponentProps<'but
 }
 
 function SidebarInset({ className, ...props }: React.ComponentProps<'main'>) {
-  return <main data-slot="sidebar-inset" className={cn('flex min-w-0 flex-1 flex-col border-t border-border bg-background md:border-l', className)} {...props} />
+  return <main data-slot="sidebar-inset" className={cn('flex min-w-0 flex-1 flex-col overflow-hidden border-t border-border/70 bg-background/72 md:border-l', className)} {...props} />
 }
 
 export {

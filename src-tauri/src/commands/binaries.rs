@@ -1,7 +1,8 @@
 use crate::commands::process::kill_windivert_service;
 use crate::config::{
-    AppConfig, AppState, current_config, ensure_config_exists_and_loaded, get_config_path,
-    get_zapret_dir,
+    AppConfig, AppState, current_config, ensure_config_exists_and_loaded,
+    ensure_managed_resources_dir_ready, ensure_runtime_data_dir_ready, get_config_path,
+    get_managed_resources_dir, get_runtime_data_dir,
 };
 use futures::stream::{self, StreamExt};
 use notify::{Config as NotifyConfig, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
@@ -13,7 +14,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{LazyLock, Mutex};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
@@ -38,11 +39,6 @@ pub struct FileHealthChangedPayload {
     pub unrecoverable_filters: Vec<String>,
 }
 
-#[derive(Default, serde::Serialize, serde::Deserialize)]
-struct ListsState {
-    last_updated_at: Option<u64>,
-}
-
 #[derive(Clone, serde::Serialize)]
 pub struct AppHealthSnapshot {
     pub binaries_ok: bool,
@@ -50,7 +46,6 @@ pub struct AppHealthSnapshot {
     pub available_updates: Vec<String>,
     pub available_updates_checked: bool,
     pub config_missing: bool,
-    pub lists_last_updated_at: Option<u64>,
 }
 
 #[derive(Clone, serde::Serialize, Default)]
@@ -84,26 +79,13 @@ struct LocalFileInspection {
     hash: Option<String>,
 }
 
-const BINARIES: [(&str, &str); 4] = [
-    (
-        "WinDivert.dll",
-        "https://github.com/bol-van/zapret-win-bundle/raw/refs/heads/master/zapret-winws/WinDivert.dll",
-    ),
-    (
-        "WinDivert64.sys",
-        "https://github.com/bol-van/zapret-win-bundle/raw/refs/heads/master/zapret-winws/WinDivert64.sys",
-    ),
-    (
-        "winws.exe",
-        "https://github.com/bol-van/zapret-win-bundle/raw/refs/heads/master/zapret-winws/winws.exe",
-    ),
-    (
-        "cygwin1.dll",
-        "https://github.com/bol-van/zapret-win-bundle/raw/refs/heads/master/zapret-winws/cygwin1.dll",
-    ),
-];
-
-const FAKE_FILES_BASE_URL: &str = "https://raw.githubusercontent.com/Noktomezo/ZIStorage/main/fake";
+const THIRD_PARTY_BASE_URL: &str =
+    "https://raw.githubusercontent.com/Noktomezo/ZapretInteractive/main/thirdparty";
+const REMOTE_HASHES_URL: &str =
+    "https://raw.githubusercontent.com/Noktomezo/ZapretInteractive/main/thirdparty/hashes.json";
+const BINARIES: &[&str] = &["WinDivert.dll", "Monkey64.sys", "winws.exe", "cygwin1.dll"];
+const FAKE_FILES_BASE_URL: &str =
+    "https://raw.githubusercontent.com/Noktomezo/ZapretInteractive/main/thirdparty/fake";
 const FAKE_FILES: &[&str] = &[
     "4pda.bin",
     "dht_find_node.bin",
@@ -143,7 +125,8 @@ const FAKE_FILES: &[&str] = &[
     "zero_512.bin",
 ];
 
-const LISTS_BASE_URL: &str = "https://raw.githubusercontent.com/Noktomezo/ZIStorage/main/lists";
+const LISTS_BASE_URL: &str =
+    "https://raw.githubusercontent.com/Noktomezo/ZapretInteractive/main/thirdparty/lists";
 const LISTS: &[&str] = &[
     "zapret-hosts-google.txt",
     "zapret-hosts-user-exclude.txt",
@@ -158,7 +141,6 @@ const FILTERS: &[&str] = &[
     "windivert_part.wireguard.txt",
 ];
 
-const LISTS_REFRESH_INTERVAL_SECS: u64 = 60 * 60 * 3;
 const WATCH_DEBOUNCE_MS: u64 = 800;
 const FILES_CONCURRENCY_LIMIT: usize = 6;
 static FILES_WATCHER_STARTED: AtomicBool = AtomicBool::new(false);
@@ -182,19 +164,16 @@ enum DownloadMode {
 }
 
 fn get_fake_dir() -> PathBuf {
-    get_zapret_dir().join("fake")
+    get_managed_resources_dir().join("fake")
 }
 fn get_lists_dir() -> PathBuf {
-    get_zapret_dir().join("lists")
+    get_managed_resources_dir().join("lists")
 }
 fn get_filters_dir() -> PathBuf {
-    get_zapret_dir().join("filters")
+    get_runtime_data_dir().join("filters")
 }
 fn get_hashes_path() -> PathBuf {
-    get_zapret_dir().join("hashes.json")
-}
-fn get_lists_state_path() -> PathBuf {
-    get_zapret_dir().join("lists-state.json")
+    get_managed_resources_dir().join("hashes.json")
 }
 
 fn sanitize_filename(filename: &str) -> Result<String, String> {
@@ -274,35 +253,6 @@ fn save_stored_hashes(hashes: &HashMap<String, String>) -> Result<(), String> {
     Ok(())
 }
 
-fn load_lists_state() -> Result<ListsState, String> {
-    let path = get_lists_state_path();
-    if !path.exists() {
-        return Ok(ListsState::default());
-    }
-    let content =
-        fs::read_to_string(&path).map_err(|e| format!("Failed to read lists-state.json: {e}"))?;
-    serde_json::from_str(&content).map_err(|e| format!("Failed to parse lists-state.json: {e}"))
-}
-
-fn save_lists_state(state: &ListsState) -> Result<(), String> {
-    let content = serde_json::to_string_pretty(state).map_err(|e| e.to_string())?;
-    let state_path = get_lists_state_path();
-    let temp_path = state_path.with_extension("json.tmp");
-    let mut temp_file = fs::File::create(&temp_path).map_err(|e| e.to_string())?;
-    use std::io::Write;
-    temp_file
-        .write_all(content.as_bytes())
-        .map_err(|e| e.to_string())?;
-    temp_file.sync_all().map_err(|e| e.to_string())?;
-    fs::rename(temp_path, state_path).map_err(|e| e.to_string())
-}
-
-fn rebuild_lists_state() -> Result<(), String> {
-    save_lists_state(&ListsState {
-        last_updated_at: None,
-    })
-}
-
 fn update_hashes<F>(mutate: F) -> Result<(), String>
 where
     F: FnOnce(&mut HashMap<String, String>) -> Result<(), String>,
@@ -322,7 +272,7 @@ fn rebuild_hashes_from_disk() -> Result<(), String> {
     let mut hashes = HashMap::new();
 
     for name in binary_names() {
-        let path = get_zapret_dir().join(name);
+        let path = get_managed_resources_dir().join(name);
         if path.exists() {
             hashes.insert(hash_key("binaries", name), calculate_sha256(&path)?);
         }
@@ -345,13 +295,6 @@ fn rebuild_hashes_from_disk() -> Result<(), String> {
     save_stored_hashes(&hashes)
 }
 
-fn current_timestamp() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs()
-}
-
 fn create_http_client() -> Result<reqwest::Client, String> {
     reqwest::Client::builder()
         .user_agent("Mozilla/5.0")
@@ -360,19 +303,47 @@ fn create_http_client() -> Result<reqwest::Client, String> {
         .map_err(|e| e.to_string())
 }
 
+async fn fetch_remote_hashes(client: &reqwest::Client) -> Result<HashMap<String, String>, String> {
+    let bytes = download_bytes(client, REMOTE_HASHES_URL, "hashes.json").await?;
+    serde_json::from_slice(&bytes).map_err(|e| format!("Failed to parse remote hashes.json: {e}"))
+}
+
+fn remote_hash_for<'a>(
+    remote_hashes: &'a HashMap<String, String>,
+    file: &TrackedFile,
+) -> Result<&'a str, String> {
+    remote_hashes
+        .get(&tracked_key(file))
+        .map(String::as_str)
+        .ok_or_else(|| format!("Missing remote hash for {} ({})", file.name, file.group))
+}
+
 fn hash_key(group: &str, name: &str) -> String {
     format!("{group}:{name}")
+}
+
+fn thirdparty_url(relative_path: &str) -> String {
+    format!("{THIRD_PARTY_BASE_URL}/{relative_path}")
+}
+
+fn tracked_file_url(group: &str, name: &str) -> String {
+    match group {
+        "binaries" => thirdparty_url(name),
+        "fake" => format!("{FAKE_FILES_BASE_URL}/{name}"),
+        "lists" => format!("{LISTS_BASE_URL}/{name}"),
+        _ => unreachable!("unsupported tracked file group: {group}"),
+    }
 }
 
 fn tracked_files() -> Vec<TrackedFile> {
     let mut files = Vec::new();
 
-    for (name, url) in BINARIES {
+    for name in BINARIES {
         files.push(TrackedFile {
             name,
             group: "binaries",
-            dest_path: get_zapret_dir().join(name),
-            url: url.to_string(),
+            dest_path: get_managed_resources_dir().join(name),
+            url: tracked_file_url("binaries", name),
             required_for_health: true,
             include_in_remote_updates: true,
         });
@@ -383,7 +354,7 @@ fn tracked_files() -> Vec<TrackedFile> {
             name,
             group: "fake",
             dest_path: get_fake_dir().join(name),
-            url: format!("{FAKE_FILES_BASE_URL}/{name}"),
+            url: tracked_file_url("fake", name),
             required_for_health: true,
             include_in_remote_updates: true,
         });
@@ -394,7 +365,7 @@ fn tracked_files() -> Vec<TrackedFile> {
             name,
             group: "lists",
             dest_path: get_lists_dir().join(name),
-            url: format!("{LISTS_BASE_URL}/{name}"),
+            url: tracked_file_url("lists", name),
             required_for_health: true,
             include_in_remote_updates: false,
         });
@@ -541,7 +512,6 @@ struct LocalHealthSnapshotFields {
     binaries_ok: bool,
     missing_critical_files: Vec<String>,
     config_missing: bool,
-    lists_last_updated_at: Option<u64>,
 }
 
 fn build_local_health_snapshot_with_inspections(
@@ -578,7 +548,6 @@ fn build_local_health_snapshot_with_inspections(
         binaries_ok: missing_critical_files.is_empty(),
         missing_critical_files,
         config_missing,
-        lists_last_updated_at: load_lists_state().unwrap_or_default().last_updated_at,
     })
 }
 
@@ -593,17 +562,19 @@ async fn collect_available_updates_with_context(
     files: &[TrackedFile],
     inspections: &HashMap<String, LocalFileInspection>,
 ) -> Result<Vec<String>, String> {
+    let remote_hashes = Arc::new(fetch_remote_hashes(client).await?);
     let manual_update_files: Vec<_> = files
         .iter()
         .filter_map(|file| file.include_in_remote_updates.then_some(file.clone()))
         .collect();
     let results = stream::iter(manual_update_files.into_iter().map(|file| {
+        let remote_hashes = remote_hashes.clone();
         let local_hash = inspections
             .get(&tracked_key(&file))
             .and_then(|value| value.hash.clone());
         async move {
-            let (changed, _) =
-                check_remote_file(client, &file.url, file.name, local_hash.as_deref()).await?;
+            let remote_hash = remote_hash_for(&remote_hashes, &file)?;
+            let changed = local_hash.as_deref() != Some(remote_hash);
             Ok::<Option<String>, String>(if changed {
                 Some(file.name.to_string())
             } else {
@@ -640,35 +611,10 @@ fn expected_hash<'a>(
     })
 }
 
-fn verify_group(
-    base_dir: &Path,
-    group: &str,
-    names: &[&str],
-    hashes: &HashMap<String, String>,
-) -> Result<bool, String> {
-    for name in names {
-        let file_path = base_dir.join(name);
-        if !file_path.exists() {
-            return Ok(false);
-        }
-        let Some(expected) = expected_hash(hashes, group, name) else {
-            return Ok(false);
-        };
-        let actual = calculate_sha256(&file_path)?;
-        if actual != *expected {
-            return Ok(false);
-        }
-    }
-    Ok(true)
-}
-
 fn ensure_base_directories() -> Result<(), String> {
-    for dir in [
-        get_zapret_dir(),
-        get_fake_dir(),
-        get_lists_dir(),
-        get_filters_dir(),
-    ] {
+    let _ = ensure_managed_resources_dir_ready()?;
+    let _ = ensure_runtime_data_dir_ready()?;
+    for dir in [get_fake_dir(), get_lists_dir(), get_filters_dir()] {
         if !dir.exists() {
             fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
         }
@@ -678,14 +624,19 @@ fn ensure_base_directories() -> Result<(), String> {
 
 fn ensure_helper_files() -> Result<(), String> {
     ensure_base_directories()?;
-    if !get_lists_state_path().exists() {
-        rebuild_lists_state()?;
+    for legacy_path in [
+        get_managed_resources_dir().join("lists-state.json"),
+        get_runtime_data_dir().join("lists-state.json"),
+    ] {
+        if legacy_path.exists() {
+            fs::remove_file(&legacy_path).map_err(|e| e.to_string())?;
+        }
     }
     Ok(())
 }
 
 fn binary_names() -> Vec<&'static str> {
-    BINARIES.iter().map(|(name, _)| *name).collect()
+    BINARIES.to_vec()
 }
 
 fn critical_files_ok(state: &AppState) -> Result<bool, String> {
@@ -694,21 +645,6 @@ fn critical_files_ok(state: &AppState) -> Result<bool, String> {
 
 fn collect_missing_critical_files(state: &AppState) -> Result<Vec<String>, String> {
     Ok(build_local_health_snapshot(state)?.missing_critical_files)
-}
-
-async fn check_remote_file(
-    client: &reqwest::Client,
-    url: &str,
-    name: &str,
-    local_hash: Option<&str>,
-) -> Result<(bool, Option<Vec<u8>>), String> {
-    let Some(local_hash) = local_hash else {
-        return Ok((true, None));
-    };
-    let bytes = download_bytes(client, url, name).await?;
-    let remote_hash = calculate_sha256_bytes(&bytes);
-    let changed = local_hash != remote_hash;
-    Ok((changed, changed.then_some(bytes)))
 }
 
 fn path_is_inside(path: &Path, dir: &Path) -> bool {
@@ -721,18 +657,16 @@ fn event_affects_lists(paths: &[PathBuf]) -> bool {
 }
 
 fn event_affects_tracked_files(paths: &[PathBuf]) -> bool {
-    let base_dir = get_zapret_dir();
+    let base_dir = get_managed_resources_dir();
     let fake_dir = get_fake_dir();
     let filters_dir = get_filters_dir();
     let hashes_path = get_hashes_path();
-    let lists_state_path = get_lists_state_path();
     let config_path = get_config_path();
     let critical_binary_names = binary_names();
     paths.iter().any(|path| {
         path_is_inside(path, &fake_dir)
             || path_is_inside(path, &filters_dir)
             || path == &hashes_path
-            || path == &lists_state_path
             || path == &config_path
             || critical_binary_names
                 .iter()
@@ -746,7 +680,8 @@ pub fn start_files_watcher(app: AppHandle) -> Result<(), String> {
     if FILES_WATCHER_STARTED.swap(true, Ordering::SeqCst) {
         return Ok(());
     }
-    let watch_dir = get_zapret_dir();
+    let managed_dir = get_managed_resources_dir();
+    let runtime_dir = get_runtime_data_dir();
 
     std::thread::spawn(move || {
         let (tx, rx) = mpsc::channel::<notify::Result<notify::Event>>();
@@ -767,11 +702,21 @@ pub fn start_files_watcher(app: AppHandle) -> Result<(), String> {
             }
         };
 
-        if let Err(e) = watcher.watch(&watch_dir, RecursiveMode::Recursive) {
+        if let Err(e) = watcher.watch(&managed_dir, RecursiveMode::Recursive) {
             FILES_WATCHER_STARTED.store(false, Ordering::SeqCst);
             let _ = app.emit(
                 "files-health-watch-error",
                 format!("Не удалось подписаться на каталог файлов: {e}"),
+            );
+            return;
+        }
+        if runtime_dir != managed_dir
+            && let Err(e) = watcher.watch(&runtime_dir, RecursiveMode::Recursive)
+        {
+            FILES_WATCHER_STARTED.store(false, Ordering::SeqCst);
+            let _ = app.emit(
+                "files-health-watch-error",
+                format!("Не удалось подписаться на каталог runtime-данных: {e}"),
             );
             return;
         }
@@ -976,10 +921,17 @@ async fn build_download_plan(
 
     let stored_hashes = Arc::new(stored_hashes);
     let inspections = Arc::new(inspections);
+    let remote_hashes = match mode {
+        DownloadMode::RepairOrUpdate | DownloadMode::ApplyCoreUpdates => {
+            Some(Arc::new(fetch_remote_hashes(client).await?))
+        }
+        DownloadMode::RepairManaged | DownloadMode::ReinstallAll => None,
+    };
     let results = stream::iter(candidates.drain(..).zip(files.iter().cloned()).map(
         |(file, tracked_file)| {
             let stored_hashes = stored_hashes.clone();
             let inspections = inspections.clone();
+            let remote_hashes = remote_hashes.clone();
             async move {
                 let local_inspection = inspections.get(&tracked_key(&tracked_file));
                 let local_hash = local_inspection.and_then(|value| value.hash.as_deref());
@@ -997,10 +949,12 @@ async fn build_download_plan(
                     DownloadMode::RepairOrUpdate => {
                         if !is_healthy {
                             (true, None)
-                        } else if tracked_file.include_in_remote_updates && local_hash.is_some() {
-                            check_remote_file(client, &file.url, &file.name, local_hash).await?
                         } else if tracked_file.include_in_remote_updates {
-                            (true, None)
+                            let remote_hashes = remote_hashes
+                                .as_ref()
+                                .ok_or_else(|| "Remote hashes not loaded".to_string())?;
+                            let remote_hash = remote_hash_for(remote_hashes, &tracked_file)?;
+                            (local_hash != Some(remote_hash), None)
                         } else {
                             (false, None)
                         }
@@ -1008,10 +962,12 @@ async fn build_download_plan(
                     DownloadMode::ApplyCoreUpdates => {
                         if !tracked_file.include_in_remote_updates {
                             (false, None)
-                        } else if local_hash.is_some() {
-                            check_remote_file(client, &file.url, &file.name, local_hash).await?
                         } else {
-                            (true, None)
+                            let remote_hashes = remote_hashes
+                                .as_ref()
+                                .ok_or_else(|| "Remote hashes not loaded".to_string())?;
+                            let remote_hash = remote_hash_for(remote_hashes, &tracked_file)?;
+                            (local_hash != Some(remote_hash), None)
                         }
                     }
                     DownloadMode::ReinstallAll => (true, None),
@@ -1081,8 +1037,6 @@ async fn execute_download_plan(
     }
 
     let mut downloaded = Vec::new();
-    let downloaded_lists = files_to_download.iter().any(|file| file.phase == "lists");
-
     for (current, file) in files_to_download.iter().enumerate() {
         if let Some(app) = app {
             app.emit(
@@ -1120,12 +1074,6 @@ async fn execute_download_plan(
         });
     }
 
-    if downloaded_lists {
-        save_lists_state(&ListsState {
-            last_updated_at: Some(current_timestamp()),
-        })?;
-    }
-
     if let Some(app) = app {
         app.emit("download-complete", ()).ok();
     }
@@ -1160,30 +1108,23 @@ async fn ensure_managed_files_internal(
     })
 }
 
-async fn refresh_lists_internal(force: bool) -> Result<usize, String> {
+async fn refresh_lists_internal() -> Result<usize, String> {
     ensure_helper_files()?;
 
     let lists_dir = get_lists_dir();
-    let stored_hashes = load_stored_hashes()?;
-    let state = load_lists_state()
-        .inspect_err(|e| eprintln!("Failed to load lists-state.json, using defaults: {e}"))
-        .unwrap_or_default();
-    let now = current_timestamp();
-    let all_lists_exist = verify_group(&lists_dir, "lists", LISTS, &stored_hashes).unwrap_or(false);
-    let is_stale = state
-        .last_updated_at
-        .map(|last| now.saturating_sub(last) >= LISTS_REFRESH_INTERVAL_SECS)
-        .unwrap_or(true);
-
-    if !force && all_lists_exist && !is_stale {
-        return Ok(0);
-    }
-
     let client = create_http_client()?;
+    let remote_hashes = fetch_remote_hashes(&client).await?;
     let mut updated_count = 0usize;
     for name in LISTS {
-        let bytes = download_bytes(&client, &format!("{LISTS_BASE_URL}/{name}"), name).await?;
-        let remote_hash = calculate_sha256_bytes(&bytes);
+        let tracked_file = TrackedFile {
+            name,
+            group: "lists",
+            dest_path: lists_dir.join(name),
+            url: tracked_file_url("lists", name),
+            required_for_health: true,
+            include_in_remote_updates: false,
+        };
+        let remote_hash = remote_hash_for(&remote_hashes, &tracked_file)?.to_string();
         let file_path = lists_dir.join(name);
         let local_hash = if file_path.exists() {
             calculate_sha256(&file_path).ok()
@@ -1192,6 +1133,7 @@ async fn refresh_lists_internal(force: bool) -> Result<usize, String> {
         };
 
         if local_hash.as_deref() != Some(remote_hash.as_str()) {
+            let bytes = download_bytes(&client, &tracked_file.url, name).await?;
             let temp_path = file_path.with_extension("tmp");
             use tokio::io::AsyncWriteExt;
             let mut temp_file = tokio::fs::File::create(&temp_path)
@@ -1220,10 +1162,6 @@ async fn refresh_lists_internal(force: bool) -> Result<usize, String> {
             })?;
         }
     }
-
-    save_lists_state(&ListsState {
-        last_updated_at: Some(now),
-    })?;
     Ok(updated_count)
 }
 
@@ -1279,7 +1217,6 @@ async fn build_app_health_snapshot(
         available_updates,
         available_updates_checked,
         config_missing: local.config_missing,
-        lists_last_updated_at: local.lists_last_updated_at,
     })
 }
 
@@ -1382,7 +1319,7 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
 
 #[tauri::command]
 pub async fn refresh_lists_if_stale() -> Result<usize, String> {
-    refresh_lists_internal(false).await
+    refresh_lists_internal().await
 }
 #[tauri::command]
 pub async fn restore_default_filters() -> Result<(), String> {
@@ -1391,17 +1328,17 @@ pub async fn restore_default_filters() -> Result<(), String> {
 #[tauri::command]
 pub fn get_binary_path(filename: &str) -> Result<String, String> {
     let filename = sanitize_filename(filename)?;
-    if !BINARIES.iter().any(|(name, _)| *name == filename) {
+    if !BINARIES.iter().any(|name| *name == filename) {
         return Err("Unknown binary filename".to_string());
     }
-    Ok(get_zapret_dir()
+    Ok(get_managed_resources_dir()
         .join(filename)
         .to_string_lossy()
         .to_string())
 }
 #[tauri::command]
 pub fn get_winws_path() -> String {
-    get_zapret_dir()
+    get_managed_resources_dir()
         .join("winws.exe")
         .to_string_lossy()
         .to_string()
@@ -1457,11 +1394,8 @@ pub fn delete_filter_file(filename: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn open_zapret_directory(app: AppHandle) -> Result<(), String> {
-    let dir = get_zapret_dir();
-    if !dir.exists() {
-        fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    }
+pub fn open_app_directory(app: AppHandle) -> Result<(), String> {
+    let dir = ensure_runtime_data_dir_ready()?;
     app.opener()
         .open_path(dir.to_string_lossy().to_string(), None::<&str>)
         .map_err(|e| e.to_string())

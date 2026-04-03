@@ -38,3 +38,6 @@ src-tauri/updater.key.pub
 .winsurf
 .opencode
 .claude
+
+# Legacy runtime leftovers
+thirdparty/WinDivert64.sys

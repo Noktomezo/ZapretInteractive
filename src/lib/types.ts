@@ -16,7 +16,6 @@ export interface AppHealthSnapshot {
   available_updates: string[]
   available_updates_checked: boolean
   config_missing: boolean
-  lists_last_updated_at?: number | null
 }
 
 export interface Strategy {
@@ -46,6 +45,7 @@ export interface Filter {
 }
 
 export type ListMode = 'exclude' | 'ipset'
+export type WindowMaterial = 'none' | 'acrylic' | 'mica' | 'tabbed'
 
 export interface AppConfig {
   global_ports: GlobalPorts
@@ -59,7 +59,7 @@ export interface AppConfig {
   connectOnAutostart?: boolean
   coreFileUpdatePromptsEnabled?: boolean
   appAutoUpdatesEnabled?: boolean
-  windowAcrylicEnabled?: boolean
+  windowMaterial?: WindowMaterial
 }
 
 export interface EnsureManagedFilesResult {

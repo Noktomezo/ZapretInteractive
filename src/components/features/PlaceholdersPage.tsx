@@ -83,6 +83,16 @@ export function PlaceholdersPage() {
     setEditPath(placeholder.path)
   }
 
+  const handleOpenAppDirectory = async () => {
+    try {
+      await tauri.openAppDirectory()
+    }
+    catch (error) {
+      console.error('Failed to open app directory:', error)
+      toast.error(`Не удалось открыть папку приложения: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
   const handleSaveEdit = async () => {
     if (isSavingRef.current) {
       toast.error('Подождите, выполняется сохранение')
@@ -172,15 +182,15 @@ export function PlaceholdersPage() {
           </div>
           <div className="flex items-center gap-1">
             <Button onClick={() => setAddOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="h-4 w-4" />
               Новый плейсхолдер
             </Button>
             <Button
               variant="outline"
               size="icon"
-              onClick={() => tauri.openZapretDirectory()}
-              title="Открыть папку ~/.zapret"
-              aria-label="Открыть папку ~/.zapret"
+              onClick={() => void handleOpenAppDirectory()}
+              title="Открыть папку приложения"
+              aria-label="Открыть папку приложения"
             >
               <FolderOpen className="h-4 w-4" />
             </Button>
@@ -251,7 +261,7 @@ export function PlaceholdersPage() {
               />
               <Input
                 aria-label="Путь плейсхолдера"
-                placeholder="Путь к файлу (например ~/.zapret/tls.bin)"
+                placeholder="Путь к файлу (например @resources/fake/tls.bin)"
                 value={newPath}
                 onChange={e => setNewPath(e.target.value)}
               />

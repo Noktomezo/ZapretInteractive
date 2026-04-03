@@ -155,9 +155,9 @@ export function AboutPage() {
     }
   }
 
-  const handleOpenZapretDirectory = async () => {
+  const handleOpenAppDirectory = async () => {
     try {
-      await tauri.openZapretDirectory()
+      await tauri.openAppDirectory()
     }
     catch (e) {
       toast.error(`Ошибка открытия папки: ${e instanceof Error ? e.message : String(e)}`)
@@ -224,7 +224,6 @@ export function AboutPage() {
 
                   <div className="flex sm:justify-end">
                     <Button
-                      size="sm"
                       variant="outline"
                       onClick={() => { void handleManualAppUpdateCheck() }}
                       disabled={appUpdateChecking || appUpdateDownloading || appUpdateInstalling}
@@ -328,13 +327,13 @@ export function AboutPage() {
                     <Button
                       variant="outline"
                       size="icon"
-                      aria-label="Открыть папку ~/.zapret"
-                      onClick={() => { void handleOpenZapretDirectory() }}
+                      aria-label="Открыть папку приложения"
+                      onClick={() => { void handleOpenAppDirectory() }}
                     >
                       <FolderOpen className="size-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent sideOffset={6}>Открыть папку ~/.zapret</TooltipContent>
+                  <TooltipContent sideOffset={6}>Открыть папку приложения</TooltipContent>
                 </Tooltip>
               </div>
             </div>
