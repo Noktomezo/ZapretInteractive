@@ -1,0 +1,48 @@
+name: Update Thirdparty
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-thirdparty
+  cancel-in-progress: true
+
+jobs:
+  update-thirdparty:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.12'
+          enable-cache: true
+
+      - name: Sync managed thirdparty files and hashes
+        run: uv run scripts/update-thirdparty.py
+
+      - name: Check for thirdparty changes
+        id: check_changes
+        run: |
+          if git diff --quiet -- thirdparty; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add thirdparty/*.dll thirdparty/*.sys thirdparty/*.exe thirdparty/hashes.json thirdparty/lists/*.txt
+          git commit -m "chore: update managed thirdparty files"
+          git push

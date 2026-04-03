@@ -16,7 +16,6 @@ export interface AppHealthSnapshot {
   available_updates: string[]
   available_updates_checked: boolean
   config_missing: boolean
-  lists_last_updated_at?: number | null
 }
 
 export interface Strategy {

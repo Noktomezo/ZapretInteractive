@@ -1,4 +1,8 @@
 fail_fast: true
+
+exclude:
+  glob: 'thirdparty/**'
+
 repos:
   # Basic checks (files, YAML, TOML, JSON, etc.)
   - repo: https://github.com/pre-commit/pre-commit-hooks

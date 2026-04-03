@@ -178,9 +178,9 @@ export function PlaceholdersPage() {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => tauri.openZapretDirectory()}
-              title="Открыть папку ~/.zapret"
-              aria-label="Открыть папку ~/.zapret"
+              onClick={() => tauri.openAppDirectory()}
+              title="Открыть папку приложения"
+              aria-label="Открыть папку приложения"
             >
               <FolderOpen className="h-4 w-4" />
             </Button>
@@ -251,7 +251,7 @@ export function PlaceholdersPage() {
               />
               <Input
                 aria-label="Путь плейсхолдера"
-                placeholder="Путь к файлу (например ~/.zapret/tls.bin)"
+                placeholder="Путь к файлу (например @resources/fake/tls.bin)"
                 value={newPath}
                 onChange={e => setNewPath(e.target.value)}
               />

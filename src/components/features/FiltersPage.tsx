@@ -359,8 +359,8 @@ export function FiltersPage() {
             <Button
               variant="outline"
               size="icon"
-              title="Открыть папку ~/.zapret/filters"
-              aria-label="Открыть папку ~/.zapret/filters"
+              title="Открыть папку filters"
+              aria-label="Открыть папку filters"
               onClick={async () => {
                 try {
                   const filtersPath = await tauri.getFiltersPath()

@@ -1,4 +1,4 @@
-use crate::config::get_zapret_dir;
+use crate::config::get_managed_resources_dir;
 use std::process::Command;
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -265,7 +265,7 @@ pub fn set_running_pid(pid: u32) {
 
 #[tauri::command]
 pub fn start_winws(args: Vec<String>, tcp_ports: String, udp_ports: String) -> Result<u32, String> {
-    let winws_path = get_zapret_dir().join("winws.exe");
+    let winws_path = get_managed_resources_dir().join("winws.exe");
 
     if !winws_path.exists() {
         return Err("winws.exe not found. Please download binaries first.".to_string());

@@ -3,8 +3,6 @@ import { getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 
-const ZAPRET_SUFFIX_RE = /\.zapret$/
-
 export interface FileHealthChangedPayload {
   binaries_ok: boolean
   lists_changed: boolean
@@ -21,8 +19,7 @@ export const loadConfig = (): Promise<AppConfig> => invoke('load_config')
 export const saveConfig = (config: AppConfig): Promise<void> => invoke('save_config', { config })
 export const resetConfig = (): Promise<AppConfig> => invoke('reset_config')
 export const configExists = (): Promise<boolean> => invoke('config_exists')
-export const getZapretDirectory = (): Promise<string> => invoke('get_zapret_directory')
-export const getHomeDirectory = (): Promise<string> => invoke<string>('get_zapret_directory').then((dir: string) => dir.replace(ZAPRET_SUFFIX_RE, ''))
+export const getResourcesDirectory = (): Promise<string> => invoke('get_resources_directory')
 export const verifyBinaries = (): Promise<boolean> => invoke('verify_binaries')
 export const getMissingCriticalFiles = (): Promise<string[]> => invoke('get_missing_critical_files')
 export const getAppHealthSnapshot = (forceRemoteUpdates = false): Promise<AppHealthSnapshot> => invoke('get_app_health_snapshot', { forceRemoteUpdates })
@@ -39,7 +36,7 @@ export const isWinwsRunning = (): Promise<boolean> => invoke('is_winws_running')
 export const killWindivertService = (): Promise<void> => invoke('kill_windivert_service')
 export const getRunningPid = (): Promise<number> => invoke('get_running_pid')
 export const checkAndRecoverOrphan = (): Promise<number | null> => invoke('check_and_recover_orphan')
-export const openZapretDirectory = (): Promise<void> => invoke('open_zapret_directory')
+export const openAppDirectory = (): Promise<void> => invoke('open_app_directory')
 export const getFiltersPath = (): Promise<string> => invoke('get_filters_path')
 export const getReservedFilterFilenames = (): Promise<string[]> => invoke('get_reserved_filter_filenames')
 export const isAutostartEnabled = (): Promise<boolean> => invoke('is_autostart_enabled')

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 const DEFAULT_CONFIG: &str = include_str!("../../default-config.json");
@@ -12,6 +12,11 @@ const DEFAULT_FILTER_QUIC_INITIAL_IETF: &str =
 const DEFAULT_FILTER_STUN: &str = include_str!("../../default-filters/windivert_part.stun.txt");
 const DEFAULT_FILTER_WIREGUARD: &str =
     include_str!("../../default-filters/windivert_part.wireguard.txt");
+const SOURCE_MANAGED_DIR_NAME: &str = "thirdparty";
+const INSTALLED_RESOURCES_DIR_NAME: &str = "resources";
+const LEGACY_MANAGED_DIR_NAME: &str = ".zapret";
+const LEGACY_MANAGED_PATH_ALIAS: &str = "@thirdparty";
+const MANAGED_PATH_ALIAS: &str = "@resources";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GlobalPorts {
@@ -213,27 +218,240 @@ fn populate_builtin_filter_content(filters: &mut [Filter]) -> bool {
     changed
 }
 
+fn is_dev_project_root(path: &Path) -> bool {
+    path.join("src-tauri").join("tauri.conf.json").is_file()
+        && path.join(SOURCE_MANAGED_DIR_NAME).is_dir()
+}
+
+fn executable_dir() -> Option<PathBuf> {
+    std::env::current_exe()
+        .ok()
+        .and_then(|path| path.parent().map(Path::to_path_buf))
+}
+
+fn find_dev_project_root() -> Option<PathBuf> {
+    if !cfg!(debug_assertions) {
+        return None;
+    }
+
+    let mut candidates = Vec::new();
+
+    if let Ok(path) = std::env::current_exe() {
+        candidates.extend(path.ancestors().map(Path::to_path_buf));
+    }
+
+    if let Ok(path) = std::env::current_dir() {
+        candidates.extend(path.ancestors().map(Path::to_path_buf));
+    }
+
+    candidates
+        .into_iter()
+        .find(|candidate| is_dev_project_root(candidate))
+}
+
+fn legacy_zapret_dir() -> PathBuf {
+    dirs::home_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(LEGACY_MANAGED_DIR_NAME)
+}
+
+fn install_resources_dir() -> PathBuf {
+    executable_dir()
+        .unwrap_or_else(|| {
+            legacy_zapret_dir()
+                .parent()
+                .map(Path::to_path_buf)
+                .unwrap_or_else(|| PathBuf::from("."))
+        })
+        .join(INSTALLED_RESOURCES_DIR_NAME)
+}
+
+pub(crate) fn get_runtime_data_dir() -> PathBuf {
+    executable_dir().unwrap_or_else(|| PathBuf::from("."))
+}
+
+fn managed_relative_path(path: &str) -> Option<String> {
+    let normalized = path.replace('\\', "/");
+    if normalized == MANAGED_PATH_ALIAS {
+        return Some(String::new());
+    }
+
+    normalized
+        .strip_prefix(&format!("{MANAGED_PATH_ALIAS}/"))
+        .map(str::to_string)
+}
+
+fn join_relative_path(base: &Path, relative: &str) -> PathBuf {
+    let mut path = base.to_path_buf();
+    for segment in relative.split('/') {
+        if !segment.is_empty() {
+            path.push(segment);
+        }
+    }
+    path
+}
+
+fn normalize_placeholder_path(path: &str) -> Option<String> {
+    let normalized = path.replace('\\', "/");
+    if normalized == MANAGED_PATH_ALIAS || normalized.starts_with(&format!("{MANAGED_PATH_ALIAS}/"))
+    {
+        return Some(normalized);
+    }
+
+    if normalized == LEGACY_MANAGED_PATH_ALIAS
+        || normalized.starts_with(&format!("{LEGACY_MANAGED_PATH_ALIAS}/"))
+    {
+        return Some(normalized.replacen(LEGACY_MANAGED_PATH_ALIAS, MANAGED_PATH_ALIAS, 1));
+    }
+
+    let legacy_tilde = format!("~/{LEGACY_MANAGED_DIR_NAME}");
+    if normalized == legacy_tilde {
+        return Some(MANAGED_PATH_ALIAS.to_string());
+    }
+    if let Some(relative) = normalized.strip_prefix(&format!("{legacy_tilde}/")) {
+        return Some(format!("{MANAGED_PATH_ALIAS}/{relative}"));
+    }
+
+    let legacy_absolute = legacy_zapret_dir().to_string_lossy().replace('\\', "/");
+    if normalized == legacy_absolute {
+        return Some(MANAGED_PATH_ALIAS.to_string());
+    }
+    normalized
+        .strip_prefix(&format!("{legacy_absolute}/"))
+        .map(|relative| format!("{MANAGED_PATH_ALIAS}/{relative}"))
+}
+
+fn normalize_placeholder_paths(placeholders: &mut [Placeholder]) -> bool {
+    let mut changed = false;
+
+    for placeholder in placeholders.iter_mut() {
+        if let Some(normalized) = normalize_placeholder_path(&placeholder.path)
+            && placeholder.path != normalized
+        {
+            placeholder.path = normalized;
+            changed = true;
+        }
+    }
+
+    changed
+}
+
+fn resolve_managed_placeholder_path(path: &str) -> Option<String> {
+    let relative = managed_relative_path(path)?;
+    let base = get_managed_resources_dir();
+    Some(if relative.is_empty() {
+        base.to_string_lossy().to_string()
+    } else {
+        join_relative_path(&base, &relative)
+            .to_string_lossy()
+            .to_string()
+    })
+}
+
+fn copy_tree_if_missing(source: &Path, destination: &Path) -> Result<(), String> {
+    if !source.exists() {
+        return Ok(());
+    }
+
+    if source.is_file() {
+        if destination.exists() {
+            return Ok(());
+        }
+
+        if let Some(parent) = destination.parent() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        fs::copy(source, destination).map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    fs::create_dir_all(destination).map_err(|e| e.to_string())?;
+    for entry in fs::read_dir(source).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        copy_tree_if_missing(&entry.path(), &destination.join(entry.file_name()))?;
+    }
+    Ok(())
+}
+
+fn migrate_legacy_managed_resources(target_dir: &Path) -> Result<(), String> {
+    let legacy_dir = legacy_zapret_dir();
+    if legacy_dir == target_dir || !legacy_dir.exists() {
+        return Ok(());
+    }
+
+    copy_tree_if_missing(&legacy_dir, target_dir)
+}
+
+fn migrate_legacy_runtime_data(target_dir: &Path) -> Result<(), String> {
+    let config_path = target_dir.join("config.json");
+    if !config_path.exists() {
+        for source in [
+            get_managed_resources_dir().join("config.json"),
+            legacy_zapret_dir().join("config.json"),
+        ] {
+            if source.exists() {
+                copy_tree_if_missing(&source, &config_path)?;
+                break;
+            }
+        }
+    }
+
+    let filters_dir = target_dir.join("filters");
+    if !filters_dir.exists() {
+        for source in [
+            get_managed_resources_dir().join("filters"),
+            legacy_zapret_dir().join("filters"),
+        ] {
+            if source.exists() {
+                copy_tree_if_missing(&source, &filters_dir)?;
+                break;
+            }
+        }
+    }
+
+    Ok(())
+}
+
 impl Default for AppConfig {
     fn default() -> Self {
         let mut config: AppConfig =
             serde_json::from_str(DEFAULT_CONFIG).expect("Failed to parse default config");
-        config.binaries_path = get_zapret_dir().to_string_lossy().to_string();
+        config.binaries_path = get_managed_resources_dir().to_string_lossy().to_string();
         if config.filters.is_empty() {
             config.filters = default_filters_metadata();
         }
         populate_builtin_filter_content(&mut config.filters);
+        normalize_placeholder_paths(&mut config.placeholders);
         config
     }
 }
 
-pub fn get_zapret_dir() -> PathBuf {
-    dirs::home_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(".zapret")
+pub fn get_managed_resources_dir() -> PathBuf {
+    if let Some(project_root) = find_dev_project_root() {
+        return project_root.join(SOURCE_MANAGED_DIR_NAME);
+    }
+
+    install_resources_dir()
+}
+
+pub fn ensure_managed_resources_dir_ready() -> Result<PathBuf, String> {
+    let dir = get_managed_resources_dir();
+    if find_dev_project_root().is_none() {
+        fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        migrate_legacy_managed_resources(&dir)?;
+    }
+    Ok(dir)
+}
+
+pub fn ensure_runtime_data_dir_ready() -> Result<PathBuf, String> {
+    let dir = get_runtime_data_dir();
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    migrate_legacy_runtime_data(&dir)?;
+    Ok(dir)
 }
 
 pub(crate) fn get_config_path() -> PathBuf {
-    get_zapret_dir().join("config.json")
+    get_runtime_data_dir().join("config.json")
 }
 
 pub struct AppState {
@@ -250,6 +468,7 @@ impl AppState {
 }
 
 fn read_config_from_disk() -> Result<Option<AppConfig>, String> {
+    ensure_runtime_data_dir_ready()?;
     let config_path = get_config_path();
 
     if !config_path.try_exists().map_err(|e| e.to_string())? {
@@ -268,7 +487,7 @@ fn read_config_from_disk() -> Result<Option<AppConfig>, String> {
 fn normalize_config(mut config: AppConfig) -> NormalizedConfigResult {
     let mut changed = false;
     let mut unrecoverable_filters = Vec::new();
-    let expected_binaries_path = get_zapret_dir().to_string_lossy().to_string();
+    let expected_binaries_path = get_managed_resources_dir().to_string_lossy().to_string();
 
     if config.binaries_path != expected_binaries_path {
         config.binaries_path = expected_binaries_path;
@@ -279,12 +498,18 @@ fn normalize_config(mut config: AppConfig) -> NormalizedConfigResult {
         changed = true;
     }
 
+    if normalize_placeholder_paths(&mut config.placeholders) {
+        changed = true;
+    }
+
     for filter in config.filters.iter_mut() {
         if !filter.content.is_empty() {
             continue;
         }
 
-        let filter_path = get_zapret_dir().join("filters").join(&filter.filename);
+        let filter_path = get_runtime_data_dir()
+            .join("filters")
+            .join(&filter.filename);
         match fs::read_to_string(&filter_path) {
             Ok(content) => {
                 filter.content = content;
@@ -347,10 +572,7 @@ pub fn current_config(state: &AppState) -> Result<AppConfig, String> {
 }
 
 pub fn save_config_to_disk(config: &AppConfig) -> Result<(), String> {
-    let dir = get_zapret_dir();
-    if !dir.exists() {
-        fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    }
+    let _ = ensure_runtime_data_dir_ready()?;
     let config_path = get_config_path();
     let content = serde_json::to_string_pretty(&config).map_err(|e| e.to_string())?;
     let temp_path = config_path.with_extension("json.tmp");
@@ -367,10 +589,7 @@ pub fn save_config_to_disk(config: &AppConfig) -> Result<(), String> {
 
 #[tauri::command]
 pub fn ensure_config_dir() -> Result<String, String> {
-    let dir = get_zapret_dir();
-    if !dir.exists() {
-        fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    }
+    let dir = ensure_runtime_data_dir_ready()?;
     Ok(dir.to_string_lossy().to_string())
 }
 
@@ -426,8 +645,8 @@ pub fn update_list_mode(
 }
 
 #[tauri::command]
-pub fn get_zapret_directory() -> String {
-    get_zapret_dir().to_string_lossy().to_string()
+pub fn get_resources_directory() -> String {
+    get_managed_resources_dir().to_string_lossy().to_string()
 }
 
 #[tauri::command]
@@ -442,7 +661,10 @@ pub fn resolve_placeholders(content: String, placeholders: Vec<Placeholder>) -> 
     let mut result = content;
 
     for placeholder in placeholders {
-        let resolved_path = if placeholder.path.starts_with('~') {
+        let resolved_path = if let Some(path) = resolve_managed_placeholder_path(&placeholder.path)
+        {
+            path
+        } else if placeholder.path.starts_with('~') {
             let relative = &placeholder.path[1..];
             let relative_trimmed = relative.trim_start_matches('/').trim_start_matches('\\');
             let mut path = home_dir.clone();

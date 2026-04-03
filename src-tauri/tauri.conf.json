@@ -36,6 +36,15 @@
     "active": true,
     "targets": "nsis",
     "createUpdaterArtifacts": true,
+    "resources": {
+      "../thirdparty/WinDivert.dll": "WinDivert.dll",
+      "../thirdparty/Monkey64.sys": "Monkey64.sys",
+      "../thirdparty/winws.exe": "winws.exe",
+      "../thirdparty/cygwin1.dll": "cygwin1.dll",
+      "../thirdparty/hashes.json": "hashes.json",
+      "../thirdparty/fake/": "fake/",
+      "../thirdparty/lists/": "lists/"
+    },
     "windows": {
       "nsis": {
         "installerIcon": "windows/nsis/installer-icon.ico",

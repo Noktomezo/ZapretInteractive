@@ -3,7 +3,6 @@
     "tcp": "1-65535",
     "udp": "1-65535"
   },
-  "listMode": "ipset",
   "categories": [
     {
       "id": "preset-http",
@@ -267,164 +266,203 @@
   "placeholders": [
     {
       "name": "TLS_CLIENTHELLO_GOOGLE",
-      "path": "@resources/fake/tls_clienthello_www_google_com.bin"
+      "path": "@thirdparty/fake/tls_clienthello_www_google_com.bin"
     },
     {
       "name": "TLS_CLIENTHELLO_VK",
-      "path": "@resources/fake/tls_clienthello_vk_com.bin"
+      "path": "@thirdparty/fake/tls_clienthello_vk_com.bin"
     },
     {
       "name": "TLS_CLIENTHELLO_VK_KYBER",
-      "path": "@resources/fake/tls_clienthello_vk_com_kyber.bin"
+      "path": "@thirdparty/fake/tls_clienthello_vk_com_kyber.bin"
     },
     {
       "name": "TLS_CLIENTHELLO_GOSUSLUGI",
-      "path": "@resources/fake/tls_clienthello_gosuslugi_ru.bin"
+      "path": "@thirdparty/fake/tls_clienthello_gosuslugi_ru.bin"
     },
     {
       "name": "TLS_CLIENTHELLO_IANA",
-      "path": "@resources/fake/tls_clienthello_iana_org.bin"
+      "path": "@thirdparty/fake/tls_clienthello_iana_org.bin"
     },
     {
       "name": "TLS_CLIENTHELLO_MAX",
-      "path": "@resources/fake/tls_clienthello_max_ru.bin"
+      "path": "@thirdparty/fake/tls_clienthello_max_ru.bin"
     },
     {
       "name": "TLS_CLIENTHELLO_RUTRACKER_KYBER",
-      "path": "@resources/fake/tls_clienthello_rutracker_org_kyber.bin"
+      "path": "@thirdparty/fake/tls_clienthello_rutracker_org_kyber.bin"
     },
     {
       "name": "TLS_CLIENTHELLO_SBERBANK",
-      "path": "@resources/fake/tls_clienthello_sberbank_ru.bin"
+      "path": "@thirdparty/fake/tls_clienthello_sberbank_ru.bin"
     },
     {
       "name": "TLS_CLIENTHELLO_ONETRUST",
-      "path": "@resources/fake/tls_clienthello_www_onetrust_com.bin"
+      "path": "@thirdparty/fake/tls_clienthello_www_onetrust_com.bin"
     },
     {
       "name": "QUIC_INITIAL_GOOGLE",
-      "path": "@resources/fake/quic_initial_www_google_com.bin"
+      "path": "@thirdparty/fake/quic_initial_www_google_com.bin"
     },
     {
       "name": "QUIC_INITIAL_VK",
-      "path": "@resources/fake/quic_initial_vk_com.bin"
+      "path": "@thirdparty/fake/quic_initial_vk_com.bin"
     },
     {
       "name": "QUIC_INITIAL_FACEBOOK",
-      "path": "@resources/fake/quic_initial_facebook_com.bin"
+      "path": "@thirdparty/fake/quic_initial_facebook_com.bin"
     },
     {
       "name": "QUIC_INITIAL_FACEBOOK_QUICHE",
-      "path": "@resources/fake/quic_initial_facebook_com_quiche.bin"
+      "path": "@thirdparty/fake/quic_initial_facebook_com_quiche.bin"
     },
     {
       "name": "QUIC_INITIAL_RUTRACKER",
-      "path": "@resources/fake/quic_initial_rutracker_org.bin"
+      "path": "@thirdparty/fake/quic_initial_rutracker_org.bin"
     },
     {
       "name": "QUIC_INITIAL_RUTRACKER_KYBER_1",
-      "path": "@resources/fake/quic_initial_rutracker_org_kyber_1.bin"
+      "path": "@thirdparty/fake/quic_initial_rutracker_org_kyber_1.bin"
     },
     {
       "name": "QUIC_INITIAL_RUTRACKER_KYBER_2",
-      "path": "@resources/fake/quic_initial_rutracker_org_kyber_2.bin"
+      "path": "@thirdparty/fake/quic_initial_rutracker_org_kyber_2.bin"
     },
     {
       "name": "QUIC_INITIAL_GOOGLEVIDEO_KYBER_1",
-      "path": "@resources/fake/quic_initial_rr1---sn-xguxaxjvh-n8me_googlevideo_com_kyber_1.bin"
+      "path": "@thirdparty/fake/quic_initial_rr1---sn-xguxaxjvh-n8me_googlevideo_com_kyber_1.bin"
     },
     {
       "name": "QUIC_INITIAL_GOOGLEVIDEO_KYBER_2",
-      "path": "@resources/fake/quic_initial_rr1---sn-xguxaxjvh-n8me_googlevideo_com_kyber_2.bin"
+      "path": "@thirdparty/fake/quic_initial_rr1---sn-xguxaxjvh-n8me_googlevideo_com_kyber_2.bin"
     },
     {
       "name": "QUIC_INITIAL_GOOGLEVIDEO_2",
-      "path": "@resources/fake/quic_initial_rr2---sn-gvnuxaxjvh-o8ge_googlevideo_com.bin"
+      "path": "@thirdparty/fake/quic_initial_rr2---sn-gvnuxaxjvh-o8ge_googlevideo_com.bin"
     },
     {
       "name": "QUIC_SHORT_HEADER",
-      "path": "@resources/fake/quic_short_header.bin"
+      "path": "@thirdparty/fake/quic_short_header.bin"
     },
-    { "name": "STUN", "path": "@resources/fake/stun.bin" },
-    { "name": "T2", "path": "@resources/fake/t2.bin" },
-    { "name": "4PDA", "path": "@resources/fake/4pda.bin" },
-    { "name": "MAX", "path": "@resources/fake/max.bin" },
-    { "name": "HTTP_IANA", "path": "@resources/fake/http_iana_org.bin" },
+    {
+      "name": "STUN",
+      "path": "@thirdparty/fake/stun.bin"
+    },
+    {
+      "name": "T2",
+      "path": "@thirdparty/fake/t2.bin"
+    },
+    {
+      "name": "4PDA",
+      "path": "@thirdparty/fake/4pda.bin"
+    },
+    {
+      "name": "MAX",
+      "path": "@thirdparty/fake/max.bin"
+    },
+    {
+      "name": "HTTP_IANA",
+      "path": "@thirdparty/fake/http_iana_org.bin"
+    },
     {
       "name": "DTLS_CLIENTHELLO_W3",
-      "path": "@resources/fake/dtls_clienthello_w3_org.bin"
+      "path": "@thirdparty/fake/dtls_clienthello_w3_org.bin"
     },
-    { "name": "DHT_FIND_NODE", "path": "@resources/fake/dht_find_node.bin" },
-    { "name": "DHT_GET_PEERS", "path": "@resources/fake/dht_get_peers.bin" },
+    {
+      "name": "DHT_FIND_NODE",
+      "path": "@thirdparty/fake/dht_find_node.bin"
+    },
+    {
+      "name": "DHT_GET_PEERS",
+      "path": "@thirdparty/fake/dht_get_peers.bin"
+    },
     {
       "name": "DISCORD_IP_DISCOVERY_PORT",
-      "path": "@resources/fake/discord-ip-discovery-with-port.bin"
+      "path": "@thirdparty/fake/discord-ip-discovery-with-port.bin"
     },
     {
       "name": "DISCORD_IP_DISCOVERY_NO_PORT",
-      "path": "@resources/fake/discord-ip-discovery-without-port.bin"
+      "path": "@thirdparty/fake/discord-ip-discovery-without-port.bin"
     },
     {
       "name": "ISAKMP_INITIATOR",
-      "path": "@resources/fake/isakmp_initiator_request.bin"
+      "path": "@thirdparty/fake/isakmp_initiator_request.bin"
     },
     {
       "name": "WIREGUARD_INITIATION",
-      "path": "@resources/fake/wireguard_initiation.bin"
+      "path": "@thirdparty/fake/wireguard_initiation.bin"
     },
     {
       "name": "WIREGUARD_RESPONSE",
-      "path": "@resources/fake/wireguard_response.bin"
+      "path": "@thirdparty/fake/wireguard_response.bin"
     },
-    { "name": "ZERO_256", "path": "@resources/fake/zero_256.bin" },
-    { "name": "ZERO_512", "path": "@resources/fake/zero_512.bin" },
-    { "name": "ZERO_1024", "path": "@resources/fake/zero_1024.bin" },
+    {
+      "name": "ZERO_256",
+      "path": "@thirdparty/fake/zero_256.bin"
+    },
+    {
+      "name": "ZERO_512",
+      "path": "@thirdparty/fake/zero_512.bin"
+    },
+    {
+      "name": "ZERO_1024",
+      "path": "@thirdparty/fake/zero_1024.bin"
+    },
     {
       "name": "HOSTS_GOOGLE",
-      "path": "@resources/lists/zapret-hosts-google.txt"
+      "path": "@thirdparty/lists/zapret-hosts-google.txt"
     },
     {
       "name": "HOSTS_USER_EXCLUDE",
-      "path": "@resources/lists/zapret-hosts-user-exclude.txt"
+      "path": "@thirdparty/lists/zapret-hosts-user-exclude.txt"
     },
-    { "name": "IP_USER", "path": "@resources/lists/zapret-ip-user.txt" }
+    {
+      "name": "IP_USER",
+      "path": "@thirdparty/lists/zapret-ip-user.txt"
+    }
   ],
   "filters": [
     {
       "id": "filter-discord",
       "name": "Discord Media",
       "filename": "windivert_part.discord_media.txt",
-      "active": true
+      "active": true,
+      "content": "  outbound and ip and\r\n  udp.DstPort>=50000 and udp.DstPort<=50099 and\r\n  udp.PayloadLength=74 and\r\n  udp.Payload32[0]=0x00010046 and\r\n  udp.Payload32[2]=0 and\r\n  udp.Payload32[3]=0 and\r\n  udp.Payload32[4]=0 and\r\n  udp.Payload32[5]=0 and\r\n  udp.Payload32[6]=0 and\r\n  udp.Payload32[7]=0 and\r\n  udp.Payload32[8]=0 and\r\n  udp.Payload32[9]=0 and\r\n  udp.Payload32[10]=0 and\r\n  udp.Payload32[11]=0 and\r\n  udp.Payload32[12]=0 and\r\n  udp.Payload32[13]=0 and\r\n  udp.Payload32[14]=0 and\r\n  udp.Payload32[15]=0 and\r\n  udp.Payload32[16]=0 and\r\n  udp.Payload32[17]=0\r\n"
     },
     {
       "id": "filter-stun",
       "name": "STUN",
       "filename": "windivert_part.stun.txt",
-      "active": true
+      "active": true,
+      "content": "  outbound and\r\n  udp.PayloadLength>=20 and\r\n  udp.Payload32[1]=0x2112A442 and udp.Payload[0]<0x40\r\n"
     },
     {
       "id": "filter-wireguard",
       "name": "WireGuard",
       "filename": "windivert_part.wireguard.txt",
-      "active": true
+      "active": true,
+      "content": "udp.PayloadLength=148 and udp.Payload32[0]=0x01000000 or\r\nudp.PayloadLength=92 and udp.Payload32[0]=0x02000000 or\r\nudp.PayloadLength=64 and udp.Payload32[0]=0x03000000\r\n"
     },
     {
       "id": "filter-quic",
       "name": "QUIC Initial IETF",
       "filename": "windivert_part.quic_initial_ietf.txt",
-      "active": true
+      "active": true,
+      "content": "  outbound and\r\n  udp.PayloadLength>=256 and\r\n  udp.Payload[0]>=0xC0 and udp.Payload[0]<0xD0 and\r\n  udp.Payload[1]=0 and udp.Payload16[1]=0 and udp.Payload[4]=1\r\n"
     },
     {
       "id": "filter-dht",
       "name": "DHT",
       "filename": "windivert_part.dht.txt",
-      "active": true
+      "active": true,
+      "content": "udp.Length>=5 and udp.Payload[0]=0x64 and udp.Payload[1]>=0x31 and udp.Payload[1]<=0x32\r\n"
     }
   ],
-  "binaries_path": "",
-  "minimizeToTray": true,
+  "binaries_path": "C:\\Users\\Noktomezo\\Desktop\\ZapretInteractive\\thirdparty",
+  "minimizeToTray": false,
   "launchToTray": false,
   "connectOnAutostart": false,
+  "listMode": "ipset",
   "coreFileUpdatePromptsEnabled": true,
   "appAutoUpdatesEnabled": true,
   "windowAcrylicEnabled": true
