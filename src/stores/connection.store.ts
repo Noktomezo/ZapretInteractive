@@ -6,7 +6,7 @@ import { useConfigStore } from './config.store'
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'disconnecting' | 'error'
 const MAX_LOGS = 500
-const CONNECTION_TRANSITION_DELAY_MS = 1000
+const CONNECTION_TRANSITION_DELAY_MS = 500
 let trayUpdatePromise: Promise<void> = Promise.resolve()
 let restartPromise: Promise<void> | null = null
 let trayListenerCleanup: (() => void) | null = null
