@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { useConnectionStore } from './connection.store'
 
-type Theme = 'light' | 'dark' | 'system'
+export type Theme = 'light' | 'dark' | 'system'
 let themeMediaCleanup: (() => void) | null = null
 
 interface ThemeStore {

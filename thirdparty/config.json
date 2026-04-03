@@ -458,7 +458,7 @@
       "content": "udp.Length>=5 and udp.Payload[0]=0x64 and udp.Payload[1]>=0x31 and udp.Payload[1]<=0x32\r\n"
     }
   ],
-  "binaries_path": "C:\\Users\\Noktomezo\\Desktop\\ZapretInteractive\\thirdparty",
+  "binaries_path": "",
   "minimizeToTray": false,
   "launchToTray": false,
   "connectOnAutostart": false,

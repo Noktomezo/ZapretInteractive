@@ -1,0 +1,37 @@
+name: Verify Thirdparty Hashes
+
+on:
+  pull_request:
+    paths:
+      - 'thirdparty/**'
+      - scripts/update-thirdparty.py
+      - scripts/verify-thirdparty-hashes.py
+      - .github/workflows/update-lists.yml
+      - .github/workflows/verify-thirdparty-hashes.yml
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - 'thirdparty/**'
+      - scripts/update-thirdparty.py
+      - scripts/verify-thirdparty-hashes.py
+      - .github/workflows/update-lists.yml
+      - .github/workflows/verify-thirdparty-hashes.yml
+
+jobs:
+  verify-thirdparty-hashes:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.12'
+          enable-cache: true
+
+      - name: Verify hashes manifest
+        run: uv run scripts/verify-thirdparty-hashes.py

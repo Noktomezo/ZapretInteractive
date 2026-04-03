@@ -83,6 +83,16 @@ export function PlaceholdersPage() {
     setEditPath(placeholder.path)
   }
 
+  const handleOpenAppDirectory = async () => {
+    try {
+      await tauri.openAppDirectory()
+    }
+    catch (error) {
+      console.error('Failed to open app directory:', error)
+      toast.error(`Не удалось открыть папку приложения: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
   const handleSaveEdit = async () => {
     if (isSavingRef.current) {
       toast.error('Подождите, выполняется сохранение')
@@ -178,7 +188,7 @@ export function PlaceholdersPage() {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => tauri.openAppDirectory()}
+              onClick={() => void handleOpenAppDirectory()}
               title="Открыть папку приложения"
               aria-label="Открыть папку приложения"
             >

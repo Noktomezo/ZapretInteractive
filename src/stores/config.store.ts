@@ -1,4 +1,4 @@
-import type { AppConfig, Category, Filter, GlobalPorts, ListMode, Placeholder, Strategy } from '../lib/types'
+import type { AppConfig, Category, Filter, GlobalPorts, ListMode, Placeholder, Strategy, WindowMaterial } from '../lib/types'
 import { toast } from 'sonner'
 import { create } from 'zustand'
 import * as tauri from '../lib/tauri'
@@ -49,7 +49,7 @@ interface ConfigStore {
   applyPersistedListMode: (mode: ListMode) => void
   setCoreFileUpdatePromptsEnabled: (enabled: boolean) => void
   setAppAutoUpdatesEnabled: (enabled: boolean) => void
-  setWindowAcrylicEnabled: (enabled: boolean) => void
+  setWindowMaterial: (material: WindowMaterial) => void
   setMinimizeToTray: (enabled: boolean) => void
   setLaunchToTray: (enabled: boolean) => void
   setConnectOnAutostart: (enabled: boolean) => void
@@ -246,10 +246,10 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       set({ config: { ...config, appAutoUpdatesEnabled: enabled }, dirty: true })
   },
 
-  setWindowAcrylicEnabled: (enabled) => {
+  setWindowMaterial: (material) => {
     const { config } = get()
     if (config)
-      set({ config: { ...config, windowAcrylicEnabled: enabled }, dirty: true })
+      set({ config: { ...config, windowMaterial: material }, dirty: true })
   },
 
   setMinimizeToTray: (enabled) => {

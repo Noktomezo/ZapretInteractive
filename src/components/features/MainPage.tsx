@@ -6,16 +6,15 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import FaultyTerminal from '@/components/FaultyTerminal'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import Waves from '@/components/Waves'
 import { runWithPausedConnection } from '@/lib/connection-flow'
 import * as tauri from '@/lib/tauri'
 import { cn } from '@/lib/utils'
@@ -23,7 +22,10 @@ import { useAppStore } from '@/stores/app.store'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
 import { useDownloadStore } from '@/stores/download.store'
+import { useThemeStore } from '@/stores/theme.store'
 import { useUpdaterStore } from '@/stores/updater.store'
+
+const terminalGridMul: [number, number] = [2, 1]
 
 export function MainPage() {
   const availableUpdatesPromptKeyRef = useRef('')
@@ -59,12 +61,22 @@ export function MainPage() {
   const dismissedAppUpdateVersion = useUpdaterStore(state => state.dismissedVersionThisSession)
   const installAvailableAppUpdate = useUpdaterStore(state => state.installAvailableUpdate)
   const dismissCurrentAppUpdate = useUpdaterStore(state => state.dismissCurrentVersionUntilRestart)
+  const resolvedTheme = useThemeStore(state => state.resolvedTheme)
 
-  const waveColor = status === 'connected'
-    ? 'rgba(74, 222, 128, 0.26)'
-    : status === 'connecting' || status === 'disconnecting'
-      ? 'rgba(250, 204, 21, 0.16)'
-      : 'rgba(248, 113, 113, 0.35)'
+  const terminalTint = resolvedTheme === 'dark'
+    ? (status === 'connected'
+        ? '#4ADE80'
+        : status === 'connecting' || status === 'disconnecting'
+          ? '#FACC15'
+          : '#F87171')
+    : (status === 'connected'
+        ? '#1F6A4C'
+        : status === 'connecting' || status === 'disconnecting'
+          ? '#946200'
+          : '#B23A3A')
+  const terminalBackgroundTint = resolvedTheme === 'dark' ? '#090C0A' : '#F6F7F4'
+  const selectedListMode = config?.listMode ?? 'ipset'
+  const listModeDisabled = status !== 'disconnected' || listModeUpdating
 
   const handleListModeChange = async (value: string) => {
     if (!value || !config || listModeUpdating || value === config.listMode) {
@@ -497,20 +509,27 @@ export function MainPage() {
 
   return (
     <div className="relative flex h-full flex-col">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <Waves
-          lineColor={waveColor}
-          backgroundColor="transparent"
-          waveSpeedX={0.008}
-          waveSpeedY={0.004}
-          waveAmpX={24}
-          waveAmpY={12}
-          xGap={14}
-          yGap={26}
-          friction={0.94}
-          tension={0.004}
-          maxCursorMove={80}
-          className="opacity-90"
+      <div className="absolute inset-0 overflow-hidden">
+        <FaultyTerminal
+          scale={1.5}
+          gridMul={terminalGridMul}
+          digitSize={1.2}
+          timeScale={0.5}
+          pause={false}
+          scanlineIntensity={0}
+          glitchAmount={1}
+          flickerAmount={1}
+          noiseAmp={1}
+          chromaticAberration={0}
+          dither={0}
+          curvature={0.1}
+          tint={terminalTint}
+          backgroundTint={terminalBackgroundTint}
+          mouseReact
+          mouseStrength={0.5}
+          pageLoadAnimation
+          brightness={0.55}
+          className="pointer-events-auto opacity-90"
         />
       </div>
       <div className="relative z-10 flex flex-1 items-center justify-center p-8">
@@ -553,26 +572,33 @@ export function MainPage() {
             </h2>
           </div>
 
-          <ToggleGroup
-            type="single"
-            value={config?.listMode ?? 'ipset'}
-            onValueChange={handleListModeChange}
-            className="justify-center gap-1"
-            disabled={status !== 'disconnected' || listModeUpdating}
-          >
+          <div className="relative mx-auto grid w-fit grid-cols-2 gap-1 rounded-xl border border-border/60 bg-background/76 p-1 shadow-lg shadow-black/10 backdrop-blur-md">
+            <div
+              className={cn(
+                'pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-md border shadow-sm transition-all duration-300 ease-out',
+                selectedListMode === 'ipset'
+                  ? 'translate-x-0 border-green-500/35 bg-green-500/18'
+                  : 'translate-x-full border-amber-500/35 bg-amber-500/18',
+              )}
+            />
             {status === 'disconnected'
               ? (
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div>
-                        <ToggleGroupItem
-                          value="ipset"
-                          disabled={listModeUpdating}
-                          className="px-3 py-1.5 text-xs data-[state=on]:bg-green-500/20 data-[state=on]:text-green-600 dark:data-[state=on]:text-green-400 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          Только заблокированные
-                        </ToggleGroupItem>
-                      </div>
+                      <button
+                        type="button"
+                        disabled={listModeDisabled}
+                        onClick={() => void handleListModeChange('ipset')}
+                        className={cn(
+                          'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
+                          selectedListMode === 'ipset'
+                            ? 'text-green-700 dark:text-green-300'
+                            : 'text-foreground/80 hover:text-foreground',
+                          listModeDisabled && 'cursor-not-allowed opacity-50',
+                        )}
+                      >
+                        Только заблокированные
+                      </button>
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs text-center">
                       Обрабатываются только заблокированные в России IP-адреса. Достоверность 99.9%
@@ -580,27 +606,39 @@ export function MainPage() {
                   </Tooltip>
                 )
               : (
-                  <ToggleGroupItem
-                    value="ipset"
-                    disabled={listModeUpdating}
-                    className="px-3 py-1.5 text-xs data-[state=on]:bg-green-500/20 data-[state=on]:text-green-600 dark:data-[state=on]:text-green-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  <button
+                    type="button"
+                    disabled={listModeDisabled}
+                    onClick={() => void handleListModeChange('ipset')}
+                    className={cn(
+                      'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
+                      selectedListMode === 'ipset'
+                        ? 'text-green-700 dark:text-green-300'
+                        : 'text-foreground/80 hover:text-foreground',
+                      listModeDisabled && 'cursor-not-allowed opacity-50',
+                    )}
                   >
                     Только заблокированные
-                  </ToggleGroupItem>
+                  </button>
                 )}
             {status === 'disconnected'
               ? (
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div>
-                        <ToggleGroupItem
-                          value="exclude"
-                          disabled={listModeUpdating}
-                          className="px-3 py-1.5 text-xs data-[state=on]:bg-amber-500/20 data-[state=on]:text-amber-600 dark:data-[state=on]:text-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          Исключения
-                        </ToggleGroupItem>
-                      </div>
+                      <button
+                        type="button"
+                        disabled={listModeDisabled}
+                        onClick={() => void handleListModeChange('exclude')}
+                        className={cn(
+                          'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
+                          selectedListMode === 'exclude'
+                            ? 'text-amber-700 dark:text-amber-300'
+                            : 'text-foreground/80 hover:text-foreground',
+                          listModeDisabled && 'cursor-not-allowed opacity-50',
+                        )}
+                      >
+                        Исключения
+                      </button>
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs text-center">
                       По умолчанию обрабатываются все адреса, кроме тех, которые стратегии ломают
@@ -608,15 +646,22 @@ export function MainPage() {
                   </Tooltip>
                 )
               : (
-                  <ToggleGroupItem
-                    value="exclude"
-                    disabled={listModeUpdating}
-                    className="px-3 py-1.5 text-xs data-[state=on]:bg-amber-500/20 data-[state=on]:text-amber-600 dark:data-[state=on]:text-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  <button
+                    type="button"
+                    disabled={listModeDisabled}
+                    onClick={() => void handleListModeChange('exclude')}
+                    className={cn(
+                      'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
+                      selectedListMode === 'exclude'
+                        ? 'text-amber-700 dark:text-amber-300'
+                        : 'text-foreground/80 hover:text-foreground',
+                      listModeDisabled && 'cursor-not-allowed opacity-50',
+                    )}
                   >
                     Исключения
-                  </ToggleGroupItem>
+                  </button>
                 )}
-          </ToggleGroup>
+          </div>
         </div>
       </div>
     </div>

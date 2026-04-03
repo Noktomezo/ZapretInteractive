@@ -29,13 +29,16 @@ jobs:
       - name: Sync managed thirdparty files and hashes
         run: uv run scripts/update-thirdparty.py
 
+      - name: Verify thirdparty hashes
+        run: uv run scripts/verify-thirdparty-hashes.py
+
       - name: Check for thirdparty changes
         id: check_changes
         run: |
-          if git diff --quiet -- thirdparty; then
-            echo "has_changes=false" >> "$GITHUB_OUTPUT"
-          else
+          if git status --porcelain --untracked-files=all --ignored=no -- thirdparty | grep -q .; then
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Commit and push changes
@@ -43,6 +46,6 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add thirdparty/*.dll thirdparty/*.sys thirdparty/*.exe thirdparty/hashes.json thirdparty/lists/*.txt
+          git add thirdparty
           git commit -m "chore: update managed thirdparty files"
           git push

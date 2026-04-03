@@ -147,19 +147,24 @@ export const useAppStore = create<AppStore>((set, get) => ({
         }
 
         useConnectionStore.getState().addLog('Проверяю и восстанавливаю управляемые файлы')
-        const ensured = await tauri.ensureManagedFiles()
-        if (ensured.config_restored) {
-          useConnectionStore.getState().addLog('config.json был автоматически восстановлен из дефолтного конфига')
+        try {
+          const ensured = await tauri.ensureManagedFiles()
+          if (ensured.config_restored) {
+            useConnectionStore.getState().addLog('config.json был автоматически восстановлен из дефолтного конфига')
+          }
+          if (ensured.config_reloaded) {
+            useConnectionStore.getState().addLog('Конфигурация была нормализована и повторно загружена с диска')
+          }
+          if (ensured.restored_files.length > 0) {
+            useConnectionStore.getState().addLog(`Автоматически восстановлены файлы: ${ensured.restored_files.join(', ')}`)
+          }
+          if (ensured.unrecoverable_filters.length > 0) {
+            useConnectionStore.getState().addLog(`Не удалось автоматически восстановить фильтры: ${ensured.unrecoverable_filters.join(', ')}`)
+            toast.error(`Не удалось автоматически восстановить фильтры: ${ensured.unrecoverable_filters.join(', ')}`)
+          }
         }
-        if (ensured.config_reloaded) {
-          useConnectionStore.getState().addLog('Конфигурация была нормализована и повторно загружена с диска')
-        }
-        if (ensured.restored_files.length > 0) {
-          useConnectionStore.getState().addLog(`Автоматически восстановлены файлы: ${ensured.restored_files.join(', ')}`)
-        }
-        if (ensured.unrecoverable_filters.length > 0) {
-          useConnectionStore.getState().addLog(`Не удалось автоматически восстановить фильтры: ${ensured.unrecoverable_filters.join(', ')}`)
-          toast.error(`Не удалось автоматически восстановить фильтры: ${ensured.unrecoverable_filters.join(', ')}`)
+        catch (e) {
+          useConnectionStore.getState().addLog(`Удалённые файлы сейчас недоступны, продолжаю с локальным состоянием: ${e}`)
         }
 
         useConnectionStore.getState().addLog('Загружаю конфигурацию')

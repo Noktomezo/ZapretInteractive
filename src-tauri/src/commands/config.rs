@@ -81,6 +81,46 @@ impl std::fmt::Display for ListMode {
     }
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum WindowMaterial {
+    None,
+    #[default]
+    Acrylic,
+    Mica,
+    Tabbed,
+}
+
+impl<'de> Deserialize<'de> for WindowMaterial {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum WindowMaterialRepr {
+            String(String),
+            Bool(bool),
+        }
+
+        match WindowMaterialRepr::deserialize(deserializer)? {
+            WindowMaterialRepr::String(value) => match value.as_str() {
+                "none" => Ok(Self::None),
+                "acrylic" => Ok(Self::Acrylic),
+                "mica" => Ok(Self::Mica),
+                "tabbed" => Ok(Self::Tabbed),
+                other => Err(serde::de::Error::unknown_variant(
+                    other,
+                    &["none", "acrylic", "mica", "tabbed"],
+                )),
+            },
+            WindowMaterialRepr::Bool(enabled) => {
+                Ok(if enabled { Self::Acrylic } else { Self::None })
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     pub global_ports: GlobalPorts,
@@ -111,10 +151,11 @@ pub struct AppConfig {
     )]
     pub app_auto_updates_enabled: bool,
     #[serde(
-        default = "default_window_acrylic_enabled",
-        rename = "windowAcrylicEnabled"
+        default = "default_window_material",
+        rename = "windowMaterial",
+        alias = "windowAcrylicEnabled"
     )]
-    pub window_acrylic_enabled: bool,
+    pub window_material: WindowMaterial,
 }
 
 pub struct ConfigEnsureResult {
@@ -150,8 +191,8 @@ fn default_app_auto_updates_enabled() -> bool {
     true
 }
 
-fn default_window_acrylic_enabled() -> bool {
-    true
+fn default_window_material() -> WindowMaterial {
+    WindowMaterial::Acrylic
 }
 
 fn built_in_filter_content(filename: &str) -> Option<&'static str> {

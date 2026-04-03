@@ -45,6 +45,7 @@ export interface Filter {
 }
 
 export type ListMode = 'exclude' | 'ipset'
+export type WindowMaterial = 'none' | 'acrylic' | 'mica' | 'tabbed'
 
 export interface AppConfig {
   global_ports: GlobalPorts
@@ -58,7 +59,7 @@ export interface AppConfig {
   connectOnAutostart?: boolean
   coreFileUpdatePromptsEnabled?: boolean
   appAutoUpdatesEnabled?: boolean
-  windowAcrylicEnabled?: boolean
+  windowMaterial?: WindowMaterial
 }
 
 export interface EnsureManagedFilesResult {

@@ -224,7 +224,6 @@ export function AboutPage() {
 
                   <div className="flex sm:justify-end">
                     <Button
-                      size="sm"
                       variant="outline"
                       onClick={() => { void handleManualAppUpdateCheck() }}
                       disabled={appUpdateChecking || appUpdateDownloading || appUpdateInstalling}

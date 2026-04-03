@@ -1,7 +1,6 @@
 fail_fast: true
 
-exclude:
-  glob: 'thirdparty/**'
+exclude: ^thirdparty/
 
 repos:
   # Basic checks (files, YAML, TOML, JSON, etc.)

@@ -111,6 +111,27 @@ def download(url: str) -> bytes:
         return response.read()
 
 
+def normalize_download(destination: Path, data: bytes) -> bytes:
+    if destination.name != "zapret-hosts-user-exclude.txt":
+        return data
+
+    lines = data.decode("utf-8").splitlines()
+    seen: set[str] = set()
+    normalized: list[str] = []
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            normalized.append(line)
+            continue
+        if stripped in seen:
+            continue
+        seen.add(stripped)
+        normalized.append(line)
+
+    return ("\n".join(normalized) + "\n").encode("utf-8")
+
+
 def write_if_changed(path: Path, data: bytes) -> bool:
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists() and sha256_file(path) == sha256_bytes(data):
@@ -150,7 +171,7 @@ def main() -> None:
     changed_paths: list[str] = []
 
     for url, destination in UPSTREAMS:
-        data = download(url)
+        data = normalize_download(destination, download(url))
         if write_if_changed(destination, data):
             changed_paths.append(destination.relative_to(REPO_ROOT).as_posix())
 

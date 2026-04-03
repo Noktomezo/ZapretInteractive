@@ -11,7 +11,9 @@ use tauri::{
 #[cfg(desktop)]
 use tauri_plugin_autostart::ManagerExt;
 #[cfg(target_os = "windows")]
-use window_vibrancy::{apply_acrylic, clear_acrylic};
+use window_vibrancy::{
+    apply_acrylic, apply_mica, apply_tabbed, clear_acrylic, clear_mica, clear_tabbed,
+};
 
 static CONNECTED: AtomicBool = AtomicBool::new(false);
 
@@ -54,25 +56,33 @@ fn should_minimize_to_tray(state: &config::AppState) -> bool {
 }
 
 #[cfg(target_os = "windows")]
-fn apply_window_transparency(window: &tauri::WebviewWindow, enabled: bool) -> Result<(), String> {
-    if enabled {
-        apply_acrylic(window, None).map_err(|e| e.to_string())
-    } else {
-        clear_acrylic(window).map_err(|e| e.to_string())
+fn apply_window_material(
+    window: &tauri::WebviewWindow,
+    material: config::WindowMaterial,
+) -> Result<(), String> {
+    let _ = clear_acrylic(window);
+    let _ = clear_mica(window);
+    let _ = clear_tabbed(window);
+
+    match material {
+        config::WindowMaterial::None => Ok(()),
+        config::WindowMaterial::Acrylic => apply_acrylic(window, None).map_err(|e| e.to_string()),
+        config::WindowMaterial::Mica => apply_mica(window, None).map_err(|e| e.to_string()),
+        config::WindowMaterial::Tabbed => apply_tabbed(window, None).map_err(|e| e.to_string()),
     }
 }
 
 #[cfg(not(target_os = "windows"))]
-fn apply_window_transparency(_window: &tauri::WebviewWindow, _enabled: bool) -> Result<(), String> {
+fn apply_window_material(
+    _window: &tauri::WebviewWindow,
+    _material: config::WindowMaterial,
+) -> Result<(), String> {
     Ok(())
 }
 
-fn report_window_transparency_error(app: &tauri::AppHandle, window_label: &str, error: &str) {
-    eprintln!("Failed to apply window transparency for '{window_label}': {error}");
-    let _ = app.emit(
-        "window-transparency-error",
-        format!("{window_label}: {error}"),
-    );
+fn report_window_material_error(app: &tauri::AppHandle, window_label: &str, error: &str) {
+    eprintln!("Failed to apply window material for '{window_label}': {error}");
+    let _ = app.emit("window-material-error", format!("{window_label}: {error}"));
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -201,24 +211,24 @@ pub fn run() {
 
             if let Some(window) = app.get_webview_window("main") {
                 let state = app.state::<config::AppState>();
-                let window_acrylic_enabled = state
+                let window_material = state
                     .config
                     .lock()
-                    .map(|cfg| cfg.window_acrylic_enabled)
-                    .unwrap_or_else(|poisoned| poisoned.into_inner().window_acrylic_enabled);
-                if let Err(error) = apply_window_transparency(&window, window_acrylic_enabled) {
-                    report_window_transparency_error(app.handle(), "main", &error);
+                    .map(|cfg| cfg.window_material)
+                    .unwrap_or_else(|poisoned| poisoned.into_inner().window_material);
+                if let Err(error) = apply_window_material(&window, window_material) {
+                    report_window_material_error(app.handle(), "main", &error);
 
-                    if window_acrylic_enabled {
+                    if window_material != config::WindowMaterial::None {
                         let mut fallback_config = match state.config.lock() {
                             Ok(cfg) => cfg.clone(),
                             Err(poisoned) => poisoned.into_inner().clone(),
                         };
-                        fallback_config.window_acrylic_enabled = false;
+                        fallback_config.window_material = config::WindowMaterial::None;
 
                         if let Err(save_error) = config::save_config_to_disk(&fallback_config) {
                             eprintln!(
-                                "Failed to persist disabled window transparency after startup error: {save_error}"
+                                "Failed to persist disabled window material after startup error: {save_error}"
                             );
                         }
 
@@ -302,7 +312,7 @@ pub fn run() {
             set_connected_state,
             is_autostart_enabled,
             set_autostart_enabled,
-            set_window_transparency_enabled,
+            set_window_material,
             was_launched_from_autostart,
         ])
         .run(tauri::generate_context!())
@@ -378,10 +388,10 @@ fn was_launched_from_autostart() -> bool {
 }
 
 #[tauri::command]
-fn set_window_transparency_enabled(
+fn set_window_material(
     app: tauri::AppHandle,
     state: tauri::State<'_, config::AppState>,
-    enabled: bool,
+    material: config::WindowMaterial,
 ) -> Result<(), String> {
     let current_config = state
         .config
@@ -390,7 +400,7 @@ fn set_window_transparency_enabled(
         .unwrap_or_else(|poisoned| poisoned.into_inner().clone());
 
     let mut next_config = current_config.clone();
-    next_config.window_acrylic_enabled = enabled;
+    next_config.window_material = material;
 
     config::save_config_to_disk(&next_config)?;
 
@@ -400,7 +410,7 @@ fn set_window_transparency_enabled(
     }
 
     if let Some(window) = app.get_webview_window("main")
-        && let Err(error) = apply_window_transparency(&window, enabled)
+        && let Err(error) = apply_window_material(&window, material)
     {
         let rollback_result = (|| -> Result<(), String> {
             config::save_config_to_disk(&current_config)?;
@@ -410,11 +420,11 @@ fn set_window_transparency_enabled(
         })();
 
         if let Err(rollback_error) = rollback_result {
-            report_window_transparency_error(
+            report_window_material_error(
                 &app,
                 "main",
                 &format!(
-                    "{error}; also failed to rollback window transparency config: {rollback_error}"
+                    "{error}; also failed to rollback window material config: {rollback_error}"
                 ),
             );
             return Err(format!(
@@ -422,7 +432,7 @@ fn set_window_transparency_enabled(
             ));
         }
 
-        report_window_transparency_error(&app, "main", &error);
+        report_window_material_error(&app, "main", &error);
         return Err(error);
     }
 

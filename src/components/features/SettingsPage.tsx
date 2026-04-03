@@ -1,7 +1,22 @@
-import { Loader2, RotateCcw } from 'lucide-react'
+import type { WindowMaterial } from '@/lib/types'
+import type { Theme } from '@/stores/theme.store'
+import {
+  AppWindow,
+  CircleOff,
+  Download,
+  Laptop,
+  Layers3,
+  Loader2,
+  MoonStar,
+  Palette,
+  PanelTop,
+  RotateCcw,
+  Router,
+  Sparkles,
+  SunMedium,
+} from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { ThemeSwitcher } from '@/components/ThemeSwitcher'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,18 +29,37 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import * as tauri from '@/lib/tauri'
 import { cn } from '@/lib/utils'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
+import { useThemeStore } from '@/stores/theme.store'
 
 const RANGE_RE = /^\d+-\d+$/
 const PORT_RE = /^\d+$/
+const THEME_OPTIONS: { value: Theme, label: string, icon: React.ComponentType<{ className?: string }> }[] = [
+  { value: 'light', label: 'Светлая', icon: SunMedium },
+  { value: 'dark', label: 'Тёмная', icon: MoonStar },
+  { value: 'system', label: 'Системная', icon: Laptop },
+]
+const WINDOW_MATERIAL_OPTIONS: { value: WindowMaterial, label: string, icon: React.ComponentType<{ className?: string }> }[] = [
+  { value: 'none', label: 'Нет', icon: CircleOff },
+  { value: 'acrylic', label: 'Акрил', icon: Layers3 },
+  { value: 'mica', label: 'Mica', icon: Sparkles },
+  { value: 'tabbed', label: 'Tabbed', icon: PanelTop },
+]
 
 function isValidPortRange(value: string): boolean {
   if (!value.trim())
@@ -68,13 +102,17 @@ export function SettingsPage() {
   const setGlobalPorts = useConfigStore(state => state.setGlobalPorts)
   const setCoreFileUpdatePromptsEnabled = useConfigStore(state => state.setCoreFileUpdatePromptsEnabled)
   const setAppAutoUpdatesEnabled = useConfigStore(state => state.setAppAutoUpdatesEnabled)
-  const setWindowAcrylicEnabled = useConfigStore(state => state.setWindowAcrylicEnabled)
+  const setWindowMaterial = useConfigStore(state => state.setWindowMaterial)
   const setMinimizeToTray = useConfigStore(state => state.setMinimizeToTray)
   const setLaunchToTray = useConfigStore(state => state.setLaunchToTray)
   const setConnectOnAutostart = useConfigStore(state => state.setConnectOnAutostart)
   const reset = useConfigStore(state => state.reset)
   const restartIfConnected = useConnectionStore(state => state.restartIfConnected)
   const addConfigLog = useConnectionStore(state => state.addConfigLog)
+  const theme = useThemeStore(state => state.theme)
+  const setTheme = useThemeStore(state => state.setTheme)
+  const selectedTheme = THEME_OPTIONS.find(option => option.value === theme) ?? THEME_OPTIONS[2]
+  const selectedWindowMaterial = WINDOW_MATERIAL_OPTIONS.find(option => option.value === (config?.windowMaterial ?? 'acrylic')) ?? WINDOW_MATERIAL_OPTIONS[1]
 
   const refreshAutostartState = async (isMounted = true) => {
     try {
@@ -209,27 +247,25 @@ export function SettingsPage() {
     }
   }
 
-  const handleWindowAcrylicChange = async (checked: boolean) => {
-    const previous = config?.windowAcrylicEnabled ?? true
-    setWindowAcrylicEnabled(checked)
+  const handleWindowMaterialChange = async (value: WindowMaterial) => {
+    const previous = config?.windowMaterial ?? 'acrylic'
+    setWindowMaterial(value)
 
     try {
-      await tauri.setWindowTransparencyEnabled(checked)
+      await tauri.setWindowMaterial(value)
       await saveNow()
-      addConfigLog(checked
-        ? 'акриловый материал и прозрачность окна включены'
-        : 'акриловый материал и прозрачность окна отключены')
-      toast.success(checked ? 'Прозрачность окна включена' : 'Прозрачность окна отключена')
+      addConfigLog(`материал окна изменён: ${WINDOW_MATERIAL_OPTIONS.find(option => option.value === value)?.label ?? value}`)
+      toast.success(`Материал окна: ${WINDOW_MATERIAL_OPTIONS.find(option => option.value === value)?.label ?? value}`)
     }
     catch (e) {
-      setWindowAcrylicEnabled(previous)
+      setWindowMaterial(previous)
       try {
-        await tauri.setWindowTransparencyEnabled(previous)
+        await tauri.setWindowMaterial(previous)
       }
       catch (restoreError) {
-        console.error('Failed to restore window transparency state:', restoreError)
+        console.error('Failed to restore window material state:', restoreError)
       }
-      toast.error(`Ошибка настройки прозрачности окна: ${e instanceof Error ? e.message : String(e)}`)
+      toast.error(`Ошибка настройки материала окна: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
@@ -252,36 +288,82 @@ export function SettingsPage() {
         </div>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Тема</CardTitle>
+          <CardHeader className="gap-1">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Palette className="size-4 text-muted-foreground" />
+              <span>Тема</span>
+            </CardTitle>
             <CardDescription>
               Внешний вид приложения
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <ThemeSwitcher />
+          <CardContent className="space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="theme-select">Тема</Label>
+                <p className="text-xs text-muted-foreground">
+                  Режим отображения интерфейса приложения
+                </p>
+              </div>
+              <div className="w-full sm:w-[11rem]">
+                <Select value={theme} onValueChange={value => setTheme(value as Theme)}>
+                  <SelectTrigger id="theme-select" className="w-full cursor-pointer">
+                    <span className="flex items-center gap-2">
+                      <selectedTheme.icon className="size-4 text-muted-foreground" />
+                      <SelectValue placeholder="Выберите тему">{selectedTheme.label}</SelectValue>
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {THEME_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        <span className="flex items-center gap-2">
+                          <option.icon className="size-4 text-muted-foreground" />
+                          <span>{option.label}</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-              <div className="flex items-center justify-between gap-4">
-                <div className="space-y-0.5">
-                  <Label htmlFor="window-acrylic-enabled">Акриловый материал и прозрачность окна</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Полностью включает или отключает стеклянный эффект окна и полупрозрачность интерфейса
-                  </p>
-                </div>
-                <Switch
-                  id="window-acrylic-enabled"
-                  checked={config.windowAcrylicEnabled ?? true}
-                  onCheckedChange={handleWindowAcrylicChange}
-                />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="window-material">Материал окна</Label>
+                <p className="text-xs text-muted-foreground">
+                  Системный материал для фона окна. Mica и Tabbed поддерживаются на Windows 11
+                </p>
+              </div>
+              <div className="w-full sm:w-[11rem]">
+                <Select value={config.windowMaterial ?? 'acrylic'} onValueChange={value => void handleWindowMaterialChange(value as WindowMaterial)}>
+                  <SelectTrigger id="window-material" className="w-full cursor-pointer">
+                    <span className="flex items-center gap-2">
+                      <selectedWindowMaterial.icon className="size-4 text-muted-foreground" />
+                      <SelectValue placeholder="Выберите материал">{selectedWindowMaterial.label}</SelectValue>
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {WINDOW_MATERIAL_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        <span className="flex items-center gap-2">
+                          <option.icon className="size-4 text-muted-foreground" />
+                          <span>{option.label}</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Обновления</CardTitle>
+          <CardHeader className="gap-1">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Download className="size-4 text-muted-foreground" />
+              <span>Обновления</span>
+            </CardTitle>
             <CardDescription>
               Настройки фоновых проверок и автоматических предложений
             </CardDescription>
@@ -318,8 +400,11 @@ export function SettingsPage() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Поведение</CardTitle>
+          <CardHeader className="gap-1">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <AppWindow className="size-4 text-muted-foreground" />
+              <span>Поведение</span>
+            </CardTitle>
             <CardDescription>
               Настройки запуска и закрытия приложения
             </CardDescription>
@@ -404,8 +489,11 @@ export function SettingsPage() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Порты</CardTitle>
+          <CardHeader className="gap-1">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Router className="size-4 text-muted-foreground" />
+              <span>Порты</span>
+            </CardTitle>
             <CardDescription>
               Глобальные порты для фильтрации трафика
             </CardDescription>
@@ -481,36 +569,43 @@ export function SettingsPage() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Сброс</CardTitle>
+          <CardHeader className="gap-1">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <RotateCcw className="size-4 text-muted-foreground" />
+              <span>Сброс</span>
+            </CardTitle>
             <CardDescription>
               Возврат к настройкам по умолчанию
             </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive">
-                  <RotateCcw className="mr-2 size-4" />
-                  Сбросить настройки
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Сбросить настройки?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Все категории, стратегии, плейсхолдеры и фильтры будут удалены и заменены на значения по умолчанию. Это действие нельзя отменить.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Отмена</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleReset} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <CardAction>
+              <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="border border-destructive/35 bg-destructive/72 hover:bg-destructive/82 dark:border-destructive/30 dark:bg-destructive/58 dark:hover:bg-destructive/68"
+                  >
+                    <RotateCcw className="size-4" />
                     Сбросить
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </CardContent>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Сбросить настройки?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Все категории, стратегии, плейсхолдеры и фильтры будут удалены и заменены на значения по умолчанию. Это действие нельзя отменить.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Отмена</AlertDialogCancel>
+                    <AlertDialogAction variant="destructive" onClick={handleReset}>
+                      Сбросить
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </CardAction>
+          </CardHeader>
         </Card>
       </div>
     </ScrollArea>

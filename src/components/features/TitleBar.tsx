@@ -1,23 +1,30 @@
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { SidebarTrigger } from '@/components/ui/sidebar'
+import { cn } from '@/lib/utils'
+import { useConfigStore } from '@/stores/config.store'
 
 export function TitleBar() {
   const handleMinimize = () => getCurrentWindow().minimize()
   const handleClose = () => getCurrentWindow().close()
+  const windowMaterial = useConfigStore(state => state.config?.windowMaterial ?? 'acrylic')
+  const materialEnabled = windowMaterial !== 'none'
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-50 flex h-10 cursor-grab items-center bg-transparent px-2.5 select-none active:cursor-grabbing"
+      className={cn(
+        'fixed top-0 left-0 right-0 z-50 flex h-11 cursor-grab items-center px-3 select-none active:cursor-grabbing',
+        materialEnabled ? 'bg-transparent' : 'bg-background',
+      )}
       data-tauri-drag-region
     >
-      <SidebarTrigger className="mr-2 size-9" />
+      <SidebarTrigger className="mr-1.5" />
       <div className="flex-1" data-tauri-drag-region />
-      <div className="-mr-2.5 flex h-full items-stretch">
+      <div className="-mr-3 flex h-full items-stretch">
         <button
           type="button"
           aria-label="Minimize"
           onClick={handleMinimize}
-          className="flex h-full w-11 cursor-pointer items-center justify-center text-foreground/85 transition-colors hover:bg-black/8 hover:text-foreground dark:hover:bg-white/10"
+          className="flex h-full w-11 cursor-pointer items-center justify-center text-foreground/78 transition-colors hover:bg-black/6 hover:text-foreground dark:hover:bg-white/8"
           title="Minimize"
         >
           <svg aria-hidden="true" className="size-3" viewBox="0 0 10 10" fill="none">
@@ -28,7 +35,7 @@ export function TitleBar() {
           type="button"
           aria-label="Close"
           onClick={handleClose}
-          className="flex h-full w-11 cursor-pointer items-center justify-center text-foreground/85 transition-colors hover:bg-red-500 hover:text-white"
+          className="flex h-full w-11 cursor-pointer items-center justify-center text-foreground/78 transition-colors hover:bg-red-500/92 hover:text-white"
           title="Close"
         >
           <svg aria-hidden="true" className="size-3" viewBox="0 0 10 10" fill="none">

@@ -427,5 +427,5 @@
   "connectOnAutostart": false,
   "coreFileUpdatePromptsEnabled": true,
   "appAutoUpdatesEnabled": true,
-  "windowAcrylicEnabled": true
+  "windowMaterial": "acrylic"
 }

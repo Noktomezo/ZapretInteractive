@@ -1,4 +1,4 @@
-import type { AppConfig, AppHealthSnapshot, EnsureManagedFilesResult, ListMode } from './types'
+import type { AppConfig, AppHealthSnapshot, EnsureManagedFilesResult, ListMode, WindowMaterial } from './types'
 import { getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
@@ -43,7 +43,7 @@ export const isAutostartEnabled = (): Promise<boolean> => invoke('is_autostart_e
 export const setAutostartEnabled = (enabled: boolean): Promise<void> => invoke('set_autostart_enabled', { enabled })
 export const wasLaunchedFromAutostart = (): Promise<boolean> => invoke('was_launched_from_autostart')
 export const getAppVersion = (): Promise<string> => getVersion()
-export const setWindowTransparencyEnabled = (enabled: boolean): Promise<void> => invoke('set_window_transparency_enabled', { enabled })
+export const setWindowMaterial = (material: WindowMaterial): Promise<void> => invoke('set_window_material', { material })
 
 export function saveFilterFile(filename: string, content: string): Promise<void> {
   return invoke('save_filter_file', { filename, content })

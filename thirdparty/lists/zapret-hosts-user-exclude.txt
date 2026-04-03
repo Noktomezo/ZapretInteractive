@@ -362,7 +362,6 @@ cursorapi.com
 todesktop.com
 cursor-cdn.com
 #################################### Warface
-qq.com
 qcloud.com
 #################################### EA Games
 ea.com
