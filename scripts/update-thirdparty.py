@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import urllib.request
+from urllib.parse import urlparse
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -103,6 +104,10 @@ def sha256_file(path: Path) -> str:
 
 
 def download(url: str) -> bytes:
+    parsed = urlparse(url)
+    if parsed.scheme.lower() != "https":
+        raise ValueError(f"Unsupported URL scheme for managed download: {url}")
+
     request = urllib.request.Request(
         url,
         headers={"User-Agent": "ZapretInteractive-CI/1.0"},

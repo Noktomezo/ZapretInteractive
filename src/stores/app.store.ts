@@ -164,9 +164,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
           }
         }
         catch (e) {
+          console.error('ensureManagedFiles failed during startup:', e)
           useConnectionStore.getState().addLog(`Удалённые файлы сейчас недоступны, продолжаю с локальным состоянием: ${e}`)
         }
 
+        // ensureManagedFiles() may partially repair runtime state before failing,
+        // so we always re-read config from disk to normalize the resulting state.
         useConnectionStore.getState().addLog('Загружаю конфигурацию')
         await useConfigStore.getState().load()
         if (useConfigStore.getState().config) {

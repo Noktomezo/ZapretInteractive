@@ -572,7 +572,11 @@ export function MainPage() {
             </h2>
           </div>
 
-          <div className="relative mx-auto grid w-fit grid-cols-2 gap-1 rounded-xl border border-border/60 bg-background/76 p-1 shadow-lg shadow-black/10 backdrop-blur-md">
+          <div
+            role="radiogroup"
+            aria-label="Режим списков"
+            className="relative mx-auto grid w-fit grid-cols-2 gap-1 rounded-xl border border-border/60 bg-background/76 p-1 shadow-lg shadow-black/10 backdrop-blur-md"
+          >
             <div
               className={cn(
                 'pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-md border shadow-sm transition-all duration-300 ease-out',
@@ -587,6 +591,8 @@ export function MainPage() {
                     <TooltipTrigger asChild>
                       <button
                         type="button"
+                        role="radio"
+                        aria-checked={selectedListMode === 'ipset'}
                         disabled={listModeDisabled}
                         onClick={() => void handleListModeChange('ipset')}
                         className={cn(
@@ -608,6 +614,8 @@ export function MainPage() {
               : (
                   <button
                     type="button"
+                    role="radio"
+                    aria-checked={selectedListMode === 'ipset'}
                     disabled={listModeDisabled}
                     onClick={() => void handleListModeChange('ipset')}
                     className={cn(
@@ -627,6 +635,8 @@ export function MainPage() {
                     <TooltipTrigger asChild>
                       <button
                         type="button"
+                        role="radio"
+                        aria-checked={selectedListMode === 'exclude'}
                         disabled={listModeDisabled}
                         onClick={() => void handleListModeChange('exclude')}
                         className={cn(
@@ -648,6 +658,8 @@ export function MainPage() {
               : (
                   <button
                     type="button"
+                    role="radio"
+                    aria-checked={selectedListMode === 'exclude'}
                     disabled={listModeDisabled}
                     onClick={() => void handleListModeChange('exclude')}
                     className={cn(

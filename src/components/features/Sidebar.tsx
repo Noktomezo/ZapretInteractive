@@ -71,8 +71,8 @@ function SidebarNavItem({
       </span>
       <span
         className={cn(
-          'overflow-hidden transition-[width,margin,opacity] duration-200 ease-out',
-          open ? 'ml-1.5 min-w-0 flex-1 opacity-100' : 'ml-0 w-0 opacity-0',
+          'min-w-0 overflow-hidden transition-[max-width,margin,opacity] duration-200 ease-out',
+          open ? 'ml-1.5 max-w-40 flex-1 opacity-100' : 'ml-0 max-w-0 opacity-0',
         )}
       >
         <span

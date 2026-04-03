@@ -294,48 +294,77 @@ export default function FaultyTerminal({
     if (!ctn)
       return
 
-    const renderer = new Renderer({ dpr })
-    rendererRef.current = renderer
-    const gl = renderer.gl
-    gl.clearColor(0, 0, 0, 1)
+    let renderer = null
+    let program = null
+    let mesh = null
+    let gl = null
+    let resizeObserver = null
 
-    const geometry = new Triangle(gl)
+    const cleanupWebgl = () => {
+      cancelAnimationFrame(rafRef.current)
+      resizeObserver?.disconnect()
+      window.removeEventListener('pointermove', handlePointerMove)
+      if (gl?.canvas?.parentElement === ctn)
+        ctn.removeChild(gl.canvas)
+      meshRef.current = null
+      programRef.current = null
+      rendererRef.current = null
+      targetSizeRef.current = { width: 0, height: 0 }
+      appliedSizeRef.current = { width: 0, height: 0 }
+      gl?.getExtension('WEBGL_lose_context')?.loseContext()
+      loadAnimationStartRef.current = 0
+      timeOffsetRef.current = Math.random() * 100
+    }
 
-    const program = new Program(gl, {
-      vertex: vertexShader,
-      fragment: fragmentShader,
-      uniforms: {
-        iTime: { value: 0 },
-        iResolution: {
-          value: new Color(gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height),
+    try {
+      renderer = new Renderer({ dpr })
+      rendererRef.current = renderer
+      gl = renderer.gl
+      gl.clearColor(0, 0, 0, 1)
+
+      const geometry = new Triangle(gl)
+
+      program = new Program(gl, {
+        vertex: vertexShader,
+        fragment: fragmentShader,
+        uniforms: {
+          iTime: { value: 0 },
+          iResolution: {
+            value: new Color(gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height),
+          },
+          uScale: { value: scale },
+
+          uGridMul: { value: new Float32Array(gridMul) },
+          uDigitSize: { value: digitSize },
+          uScanlineIntensity: { value: scanlineIntensity },
+          uGlitchAmount: { value: glitchAmount },
+          uFlickerAmount: { value: flickerAmount },
+          uNoiseAmp: { value: noiseAmp },
+          uChromaticAberration: { value: chromaticAberration },
+          uDither: { value: ditherValue },
+          uCurvature: { value: curvature },
+          uTint: { value: new Color(tintVec[0], tintVec[1], tintVec[2]) },
+          uBackground: { value: new Color(backgroundVec[0], backgroundVec[1], backgroundVec[2]) },
+          uMouse: {
+            value: new Float32Array([smoothMouseRef.current.x, smoothMouseRef.current.y]),
+          },
+          uMouseStrength: { value: mouseStrength },
+          uUseMouse: { value: mouseReact ? 1 : 0 },
+          uPageLoadProgress: { value: pageLoadAnimation ? 0 : 1 },
+          uUsePageLoadAnimation: { value: pageLoadAnimation ? 1 : 0 },
+          uBrightness: { value: brightness },
         },
-        uScale: { value: scale },
+      })
+      programRef.current = program
 
-        uGridMul: { value: new Float32Array(gridMul) },
-        uDigitSize: { value: digitSize },
-        uScanlineIntensity: { value: scanlineIntensity },
-        uGlitchAmount: { value: glitchAmount },
-        uFlickerAmount: { value: flickerAmount },
-        uNoiseAmp: { value: noiseAmp },
-        uChromaticAberration: { value: chromaticAberration },
-        uDither: { value: ditherValue },
-        uCurvature: { value: curvature },
-        uTint: { value: new Color(tintVec[0], tintVec[1], tintVec[2]) },
-        uBackground: { value: new Color(backgroundVec[0], backgroundVec[1], backgroundVec[2]) },
-        uMouse: {
-          value: new Float32Array([smoothMouseRef.current.x, smoothMouseRef.current.y]),
-        },
-        uMouseStrength: { value: mouseStrength },
-        uUseMouse: { value: mouseReact ? 1 : 0 },
-        uPageLoadProgress: { value: pageLoadAnimation ? 0 : 1 },
-        uUsePageLoadAnimation: { value: pageLoadAnimation ? 1 : 0 },
-        uBrightness: { value: brightness },
-      },
-    })
-    programRef.current = program
-
-    const mesh = new Mesh(gl, { geometry, program })
-    meshRef.current = mesh
+      mesh = new Mesh(gl, { geometry, program })
+      meshRef.current = mesh
+    }
+    catch (error) {
+      console.error('Failed to initialize FaultyTerminal WebGL:', error)
+      cleanupWebgl()
+      return
+    }
 
     function applySize(width, height) {
       if (!renderer || !width || !height)
@@ -358,7 +387,7 @@ export default function FaultyTerminal({
       }
     }
 
-    const resizeObserver = new ResizeObserver(updateTargetSize)
+    resizeObserver = new ResizeObserver(updateTargetSize)
     resizeObserver.observe(ctn)
     updateTargetSize()
     applySize(targetSizeRef.current.width, targetSizeRef.current.height)
@@ -422,21 +451,7 @@ export default function FaultyTerminal({
 
     window.addEventListener('pointermove', handlePointerMove, { passive: true })
 
-    return () => {
-      cancelAnimationFrame(rafRef.current)
-      resizeObserver.disconnect()
-      window.removeEventListener('pointermove', handlePointerMove)
-      if (gl.canvas.parentElement === ctn)
-        ctn.removeChild(gl.canvas)
-      meshRef.current = null
-      programRef.current = null
-      rendererRef.current = null
-      targetSizeRef.current = { width: 0, height: 0 }
-      appliedSizeRef.current = { width: 0, height: 0 }
-      gl.getExtension('WEBGL_lose_context')?.loseContext()
-      loadAnimationStartRef.current = 0
-      timeOffsetRef.current = Math.random() * 100
-    }
+    return cleanupWebgl
   }, [dpr, handlePointerMove])
 
   useEffect(() => {

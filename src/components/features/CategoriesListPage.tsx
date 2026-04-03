@@ -401,7 +401,7 @@ export function CategoriesListPage() {
             </p>
           </div>
           <Button onClick={() => setNewCategoryOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
+            <Plus className="w-4 h-4" />
             Новая категория
           </Button>
         </div>

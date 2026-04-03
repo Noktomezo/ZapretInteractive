@@ -253,7 +253,6 @@ export function SettingsPage() {
 
     try {
       await tauri.setWindowMaterial(value)
-      await saveNow()
       addConfigLog(`материал окна изменён: ${WINDOW_MATERIAL_OPTIONS.find(option => option.value === value)?.label ?? value}`)
       toast.success(`Материал окна: ${WINDOW_MATERIAL_OPTIONS.find(option => option.value === value)?.label ?? value}`)
     }

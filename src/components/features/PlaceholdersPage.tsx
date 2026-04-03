@@ -182,7 +182,7 @@ export function PlaceholdersPage() {
           </div>
           <div className="flex items-center gap-1">
             <Button onClick={() => setAddOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="h-4 w-4" />
               Новый плейсхолдер
             </Button>
             <Button

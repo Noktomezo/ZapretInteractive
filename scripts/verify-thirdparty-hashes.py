@@ -35,7 +35,15 @@ def resolve_manifest_path(key: str) -> Path:
 
 
 def main() -> int:
-    manifest = json.loads(HASHES_PATH.read_text(encoding="utf-8"))
+    try:
+        manifest = json.loads(HASHES_PATH.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        print(
+            "thirdparty/hashes.json is missing: "
+            f"{HASHES_PATH}. Run scripts/update-thirdparty.py before verification."
+        )
+        return 1
+
     failures: list[str] = []
 
     for key, expected_hash in manifest.items():

@@ -28,7 +28,6 @@
   <img width="900" height="700" alt="Zapret_Interactive_7K0CjejYUi" src="https://github.com/user-attachments/assets/989bbf63-07fa-46b6-b471-17ad9df00a07" />
 </div>
 
-
 ## 📦 Установка
 
 Скачать готовый установщик можно в [последних релизах](https://github.com/Noktomezo/ZapretInteractive/releases).
