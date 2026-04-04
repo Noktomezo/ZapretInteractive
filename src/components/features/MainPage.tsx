@@ -80,7 +80,7 @@ export function MainPage() {
           : '#C76A5A')
   const terminalBackgroundTint = resolvedTheme === 'dark' ? '#151313' : '#F4EFE2'
   const terminalFlickerAmount = status === 'connected' ? 0 : 1
-  const terminalCurvature = status === 'connected' ? 0 : 0.1
+  const terminalCurvature = status === 'connected' || status === 'disconnecting' ? 0 : 0.1
   const terminalScanlineIntensity = status === 'disconnected' ? 0.22 : 0
   const shouldAnimateTerminal = !mainPageVisited
   const selectedListMode = config?.listMode ?? 'ipset'
@@ -592,16 +592,16 @@ export function MainPage() {
               }
               variant="ghost"
               className={cn(
-                'h-32 w-32 rounded-full transition-[background-color,color,box-shadow,transform] duration-500 ease-out',
+                'h-32 w-32 rounded-full border border-white/10 shadow-lg shadow-black/10 backdrop-blur-xl transition-[background-color,color,box-shadow,transform,backdrop-filter] duration-500 ease-out disabled:opacity-100',
                 status === 'connected'
-                && 'animate-pulse-glow bg-success text-white hover:bg-success/90 dark:text-background',
+                && 'animate-pulse-glow bg-success/48 text-white hover:border-white/14 hover:bg-success/60 hover:backdrop-blur-xl dark:border-white/8 dark:text-background',
                 status === 'connecting'
-                && 'animate-pulse-glow-yellow bg-warning text-white hover:bg-warning/90 dark:text-background',
+                && 'animate-pulse-glow-yellow border-warning/30 bg-warning/48 text-white dark:border-white/8 dark:text-background',
                 status === 'disconnecting'
-                && 'animate-pulse-glow-yellow bg-warning text-white hover:bg-warning/90 dark:text-background',
-                status === 'error' && 'bg-destructive text-white hover:bg-destructive/90 dark:text-background',
+                && 'animate-pulse-glow-yellow border-warning/30 bg-warning/48 text-white dark:border-white/8 dark:text-background',
+                status === 'error' && 'bg-destructive/48 text-white hover:border-white/14 hover:bg-destructive/60 hover:backdrop-blur-xl dark:border-white/8 dark:text-background',
                 status === 'disconnected'
-                && 'animate-pulse-glow-primary bg-foreground text-background hover:bg-foreground/90',
+                && 'animate-pulse-glow-neutral bg-foreground/48 text-background hover:border-white/14 hover:bg-foreground/60 hover:backdrop-blur-xl dark:border-white/8',
               )}
             >
               <Power className="size-12" />

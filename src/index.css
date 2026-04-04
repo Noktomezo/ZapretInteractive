@@ -232,20 +232,32 @@
   @keyframes pulse-glow {
     0%,
     100% {
-      box-shadow: 0 0 0 0 color-mix(in oklab, var(--success) 56%, transparent);
+      box-shadow:
+        0 0 0 0 color-mix(in oklab, var(--success) 64%, transparent),
+        0 0 0 0 color-mix(in oklab, var(--success) 26%, transparent);
     }
     50% {
-      box-shadow: 0 0 0 20px transparent;
+      box-shadow:
+        0 0 0 18px transparent,
+        0 0 18px 18px transparent;
     }
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
   }
 
   @keyframes pulse-glow-primary {
     0%,
     100% {
-      box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 28%, transparent);
+      box-shadow:
+        0 0 0 0 color-mix(in oklab, var(--primary) 34%, transparent),
+        0 0 0 0 color-mix(in oklab, var(--primary) 16%, transparent);
     }
     50% {
-      box-shadow: 0 0 0 20px transparent;
+      box-shadow:
+        0 0 0 18px transparent,
+        0 0 18px 18px transparent;
     }
   }
 
@@ -253,13 +265,35 @@
     animation: pulse-glow-primary 2s ease-in-out infinite;
   }
 
+  @keyframes pulse-glow-neutral {
+    0%,
+    100% {
+      box-shadow:
+        0 0 0 0 color-mix(in oklab, var(--foreground) 24%, transparent),
+        0 0 0 0 color-mix(in oklab, var(--foreground) 10%, transparent);
+    }
+    50% {
+      box-shadow:
+        0 0 0 16px transparent,
+        0 0 16px 16px transparent;
+    }
+  }
+
+  .animate-pulse-glow-neutral {
+    animation: pulse-glow-neutral 2s ease-in-out infinite;
+  }
+
   @keyframes pulse-glow-yellow {
     0%,
     100% {
-      box-shadow: 0 0 0 0 color-mix(in oklab, var(--warning) 62%, transparent);
+      box-shadow:
+        0 0 0 0 color-mix(in oklab, var(--warning) 68%, transparent),
+        0 0 0 0 color-mix(in oklab, var(--warning) 28%, transparent);
     }
     50% {
-      box-shadow: 0 0 0 18px transparent;
+      box-shadow:
+        0 0 0 16px transparent,
+        0 0 16px 16px transparent;
     }
   }
 
@@ -279,9 +313,5 @@
   .page-fade-in {
     animation: page-fade-in 320ms cubic-bezier(0.22, 1, 0.36, 1);
     will-change: opacity;
-  }
-
-  .animate-pulse-glow {
-    animation: pulse-glow 2s ease-in-out infinite;
   }
 }
