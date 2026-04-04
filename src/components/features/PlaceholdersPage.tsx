@@ -1,6 +1,6 @@
 import type { Placeholder } from '@/lib/types'
 import { FileCode, FolderOpen, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
@@ -11,14 +11,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { useMountEffect } from '@/hooks/use-mount-effect'
 import * as tauri from '@/lib/tauri'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
 
-const LEADING_SLASHES = /^[/\\]+/
-const SLASHES_GLOBAL = /[/\\]+/g
+const RESOURCES_ALIAS_PREFIX = '@resources'
+const LEADING_RESOURCE_SEPARATORS = /^[/\\]+/
+const PATH_SEGMENT_SEPARATOR = /[/\\]+/g
 
 export function PlaceholdersPage() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -43,20 +45,59 @@ export function PlaceholdersPage() {
 
   useMountEffect(() => {
     void load().catch(console.error)
-    void tauri.getResourcesDirectory().then(setResourcesDir).catch(console.error)
+    void tauri.getResourcesDirectory()
+      .then(setResourcesDir)
+      .catch((error) => {
+        console.error('Failed to get resources directory:', error)
+      })
   })
 
-  const resolvePlaceholderPath = useMemo(() => {
-    return (path: string) => {
-      if (!path.startsWith('@resources') || !resourcesDir) {
-        return path
-      }
-
-      const relative = path.slice('@resources'.length).replace(LEADING_SLASHES, '')
-      const normalizedRelative = relative.replace(SLASHES_GLOBAL, '\\')
-      return normalizedRelative ? `${resourcesDir}\\${normalizedRelative}` : resourcesDir
+  const resolvePlaceholderPath = (path: string) => {
+    const trimmedPath = path.trim()
+    if (!trimmedPath) {
+      return ''
     }
-  }, [resourcesDir])
+
+    if (!trimmedPath.toLowerCase().startsWith(RESOURCES_ALIAS_PREFIX)) {
+      return trimmedPath
+    }
+
+    const relativePath = trimmedPath
+      .slice(RESOURCES_ALIAS_PREFIX.length)
+      .replace(LEADING_RESOURCE_SEPARATORS, '')
+      .replace(PATH_SEGMENT_SEPARATOR, '\\')
+
+    if (!resourcesDir) {
+      return relativePath ? `${RESOURCES_ALIAS_PREFIX}\\${relativePath}` : resourcesDir
+    }
+
+    return relativePath ? `${resourcesDir}\\${relativePath}` : resourcesDir
+  }
+
+  const toStoredPlaceholderPath = (path: string) => {
+    const trimmedPath = path.trim()
+    if (!trimmedPath || !resourcesDir) {
+      return trimmedPath
+    }
+
+    const normalizedResourcesDir = resourcesDir
+      .replace(PATH_SEGMENT_SEPARATOR, '\\')
+      .replace(/\\+$/, '')
+      .toLowerCase()
+    const normalizedPath = trimmedPath.replace(PATH_SEGMENT_SEPARATOR, '\\')
+
+    if (normalizedPath.toLowerCase() === normalizedResourcesDir) {
+      return RESOURCES_ALIAS_PREFIX
+    }
+
+    const resourcesPrefix = `${normalizedResourcesDir}\\`
+    if (!normalizedPath.toLowerCase().startsWith(resourcesPrefix)) {
+      return trimmedPath
+    }
+
+    const relativePath = normalizedPath.slice(resourcesPrefix.length)
+    return relativePath ? `${RESOURCES_ALIAS_PREFIX}\\${relativePath}` : RESOURCES_ALIAS_PREFIX
+  }
 
   const handleAdd = async () => {
     if (isSavingRef.current) {
@@ -98,7 +139,7 @@ export function PlaceholdersPage() {
   const handleEdit = (index: number, placeholder: Placeholder) => {
     setEditingIndex(index)
     setEditName(placeholder.name)
-    setEditPath(placeholder.path)
+    setEditPath(resolvePlaceholderPath(placeholder.path))
   }
 
   const handleOpenAppDirectory = async () => {
@@ -122,7 +163,7 @@ export function PlaceholdersPage() {
     }
 
     const trimmedName = editName.trim()
-    const trimmedPath = editPath.trim()
+    const trimmedPath = toStoredPlaceholderPath(editPath)
     if (!trimmedName || !trimmedPath) {
       return
     }
@@ -189,16 +230,16 @@ export function PlaceholdersPage() {
   }
 
   return (
-    <LenisScrollArea className="h-full min-h-0">
-      <div className="space-y-6 p-6">
-        <div className="flex items-center justify-between">
-          <div>
+    <LenisScrollArea className="h-full min-h-0 min-w-0">
+      <div className="w-full min-w-0 max-w-full space-y-6 overflow-x-hidden p-6">
+        <div className="flex min-w-0 items-center justify-between">
+          <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-medium">Плейсхолдеры</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Замена плейсхолдеров на пути к бинарным файлам
             </p>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="ml-4 flex shrink-0 items-center gap-1">
             <Button onClick={() => setAddOpen(true)}>
               <Plus className="h-4 w-4" />
               Новый плейсхолдер
@@ -215,7 +256,7 @@ export function PlaceholdersPage() {
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           {!config || config.placeholders.length === 0
             ? (
                 <div className="text-muted-foreground flex min-h-32 items-center justify-center rounded-lg border border-dashed">
@@ -226,17 +267,17 @@ export function PlaceholdersPage() {
                 config.placeholders.map((placeholder: Placeholder, index: number) => (
                   <div
                     key={`${index}-${placeholder.name}`}
-                    className="bg-card flex min-h-20 items-center justify-between gap-4 rounded-lg border p-4"
+                    className="bg-card flex min-h-20 items-center justify-between gap-4 overflow-hidden rounded-lg border p-4"
                   >
-                    <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex min-w-0 w-0 flex-1 items-center gap-3 overflow-hidden">
                       <FileCode className="h-4 w-4 text-muted-foreground" />
-                      <div className="min-w-0 flex-1 space-y-1">
+                      <div className="min-w-0 w-0 flex-1 overflow-hidden space-y-1">
                         <div className="truncate text-sm font-normal text-foreground">
                           {'{{'}
                           {placeholder.name}
                           {'}}'}
                         </div>
-                        <div className="truncate text-xs text-muted-foreground/90" title={resolvePlaceholderPath(placeholder.path)}>
+                        <div className="truncate overflow-hidden text-xs text-muted-foreground/90" title={resolvePlaceholderPath(placeholder.path)}>
                           {resolvePlaceholderPath(placeholder.path)}
                         </div>
                       </div>
@@ -253,7 +294,7 @@ export function PlaceholdersPage() {
                       <Button
                         variant="outline"
                         size="icon"
-                        className="border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/20 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                        className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
                         aria-label={`Удалить плейсхолдер ${placeholder.name}`}
                         onClick={() => handleDelete(index)}
                       >
@@ -273,19 +314,19 @@ export function PlaceholdersPage() {
             <div className="space-y-4 py-4">
               <Input
                 aria-label="Название плейсхолдера"
-                placeholder="Название (например TLS_CLIENTHELLO_GOOGLE)"
+                placeholder="Название"
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
               />
               <Input
                 aria-label="Путь плейсхолдера"
-                placeholder="Путь к файлу (например @resources/fake/tls.bin)"
+                placeholder="Путь к файлу"
                 value={newPath}
                 onChange={e => setNewPath(e.target.value)}
               />
               {newPath.trim() && (
                 <p className="text-xs text-muted-foreground break-all">
-                  {resolvePlaceholderPath(newPath.trim())}
+                  {resolvePlaceholderPath(newPath)}
                 </p>
               )}
             </div>
@@ -304,23 +345,26 @@ export function PlaceholdersPage() {
               <DialogTitle>Редактировать плейсхолдер</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              <Input
-                aria-label="Название плейсхолдера"
-                placeholder="Название"
-                value={editName}
-                onChange={e => setEditName(e.target.value)}
-              />
-              <Input
-                aria-label="Путь плейсхолдера"
-                placeholder="Путь к файлу"
-                value={editPath}
-                onChange={e => setEditPath(e.target.value)}
-              />
-              {editPath.trim() && (
-                <p className="text-xs text-muted-foreground break-all">
-                  {resolvePlaceholderPath(editPath.trim())}
-                </p>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="edit-placeholder-name">Название</Label>
+                <Input
+                  id="edit-placeholder-name"
+                  aria-label="Название плейсхолдера"
+                  placeholder="Название"
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-placeholder-path">Путь</Label>
+                <Input
+                  id="edit-placeholder-path"
+                  aria-label="Путь плейсхолдера"
+                  placeholder="Путь к файлу"
+                  value={editPath}
+                  onChange={e => setEditPath(e.target.value)}
+                />
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditingIndex(null)}>

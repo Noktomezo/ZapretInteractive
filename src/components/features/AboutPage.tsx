@@ -51,6 +51,8 @@ const APP_FOUNDATIONS = [
   },
 ]
 
+const PAGE_CARD_CLASS = '!border-border/60 !bg-background !shadow-none !backdrop-blur-none'
+
 function MetaItem({
   icon: Icon,
   label,
@@ -183,7 +185,7 @@ export function AboutPage() {
           </p>
         </div>
 
-        <Card>
+        <Card className={PAGE_CARD_CLASS}>
           <CardHeader>
             <CardTitle className="text-lg">{APP_NAME}</CardTitle>
             <CardDescription>
@@ -192,7 +194,7 @@ export function AboutPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex h-full flex-col rounded-xl border border-border/60 bg-muted/25 p-4">
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="mb-2 flex items-center gap-2 text-muted-foreground">
                     <Package className="size-4" />
@@ -201,8 +203,8 @@ export function AboutPage() {
                       className={[
                         'rounded-[4px] border px-2 py-0.5 text-[10px] leading-none font-medium',
                         appUpdate && !appUpdateChecking && !appUpdateDownloading && !appUpdateInstalling
-                          ? 'border-yellow-600/50 bg-yellow-600/10 text-amber-700 dark:text-amber-300'
-                          : 'border-green-600/40 bg-green-600/10 text-green-700 dark:text-green-300',
+                          ? 'border-warning/30 bg-warning/12 text-warning'
+                          : 'border-success/30 bg-success/10 text-success',
                       ].join(' ')}
                     >
                       {appUpdate && !appUpdateChecking && !appUpdateDownloading && !appUpdateInstalling ? 'Есть новее' : 'Последняя'}
@@ -211,7 +213,7 @@ export function AboutPage() {
                   <p className="font-mono text-sm font-medium break-all">{currentAppVersion ?? '...'}</p>
                 </div>
 
-                <div className="flex shrink-0 flex-wrap items-center gap-2 self-start">
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
                   {appUpdate && (
                     <Button
                       size="sm"
@@ -237,7 +239,7 @@ export function AboutPage() {
               </div>
 
               {appUpdate && (
-                <div className="mt-3 rounded-lg border border-yellow-600/50 bg-yellow-600/10 p-3">
+                <div className="mt-3 rounded-lg border border-warning/30 bg-warning/12 p-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="text-sm font-medium">Доступна новая версия приложения</p>
@@ -249,7 +251,7 @@ export function AboutPage() {
                   </div>
 
                   {appUpdate.notes && (
-                    <div className="mt-3 rounded-md border border-yellow-600/25 bg-background/40">
+                    <div className="mt-3 rounded-md border border-border/60 bg-background/40">
                       <ScrollArea className="h-24">
                         <div className="p-3">
                           <MarkdownContent>
@@ -270,73 +272,71 @@ export function AboutPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="space-y-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="mb-2 flex items-center gap-2">
-                  <CardTitle className="text-lg">Файлы приложения</CardTitle>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span
-                        className={[
-                          'rounded-[4px] border px-2 py-0.5 text-[10px] leading-none font-medium',
-                          binariesOk === false
-                            ? 'border-red-600/40 bg-red-600/10 text-red-700 dark:text-red-300'
-                            : availableUpdates.length > 0
-                              ? 'border-yellow-600/50 bg-yellow-600/10 text-amber-700 dark:text-amber-300'
-                              : 'border-green-600/40 bg-green-600/10 text-green-700 dark:text-green-300',
-                        ].join(' ')}
-                      >
-                        {binariesOk === false ? 'Не найдены' : availableUpdates.length > 0 ? 'Есть обновления' : 'Актуально'}
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent sideOffset={6}>
-                      {binariesOk === false
-                        ? 'Необходимые файлы отсутствуют или повреждены'
-                        : availableUpdates.length === 1
-                          ? `Доступно обновление: ${availableUpdates[0]}`
-                          : availableUpdates.length > 1
-                            ? `Доступно обновление для ${availableUpdates.length} файлов`
-                            : 'Все необходимые файлы найдены'}
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <CardDescription>
-                  WinDivert, winws.exe, fake-файлы и списки
-                </CardDescription>
-              </div>
-
-              <div className="flex shrink-0 flex-wrap items-center gap-2 self-start">
-                {!isDownloading && (
-                  <Button
-                    onClick={handleDownloadBinaries}
-                    disabled={isDownloading}
-                    variant={binariesOk === false ? 'default' : 'outline'}
-                  >
-                    <Download className="size-4" />
-                    {binariesOk === false
-                      ? 'Загрузить'
-                      : availableUpdates.length > 0
-                        ? 'Обновить'
-                        : 'Переустановить'}
-                  </Button>
-                )}
-
+        <Card className={PAGE_CARD_CLASS}>
+          <CardHeader className="!flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="mb-2 flex items-center gap-2">
+                <CardTitle className="text-lg">Файлы приложения</CardTitle>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      aria-label="Открыть папку приложения"
-                      onClick={() => { void handleOpenAppDirectory() }}
+                    <span
+                      className={[
+                        'rounded-[4px] border px-2 py-0.5 text-[10px] leading-none font-medium',
+                        binariesOk === false
+                          ? 'border-destructive/30 bg-destructive/10 text-destructive'
+                          : availableUpdates.length > 0
+                            ? 'border-warning/30 bg-warning/12 text-warning'
+                            : 'border-success/30 bg-success/10 text-success',
+                      ].join(' ')}
                     >
-                      <FolderOpen className="size-4" />
-                    </Button>
+                      {binariesOk === false ? 'Не найдены' : availableUpdates.length > 0 ? 'Есть обновления' : 'Актуально'}
+                    </span>
                   </TooltipTrigger>
-                  <TooltipContent sideOffset={6}>Открыть папку приложения</TooltipContent>
+                  <TooltipContent sideOffset={6}>
+                    {binariesOk === false
+                      ? 'Необходимые файлы отсутствуют или повреждены'
+                      : availableUpdates.length === 1
+                        ? `Доступно обновление: ${availableUpdates[0]}`
+                        : availableUpdates.length > 1
+                          ? `Доступно обновление для ${availableUpdates.length} файлов`
+                          : 'Все необходимые файлы найдены'}
+                  </TooltipContent>
                 </Tooltip>
               </div>
+              <CardDescription>
+                WinDivert, winws.exe, fake-файлы и списки
+              </CardDescription>
+            </div>
+
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {!isDownloading && (
+                <Button
+                  onClick={handleDownloadBinaries}
+                  disabled={isDownloading}
+                  variant={binariesOk === false ? 'default' : 'outline'}
+                >
+                  <Download className="size-4" />
+                  {binariesOk === false
+                    ? 'Загрузить'
+                    : availableUpdates.length > 0
+                      ? 'Обновить'
+                      : 'Переустановить'}
+                </Button>
+              )}
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    aria-label="Открыть папку приложения"
+                    onClick={() => { void handleOpenAppDirectory() }}
+                  >
+                    <FolderOpen className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent sideOffset={6}>Открыть папку приложения</TooltipContent>
+              </Tooltip>
             </div>
           </CardHeader>
           {showBinaryDetails && (
@@ -376,7 +376,7 @@ export function AboutPage() {
           )}
         </Card>
 
-        <Card>
+        <Card className={PAGE_CARD_CLASS}>
           <CardHeader>
             <CardTitle className="text-lg">Метаданные и ссылки</CardTitle>
             <CardDescription>
@@ -389,7 +389,7 @@ export function AboutPage() {
                 <button
                   key={label}
                   type="button"
-                  className="flex w-full cursor-pointer items-start justify-between rounded-xl border border-border/60 bg-muted/25 p-4 text-left transition-colors hover:bg-muted/45"
+                  className="flex w-full cursor-pointer items-center justify-between rounded-xl border border-border/60 bg-muted/25 p-4 text-left transition-colors hover:bg-muted/45"
                   onClick={() => { void handleOpenExternal(href) }}
                 >
                   <div>
@@ -405,7 +405,7 @@ export function AboutPage() {
                 <button
                   key={item.label}
                   type="button"
-                  className="flex w-full cursor-pointer items-start justify-between rounded-xl border border-border/60 bg-muted/25 p-4 text-left transition-colors hover:bg-muted/45"
+                  className="flex w-full cursor-pointer items-center justify-between rounded-xl border border-border/60 bg-muted/25 p-4 text-left transition-colors hover:bg-muted/45"
                   onClick={() => { void handleOpenExternal(item.href) }}
                 >
                   <div>

@@ -1,7 +1,7 @@
 import type { Strategy } from '@/lib/types'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { ArrowLeft, BrushCleaning, Check, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -27,10 +27,9 @@ import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useMountEffect } from '@/hooks/use-mount-effect'
+import { autosizeTextarea, forwardTextareaWheelToScrollArea } from '@/lib/editor-scroll'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
-
-const DEACTIVATE_BUTTON_CLASS = 'border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/20 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300'
 
 export function CategoryPage() {
   const { categoryId } = useParams({ from: '/strategies/$categoryId' })
@@ -45,6 +44,8 @@ export function CategoryPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [renameDialogOpen, setRenameDialogOpen] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
+  const newStrategyContentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const editStrategyContentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const config = useConfigStore(state => state.config)
   const loading = useConfigStore(state => state.loading)
   const load = useConfigStore(state => state.load)
@@ -102,6 +103,7 @@ export function CategoryPage() {
     setEditingStrategy(strategy)
     setEditingName(strategy.name)
     setEditingContent(strategy.content)
+    requestAnimationFrame(() => autosizeTextarea(editStrategyContentTextareaRef.current))
   }
 
   const handleSaveEdit = async () => {
@@ -396,11 +398,11 @@ export function CategoryPage() {
                   <Button
                     variant="outline"
                     size="icon"
-                    className={DEACTIVATE_BUTTON_CLASS}
+                    className="border-warning/30 bg-warning/12 text-warning hover:bg-warning/18"
                     onClick={handleClearAllActive}
                     aria-label="Деактивировать текущую стратегию"
                   >
-                    <BrushCleaning className="w-4 h-4 text-orange-500 dark:text-orange-400" />
+                    <BrushCleaning className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Деактивировать текущую стратегию</TooltipContent>
@@ -413,7 +415,7 @@ export function CategoryPage() {
                     <Button
                       variant="outline"
                       size="icon"
-                      className={DEACTIVATE_BUTTON_CLASS}
+                      className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
                       aria-label={`Удалить категорию ${category.name}`}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -457,20 +459,33 @@ export function CategoryPage() {
                   <div
                     key={strategy.id}
                     className={strategy.active
-                      ? 'border border-green-500/30 bg-green-500/10 rounded-lg p-4 space-y-3'
+                      ? 'border border-success/30 bg-success/10 rounded-lg p-4 space-y-3'
                       : 'border border-border rounded-lg p-4 space-y-3'}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <span className="font-normal">{strategy.name}</span>
                         {strategy.active && (
-                          <span className="flex h-4 w-4 items-center justify-center rounded bg-green-600 text-white" aria-hidden="true">
+                          <span className="flex h-4 w-4 items-center justify-center rounded bg-success text-white dark:text-background" aria-hidden="true">
                             <Check className="h-3 w-3" />
                           </span>
                         )}
                         {strategy.active && <span className="sr-only">Активная стратегия</span>}
                       </div>
                       <div className="flex items-center gap-1">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => handleEditStrategy(strategy)}
+                              aria-label={`Редактировать стратегию ${strategy.name}`}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Редактировать</TooltipContent>
+                        </Tooltip>
                         {strategy.active
                           ? (
                               <Tooltip>
@@ -478,11 +493,11 @@ export function CategoryPage() {
                                   <Button
                                     variant="outline"
                                     size="icon"
-                                    className={DEACTIVATE_BUTTON_CLASS}
+                                    className="border-warning/35 bg-warning/14 text-warning hover:bg-warning/22"
                                     onClick={() => handleClearActive(strategy.id)}
                                     aria-label={`Деактивировать стратегию ${strategy.name}`}
                                   >
-                                    <BrushCleaning className="h-4 w-4 text-orange-500 dark:text-orange-400" />
+                                    <BrushCleaning className="h-4 w-4" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Деактивировать</TooltipContent>
@@ -508,20 +523,7 @@ export function CategoryPage() {
                             <Button
                               variant="outline"
                               size="icon"
-                              onClick={() => handleEditStrategy(strategy)}
-                              aria-label={`Редактировать стратегию ${strategy.name}`}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Редактировать</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className={DEACTIVATE_BUTTON_CLASS}
+                              className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
                               onClick={() => handleDeleteStrategy(strategy.id)}
                               aria-label={`Удалить стратегию ${strategy.name}`}
                             >
@@ -557,14 +559,23 @@ export function CategoryPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="strategy-content">Содержимое</Label>
-                <LenisScrollArea className="control-surface max-h-[calc(100vh-22rem)] rounded-md">
+                <LenisScrollArea
+                  className="max-h-[calc(100vh-22rem)] rounded-md border border-border/80 bg-background/92 shadow-xs transition-[border-color,box-shadow,background-color] hover:border-border focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30"
+                  contentClassName="cursor-text"
+                  onClick={() => newStrategyContentTextareaRef.current?.focus()}
+                >
                   <Textarea
+                    ref={newStrategyContentTextareaRef}
                     id="strategy-content"
                     placeholder="--dpi-desync=fake&#10;--dpi-desync-autottl=2"
                     value={newStrategyContent}
-                    onChange={e => setNewStrategyContent(e.target.value)}
+                    onChange={(e) => {
+                      setNewStrategyContent(e.target.value)
+                      autosizeTextarea(e.currentTarget)
+                    }}
+                    onWheel={forwardTextareaWheelToScrollArea}
                     rows={10}
-                    className="min-h-56 resize-none overflow-hidden border-0 bg-transparent font-mono text-sm shadow-none focus-visible:border-transparent focus-visible:ring-0"
+                    className="resize-none overflow-hidden rounded-none border-0 bg-transparent px-3 py-3 font-mono text-sm shadow-none hover:border-transparent focus-visible:border-transparent focus-visible:ring-0"
                   />
                 </LenisScrollArea>
               </div>
@@ -595,14 +606,23 @@ export function CategoryPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-strategy-content">Содержимое</Label>
-                <LenisScrollArea className="control-surface max-h-[calc(100vh-22rem)] rounded-md">
+                <LenisScrollArea
+                  className="max-h-[calc(100vh-22rem)] rounded-md border border-border/80 bg-background/92 shadow-xs transition-[border-color,box-shadow,background-color] hover:border-border focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30"
+                  contentClassName="cursor-text"
+                  onClick={() => editStrategyContentTextareaRef.current?.focus()}
+                >
                   <Textarea
+                    ref={editStrategyContentTextareaRef}
                     id="edit-strategy-content"
                     placeholder="--dpi-desync=fake&#10;--dpi-desync-autottl=2"
                     value={editingContent}
-                    onChange={e => setEditingContent(e.target.value)}
+                    onChange={(e) => {
+                      setEditingContent(e.target.value)
+                      autosizeTextarea(e.currentTarget)
+                    }}
+                    onWheel={forwardTextareaWheelToScrollArea}
                     rows={10}
-                    className="min-h-56 resize-none overflow-hidden border-0 bg-transparent font-mono text-sm shadow-none focus-visible:border-transparent focus-visible:ring-0"
+                    className="resize-none overflow-hidden rounded-none border-0 bg-transparent px-3 py-3 font-mono text-sm shadow-none hover:border-transparent focus-visible:border-transparent focus-visible:ring-0"
                   />
                 </LenisScrollArea>
               </div>

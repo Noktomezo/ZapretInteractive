@@ -69,16 +69,16 @@ export function MainPage() {
 
   const terminalTint = resolvedTheme === 'dark'
     ? (status === 'connected'
-        ? '#4ADE80'
+        ? '#81AF6C'
         : status === 'connecting' || status === 'disconnecting'
-          ? '#FACC15'
-          : '#F87171')
+          ? '#EDB449'
+          : '#D98678')
     : (status === 'connected'
-        ? '#1F6A4C'
+        ? '#668E57'
         : status === 'connecting' || status === 'disconnecting'
-          ? '#946200'
-          : '#B23A3A')
-  const terminalBackgroundTint = resolvedTheme === 'dark' ? '#090C0A' : '#F6F7F4'
+          ? '#C2974D'
+          : '#C76A5A')
+  const terminalBackgroundTint = resolvedTheme === 'dark' ? '#151313' : '#F4EFE2'
   const terminalFlickerAmount = status === 'connected' ? 0 : 1
   const terminalCurvature = status === 'connected' ? 0 : 0.1
   const terminalScanlineIntensity = status === 'disconnected' ? 0.22 : 0
@@ -594,14 +594,14 @@ export function MainPage() {
               className={cn(
                 'h-32 w-32 rounded-full transition-[background-color,color,box-shadow,transform] duration-500 ease-out',
                 status === 'connected'
-                && 'animate-pulse-glow bg-green-600 text-white hover:bg-green-500 dark:hover:bg-green-500',
+                && 'animate-pulse-glow bg-success text-white hover:bg-success/90 dark:text-background',
                 status === 'connecting'
-                && 'animate-pulse-glow-yellow bg-yellow-600 text-white hover:bg-yellow-500',
+                && 'animate-pulse-glow-yellow bg-warning text-white hover:bg-warning/90 dark:text-background',
                 status === 'disconnecting'
-                && 'animate-pulse-glow-yellow bg-orange-600 text-white hover:bg-orange-500',
-                status === 'error' && 'bg-red-600 text-white hover:bg-red-500',
+                && 'animate-pulse-glow-yellow bg-warning text-white hover:bg-warning/90 dark:text-background',
+                status === 'error' && 'bg-destructive text-white hover:bg-destructive/90 dark:text-background',
                 status === 'disconnected'
-                && 'animate-pulse-glow-primary bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200',
+                && 'animate-pulse-glow-primary bg-foreground text-background hover:bg-foreground/90',
               )}
             >
               <Power className="size-12" />
@@ -631,8 +631,8 @@ export function MainPage() {
               className={cn(
                 'pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-md border shadow-sm transition-all duration-300 ease-out',
                 selectedListMode === 'ipset'
-                  ? 'translate-x-0 border-green-500/35 bg-green-500/18'
-                  : 'translate-x-full border-amber-500/35 bg-amber-500/18',
+                  ? 'translate-x-0 border-success/30 bg-success/10'
+                  : 'translate-x-full border-warning/30 bg-warning/12',
               )}
             />
             {status === 'disconnected'
@@ -654,7 +654,7 @@ export function MainPage() {
                         className={cn(
                           'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
                           selectedListMode === 'ipset'
-                            ? 'text-green-700 dark:text-green-300'
+                            ? 'text-success'
                             : 'text-foreground/80 hover:text-foreground',
                           listModeDisabled && 'cursor-not-allowed opacity-50',
                         )}
@@ -683,7 +683,7 @@ export function MainPage() {
                     className={cn(
                       'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
                       selectedListMode === 'ipset'
-                        ? 'text-green-700 dark:text-green-300'
+                        ? 'text-success'
                         : 'text-foreground/80 hover:text-foreground',
                       listModeDisabled && 'cursor-not-allowed opacity-50',
                     )}
@@ -710,7 +710,7 @@ export function MainPage() {
                         className={cn(
                           'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
                           selectedListMode === 'exclude'
-                            ? 'text-amber-700 dark:text-amber-300'
+                            ? 'text-warning'
                             : 'text-foreground/80 hover:text-foreground',
                           listModeDisabled && 'cursor-not-allowed opacity-50',
                         )}
@@ -739,7 +739,7 @@ export function MainPage() {
                     className={cn(
                       'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
                       selectedListMode === 'exclude'
-                        ? 'text-amber-700 dark:text-amber-300'
+                        ? 'text-warning'
                         : 'text-foreground/80 hover:text-foreground',
                       listModeDisabled && 'cursor-not-allowed opacity-50',
                     )}

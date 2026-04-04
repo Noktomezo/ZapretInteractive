@@ -69,6 +69,7 @@ function formatStrategiesCount(count: number) {
 
 function SortableCategoryItem({ category, onClearActive, onRename, onDelete }: SortableCategoryItemProps) {
   const activeCount = category.strategies.filter(s => s.active).length
+  const activeStrategy = category.strategies.find(s => s.active)
 
   const {
     attributes,
@@ -109,10 +110,15 @@ function SortableCategoryItem({ category, onClearActive, onRename, onDelete }: S
               <span className="truncate text-sm font-normal">{category.name}</span>
               <span
                 className={activeCount > 0
-                  ? 'inline-flex h-2 w-2 rounded-full bg-green-500 animate-pulse'
-                  : 'inline-flex h-2 w-2 rounded-full bg-red-500 animate-pulse'}
+                  ? 'inline-flex h-2 w-2 rounded-full bg-success animate-pulse'
+                  : 'inline-flex h-2 w-2 rounded-full bg-destructive animate-pulse'}
                 aria-hidden="true"
               />
+              {activeStrategy && (
+                <span className="max-w-[14rem] truncate text-xs text-muted-foreground">
+                  {activeStrategy.name}
+                </span>
+              )}
               <span className="sr-only">
                 {activeCount > 0 ? 'Есть активная стратегия' : 'Нет активной стратегии'}
               </span>
@@ -148,10 +154,10 @@ function SortableCategoryItem({ category, onClearActive, onRename, onDelete }: S
                 variant="outline"
                 size="icon"
                 onClick={e => onClearActive(category.id, e)}
-                className="cursor-pointer"
+                className="cursor-pointer border-warning/35 bg-warning/14 text-warning hover:bg-warning/22"
                 aria-label="Очистить стратегию"
               >
-                <BrushCleaning className="w-4 h-4 text-orange-500 dark:text-orange-400" />
+                <BrushCleaning className="w-4 h-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Деактивировать текущую стратегию</TooltipContent>
@@ -164,7 +170,7 @@ function SortableCategoryItem({ category, onClearActive, onRename, onDelete }: S
                 <Button
                   variant="outline"
                   size="icon"
-                  className="cursor-pointer border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/20 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                  className="cursor-pointer border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
                   aria-label={`Удалить категорию ${category.name}`}
                 >
                   <Trash2 className="w-4 h-4" />

@@ -62,6 +62,8 @@ const WINDOW_MATERIAL_OPTIONS: { value: WindowMaterial, label: string, icon: Rea
   { value: 'tabbed', label: 'Tabbed', icon: PanelTop },
 ]
 
+const PAGE_CARD_CLASS = '!border-border/60 !bg-background !shadow-none !backdrop-blur-none'
+
 function isValidPortRange(value: string): boolean {
   if (!value.trim())
     return true
@@ -287,7 +289,7 @@ export function SettingsPage() {
           </p>
         </div>
 
-        <Card>
+        <Card className={PAGE_CARD_CLASS}>
           <CardHeader className="gap-1">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Palette className="size-4 text-muted-foreground" />
@@ -358,7 +360,7 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={PAGE_CARD_CLASS}>
           <CardHeader className="gap-1">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Download className="size-4 text-muted-foreground" />
@@ -399,7 +401,7 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={PAGE_CARD_CLASS}>
           <CardHeader className="gap-1">
             <CardTitle className="flex items-center gap-2 text-lg">
               <AppWindow className="size-4 text-muted-foreground" />
@@ -426,7 +428,7 @@ export function SettingsPage() {
                 />
               </div>
               {!autostartKnown && (
-                <p className="text-xs text-amber-600 dark:text-amber-400">
+                <p className="text-warning text-xs">
                   Не удалось определить текущий статус автозапуска. Перезайдите на страницу позже.
                 </p>
               )}
@@ -488,7 +490,7 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={PAGE_CARD_CLASS}>
           <CardHeader className="gap-1">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Router className="size-4 text-muted-foreground" />
@@ -568,7 +570,7 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={PAGE_CARD_CLASS}>
           <CardHeader className="gap-1">
             <CardTitle className="flex items-center gap-2 text-lg">
               <RotateCcw className="size-4 text-muted-foreground" />
@@ -577,7 +579,7 @@ export function SettingsPage() {
             <CardDescription>
               Возврат к настройкам по умолчанию
             </CardDescription>
-            <CardAction>
+            <CardAction className="self-center">
               <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
                 <AlertDialogTrigger asChild>
                   <Button

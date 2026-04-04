@@ -174,7 +174,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
         await tauri.stopWinws()
       }
       else {
-        get().addLog('PID не найден, выполняю очистку службы WinDivert')
+        get().addLog('PID не найден, выполняю очистку службы драйвера')
         await tauri.killWindivertService()
       }
       await ensureMinimumTransition(transitionStartedAt)

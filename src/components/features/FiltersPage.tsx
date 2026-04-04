@@ -1,6 +1,6 @@
 import type { Filter as FilterType } from '@/lib/types'
 import { Filter, FolderOpen, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -28,6 +28,7 @@ import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useMountEffect } from '@/hooks/use-mount-effect'
+import { autosizeTextarea, forwardTextareaWheelToScrollArea } from '@/lib/editor-scroll'
 import * as tauri from '@/lib/tauri'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
@@ -38,7 +39,18 @@ interface FilterDraft {
   content: string
 }
 
-const NORMALIZE_SLASHES_REGEX = /[/\\]+/g
+const TRAILING_SLASHES = /[/\\]+$/
+const PATH_SEGMENT_SEPARATOR = /[/\\]+/
+
+function getPathLeaf(path: string) {
+  const normalizedPath = path.trim().replace(TRAILING_SLASHES, '')
+  if (!normalizedPath) {
+    return path.trim()
+  }
+
+  const segments = normalizedPath.split(PATH_SEGMENT_SEPARATOR)
+  return segments[segments.length - 1] ?? normalizedPath
+}
 
 const emptyDraft: FilterDraft = {
   name: '',
@@ -67,28 +79,18 @@ export function FiltersPage() {
   const [editInFlight, setEditInFlight] = useState(false)
   const [deleteInFlightId, setDeleteInFlightId] = useState<string | null>(null)
   const [reservedBundledFilenames, setReservedBundledFilenames] = useState<Set<string>>(new Set())
-  const [filtersPath, setFiltersPath] = useState('')
   const latestMutationIdRef = useRef(0)
+  const createContentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const editContentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   useMountEffect(() => {
     Promise.all([
       load(),
-      tauri.getFiltersPath().then(setFiltersPath),
       tauri.getReservedFilterFilenames().then((names) => {
         setReservedBundledFilenames(new Set(names.map(name => name.trim().toLowerCase())))
       }),
     ]).catch(console.error)
   })
-
-  const resolveFilterPath = useMemo(() => {
-    return (filename: string) => {
-      if (!filtersPath) {
-        return filename
-      }
-      const normalizedFilename = filename.replace(NORMALIZE_SLASHES_REGEX, '\\')
-      return `${filtersPath}\\${normalizedFilename}`
-    }
-  }, [filtersPath])
 
   const resetDraft = () => {
     setDraft(emptyDraft)
@@ -97,6 +99,10 @@ export function FiltersPage() {
     setEditLoadSucceeded(false)
     setCurrentLoadId(null)
     currentLoadIdRef.current = null
+    requestAnimationFrame(() => {
+      autosizeTextarea(createContentTextareaRef.current)
+      autosizeTextarea(editContentTextareaRef.current)
+    })
   }
 
   const updateDraft = (updates: Partial<FilterDraft>) => {
@@ -232,6 +238,7 @@ export function FiltersPage() {
         filename: filter.filename,
         content,
       })
+      requestAnimationFrame(() => autosizeTextarea(editContentTextareaRef.current))
       setEditLoadSucceeded(true)
     }
     catch (e) {
@@ -393,16 +400,16 @@ export function FiltersPage() {
           {config.filters?.map((filter: FilterType) => (
             <div
               key={filter.id}
-              className="flex min-h-20 items-center justify-between rounded-lg border bg-card p-4"
+              className="flex min-h-20 items-center justify-between overflow-hidden rounded-lg border bg-card p-4"
             >
-              <div className="flex min-w-0 items-center gap-3">
+              <div className="flex min-w-0 w-0 flex-1 items-center gap-3 overflow-hidden">
                 <Filter className="h-4 w-4 text-muted-foreground" />
-                <div className="min-w-0 space-y-1">
+                <div className="min-w-0 w-0 flex-1 overflow-hidden space-y-1">
                   <Label htmlFor={filter.id} className="block cursor-pointer truncate text-sm font-normal">
                     {filter.name}
                   </Label>
-                  <p className="truncate text-xs text-muted-foreground/90" title={resolveFilterPath(filter.filename)}>
-                    {resolveFilterPath(filter.filename)}
+                  <p className="truncate overflow-hidden text-xs text-muted-foreground/90" title={getPathLeaf(filter.filename)}>
+                    {getPathLeaf(filter.filename)}
                   </p>
                 </div>
               </div>
@@ -427,7 +434,7 @@ export function FiltersPage() {
                     <Button
                       variant="outline"
                       size="icon"
-                      className="border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/20 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                      className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
                       aria-label={`Удалить фильтр ${filter.name}`}
                       title={`Удалить фильтр ${filter.name}`}
                       disabled={deleteInFlightId === filter.id || editInFlight}
@@ -493,20 +500,29 @@ export function FiltersPage() {
                 />
                 {draft.filename.trim() && (
                   <p className="text-xs text-muted-foreground break-all">
-                    {resolveFilterPath(draft.filename.trim())}
+                    {getPathLeaf(draft.filename.trim())}
                   </p>
                 )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="filter-content">Содержимое фильтра</Label>
-                <LenisScrollArea className="control-surface max-h-[calc(100vh-22rem)] rounded-md">
+                <LenisScrollArea
+                  className="max-h-[calc(100vh-22rem)] rounded-md border border-border/80 bg-background/92 shadow-xs transition-[border-color,box-shadow,background-color] hover:border-border focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30"
+                  contentClassName="cursor-text"
+                  onClick={() => createContentTextareaRef.current?.focus()}
+                >
                   <Textarea
+                    ref={createContentTextareaRef}
                     id="filter-content"
                     value={draft.content}
-                    onChange={e => updateDraft({ content: e.target.value })}
+                    onChange={(e) => {
+                      updateDraft({ content: e.target.value })
+                      autosizeTextarea(e.currentTarget)
+                    }}
+                    onWheel={forwardTextareaWheelToScrollArea}
                     placeholder="WinDivert фильтр..."
                     rows={10}
-                    className="min-h-56 resize-none overflow-hidden border-0 bg-transparent font-mono text-sm shadow-none focus-visible:border-transparent focus-visible:ring-0"
+                    className="resize-none overflow-hidden rounded-none border-0 bg-transparent px-3 py-3 font-mono text-sm shadow-none hover:border-transparent focus-visible:border-transparent focus-visible:ring-0"
                   />
                 </LenisScrollArea>
               </div>
@@ -558,23 +574,27 @@ export function FiltersPage() {
                     placeholder="my-filter.txt"
                     disabled={editLoading}
                   />
-                  {draft.filename.trim() && (
-                    <p className="text-xs text-muted-foreground break-all">
-                      {resolveFilterPath(draft.filename.trim())}
-                    </p>
-                  )}
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-filter-content">Содержимое фильтра</Label>
-                <LenisScrollArea className="control-surface max-h-[calc(100vh-22rem)] rounded-md">
+                <LenisScrollArea
+                  className="max-h-[calc(100vh-22rem)] rounded-md border border-border/80 bg-background/92 shadow-xs transition-[border-color,box-shadow,background-color] hover:border-border focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30"
+                  contentClassName="cursor-text"
+                  onClick={() => editContentTextareaRef.current?.focus()}
+                >
                   <Textarea
+                    ref={editContentTextareaRef}
                     id="edit-filter-content"
                     value={draft.content}
-                    onChange={e => updateDraft({ content: e.target.value })}
+                    onChange={(e) => {
+                      updateDraft({ content: e.target.value })
+                      autosizeTextarea(e.currentTarget)
+                    }}
+                    onWheel={forwardTextareaWheelToScrollArea}
                     placeholder="WinDivert фильтр..."
                     rows={16}
-                    className="min-h-72 resize-none overflow-hidden border-0 bg-transparent font-mono text-sm shadow-none focus-visible:border-transparent focus-visible:ring-0"
+                    className="resize-none overflow-hidden rounded-none border-0 bg-transparent px-3 py-3 font-mono text-sm shadow-none hover:border-transparent focus-visible:border-transparent focus-visible:ring-0"
                     disabled={editLoading}
                   />
                 </LenisScrollArea>

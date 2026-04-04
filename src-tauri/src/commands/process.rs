@@ -42,7 +42,7 @@ const TCP1323_OPTS_NAME: &str = "Tcp1323Opts";
 #[cfg(windows)]
 const TCP_TIMESTAMP_BIT: u32 = 0b10;
 #[cfg(windows)]
-const WINDIVERT_SERVICE_NAME: &str = "WinDivert";
+const DRIVER_SERVICE_NAMES: &[&str] = &["WinDivert", "Monkey64", "Monkey"];
 #[cfg(windows)]
 const STILL_ACTIVE_EXIT_CODE: u32 = 259;
 #[cfg(windows)]
@@ -341,7 +341,9 @@ pub fn is_winws_running() -> bool {
 pub fn kill_windivert_service() -> Result<(), String> {
     #[cfg(windows)]
     {
-        stop_and_delete_service(WINDIVERT_SERVICE_NAME)?;
+        for service_name in DRIVER_SERVICE_NAMES {
+            stop_and_delete_service(service_name)?;
+        }
     }
 
     Ok(())

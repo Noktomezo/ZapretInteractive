@@ -10,9 +10,9 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground shadow-[0_10px_24px_rgba(23,66,48,0.2)] hover:bg-primary/92 hover:shadow-[0_14px_28px_rgba(23,66,48,0.26)]',
+        default: 'bg-primary text-primary-foreground shadow-[0_10px_24px_color-mix(in_oklab,var(--primary)_28%,transparent)] hover:bg-primary/92 hover:shadow-[0_14px_28px_color-mix(in_oklab,var(--primary)_34%,transparent)]',
         destructive:
-          'border border-destructive/35 bg-destructive/78 text-destructive-foreground shadow-[0_10px_24px_rgba(122,34,34,0.16)] hover:border-destructive/45 hover:bg-destructive/88 hover:shadow-[0_14px_28px_rgba(122,34,34,0.2)] focus-visible:ring-destructive/20 dark:border-destructive/30 dark:bg-destructive/62 dark:hover:bg-destructive/72 dark:focus-visible:ring-destructive/40',
+          'border border-destructive/35 bg-destructive/78 text-destructive-foreground shadow-[0_10px_24px_color-mix(in_oklab,var(--destructive)_24%,transparent)] hover:border-destructive/45 hover:bg-destructive/88 hover:shadow-[0_14px_28px_color-mix(in_oklab,var(--destructive)_32%,transparent)] focus-visible:ring-destructive/20 dark:border-destructive/30 dark:bg-destructive/62 dark:hover:bg-destructive/72 dark:focus-visible:ring-destructive/40',
         outline:
           'border border-border/80 bg-background/92 text-foreground shadow-xs hover:border-border hover:bg-background dark:bg-input/30 dark:hover:bg-input/50',
         secondary:
