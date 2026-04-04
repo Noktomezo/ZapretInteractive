@@ -23,12 +23,16 @@ export function forwardTextareaWheelToScrollArea(event: React.WheelEvent<HTMLTex
     return
   }
 
-  event.preventDefault()
-
   const nextTop = Math.max(0, Math.min(
     viewport.scrollTop + event.deltaY,
     viewport.scrollHeight - viewport.clientHeight,
   ))
+
+  if (nextTop === viewport.scrollTop) {
+    return
+  }
+
+  event.preventDefault()
 
   if (viewport.__lenis) {
     viewport.__lenis.scrollTo(nextTop, {

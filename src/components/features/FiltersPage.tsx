@@ -52,6 +52,10 @@ function getPathLeaf(path: string) {
   return segments[segments.length - 1] ?? normalizedPath
 }
 
+function normalizeFilterFilename(filename: string) {
+  return getPathLeaf(filename.trim())
+}
+
 const emptyDraft: FilterDraft = {
   name: '',
   filename: '',
@@ -110,9 +114,9 @@ export function FiltersPage() {
   }
 
   const validateFilename = (filename: string, currentFilename?: string) => {
-    const normalized = filename.trim()
+    const normalized = normalizeFilterFilename(filename)
     const normalizedLower = normalized.toLowerCase()
-    const currentFilenameLower = currentFilename?.trim().toLowerCase()
+    const currentFilenameLower = currentFilename ? normalizeFilterFilename(currentFilename).toLowerCase() : undefined
     if (!normalized) {
       toast.error('Укажите имя файла фильтра')
       return false
@@ -120,8 +124,8 @@ export function FiltersPage() {
 
     const existingFilters = useConfigStore.getState().config?.filters || []
     const hasCollision = existingFilters.some(filter =>
-      filter.filename.trim().toLowerCase() === normalizedLower
-      && filter.filename.trim().toLowerCase() !== currentFilenameLower,
+      normalizeFilterFilename(filter.filename).toLowerCase() === normalizedLower
+      && normalizeFilterFilename(filter.filename).toLowerCase() !== currentFilenameLower,
     )
 
     if (hasCollision) {
@@ -181,7 +185,7 @@ export function FiltersPage() {
     if (!draft.name.trim() || !draft.filename.trim())
       return
 
-    const nextFilename = draft.filename.trim()
+    const nextFilename = normalizeFilterFilename(draft.filename)
     if (!validateFilename(nextFilename))
       return
 
@@ -223,19 +227,19 @@ export function FiltersPage() {
     setEditLoadSucceeded(false)
     setDraft({
       name: filter.name,
-      filename: filter.filename,
+      filename: normalizeFilterFilename(filter.filename),
       content: filter.content,
     })
 
     try {
-      const content = await tauri.loadFilterFile(filter.filename)
+      const content = await tauri.loadFilterFile(normalizeFilterFilename(filter.filename))
       if (currentLoadIdRef.current !== loadId) {
         return
       }
 
       setDraft({
         name: filter.name,
-        filename: filter.filename,
+        filename: normalizeFilterFilename(filter.filename),
         content,
       })
       requestAnimationFrame(() => autosizeTextarea(editContentTextareaRef.current))
@@ -265,18 +269,19 @@ export function FiltersPage() {
     if (!targetFilter)
       return
 
-    const nextFilename = draft.filename.trim()
+    const nextFilename = normalizeFilterFilename(draft.filename)
     if (!validateFilename(nextFilename, targetFilter.filename))
       return
 
-    const renamed = targetFilter.filename.trim().toLowerCase() !== nextFilename.trim().toLowerCase()
+    const targetFilename = normalizeFilterFilename(targetFilter.filename)
+    const renamed = targetFilename.toLowerCase() !== nextFilename.toLowerCase()
     setEditInFlight(true)
-    const originalContent = await tauri.loadFilterFile(targetFilter.filename).catch(() => draft.content)
+    const originalContent = await tauri.loadFilterFile(targetFilename).catch(() => draft.content)
     try {
       await tauri.saveFilterFile(nextFilename, draft.content)
       if (renamed) {
         try {
-          await tauri.deleteFilterFile(targetFilter.filename)
+          await tauri.deleteFilterFile(targetFilename)
         }
         catch (e) {
           await tauri.deleteFilterFile(nextFilename).catch(() => {})
@@ -298,7 +303,7 @@ export function FiltersPage() {
       await persistFilters(updatedFilters, currentFilters)
       addConfigLog(
         renamed
-          ? `фильтр "${targetFilter.name}" обновлён, файл переименован с ${targetFilter.filename} на ${nextFilename}`
+          ? `фильтр "${targetFilter.name}" обновлён, файл переименован с ${targetFilename} на ${nextFilename}`
           : `обновлён фильтр "${draft.name.trim()}"`,
       )
       resetDraft()
@@ -309,7 +314,7 @@ export function FiltersPage() {
       if (renamed) {
         await tauri.deleteFilterFile(nextFilename).catch(() => {})
       }
-      await tauri.saveFilterFile(targetFilter.filename, originalContent).catch(() => {})
+      await tauri.saveFilterFile(targetFilename, originalContent).catch(() => {})
       toast.error(`Ошибка сохранения фильтра: ${e instanceof Error ? e.message : String(e)}`)
     }
     finally {
@@ -323,11 +328,12 @@ export function FiltersPage() {
     setDeleteInFlightId(filter.id)
     let originalContent: string | undefined
     try {
+      const filterFilename = normalizeFilterFilename(filter.filename)
       try {
-        originalContent = await tauri.loadFilterFile(filter.filename)
+        originalContent = await tauri.loadFilterFile(filterFilename)
       }
       catch {}
-      await tauri.deleteFilterFile(filter.filename)
+      await tauri.deleteFilterFile(filterFilename)
       const currentFilters = useConfigStore.getState().config?.filters || []
       const nextFilters = currentFilters.filter(item => item.id !== filter.id)
       try {
@@ -335,7 +341,7 @@ export function FiltersPage() {
       }
       catch (e) {
         if (originalContent !== undefined) {
-          await tauri.saveFilterFile(filter.filename, originalContent).catch(() => {})
+          await tauri.saveFilterFile(filterFilename, originalContent).catch(() => {})
         }
         throw e
       }
@@ -343,7 +349,7 @@ export function FiltersPage() {
         resetDraft()
         setEditDialogOpen(false)
       }
-      addConfigLog(`удалён фильтр "${filter.name}" (${filter.filename})`)
+      addConfigLog(`удалён фильтр "${filter.name}" (${filterFilename})`)
       toast.success('Фильтр удалён')
     }
     catch (e) {
