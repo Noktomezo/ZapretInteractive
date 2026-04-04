@@ -273,6 +273,10 @@ export default function FaultyTerminal({
 
   const tintVec = useMemo(() => hexToRgb(tint), [tint])
   const backgroundVec = useMemo(() => hexToRgb(backgroundTint), [backgroundTint])
+  const mergedStyle = useMemo(
+    () => ({ backgroundColor: backgroundTint, ...style }),
+    [backgroundTint, style],
+  )
 
   const ditherValue = useMemo(() => (typeof dither === 'boolean' ? (dither ? 1 : 0) : dither), [dither])
 
@@ -383,7 +387,12 @@ export default function FaultyTerminal({
       renderer = new Renderer({ dpr })
       rendererRef.current = renderer
       gl = renderer.gl
-      gl.clearColor(0, 0, 0, 1)
+      gl.clearColor(
+        currentBackgroundRef.current[0],
+        currentBackgroundRef.current[1],
+        currentBackgroundRef.current[2],
+        1,
+      )
 
       const geometry = new Triangle(gl)
 
@@ -577,5 +586,5 @@ export default function FaultyTerminal({
     tintVec,
   ])
 
-  return <div ref={containerRef} className={`faulty-terminal-container ${className}`} style={style} {...rest} />
+  return <div ref={containerRef} className={`faulty-terminal-container ${className}`} style={mergedStyle} {...rest} />
 }

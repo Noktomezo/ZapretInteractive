@@ -1400,3 +1400,12 @@ pub fn open_app_directory(app: AppHandle) -> Result<(), String> {
         .open_path(dir.to_string_lossy().to_string(), None::<&str>)
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn open_filters_directory(app: AppHandle) -> Result<(), String> {
+    let dir = get_filters_dir();
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    app.opener()
+        .open_path(dir.to_string_lossy().to_string(), None::<&str>)
+        .map_err(|e| e.to_string())
+}

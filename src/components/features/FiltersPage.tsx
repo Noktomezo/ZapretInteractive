@@ -1,5 +1,4 @@
 import type { Filter as FilterType } from '@/lib/types'
-import { openPath } from '@tauri-apps/plugin-opener'
 import { Filter, FolderOpen, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -363,8 +362,7 @@ export function FiltersPage() {
               aria-label="Открыть папку filters"
               onClick={async () => {
                 try {
-                  const filtersPath = await tauri.getFiltersPath()
-                  await openPath(filtersPath)
+                  await tauri.openFiltersDirectory()
                 }
                 catch (e) {
                   toast.error(`Ошибка открытия папки фильтров: ${e instanceof Error ? e.message : String(e)}`)
@@ -453,7 +451,7 @@ export function FiltersPage() {
               resetDraft()
           }}
         >
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-h-[calc(100vh-4rem)] max-w-2xl overflow-hidden">
             <DialogHeader>
               <DialogTitle>Новый фильтр</DialogTitle>
               <DialogDescription>
@@ -481,14 +479,16 @@ export function FiltersPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="filter-content">Содержимое фильтра</Label>
-                <Textarea
-                  id="filter-content"
-                  value={draft.content}
-                  onChange={e => updateDraft({ content: e.target.value })}
-                  placeholder="WinDivert фильтр..."
-                  rows={10}
-                  className="font-mono text-sm"
-                />
+                <ScrollArea className="control-surface max-h-[calc(100vh-22rem)] rounded-md">
+                  <Textarea
+                    id="filter-content"
+                    value={draft.content}
+                    onChange={e => updateDraft({ content: e.target.value })}
+                    placeholder="WinDivert фильтр..."
+                    rows={10}
+                    className="min-h-56 resize-none overflow-hidden border-0 bg-transparent font-mono text-sm shadow-none focus-visible:border-transparent focus-visible:ring-0"
+                  />
+                </ScrollArea>
               </div>
             </div>
             <DialogFooter>
@@ -510,7 +510,7 @@ export function FiltersPage() {
               resetDraft()
           }}
         >
-          <DialogContent className="max-w-3xl">
+          <DialogContent className="max-h-[calc(100vh-4rem)] max-w-3xl overflow-hidden">
             <DialogHeader>
               <DialogTitle>Редактировать фильтр</DialogTitle>
               <DialogDescription>
@@ -542,15 +542,17 @@ export function FiltersPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-filter-content">Содержимое фильтра</Label>
-                <Textarea
-                  id="edit-filter-content"
-                  value={draft.content}
-                  onChange={e => updateDraft({ content: e.target.value })}
-                  placeholder="WinDivert фильтр..."
-                  rows={16}
-                  className="font-mono text-sm"
-                  disabled={editLoading}
-                />
+                <ScrollArea className="control-surface max-h-[calc(100vh-22rem)] rounded-md">
+                  <Textarea
+                    id="edit-filter-content"
+                    value={draft.content}
+                    onChange={e => updateDraft({ content: e.target.value })}
+                    placeholder="WinDivert фильтр..."
+                    rows={16}
+                    className="min-h-72 resize-none overflow-hidden border-0 bg-transparent font-mono text-sm shadow-none focus-visible:border-transparent focus-visible:ring-0"
+                    disabled={editLoading}
+                  />
+                </ScrollArea>
                 {editLoading && currentLoadId && (
                   <p className="text-xs text-muted-foreground">Загружаю содержимое файла...</p>
                 )}

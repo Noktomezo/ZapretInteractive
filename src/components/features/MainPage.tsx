@@ -26,6 +26,7 @@ import { useThemeStore } from '@/stores/theme.store'
 import { useUpdaterStore } from '@/stores/updater.store'
 
 const terminalGridMul: [number, number] = [2, 1]
+let hasVisitedMainPage = false
 
 export function MainPage() {
   const availableUpdatesPromptKeyRef = useRef('')
@@ -36,6 +37,7 @@ export function MainPage() {
   const listModeButtonRefs = useRef<Array<HTMLButtonElement | null>>([])
   const [initError, setInitError] = useState<string | null>(null)
   const [listModeUpdating, setListModeUpdating] = useState(false)
+  const [shouldAnimateTerminal] = useState(() => !hasVisitedMainPage)
   const config = useConfigStore(state => state.config)
   const applyPersistedListMode = useConfigStore(state => state.applyPersistedListMode)
   const saveNow = useConfigStore(state => state.saveNow)
@@ -108,6 +110,10 @@ export function MainPage() {
   useEffect(() => {
     setFocusedListModeIndex(selectedListMode === 'exclude' ? 1 : 0)
   }, [selectedListMode])
+
+  useEffect(() => {
+    hasVisitedMainPage = true
+  }, [])
 
   const handleListModeKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
     if (listModeDisabled) {
@@ -570,7 +576,7 @@ export function MainPage() {
           backgroundTint={terminalBackgroundTint}
           mouseReact
           mouseStrength={0.5}
-          pageLoadAnimation
+          pageLoadAnimation={shouldAnimateTerminal}
           brightness={0.55}
           className="pointer-events-auto opacity-90"
           role="presentation"

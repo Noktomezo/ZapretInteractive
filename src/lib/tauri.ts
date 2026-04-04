@@ -37,6 +37,7 @@ export const killWindivertService = (): Promise<void> => invoke('kill_windivert_
 export const getRunningPid = (): Promise<number> => invoke('get_running_pid')
 export const checkAndRecoverOrphan = (): Promise<number | null> => invoke('check_and_recover_orphan')
 export const openAppDirectory = (): Promise<void> => invoke('open_app_directory')
+export const openFiltersDirectory = (): Promise<void> => invoke('open_filters_directory')
 export const getFiltersPath = (): Promise<string> => invoke('get_filters_path')
 export const getReservedFilterFilenames = (): Promise<string[]> => invoke('get_reserved_filter_filenames')
 export const isAutostartEnabled = (): Promise<boolean> => invoke('is_autostart_enabled')

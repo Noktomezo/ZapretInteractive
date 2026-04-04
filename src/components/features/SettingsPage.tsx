@@ -330,7 +330,7 @@ export function SettingsPage() {
               <div className="space-y-0.5">
                 <Label htmlFor="window-material">Материал окна</Label>
                 <p className="text-xs text-muted-foreground">
-                  Системный материал для фона окна. Mica и Tabbed поддерживаются на Windows 11
+                  Acrylic, Mica и Tabbed. Последние два поддерживаются на Windows 11
                 </p>
               </div>
               <div className="w-full sm:w-[11rem]">

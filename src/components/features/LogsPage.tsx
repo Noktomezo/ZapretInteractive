@@ -1,4 +1,4 @@
-import { BrushCleaning } from 'lucide-react'
+import { ArrowDown, BrushCleaning } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -90,7 +90,7 @@ export function LogsPage() {
             type="button"
             size="sm"
             variant="secondary"
-            className="absolute right-4 bottom-4 z-10"
+            className="absolute right-4 bottom-4 z-10 border border-border bg-background text-foreground shadow-lg hover:bg-background dark:bg-card dark:hover:bg-card"
             onClick={() => {
               const viewport = scrollAreaRef.current?.querySelector('[data-slot="scroll-area-viewport"]') as HTMLDivElement | null
               if (!viewport)
@@ -100,6 +100,7 @@ export function LogsPage() {
               setHasUnreadLogs(false)
             }}
           >
+            <ArrowDown className="h-4 w-4" />
             Новые логи
           </Button>
         )}

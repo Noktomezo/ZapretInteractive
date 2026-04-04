@@ -34,7 +34,10 @@ function RootLayout() {
               <div className="h-full min-h-0 flex-1 overflow-hidden">
                 <div
                   key={location.pathname}
-                  className="page-fade-in flex h-full min-h-0 flex-col"
+                  className={cn(
+                    'flex h-full min-h-0 flex-col',
+                    location.pathname !== '/' && 'page-fade-in',
+                  )}
                 >
                   <Outlet />
                 </div>
