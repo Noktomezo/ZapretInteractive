@@ -23,6 +23,16 @@ const LEADING_RESOURCE_SEPARATORS = /^[/\\]+/
 const PATH_SEGMENT_SEPARATOR = /[/\\]+/g
 const TRAILING_SLASHES_RE = /[/\\]+$/
 
+function isResourcesAliasPath(path: string) {
+  const lowerCasePath = path.toLowerCase()
+  if (!lowerCasePath.startsWith(RESOURCES_ALIAS_PREFIX)) {
+    return false
+  }
+
+  const nextCharacter = path[RESOURCES_ALIAS_PREFIX.length]
+  return nextCharacter === undefined || nextCharacter === '/' || nextCharacter === '\\'
+}
+
 export function PlaceholdersPage() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
@@ -59,7 +69,7 @@ export function PlaceholdersPage() {
       return ''
     }
 
-    if (!trimmedPath.toLowerCase().startsWith(RESOURCES_ALIAS_PREFIX)) {
+    if (!isResourcesAliasPath(trimmedPath)) {
       return trimmedPath
     }
 
@@ -77,7 +87,20 @@ export function PlaceholdersPage() {
 
   const toStoredPlaceholderPath = (path: string) => {
     const trimmedPath = path.trim()
-    if (!trimmedPath || !resourcesDir) {
+    if (!trimmedPath) {
+      return trimmedPath
+    }
+
+    if (isResourcesAliasPath(trimmedPath)) {
+      const relativePath = trimmedPath
+        .slice(RESOURCES_ALIAS_PREFIX.length)
+        .replace(LEADING_RESOURCE_SEPARATORS, '')
+        .replace(PATH_SEGMENT_SEPARATOR, '/')
+
+      return relativePath ? `${RESOURCES_ALIAS_PREFIX}/${relativePath}` : RESOURCES_ALIAS_PREFIX
+    }
+
+    if (!resourcesDir) {
       return trimmedPath
     }
 
@@ -117,7 +140,7 @@ export function PlaceholdersPage() {
 
     const previousConfig = structuredClone(currentConfig)
     const placeholderName = newName.trim()
-    const placeholderPath = newPath.trim()
+    const placeholderPath = toStoredPlaceholderPath(newPath.trim())
     addPlaceholder(placeholderName, placeholderPath)
     isSavingRef.current = true
     try {
@@ -327,7 +350,7 @@ export function PlaceholdersPage() {
               />
               {newPath.trim() && (
                 <p className="text-xs text-muted-foreground break-all">
-                  {resolvePlaceholderPath(newPath)}
+                  {resolvePlaceholderPath(toStoredPlaceholderPath(newPath))}
                 </p>
               )}
             </div>
