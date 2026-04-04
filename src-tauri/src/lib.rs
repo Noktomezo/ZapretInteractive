@@ -301,6 +301,7 @@ pub fn run() {
             binaries::load_filter_file,
             binaries::delete_filter_file,
             binaries::open_app_directory,
+            binaries::open_filters_directory,
             process::start_winws,
             process::stop_winws,
             process::is_winws_running,

@@ -1,6 +1,6 @@
 import type { Placeholder } from '@/lib/types'
 import { FileCode, FolderOpen, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
@@ -11,10 +11,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
+import { useMountEffect } from '@/hooks/use-mount-effect'
 import * as tauri from '@/lib/tauri'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
+
+const LEADING_SLASHES = /^[/\\]+/
+const SLASHES_GLOBAL = /[/\\]+/g
 
 export function PlaceholdersPage() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -23,6 +27,7 @@ export function PlaceholdersPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [newName, setNewName] = useState('')
   const [newPath, setNewPath] = useState('')
+  const [resourcesDir, setResourcesDir] = useState('')
   const isSavingRef = useRef(false)
 
   const config = useConfigStore(state => state.config)
@@ -36,9 +41,22 @@ export function PlaceholdersPage() {
   const setPlaceholders = useConfigStore(state => state.setPlaceholders)
   const addConfigLog = useConnectionStore(state => state.addConfigLog)
 
-  useEffect(() => {
+  useMountEffect(() => {
     void load().catch(console.error)
-  }, [load])
+    void tauri.getResourcesDirectory().then(setResourcesDir).catch(console.error)
+  })
+
+  const resolvePlaceholderPath = useMemo(() => {
+    return (path: string) => {
+      if (!path.startsWith('@resources') || !resourcesDir) {
+        return path
+      }
+
+      const relative = path.slice('@resources'.length).replace(LEADING_SLASHES, '')
+      const normalizedRelative = relative.replace(SLASHES_GLOBAL, '\\')
+      return normalizedRelative ? `${resourcesDir}\\${normalizedRelative}` : resourcesDir
+    }
+  }, [resourcesDir])
 
   const handleAdd = async () => {
     if (isSavingRef.current) {
@@ -171,7 +189,7 @@ export function PlaceholdersPage() {
   }
 
   return (
-    <ScrollArea className="h-full min-h-0">
+    <LenisScrollArea className="h-full min-h-0">
       <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div>
@@ -218,8 +236,8 @@ export function PlaceholdersPage() {
                           {placeholder.name}
                           {'}}'}
                         </div>
-                        <div className="truncate text-xs text-muted-foreground" title={placeholder.path}>
-                          {placeholder.path}
+                        <div className="truncate text-xs text-muted-foreground/90" title={resolvePlaceholderPath(placeholder.path)}>
+                          {resolvePlaceholderPath(placeholder.path)}
                         </div>
                       </div>
                     </div>
@@ -265,6 +283,11 @@ export function PlaceholdersPage() {
                 value={newPath}
                 onChange={e => setNewPath(e.target.value)}
               />
+              {newPath.trim() && (
+                <p className="text-xs text-muted-foreground break-all">
+                  {resolvePlaceholderPath(newPath.trim())}
+                </p>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setAddOpen(false)}>
@@ -293,6 +316,11 @@ export function PlaceholdersPage() {
                 value={editPath}
                 onChange={e => setEditPath(e.target.value)}
               />
+              {editPath.trim() && (
+                <p className="text-xs text-muted-foreground break-all">
+                  {resolvePlaceholderPath(editPath.trim())}
+                </p>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditingIndex(null)}>
@@ -303,6 +331,6 @@ export function PlaceholdersPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </ScrollArea>
+    </LenisScrollArea>
   )
 }

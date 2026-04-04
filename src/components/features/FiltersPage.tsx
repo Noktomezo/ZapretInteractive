@@ -1,7 +1,6 @@
 import type { Filter as FilterType } from '@/lib/types'
-import { openPath } from '@tauri-apps/plugin-opener'
 import { Filter, FolderOpen, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -25,9 +24,10 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import { useMountEffect } from '@/hooks/use-mount-effect'
 import * as tauri from '@/lib/tauri'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
@@ -37,6 +37,8 @@ interface FilterDraft {
   filename: string
   content: string
 }
+
+const NORMALIZE_SLASHES_REGEX = /[/\\]+/g
 
 const emptyDraft: FilterDraft = {
   name: '',
@@ -65,16 +67,28 @@ export function FiltersPage() {
   const [editInFlight, setEditInFlight] = useState(false)
   const [deleteInFlightId, setDeleteInFlightId] = useState<string | null>(null)
   const [reservedBundledFilenames, setReservedBundledFilenames] = useState<Set<string>>(new Set())
+  const [filtersPath, setFiltersPath] = useState('')
   const latestMutationIdRef = useRef(0)
 
-  useEffect(() => {
+  useMountEffect(() => {
     Promise.all([
       load(),
+      tauri.getFiltersPath().then(setFiltersPath),
       tauri.getReservedFilterFilenames().then((names) => {
         setReservedBundledFilenames(new Set(names.map(name => name.trim().toLowerCase())))
       }),
     ]).catch(console.error)
-  }, [load])
+  })
+
+  const resolveFilterPath = useMemo(() => {
+    return (filename: string) => {
+      if (!filtersPath) {
+        return filename
+      }
+      const normalizedFilename = filename.replace(NORMALIZE_SLASHES_REGEX, '\\')
+      return `${filtersPath}\\${normalizedFilename}`
+    }
+  }, [filtersPath])
 
   const resetDraft = () => {
     setDraft(emptyDraft)
@@ -342,7 +356,7 @@ export function FiltersPage() {
   }
 
   return (
-    <ScrollArea className="h-full min-h-0">
+    <LenisScrollArea className="h-full min-h-0">
       <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div>
@@ -363,8 +377,7 @@ export function FiltersPage() {
               aria-label="Открыть папку filters"
               onClick={async () => {
                 try {
-                  const filtersPath = await tauri.getFiltersPath()
-                  await openPath(filtersPath)
+                  await tauri.openFiltersDirectory()
                 }
                 catch (e) {
                   toast.error(`Ошибка открытия папки фильтров: ${e instanceof Error ? e.message : String(e)}`)
@@ -388,8 +401,8 @@ export function FiltersPage() {
                   <Label htmlFor={filter.id} className="block cursor-pointer truncate text-sm font-normal">
                     {filter.name}
                   </Label>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {filter.filename}
+                  <p className="truncate text-xs text-muted-foreground/90" title={resolveFilterPath(filter.filename)}>
+                    {resolveFilterPath(filter.filename)}
                   </p>
                 </div>
               </div>
@@ -453,7 +466,7 @@ export function FiltersPage() {
               resetDraft()
           }}
         >
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-h-[calc(100vh-4rem)] max-w-2xl overflow-hidden">
             <DialogHeader>
               <DialogTitle>Новый фильтр</DialogTitle>
               <DialogDescription>
@@ -478,17 +491,24 @@ export function FiltersPage() {
                   onChange={e => updateDraft({ filename: e.target.value })}
                   placeholder="my-filter.txt"
                 />
+                {draft.filename.trim() && (
+                  <p className="text-xs text-muted-foreground break-all">
+                    {resolveFilterPath(draft.filename.trim())}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="filter-content">Содержимое фильтра</Label>
-                <Textarea
-                  id="filter-content"
-                  value={draft.content}
-                  onChange={e => updateDraft({ content: e.target.value })}
-                  placeholder="WinDivert фильтр..."
-                  rows={10}
-                  className="font-mono text-sm"
-                />
+                <LenisScrollArea className="control-surface max-h-[calc(100vh-22rem)] rounded-md">
+                  <Textarea
+                    id="filter-content"
+                    value={draft.content}
+                    onChange={e => updateDraft({ content: e.target.value })}
+                    placeholder="WinDivert фильтр..."
+                    rows={10}
+                    className="min-h-56 resize-none overflow-hidden border-0 bg-transparent font-mono text-sm shadow-none focus-visible:border-transparent focus-visible:ring-0"
+                  />
+                </LenisScrollArea>
               </div>
             </div>
             <DialogFooter>
@@ -510,7 +530,7 @@ export function FiltersPage() {
               resetDraft()
           }}
         >
-          <DialogContent className="max-w-3xl">
+          <DialogContent className="max-h-[calc(100vh-4rem)] max-w-3xl overflow-hidden">
             <DialogHeader>
               <DialogTitle>Редактировать фильтр</DialogTitle>
               <DialogDescription>
@@ -538,19 +558,26 @@ export function FiltersPage() {
                     placeholder="my-filter.txt"
                     disabled={editLoading}
                   />
+                  {draft.filename.trim() && (
+                    <p className="text-xs text-muted-foreground break-all">
+                      {resolveFilterPath(draft.filename.trim())}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-filter-content">Содержимое фильтра</Label>
-                <Textarea
-                  id="edit-filter-content"
-                  value={draft.content}
-                  onChange={e => updateDraft({ content: e.target.value })}
-                  placeholder="WinDivert фильтр..."
-                  rows={16}
-                  className="font-mono text-sm"
-                  disabled={editLoading}
-                />
+                <LenisScrollArea className="control-surface max-h-[calc(100vh-22rem)] rounded-md">
+                  <Textarea
+                    id="edit-filter-content"
+                    value={draft.content}
+                    onChange={e => updateDraft({ content: e.target.value })}
+                    placeholder="WinDivert фильтр..."
+                    rows={16}
+                    className="min-h-72 resize-none overflow-hidden border-0 bg-transparent font-mono text-sm shadow-none focus-visible:border-transparent focus-visible:ring-0"
+                    disabled={editLoading}
+                  />
+                </LenisScrollArea>
                 {editLoading && currentLoadId && (
                   <p className="text-xs text-muted-foreground">Загружаю содержимое файла...</p>
                 )}
@@ -567,6 +594,6 @@ export function FiltersPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </ScrollArea>
+    </LenisScrollArea>
   )
 }

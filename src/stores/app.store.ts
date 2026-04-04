@@ -13,6 +13,7 @@ let shutdownCleanupRegistered = false
 interface AppStore {
   initialized: boolean
   initializing: boolean
+  mainPageVisited: boolean
   isElevated: boolean | null
   healthSnapshot: AppHealthSnapshot | null
   binariesOk: boolean | null
@@ -33,12 +34,14 @@ interface AppStore {
   setMissingCriticalFiles: (files: string[]) => void
   setAvailableUpdates: (files: string[]) => void
   setConfigMissing: (missing: boolean) => void
+  setMainPageVisited: (visited: boolean) => void
   teardownFilesWatcher: () => void
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
   initialized: false,
   initializing: false,
+  mainPageVisited: false,
   isElevated: null,
   healthSnapshot: null,
   binariesOk: null,
@@ -334,4 +337,5 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setMissingCriticalFiles: files => set({ missingCriticalFiles: files }),
   setAvailableUpdates: files => set({ availableUpdates: files }),
   setConfigMissing: missing => set({ configMissing: missing }),
+  setMainPageVisited: visited => set({ mainPageVisited: visited }),
 }))

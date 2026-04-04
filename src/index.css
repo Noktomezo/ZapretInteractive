@@ -1,3 +1,4 @@
+@import "lenis/dist/lenis.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -160,39 +161,6 @@
     background: color-mix(in srgb, var(--primary) 18%, transparent);
     color: inherit;
   }
-}
-
-.os-theme-custom.os-scrollbar {
-  --os-size: 8px;
-  --os-padding-perpendicular: 0px;
-  --os-padding-axis: 0px;
-}
-
-.os-theme-custom.os-scrollbar .os-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 4px;
-}
-
-.os-theme-custom.os-scrollbar .os-scrollbar-handle {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
-}
-
-.os-theme-custom.os-scrollbar .os-scrollbar-handle:hover {
-  background: rgba(0, 0, 0, 0.35);
-}
-
-.dark .os-theme-custom.os-scrollbar .os-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.dark .os-theme-custom.os-scrollbar .os-scrollbar-handle {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.dark .os-theme-custom.os-scrollbar .os-scrollbar-handle:hover {
-  background: rgba(255, 255, 255, 0.35);
 }
 
 @layer utilities {

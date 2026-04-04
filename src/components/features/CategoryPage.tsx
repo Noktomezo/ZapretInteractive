@@ -1,7 +1,7 @@
 import type { Strategy } from '@/lib/types'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { ArrowLeft, BrushCleaning, Check, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -23,9 +23,10 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useMountEffect } from '@/hooks/use-mount-effect'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
 
@@ -62,9 +63,9 @@ export function CategoryPage() {
   const notifyConfigApplied = useConnectionStore(state => state.notifyConfigApplied)
   const addConfigLog = useConnectionStore(state => state.addConfigLog)
 
-  useEffect(() => {
+  useMountEffect(() => {
     void load()
-  }, [load])
+  })
 
   const category = config?.categories.find(c => c.id === categoryId)
 
@@ -332,7 +333,7 @@ export function CategoryPage() {
 
   if (!category) {
     return (
-      <ScrollArea className="h-full min-h-0">
+      <LenisScrollArea className="h-full min-h-0">
         <div className="p-6 space-y-6">
           <Link to="/strategies" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
             <ArrowLeft className="w-4 h-4" />
@@ -340,12 +341,12 @@ export function CategoryPage() {
           </Link>
           <p className="text-muted-foreground">Категория не найдена</p>
         </div>
-      </ScrollArea>
+      </LenisScrollArea>
     )
   }
 
   return (
-    <ScrollArea className="h-full min-h-0">
+    <LenisScrollArea className="h-full min-h-0">
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -556,14 +557,16 @@ export function CategoryPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="strategy-content">Содержимое</Label>
-                <Textarea
-                  id="strategy-content"
-                  placeholder="--dpi-desync=fake&#10;--dpi-desync-autottl=2"
-                  value={newStrategyContent}
-                  onChange={e => setNewStrategyContent(e.target.value)}
-                  rows={8}
-                  className="font-mono text-sm"
-                />
+                <LenisScrollArea className="control-surface max-h-[calc(100vh-22rem)] rounded-md">
+                  <Textarea
+                    id="strategy-content"
+                    placeholder="--dpi-desync=fake&#10;--dpi-desync-autottl=2"
+                    value={newStrategyContent}
+                    onChange={e => setNewStrategyContent(e.target.value)}
+                    rows={10}
+                    className="min-h-56 resize-none overflow-hidden border-0 bg-transparent font-mono text-sm shadow-none focus-visible:border-transparent focus-visible:ring-0"
+                  />
+                </LenisScrollArea>
               </div>
             </div>
             <DialogFooter>
@@ -592,14 +595,16 @@ export function CategoryPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-strategy-content">Содержимое</Label>
-                <Textarea
-                  id="edit-strategy-content"
-                  placeholder="--dpi-desync=fake&#10;--dpi-desync-autottl=2"
-                  value={editingContent}
-                  onChange={e => setEditingContent(e.target.value)}
-                  rows={8}
-                  className="font-mono text-sm"
-                />
+                <LenisScrollArea className="control-surface max-h-[calc(100vh-22rem)] rounded-md">
+                  <Textarea
+                    id="edit-strategy-content"
+                    placeholder="--dpi-desync=fake&#10;--dpi-desync-autottl=2"
+                    value={editingContent}
+                    onChange={e => setEditingContent(e.target.value)}
+                    rows={10}
+                    className="min-h-56 resize-none overflow-hidden border-0 bg-transparent font-mono text-sm shadow-none focus-visible:border-transparent focus-visible:ring-0"
+                  />
+                </LenisScrollArea>
               </div>
             </div>
             <DialogFooter>
@@ -637,6 +642,6 @@ export function CategoryPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </ScrollArea>
+    </LenisScrollArea>
   )
 }

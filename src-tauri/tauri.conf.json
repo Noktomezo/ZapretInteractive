@@ -37,13 +37,13 @@
     "targets": "nsis",
     "createUpdaterArtifacts": true,
     "resources": {
-      "../thirdparty/WinDivert.dll": "WinDivert.dll",
-      "../thirdparty/Monkey64.sys": "Monkey64.sys",
-      "../thirdparty/winws.exe": "winws.exe",
-      "../thirdparty/cygwin1.dll": "cygwin1.dll",
-      "../thirdparty/hashes.json": "hashes.json",
-      "../thirdparty/fake/": "fake/",
-      "../thirdparty/lists/": "lists/"
+      "../thirdparty/WinDivert.dll": "resources/WinDivert.dll",
+      "../thirdparty/Monkey64.sys": "resources/Monkey64.sys",
+      "../thirdparty/winws.exe": "resources/winws.exe",
+      "../thirdparty/cygwin1.dll": "resources/cygwin1.dll",
+      "../thirdparty/hashes.json": "resources/hashes.json",
+      "../thirdparty/fake/": "resources/fake/",
+      "../thirdparty/lists/": "resources/lists/"
     },
     "windows": {
       "nsis": {

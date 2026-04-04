@@ -32,7 +32,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import {
   Select,
   SelectContent,
@@ -41,6 +41,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { useMountEffect } from '@/hooks/use-mount-effect'
 import * as tauri from '@/lib/tauri'
 import { cn } from '@/lib/utils'
 import { useConfigStore } from '@/stores/config.store'
@@ -130,7 +131,7 @@ export function SettingsPage() {
     }
   }
 
-  useEffect(() => {
+  useMountEffect(() => {
     let isMounted = true
 
     const init = async () => {
@@ -153,7 +154,7 @@ export function SettingsPage() {
     return () => {
       isMounted = false
     }
-  }, [load])
+  })
 
   useEffect(() => {
     if (config?.global_ports) {
@@ -277,7 +278,7 @@ export function SettingsPage() {
   }
 
   return (
-    <ScrollArea className="h-full min-h-0">
+    <LenisScrollArea className="h-full min-h-0">
       <div className="space-y-6 p-6">
         <div>
           <h1 className="text-2xl font-medium">Настройки</h1>
@@ -330,7 +331,7 @@ export function SettingsPage() {
               <div className="space-y-0.5">
                 <Label htmlFor="window-material">Материал окна</Label>
                 <p className="text-xs text-muted-foreground">
-                  Системный материал для фона окна. Mica и Tabbed поддерживаются на Windows 11
+                  Acrylic, Mica и Tabbed. Последние два поддерживаются на Windows 11
                 </p>
               </div>
               <div className="w-full sm:w-[11rem]">
@@ -607,6 +608,6 @@ export function SettingsPage() {
           </CardHeader>
         </Card>
       </div>
-    </ScrollArea>
+    </LenisScrollArea>
   )
 }

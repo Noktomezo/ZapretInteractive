@@ -15,6 +15,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { useMountEffect } from '@/hooks/use-mount-effect'
 import { runWithPausedConnection } from '@/lib/connection-flow'
 import * as tauri from '@/lib/tauri'
 import { cn } from '@/lib/utils'
@@ -54,6 +55,8 @@ export function MainPage() {
   const availableUpdates = useAppStore(state => state.availableUpdates)
   const configMissing = useAppStore(state => state.configMissing)
   const initialize = useAppStore(state => state.initialize)
+  const mainPageVisited = useAppStore(state => state.mainPageVisited)
+  const setMainPageVisited = useAppStore(state => state.setMainPageVisited)
   const setConfigMissing = useAppStore(state => state.setConfigMissing)
   const addConfigLog = useConnectionStore(state => state.addConfigLog)
   const appUpdate = useUpdaterStore(state => state.availableUpdate)
@@ -79,8 +82,10 @@ export function MainPage() {
   const terminalFlickerAmount = status === 'connected' ? 0 : 1
   const terminalCurvature = status === 'connected' ? 0 : 0.1
   const terminalScanlineIntensity = status === 'disconnected' ? 0.22 : 0
+  const shouldAnimateTerminal = !mainPageVisited
   const selectedListMode = config?.listMode ?? 'ipset'
-  const [focusedListModeIndex, setFocusedListModeIndex] = useState(selectedListMode === 'exclude' ? 1 : 0)
+  const [focusedListModeIndex, setFocusedListModeIndex] = useState<number | null>(null)
+  const activeListModeIndex = focusedListModeIndex ?? (selectedListMode === 'exclude' ? 1 : 0)
   const listModeDisabled = !config || status !== 'disconnected' || listModeUpdating
 
   const handleListModeChange = async (value: string) => {
@@ -105,9 +110,9 @@ export function MainPage() {
     }
   }
 
-  useEffect(() => {
-    setFocusedListModeIndex(selectedListMode === 'exclude' ? 1 : 0)
-  }, [selectedListMode])
+  useMountEffect(() => {
+    setMainPageVisited(true)
+  })
 
   const handleListModeKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
     if (listModeDisabled) {
@@ -142,7 +147,7 @@ export function MainPage() {
     void handleListModeChange(modes[nextIndex])
   }
 
-  useEffect(() => {
+  useMountEffect(() => {
     initialize().catch((error) => {
       console.error('Failed to initialize app:', error)
       setInitError(String(error))
@@ -155,7 +160,7 @@ export function MainPage() {
     return () => {
       unlistenListMode()
     }
-  }, [applyPersistedListMode, initialize])
+  })
 
   const handleToggleConnection = async () => {
     const attemptedAction = status === 'connected' ? 'отключение' : 'подключение'
@@ -570,7 +575,7 @@ export function MainPage() {
           backgroundTint={terminalBackgroundTint}
           mouseReact
           mouseStrength={0.5}
-          pageLoadAnimation
+          pageLoadAnimation={shouldAnimateTerminal}
           brightness={0.55}
           className="pointer-events-auto opacity-90"
           role="presentation"
@@ -642,7 +647,7 @@ export function MainPage() {
                         role="radio"
                         aria-checked={selectedListMode === 'ipset'}
                         disabled={listModeDisabled}
-                        tabIndex={focusedListModeIndex === 0 ? 0 : -1}
+                        tabIndex={activeListModeIndex === 0 ? 0 : -1}
                         onFocus={() => setFocusedListModeIndex(0)}
                         onKeyDown={event => handleListModeKeyDown(event, 0)}
                         onClick={() => void handleListModeChange('ipset')}
@@ -671,7 +676,7 @@ export function MainPage() {
                     role="radio"
                     aria-checked={selectedListMode === 'ipset'}
                     disabled={listModeDisabled}
-                    tabIndex={focusedListModeIndex === 0 ? 0 : -1}
+                    tabIndex={activeListModeIndex === 0 ? 0 : -1}
                     onFocus={() => setFocusedListModeIndex(0)}
                     onKeyDown={event => handleListModeKeyDown(event, 0)}
                     onClick={() => void handleListModeChange('ipset')}
@@ -698,7 +703,7 @@ export function MainPage() {
                         role="radio"
                         aria-checked={selectedListMode === 'exclude'}
                         disabled={listModeDisabled}
-                        tabIndex={focusedListModeIndex === 1 ? 0 : -1}
+                        tabIndex={activeListModeIndex === 1 ? 0 : -1}
                         onFocus={() => setFocusedListModeIndex(1)}
                         onKeyDown={event => handleListModeKeyDown(event, 1)}
                         onClick={() => void handleListModeChange('exclude')}
@@ -727,7 +732,7 @@ export function MainPage() {
                     role="radio"
                     aria-checked={selectedListMode === 'exclude'}
                     disabled={listModeDisabled}
-                    tabIndex={focusedListModeIndex === 1 ? 0 : -1}
+                    tabIndex={activeListModeIndex === 1 ? 0 : -1}
                     onFocus={() => setFocusedListModeIndex(1)}
                     onKeyDown={event => handleListModeKeyDown(event, 1)}
                     onClick={() => void handleListModeChange('exclude')}
