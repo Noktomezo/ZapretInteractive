@@ -11,19 +11,28 @@ function Switch({
   checked,
   defaultChecked,
   disabled,
+  onCheckedChange,
   ...props
 }: React.ComponentProps<typeof SwitchPrimitive.Root> & {
   size?: 'sm' | 'default'
 }) {
-  const isChecked = checked ?? defaultChecked ?? false
+  const isControlled = checked !== undefined
+  const [internalChecked, setInternalChecked] = React.useState(Boolean(defaultChecked))
+  const isChecked = isControlled ? checked : internalChecked
 
   return (
     <SwitchPrimitive.Root
       data-slot="switch"
       data-size={size}
-      checked={checked}
+      checked={isControlled ? checked : undefined}
       defaultChecked={defaultChecked}
       disabled={disabled}
+      onCheckedChange={(nextChecked) => {
+        if (!isControlled) {
+          setInternalChecked(nextChecked)
+        }
+        onCheckedChange?.(nextChecked)
+      }}
       className={cn(
         'peer group/switch inline-flex cursor-pointer shrink-0 items-center justify-between gap-2 rounded-md border border-border/80 bg-background/92 px-2 shadow-xs transition-[background-color,border-color,box-shadow,color] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30 data-[state=checked]:text-success data-[state=unchecked]:text-destructive data-[size=default]:h-9 data-[size=default]:min-w-[4.75rem] data-[size=sm]:h-8 data-[size=sm]:min-w-[4.25rem]',
         className,

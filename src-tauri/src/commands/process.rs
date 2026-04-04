@@ -341,8 +341,15 @@ pub fn is_winws_running() -> bool {
 pub fn kill_windivert_service() -> Result<(), String> {
     #[cfg(windows)]
     {
+        let mut errors = Vec::new();
         for service_name in DRIVER_SERVICE_NAMES {
-            stop_and_delete_service(service_name)?;
+            if let Err(error) = stop_and_delete_service(service_name) {
+                errors.push(format!("{service_name}: {error}"));
+            }
+        }
+
+        if !errors.is_empty() {
+            return Err(errors.join("; "));
         }
     }
 

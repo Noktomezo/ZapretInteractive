@@ -21,6 +21,7 @@ import { useConnectionStore } from '@/stores/connection.store'
 const RESOURCES_ALIAS_PREFIX = '@resources'
 const LEADING_RESOURCE_SEPARATORS = /^[/\\]+/
 const PATH_SEGMENT_SEPARATOR = /[/\\]+/g
+const TRAILING_BACKSLASHES_RE = /\\+$/
 
 export function PlaceholdersPage() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -82,7 +83,7 @@ export function PlaceholdersPage() {
 
     const normalizedResourcesDir = resourcesDir
       .replace(PATH_SEGMENT_SEPARATOR, '\\')
-      .replace(/\\+$/, '')
+      .replace(TRAILING_BACKSLASHES_RE, '')
       .toLowerCase()
     const normalizedPath = trimmedPath.replace(PATH_SEGMENT_SEPARATOR, '\\')
 

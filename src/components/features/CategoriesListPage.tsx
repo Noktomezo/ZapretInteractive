@@ -67,9 +67,25 @@ function formatStrategiesCount(count: number) {
   return `${count} стратегий`
 }
 
+function formatActiveStrategiesLabel(category: Category) {
+  const activeStrategies = category.strategies.filter(strategy => strategy.active)
+  const activeCount = activeStrategies.length
+  const firstActiveStrategy = activeStrategies[0]
+
+  if (activeCount === 0 || !firstActiveStrategy) {
+    return null
+  }
+
+  if (activeCount === 1) {
+    return firstActiveStrategy.name
+  }
+
+  return `${firstActiveStrategy.name} +${activeCount - 1}`
+}
+
 function SortableCategoryItem({ category, onClearActive, onRename, onDelete }: SortableCategoryItemProps) {
   const activeCount = category.strategies.filter(s => s.active).length
-  const activeStrategy = category.strategies.find(s => s.active)
+  const activeStrategiesLabel = formatActiveStrategiesLabel(category)
 
   const {
     attributes,
@@ -114,9 +130,9 @@ function SortableCategoryItem({ category, onClearActive, onRename, onDelete }: S
                   : 'inline-flex h-2 w-2 rounded-full bg-destructive animate-pulse'}
                 aria-hidden="true"
               />
-              {activeStrategy && (
+              {activeStrategiesLabel && (
                 <span className="max-w-[14rem] truncate text-xs text-muted-foreground">
-                  {activeStrategy.name}
+                  {activeStrategiesLabel}
                 </span>
               )}
               <span className="sr-only">
