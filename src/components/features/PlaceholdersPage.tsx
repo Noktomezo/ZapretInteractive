@@ -21,7 +21,7 @@ import { useConnectionStore } from '@/stores/connection.store'
 const RESOURCES_ALIAS_PREFIX = '@resources'
 const LEADING_RESOURCE_SEPARATORS = /^[/\\]+/
 const PATH_SEGMENT_SEPARATOR = /[/\\]+/g
-const TRAILING_BACKSLASHES_RE = /\\+$/
+const TRAILING_SLASHES_RE = /[/\\]+$/
 
 export function PlaceholdersPage() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -69,7 +69,7 @@ export function PlaceholdersPage() {
       .replace(PATH_SEGMENT_SEPARATOR, '\\')
 
     if (!resourcesDir) {
-      return relativePath ? `${RESOURCES_ALIAS_PREFIX}\\${relativePath}` : resourcesDir
+      return relativePath ? `${RESOURCES_ALIAS_PREFIX}\\${relativePath}` : RESOURCES_ALIAS_PREFIX
     }
 
     return relativePath ? `${resourcesDir}\\${relativePath}` : resourcesDir
@@ -82,22 +82,22 @@ export function PlaceholdersPage() {
     }
 
     const normalizedResourcesDir = resourcesDir
-      .replace(PATH_SEGMENT_SEPARATOR, '\\')
-      .replace(TRAILING_BACKSLASHES_RE, '')
+      .replace(PATH_SEGMENT_SEPARATOR, '/')
+      .replace(TRAILING_SLASHES_RE, '')
       .toLowerCase()
-    const normalizedPath = trimmedPath.replace(PATH_SEGMENT_SEPARATOR, '\\')
+    const normalizedPath = trimmedPath.replace(PATH_SEGMENT_SEPARATOR, '/')
 
     if (normalizedPath.toLowerCase() === normalizedResourcesDir) {
       return RESOURCES_ALIAS_PREFIX
     }
 
-    const resourcesPrefix = `${normalizedResourcesDir}\\`
+    const resourcesPrefix = `${normalizedResourcesDir}/`
     if (!normalizedPath.toLowerCase().startsWith(resourcesPrefix)) {
       return trimmedPath
     }
 
     const relativePath = normalizedPath.slice(resourcesPrefix.length)
-    return relativePath ? `${RESOURCES_ALIAS_PREFIX}\\${relativePath}` : RESOURCES_ALIAS_PREFIX
+    return relativePath ? `${RESOURCES_ALIAS_PREFIX}/${relativePath}` : RESOURCES_ALIAS_PREFIX
   }
 
   const handleAdd = async () => {

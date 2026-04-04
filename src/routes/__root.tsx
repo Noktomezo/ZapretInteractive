@@ -56,7 +56,7 @@ function RootLayout() {
             toastOptions={{
               unstyled: true,
               classNames: {
-                toast: 'group pointer-events-auto relative flex w-[min(22.5rem,calc(100vw-2rem))] cursor-grab flex-wrap items-start gap-x-3 gap-y-2 rounded-lg border border-border bg-popover p-4 pr-11 text-popover-foreground shadow-[0_16px_34px_rgb(15_23_42/0.12),0_6px_16px_rgb(15_23_42/0.08)] backdrop-blur-xl active:cursor-grabbing',
+                toast: 'group pointer-events-auto relative flex w-[min(22.5rem,calc(100vw-2rem))] cursor-grab flex-wrap items-start gap-x-3 gap-y-2 rounded-lg border border-border bg-popover p-4 pr-11 text-popover-foreground shadow-[0_16px_34px_color-mix(in_oklab,var(--foreground)_12%,transparent),0_6px_16px_color-mix(in_oklab,var(--foreground)_8%,transparent)] backdrop-blur-xl active:cursor-grabbing',
                 content: 'min-w-0 flex-1 self-center',
                 title: 'text-sm leading-5 font-medium text-popover-foreground',
                 description: 'mt-0.5 text-xs leading-5 text-muted-foreground',
