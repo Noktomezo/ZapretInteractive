@@ -17,6 +17,9 @@ import * as tauri from '@/lib/tauri'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
 
+const LEADING_SLASHES = /^[/\\]+/
+const SLASHES_GLOBAL = /[/\\]+/g
+
 export function PlaceholdersPage() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
@@ -49,8 +52,8 @@ export function PlaceholdersPage() {
         return path
       }
 
-      const relative = path.slice('@resources'.length).replace(/^[/\\]+/, '')
-      const normalizedRelative = relative.replace(/[/\\]+/g, '\\')
+      const relative = path.slice('@resources'.length).replace(LEADING_SLASHES, '')
+      const normalizedRelative = relative.replace(SLASHES_GLOBAL, '\\')
       return normalizedRelative ? `${resourcesDir}\\${normalizedRelative}` : resourcesDir
     }
   }, [resourcesDir])

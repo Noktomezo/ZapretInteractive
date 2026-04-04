@@ -38,6 +38,8 @@ interface FilterDraft {
   content: string
 }
 
+const NORMALIZE_SLASHES_REGEX = /[/\\]+/g
+
 const emptyDraft: FilterDraft = {
   name: '',
   filename: '',
@@ -83,7 +85,7 @@ export function FiltersPage() {
       if (!filtersPath) {
         return filename
       }
-      const normalizedFilename = filename.replace(/[/\\]+/g, '\\')
+      const normalizedFilename = filename.replace(NORMALIZE_SLASHES_REGEX, '\\')
       return `${filtersPath}\\${normalizedFilename}`
     }
   }, [filtersPath])

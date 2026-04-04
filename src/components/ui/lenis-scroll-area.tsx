@@ -10,14 +10,17 @@ interface LenisScrollAreaProps extends React.ComponentProps<typeof ScrollAreaPri
 }
 
 const LenisScrollArea = React.forwardRef<
-  React.ElementRef<typeof ScrollAreaPrimitive.Root>,
+  React.ElementRef<typeof ScrollAreaPrimitive.Root> | null,
   LenisScrollAreaProps
 >(({ className, contentClassName, children, ...props }, forwardedRef) => {
   const rootRef = React.useRef<React.ElementRef<typeof ScrollAreaPrimitive.Root> | null>(null)
   const viewportRef = React.useRef<React.ElementRef<typeof ScrollAreaPrimitive.Viewport> | null>(null)
   const contentRef = React.useRef<HTMLDivElement | null>(null)
 
-  React.useImperativeHandle(forwardedRef, () => rootRef.current as React.ElementRef<typeof ScrollAreaPrimitive.Root>, [])
+  React.useImperativeHandle<
+    React.ElementRef<typeof ScrollAreaPrimitive.Root> | null,
+    React.ElementRef<typeof ScrollAreaPrimitive.Root> | null
+  >(forwardedRef, () => rootRef.current, [])
 
   useMountEffect(() => {
     const wrapper = viewportRef.current
