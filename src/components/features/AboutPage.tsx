@@ -10,13 +10,14 @@ import {
   Shield,
   UserRound,
 } from 'lucide-react'
-import { useEffect } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { MarkdownContent } from '@/components/ui/markdown'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useMountEffect } from '@/hooks/use-mount-effect'
 import { runWithPausedConnection } from '@/lib/connection-flow'
 import * as tauri from '@/lib/tauri'
 import { useAppStore } from '@/stores/app.store'
@@ -90,7 +91,7 @@ export function AboutPage() {
   const showBinaryStatusText = binariesOk === false || availableUpdates.length > 0
   const showBinaryDetails = showBinaryStatusText || Boolean(isDownloading && progress)
 
-  useEffect(() => {
+  useMountEffect(() => {
     let isMounted = true
 
     const init = async () => {
@@ -109,7 +110,7 @@ export function AboutPage() {
     return () => {
       isMounted = false
     }
-  }, [initUpdater, load])
+  })
 
   const handleManualAppUpdateCheck = async () => {
     try {
@@ -173,7 +174,7 @@ export function AboutPage() {
   }
 
   return (
-    <ScrollArea className="h-full min-h-0">
+    <LenisScrollArea className="h-full min-h-0">
       <div className="space-y-6 p-6">
         <div>
           <h1 className="text-2xl font-medium">О программе</h1>
@@ -420,6 +421,6 @@ export function AboutPage() {
           </CardContent>
         </Card>
       </div>
-    </ScrollArea>
+    </LenisScrollArea>
   )
 }

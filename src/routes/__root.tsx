@@ -1,9 +1,9 @@
 import { createRootRoute, Outlet, useLocation } from '@tanstack/react-router'
-import { useEffect } from 'react'
 import { Toaster } from 'sonner'
 import { Sidebar } from '@/components/features/Sidebar'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { useMountEffect } from '@/hooks/use-mount-effect'
 import { cn } from '@/lib/utils'
 import { useConfigStore } from '@/stores/config.store'
 import { useSidebarStore } from '@/stores/sidebar.store'
@@ -19,16 +19,16 @@ function RootLayout() {
   const windowMaterial = config?.windowMaterial ?? 'acrylic'
   const materialEnabled = windowMaterial !== 'none'
 
-  useEffect(() => {
+  useMountEffect(() => {
     void loadConfig()
-  }, [loadConfig])
+  })
 
   return (
     <TooltipProvider>
       <div className={cn('min-h-full', materialEnabled ? 'app-glass-surface bg-transparent' : 'app-opaque-surface bg-background')}>
         <SidebarProvider className="flex-col" open={!collapsed} onOpenChange={open => setCollapsed(!open)}>
           <TitleBar />
-          <div className="flex h-screen overflow-hidden pt-11">
+          <div className="flex h-screen overflow-hidden pt-[30px]">
             <Sidebar />
             <SidebarInset className="h-full min-h-0 overflow-hidden rounded-tl-xl">
               <div className="h-full min-h-0 flex-1 overflow-hidden">

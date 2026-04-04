@@ -1,7 +1,7 @@
 import { ArrowDown, BrushCleaning } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { useConnectionStore } from '@/stores/connection.store'
 
 const logTimestampFormatter = new Intl.DateTimeFormat('ru-RU', {
@@ -24,8 +24,17 @@ export function LogsPage() {
   const [isPinnedToBottom, setIsPinnedToBottom] = useState(true)
   const [hasUnreadLogs, setHasUnreadLogs] = useState(false)
 
+  const getViewport = () => {
+    return scrollAreaRef.current?.querySelector('[data-slot="lenis-scroll-area-viewport"], [data-slot="scroll-area-viewport"]') as HTMLDivElement | null
+  }
+
+  const getLenis = () => {
+    const viewport = getViewport()
+    return (viewport as (HTMLDivElement & { __lenis?: { scrollTo: (target: number, options?: { duration?: number, easing?: (value: number) => number }) => void } }) | null)?.__lenis ?? null
+  }
+
   useEffect(() => {
-    const viewport = scrollAreaRef.current?.querySelector('[data-slot="scroll-area-viewport"]') as HTMLDivElement | null
+    const viewport = getViewport()
     if (!viewport)
       return
 
@@ -44,7 +53,7 @@ export function LogsPage() {
   }, [])
 
   useEffect(() => {
-    const viewport = scrollAreaRef.current?.querySelector('[data-slot="scroll-area-viewport"]') as HTMLDivElement | null
+    const viewport = getViewport()
     if (!viewport)
       return
 
@@ -92,10 +101,19 @@ export function LogsPage() {
             variant="secondary"
             className="absolute right-4 bottom-4 z-10 border border-border bg-background text-foreground shadow-lg hover:bg-background dark:bg-card dark:hover:bg-card"
             onClick={() => {
-              const viewport = scrollAreaRef.current?.querySelector('[data-slot="scroll-area-viewport"]') as HTMLDivElement | null
+              const viewport = getViewport()
               if (!viewport)
                 return
-              viewport.scrollTo({ top: viewport.scrollHeight })
+              const lenis = getLenis()
+              if (lenis) {
+                lenis.scrollTo(viewport.scrollHeight, {
+                  duration: 0.45,
+                  easing: value => 1 - (1 - value) ** 3,
+                })
+              }
+              else {
+                viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' })
+              }
               setIsPinnedToBottom(true)
               setHasUnreadLogs(false)
             }}
@@ -104,7 +122,7 @@ export function LogsPage() {
             Новые логи
           </Button>
         )}
-        <ScrollArea ref={scrollAreaRef} className="h-full">
+        <LenisScrollArea ref={scrollAreaRef} className="h-full">
           <div className="space-y-1 p-4 font-mono text-xs text-foreground">
             {logs.length === 0
               ? (
@@ -126,7 +144,7 @@ export function LogsPage() {
                   ))
                 )}
           </div>
-        </ScrollArea>
+        </LenisScrollArea>
       </div>
     </div>
   )

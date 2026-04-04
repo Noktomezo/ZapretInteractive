@@ -19,7 +19,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { Link } from '@tanstack/react-router'
 import { BrushCleaning, ChevronRight, GripVertical, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -41,8 +41,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useMountEffect } from '@/hooks/use-mount-effect'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
 
@@ -225,9 +226,9 @@ export function CategoriesListPage() {
     }),
   )
 
-  useEffect(() => {
+  useMountEffect(() => {
     void load()
-  }, [load])
+  })
 
   const handleAddCategory = async () => {
     if (!newCategoryName.trim()) {
@@ -391,7 +392,7 @@ export function CategoriesListPage() {
   }
 
   return (
-    <ScrollArea className="h-full min-h-0">
+    <LenisScrollArea className="h-full min-h-0">
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -483,6 +484,6 @@ export function CategoriesListPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </ScrollArea>
+    </LenisScrollArea>
   )
 }

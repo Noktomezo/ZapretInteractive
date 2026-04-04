@@ -274,8 +274,8 @@ export default function FaultyTerminal({
   const tintVec = useMemo(() => hexToRgb(tint), [tint])
   const backgroundVec = useMemo(() => hexToRgb(backgroundTint), [backgroundTint])
   const mergedStyle = useMemo(
-    () => ({ backgroundColor: backgroundTint, ...style }),
-    [backgroundTint, style],
+    () => ({ ...style, backgroundColor: backgroundTint }),
+    [style, backgroundTint],
   )
 
   const ditherValue = useMemo(() => (typeof dither === 'boolean' ? (dither ? 1 : 0) : dither), [dither])
