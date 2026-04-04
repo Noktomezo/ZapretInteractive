@@ -79,6 +79,7 @@ export function FiltersPage() {
   const [editInFlight, setEditInFlight] = useState(false)
   const [deleteInFlightId, setDeleteInFlightId] = useState<string | null>(null)
   const [reservedBundledFilenames, setReservedBundledFilenames] = useState<Set<string>>(new Set())
+  const [filtersPath, setFiltersPath] = useState('')
   const latestMutationIdRef = useRef(0)
   const createContentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const editContentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
@@ -86,6 +87,7 @@ export function FiltersPage() {
   useMountEffect(() => {
     Promise.all([
       load(),
+      tauri.getFiltersPath().then(setFiltersPath),
       tauri.getReservedFilterFilenames().then((names) => {
         setReservedBundledFilenames(new Set(names.map(name => name.trim().toLowerCase())))
       }),
@@ -574,6 +576,11 @@ export function FiltersPage() {
                     placeholder="my-filter.txt"
                     disabled={editLoading}
                   />
+                  {draft.filename.trim() && (
+                    <p className="text-xs text-muted-foreground break-all">
+                      {resolveFilterPath(draft.filename.trim())}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="space-y-2">
