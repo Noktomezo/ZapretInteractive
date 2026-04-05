@@ -1,5 +1,5 @@
 import type { Filter as FilterType } from '@/lib/types'
-import { Filter, FolderOpen, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { FilePenLine, Filter, FolderOpen, Loader2, Package, Pencil, Plus, RefreshCcw, RotateCcw, Trash2, UserRoundPlus } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
@@ -22,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { InlineMarker } from '@/components/ui/inline-marker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
@@ -29,6 +30,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useMountEffect } from '@/hooks/use-mount-effect'
 import { autosizeTextarea, forwardTextareaWheelToScrollArea } from '@/lib/editor-scroll'
+import { buildRestoredFilter, getBuiltinFilter, isSystemFilter, isSystemFilterModified, isSystemFilterUpdateAvailable } from '@/lib/system-config'
 import * as tauri from '@/lib/tauri'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
@@ -65,9 +67,11 @@ const emptyDraft: FilterDraft = {
 
 export function FiltersPage() {
   const config = useConfigStore(state => state.config)
+  const builtinConfig = useConfigStore(state => state.builtinConfig)
   const loading = useConfigStore(state => state.loading)
   const load = useConfigStore(state => state.load)
   const setFilters = useConfigStore(state => state.setFilters)
+  const replaceFiltersState = useConfigStore(state => state.replaceFiltersState)
   const saveNow = useConfigStore(state => state.saveNow)
   const restartIfConnected = useConnectionStore(state => state.restartIfConnected)
   const notifyConfigApplied = useConnectionStore(state => state.notifyConfigApplied)
@@ -84,6 +88,7 @@ export function FiltersPage() {
   const [editInFlight, setEditInFlight] = useState(false)
   const [deleteInFlightId, setDeleteInFlightId] = useState<string | null>(null)
   const [reservedBundledFilenames, setReservedBundledFilenames] = useState<Set<string>>(new Set())
+  const [systemFilterTarget, setSystemFilterTarget] = useState<FilterType | null>(null)
   const latestMutationIdRef = useRef(0)
   const createContentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const editContentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
@@ -142,6 +147,24 @@ export function FiltersPage() {
     return true
   }
 
+  const validateFilterDraft = (nextDraft: FilterDraft, currentFilter?: FilterType) => {
+    const nextName = nextDraft.name.trim().toLocaleLowerCase()
+    const nextContent = nextDraft.content.trim()
+    const currentFilters = useConfigStore.getState().config?.filters || []
+
+    if (currentFilters.some(filter => filter.id !== currentFilter?.id && filter.name.trim().toLocaleLowerCase() === nextName)) {
+      toast.error('Фильтр с таким названием уже существует')
+      return false
+    }
+
+    if (nextContent && currentFilters.some(filter => filter.id !== currentFilter?.id && filter.content.trim() === nextContent)) {
+      toast.error('Фильтр с таким содержимым уже существует')
+      return false
+    }
+
+    return true
+  }
+
   const persistFilters = async (nextFilters: FilterType[], previousFilters: FilterType[]) => {
     const mutationId = ++latestMutationIdRef.current
     setFilters(nextFilters)
@@ -188,6 +211,8 @@ export function FiltersPage() {
 
     const nextFilename = normalizeFilterFilename(draft.filename)
     if (!validateFilename(nextFilename))
+      return
+    if (!validateFilterDraft(draft))
       return
 
     setCreateInFlight(true)
@@ -273,6 +298,8 @@ export function FiltersPage() {
     const nextFilename = normalizeFilterFilename(draft.filename)
     if (!validateFilename(nextFilename, targetFilter.filename))
       return
+    if (!validateFilterDraft(draft, targetFilter))
+      return
 
     const targetFilename = normalizeFilterFilename(targetFilter.filename)
     const renamed = targetFilename.toLowerCase() !== nextFilename.toLowerCase()
@@ -337,13 +364,18 @@ export function FiltersPage() {
       await tauri.deleteFilterFile(filterFilename)
       const currentFilters = useConfigStore.getState().config?.filters || []
       const nextFilters = currentFilters.filter(item => item.id !== filter.id)
+      const nextRemovedFilterIds = filter.system
+        ? Array.from(new Set([...(config?.systemRemovedFilterIds ?? []), filter.id]))
+        : (config?.systemRemovedFilterIds ?? [])
       try {
-        await persistFilters(nextFilters, currentFilters)
+        replaceFiltersState(nextFilters, nextRemovedFilterIds)
+        await saveNow()
       }
       catch (e) {
         if (originalContent !== undefined) {
           await tauri.saveFilterFile(filterFilename, originalContent).catch(() => {})
         }
+        replaceFiltersState(currentFilters, config?.systemRemovedFilterIds ?? [])
         throw e
       }
       if (editingFilterId === filter.id) {
@@ -358,6 +390,40 @@ export function FiltersPage() {
     }
     finally {
       setDeleteInFlightId(null)
+    }
+  }
+
+  const handleRestoreFilter = async () => {
+    if (!systemFilterTarget || !config) {
+      return
+    }
+
+    const builtinFilter = getBuiltinFilter(builtinConfig, systemFilterTarget.id)
+    if (!builtinFilter) {
+      return
+    }
+
+    const previousFilters = structuredClone(config.filters)
+    const nextFilters = config.filters.map(filter =>
+      filter.id === systemFilterTarget.id ? buildRestoredFilter(filter, builtinFilter) : filter,
+    )
+    const nextRemovedFilterIds = (config.systemRemovedFilterIds ?? []).filter(id => id !== builtinFilter.id)
+
+    try {
+      await tauri.saveFilterFile(builtinFilter.filename, builtinFilter.content)
+      if (systemFilterTarget.filename !== builtinFilter.filename) {
+        await tauri.deleteFilterFile(systemFilterTarget.filename).catch(() => {})
+      }
+      replaceFiltersState(nextFilters, nextRemovedFilterIds)
+      await saveNow()
+      addConfigLog(`фильтр "${systemFilterTarget.name}" обновлён до системного значения`)
+      await restartIfConnected()
+      notifyConfigApplied('Фильтр обновлён')
+      setSystemFilterTarget(null)
+    }
+    catch (error) {
+      replaceFiltersState(previousFilters, config.systemRemovedFilterIds ?? [])
+      toast.error(`Ошибка обновления фильтра: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 
@@ -412,9 +478,29 @@ export function FiltersPage() {
               <div className="flex min-w-0 w-0 flex-1 items-center gap-3 overflow-hidden">
                 <Filter className="h-4 w-4 text-muted-foreground" />
                 <div className="min-w-0 w-0 flex-1 overflow-hidden space-y-1">
-                  <Label htmlFor={filter.id} className="block cursor-pointer truncate text-sm font-normal">
-                    {filter.name}
-                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor={filter.id} className="block cursor-pointer truncate text-sm font-normal">
+                      {filter.name}
+                    </Label>
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                      {isSystemFilter(filter)
+                        ? <InlineMarker icon={Package} label="Системный фильтр" />
+                        : <InlineMarker icon={UserRoundPlus} label="Пользовательский фильтр" className="text-primary/80" />}
+                      {isSystemFilterModified(filter) && (
+                        <InlineMarker icon={FilePenLine} label="Системный фильтр изменён пользователем" className="text-warning" />
+                      )}
+                      {isSystemFilter(filter) && (isSystemFilterModified(filter) || isSystemFilterUpdateAvailable(filter, getBuiltinFilter(builtinConfig, filter.id))) && (
+                        <InlineMarker
+                          icon={isSystemFilterUpdateAvailable(filter, getBuiltinFilter(builtinConfig, filter.id)) ? RefreshCcw : RotateCcw}
+                          label={isSystemFilterUpdateAvailable(filter, getBuiltinFilter(builtinConfig, filter.id))
+                            ? 'Обновить фильтр до актуального системного значения'
+                            : 'Откатить фильтр к системному значению'}
+                          className={isSystemFilterUpdateAvailable(filter, getBuiltinFilter(builtinConfig, filter.id)) ? 'text-primary' : 'text-destructive'}
+                          onClick={() => setSystemFilterTarget(filter)}
+                        />
+                      )}
+                    </div>
+                  </div>
                   <p className="truncate overflow-hidden text-xs text-muted-foreground/90" title={getPathLeaf(filter.filename)}>
                     {getPathLeaf(filter.filename)}
                   </p>
@@ -471,6 +557,29 @@ export function FiltersPage() {
             </div>
           ))}
         </div>
+
+        <AlertDialog open={!!systemFilterTarget} onOpenChange={open => !open && setSystemFilterTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {systemFilterTarget && isSystemFilterUpdateAvailable(systemFilterTarget, getBuiltinFilter(builtinConfig, systemFilterTarget.id))
+                  ? 'Обновить системный фильтр?'
+                  : 'Откатить фильтр к системному значению?'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {systemFilterTarget
+                  ? `Фильтр "${systemFilterTarget.name}" будет возвращён к актуальному системному значению.`
+                  : ''}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Отмена</AlertDialogCancel>
+              <AlertDialogAction onClick={() => void handleRestoreFilter()}>
+                Обновить
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <Dialog
           open={createDialogOpen}

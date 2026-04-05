@@ -358,6 +358,7 @@ pub fn run() {
             admin::is_elevated,
             config::ensure_config_dir,
             config::load_config,
+            config::get_builtin_config,
             config::save_config,
             config::reset_config,
             config::get_resources_directory,

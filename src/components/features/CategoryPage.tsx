@@ -1,6 +1,6 @@
 import type { Strategy } from '@/lib/types'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
-import { ArrowLeft, BrushCleaning, Check, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, BrushCleaning, Check, FilePenLine, Loader2, Package, Pencil, Plus, RefreshCcw, RotateCcw, Trash2, UserRoundPlus } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { InlineMarker } from '@/components/ui/inline-marker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
@@ -28,8 +29,37 @@ import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useMountEffect } from '@/hooks/use-mount-effect'
 import { autosizeTextarea, forwardTextareaWheelToScrollArea } from '@/lib/editor-scroll'
+import { buildRestoredCategory, buildRestoredStrategy, getBuiltinCategory, getBuiltinStrategy, isSystemCategory, isSystemCategoryModified, isSystemCategoryUpdateAvailable, isSystemStrategy, isSystemStrategyModified, isSystemStrategyUpdateAvailable } from '@/lib/system-config'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
+
+function normalizeStrategyText(value: string) {
+  return value.replace(/\r\n/g, '\n').trim()
+}
+
+function getStrategyDuplicateError(
+  strategies: Strategy[],
+  name: string,
+  content: string,
+  excludedStrategyId?: string,
+) {
+  const trimmedName = name.trim().toLocaleLowerCase()
+  const normalizedContent = normalizeStrategyText(content)
+
+  if (strategies.some(strategy => strategy.id !== excludedStrategyId && strategy.name.trim().toLocaleLowerCase() === trimmedName)) {
+    return 'Стратегия с таким названием уже есть в этой категории'
+  }
+
+  if (strategies.some(strategy => strategy.id !== excludedStrategyId && normalizeStrategyText(strategy.content) === normalizedContent)) {
+    return 'Стратегия с таким содержимым уже есть в этой категории'
+  }
+
+  return null
+}
+
+type SystemActionTarget
+  = | { type: 'category', title: string, description: string }
+    | { type: 'strategy', strategyId: string, title: string, description: string }
 
 export function CategoryPage() {
   const { categoryId } = useParams({ from: '/strategies/$categoryId' })
@@ -44,18 +74,22 @@ export function CategoryPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [renameDialogOpen, setRenameDialogOpen] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
+  const [systemActionTarget, setSystemActionTarget] = useState<SystemActionTarget | null>(null)
   const newStrategyContentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const editStrategyContentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const config = useConfigStore(state => state.config)
+  const builtinConfig = useConfigStore(state => state.builtinConfig)
   const loading = useConfigStore(state => state.loading)
   const load = useConfigStore(state => state.load)
   const reload = useConfigStore(state => state.reload)
   const saveNow = useConfigStore(state => state.saveNow)
   const revertTo = useConfigStore(state => state.revertTo)
   const updateCategory = useConfigStore(state => state.updateCategory)
+  const restoreBuiltinCategory = useConfigStore(state => state.restoreBuiltinCategory)
   const deleteCategory = useConfigStore(state => state.deleteCategory)
   const addStrategy = useConfigStore(state => state.addStrategy)
   const updateStrategy = useConfigStore(state => state.updateStrategy)
+  const restoreBuiltinStrategy = useConfigStore(state => state.restoreBuiltinStrategy)
   const deleteStrategy = useConfigStore(state => state.deleteStrategy)
   const setActiveStrategy = useConfigStore(state => state.setActiveStrategy)
   const clearActiveStrategy = useConfigStore(state => state.clearActiveStrategy)
@@ -69,6 +103,7 @@ export function CategoryPage() {
   })
 
   const category = config?.categories.find(c => c.id === categoryId)
+  const builtinCategory = category ? getBuiltinCategory(builtinConfig, category.id) : null
 
   const handleAddStrategy = async () => {
     if (!newStrategyName.trim() || !newStrategyContent.trim() || !categoryId) {
@@ -80,13 +115,19 @@ export function CategoryPage() {
       return
     }
 
+    const nextName = newStrategyName.trim()
+    const duplicateError = getStrategyDuplicateError(category?.strategies ?? [], nextName, newStrategyContent)
+    if (duplicateError) {
+      toast.error(duplicateError)
+      return
+    }
+
     const previousConfig = structuredClone(currentConfig)
-    const strategyName = newStrategyName.trim()
-    addStrategy(categoryId, strategyName, newStrategyContent.trim())
+    addStrategy(categoryId, nextName, newStrategyContent.trim())
     try {
       await saveNow()
       if (category) {
-        addConfigLog(`добавлена стратегия "${strategyName}" в категории "${category.name}"`)
+        addConfigLog(`добавлена стратегия "${nextName}" в категории "${category.name}"`)
       }
       setNewStrategyName('')
       setNewStrategyContent('')
@@ -119,6 +160,11 @@ export function CategoryPage() {
     const previousConfig = structuredClone(currentConfig)
     const previousName = editingStrategy.name
     const nextName = editingName.trim()
+    const duplicateError = getStrategyDuplicateError(category?.strategies ?? [], nextName, editingContent, editingStrategy.id)
+    if (duplicateError) {
+      toast.error(duplicateError)
+      return
+    }
     updateStrategy(categoryId, editingStrategy.id, {
       name: nextName,
       content: editingContent,
@@ -325,6 +371,58 @@ export function CategoryPage() {
     }
   }
 
+  const handleRestoreCategory = async () => {
+    if (!category || !builtinCategory) {
+      return
+    }
+
+    const currentConfig = useConfigStore.getState().config
+    if (!currentConfig) {
+      return
+    }
+
+    const previousConfig = structuredClone(currentConfig)
+    restoreBuiltinCategory(category.id, buildRestoredCategory(category, builtinCategory))
+    try {
+      await saveNow()
+      addConfigLog(`категория "${category.name}" обновлена до системного значения`)
+      await restartIfConnected()
+      notifyConfigApplied('Категория обновлена')
+      setSystemActionTarget(null)
+    }
+    catch (error) {
+      revertTo(previousConfig)
+      toast.error(`Ошибка обновления категории: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  const handleRestoreStrategy = async (strategyId: string) => {
+    if (!category || !builtinCategory) {
+      return
+    }
+
+    const strategy = category.strategies.find(item => item.id === strategyId)
+    const builtinStrategy = getBuiltinStrategy(builtinCategory, strategyId)
+    const currentConfig = useConfigStore.getState().config
+    if (!strategy || !builtinStrategy || !currentConfig) {
+      return
+    }
+
+    const previousConfig = structuredClone(currentConfig)
+    restoreBuiltinStrategy(category.id, buildRestoredStrategy(strategy, builtinStrategy))
+    try {
+      await saveNow()
+      addConfigLog(`стратегия "${strategy.name}" обновлена до системного значения в категории "${category.name}"`)
+      await restartIfConnected()
+      notifyConfigApplied('Стратегия обновлена')
+      setSystemActionTarget(null)
+    }
+    catch (error) {
+      revertTo(previousConfig)
+      toast.error(`Ошибка обновления стратегии: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -356,7 +454,39 @@ export function CategoryPage() {
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <div>
-              <h1 className="text-2xl font-medium">{category.name}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-medium">{category.name}</h1>
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  {isSystemCategory(category)
+                    ? (
+                        <InlineMarker icon={Package} label="Системная категория" />
+                      )
+                    : (
+                        <InlineMarker icon={UserRoundPlus} label="Пользовательская категория" className="text-primary/80" />
+                      )}
+                  {isSystemCategoryModified(category, config) && (
+                    <InlineMarker icon={FilePenLine} label="Системная категория изменена пользователем" className="text-warning" />
+                  )}
+                  {isSystemCategory(category) && (isSystemCategoryModified(category, config) || isSystemCategoryUpdateAvailable(category, builtinCategory)) && (
+                    <InlineMarker
+                      icon={isSystemCategoryUpdateAvailable(category, builtinCategory) ? RefreshCcw : RotateCcw}
+                      label={isSystemCategoryUpdateAvailable(category, builtinCategory)
+                        ? 'Обновить категорию до актуального системного значения'
+                        : 'Откатить категорию к системному значению'}
+                      className={isSystemCategoryUpdateAvailable(category, builtinCategory) ? 'text-primary' : 'text-destructive'}
+                      onClick={() => setSystemActionTarget({
+                        type: 'category',
+                        title: isSystemCategoryUpdateAvailable(category, builtinCategory)
+                          ? 'Обновить системную категорию?'
+                          : 'Откатить категорию к системному значению?',
+                        description: isSystemCategoryUpdateAvailable(category, builtinCategory)
+                          ? `Категория «${category.name}» будет обновлена до актуальной системной версии. Пользовательские изменения внутри категории будут сброшены.`
+                          : `Категория «${category.name}» будет возвращена к системному значению. Пользовательские изменения внутри категории будут сброшены.`,
+                      })}
+                    />
+                  )}
+                </div>
+              </div>
               <p className="text-sm text-muted-foreground mt-1">
                 {category.strategies.length}
                 {' '}
@@ -463,14 +593,52 @@ export function CategoryPage() {
                       : 'border border-border rounded-lg p-4 space-y-3'}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
                         <span className="font-normal">{strategy.name}</span>
-                        {strategy.active && (
-                          <span className="flex h-4 w-4 items-center justify-center rounded bg-success text-white dark:text-background" aria-hidden="true">
-                            <Check className="h-3 w-3" />
-                          </span>
-                        )}
-                        {strategy.active && <span className="sr-only">Активная стратегия</span>}
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          {strategy.active && (
+                            <InlineMarker icon={Check} label="Активная стратегия" className="text-success" />
+                          )}
+                          {isSystemStrategy(strategy)
+                            ? (
+                                <InlineMarker icon={Package} label="Системная стратегия" />
+                              )
+                            : (
+                                <InlineMarker icon={UserRoundPlus} label="Пользовательская стратегия" className="text-primary/80" />
+                              )}
+                          {isSystemStrategyModified(strategy) && (
+                            <InlineMarker icon={FilePenLine} label="Системная стратегия изменена пользователем" className="text-warning" />
+                          )}
+                          {(() => {
+                            const builtinStrategy = getBuiltinStrategy(builtinCategory, strategy.id)
+                            const canRestore = isSystemStrategy(strategy)
+                              && (isSystemStrategyModified(strategy) || isSystemStrategyUpdateAvailable(strategy, builtinStrategy))
+
+                            if (!canRestore) {
+                              return null
+                            }
+
+                            return (
+                              <InlineMarker
+                                icon={isSystemStrategyUpdateAvailable(strategy, builtinStrategy) ? RefreshCcw : RotateCcw}
+                                label={isSystemStrategyUpdateAvailable(strategy, builtinStrategy)
+                                  ? 'Обновить стратегию до актуального системного значения'
+                                  : 'Откатить стратегию к системному значению'}
+                                className={isSystemStrategyUpdateAvailable(strategy, builtinStrategy) ? 'text-primary' : 'text-destructive'}
+                                onClick={() => setSystemActionTarget({
+                                  type: 'strategy',
+                                  strategyId: strategy.id,
+                                  title: isSystemStrategyUpdateAvailable(strategy, builtinStrategy)
+                                    ? 'Обновить системную стратегию?'
+                                    : 'Откатить стратегию к системному значению?',
+                                  description: isSystemStrategyUpdateAvailable(strategy, builtinStrategy)
+                                    ? `Стратегия «${strategy.name}» будет обновлена до актуальной системной версии.`
+                                    : `Стратегия «${strategy.name}» будет возвращена к системному значению.`,
+                                })}
+                              />
+                            )
+                          })()}
+                        </div>
                       </div>
                       <div className="flex items-center gap-1">
                         {!strategy.active && (
@@ -540,6 +708,34 @@ export function CategoryPage() {
                 ))
               )}
         </div>
+
+        <AlertDialog open={!!systemActionTarget} onOpenChange={open => !open && setSystemActionTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{systemActionTarget?.title}</AlertDialogTitle>
+              <AlertDialogDescription>{systemActionTarget?.description}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Отмена</AlertDialogCancel>
+              <Button
+                onClick={async () => {
+                  if (!systemActionTarget) {
+                    return
+                  }
+
+                  if (systemActionTarget.type === 'category') {
+                    await handleRestoreCategory()
+                    return
+                  }
+
+                  await handleRestoreStrategy(systemActionTarget.strategyId)
+                }}
+              >
+                Обновить
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <Dialog open={newStrategyOpen} onOpenChange={setNewStrategyOpen}>
           <DialogContent className="max-w-2xl">

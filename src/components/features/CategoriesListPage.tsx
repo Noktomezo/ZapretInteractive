@@ -1,7 +1,7 @@
 import type {
   DragEndEvent,
 } from '@dnd-kit/core'
-import type { Category } from '@/lib/types'
+import type { AppConfig, Category } from '@/lib/types'
 import {
   closestCenter,
   DndContext,
@@ -18,7 +18,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Link } from '@tanstack/react-router'
-import { BrushCleaning, ChevronRight, GripVertical, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { BrushCleaning, ChevronRight, FilePenLine, GripVertical, Loader2, Package, Pencil, Plus, RefreshCcw, RotateCcw, Trash2, UserRoundPlus } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import {
@@ -40,18 +40,27 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { InlineMarker } from '@/components/ui/inline-marker'
 import { Input } from '@/components/ui/input'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useMountEffect } from '@/hooks/use-mount-effect'
+import { buildRestoredCategory, getBuiltinCategory, isSystemCategory, isSystemCategoryModified, isSystemCategoryUpdateAvailable } from '@/lib/system-config'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
 
 interface SortableCategoryItemProps {
   category: Category
+  config: CategoryListConfigContext
   onClearActive: (categoryId: string, e: React.MouseEvent) => void
   onRename: (category: Category) => void
   onDelete: (category: Category) => void
+  onRestoreSystem: (category: Category) => void
+}
+
+interface CategoryListConfigContext {
+  config: AppConfig | null
+  builtinConfig: AppConfig | null
 }
 
 function formatStrategiesCount(count: number) {
@@ -102,10 +111,11 @@ function formatActiveStrategiesSrText(activeCount: number) {
   return `${activeCount} активных стратегий`
 }
 
-function SortableCategoryItem({ category, onClearActive, onRename, onDelete }: SortableCategoryItemProps) {
+function SortableCategoryItem({ category, config, onClearActive, onRename, onDelete, onRestoreSystem }: SortableCategoryItemProps) {
   const activeStrategies = category.strategies.filter(strategy => strategy.active)
   const activeCount = activeStrategies.length
   const activeStrategiesLabel = formatActiveStrategiesLabel(activeStrategies)
+  const builtinCategory = getBuiltinCategory(config.builtinConfig, category.id)
 
   const {
     attributes,
@@ -144,17 +154,54 @@ function SortableCategoryItem({ category, onClearActive, onRename, onDelete }: S
           <div className="min-w-0 space-y-1">
             <div className="flex items-center gap-3">
               <span className="truncate text-sm font-normal">{category.name}</span>
-              <span
-                className={activeCount > 0
-                  ? 'inline-flex h-2 w-2 rounded-full bg-success animate-pulse'
-                  : 'inline-flex h-2 w-2 rounded-full bg-destructive animate-pulse'}
-                aria-hidden="true"
-              />
-              {activeStrategiesLabel && (
-                <span className="max-w-[14rem] truncate text-xs text-muted-foreground">
-                  {activeStrategiesLabel}
-                </span>
-              )}
+              <div className="flex items-center gap-1 text-muted-foreground">
+                {isSystemCategory(category)
+                  ? (
+                      <InlineMarker icon={Package} label="Системная категория" />
+                    )
+                  : (
+                      <InlineMarker icon={UserRoundPlus} label="Пользовательская категория" className="text-primary/80" />
+                    )}
+                {isSystemCategoryModified(category, config.config) && (
+                  <InlineMarker icon={FilePenLine} label="Системная категория изменена пользователем" className="text-warning" />
+                )}
+                {isSystemCategory(category) && (isSystemCategoryModified(category, config.config) || isSystemCategoryUpdateAvailable(category, builtinCategory)) && (
+                  <InlineMarker
+                    icon={isSystemCategoryUpdateAvailable(category, builtinCategory) ? RefreshCcw : RotateCcw}
+                    label={isSystemCategoryUpdateAvailable(category, builtinCategory)
+                      ? 'Обновить категорию до актуального системного значения'
+                      : 'Откатить категорию к системному значению'}
+                    className={isSystemCategoryUpdateAvailable(category, builtinCategory) ? 'text-primary' : 'text-destructive'}
+                    onClick={() => onRestoreSystem(category)}
+                  />
+                )}
+                {activeCount > 0
+                  ? (
+                      activeStrategiesLabel && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="max-w-[14rem] cursor-help truncate text-xs text-success animate-pulse">
+                              {activeStrategiesLabel}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {activeCount === 1 ? 'Текущая активная стратегия' : formatActiveStrategiesSrText(activeCount)}
+                          </TooltipContent>
+                        </Tooltip>
+                      )
+                    )
+                  : (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            className="inline-flex h-2 w-2 cursor-help rounded-full bg-destructive animate-pulse"
+                            aria-hidden="true"
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent>Нет активных стратегий</TooltipContent>
+                      </Tooltip>
+                    )}
+              </div>
               <span className="sr-only">
                 {formatActiveStrategiesSrText(activeCount)}
               </span>
@@ -243,13 +290,16 @@ export function CategoriesListPage() {
   const [renameDialogOpen, setRenameDialogOpen] = useState(false)
   const [categoryToRename, setCategoryToRename] = useState<Category | null>(null)
   const [newCategoryNameDraft, setNewCategoryNameDraft] = useState('')
+  const [systemCategoryTarget, setSystemCategoryTarget] = useState<Category | null>(null)
   const config = useConfigStore(state => state.config)
+  const builtinConfig = useConfigStore(state => state.builtinConfig)
   const loading = useConfigStore(state => state.loading)
   const load = useConfigStore(state => state.load)
   const saveNow = useConfigStore(state => state.saveNow)
   const addCategory = useConfigStore(state => state.addCategory)
   const revertTo = useConfigStore(state => state.revertTo)
   const updateCategory = useConfigStore(state => state.updateCategory)
+  const restoreBuiltinCategory = useConfigStore(state => state.restoreBuiltinCategory)
   const deleteCategory = useConfigStore(state => state.deleteCategory)
   const clearAllActiveStrategies = useConfigStore(state => state.clearAllActiveStrategies)
   const reorderCategories = useConfigStore(state => state.reorderCategories)
@@ -328,6 +378,28 @@ export function CategoriesListPage() {
     catch (err) {
       console.error('Failed to restart after deactivating strategy:', err)
       notifyConfigApplied('Стратегия деактивирована, но не удалось переподключиться')
+    }
+  }
+
+  const handleRestoreSystemCategory = async (category: Category) => {
+    const currentConfig = useConfigStore.getState().config
+    const builtinCategory = getBuiltinCategory(builtinConfig, category.id)
+    if (!currentConfig || !builtinCategory) {
+      return
+    }
+
+    const previousConfig = structuredClone(currentConfig)
+    restoreBuiltinCategory(category.id, buildRestoredCategory(category, builtinCategory))
+    try {
+      await saveNow()
+      addConfigLog(`категория "${category.name}" обновлена до системного значения`)
+      await restartIfConnected()
+      notifyConfigApplied('Категория обновлена')
+      setSystemCategoryTarget(null)
+    }
+    catch (error) {
+      revertTo(previousConfig)
+      toast.error(`Ошибка обновления категории: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 
@@ -468,15 +540,46 @@ export function CategoriesListPage() {
                       <SortableCategoryItem
                         key={category.id}
                         category={category}
+                        config={{ config, builtinConfig }}
                         onClearActive={handleClearActive}
                         onRename={handleOpenRenameDialog}
                         onDelete={handleDeleteCategory}
+                        onRestoreSystem={setSystemCategoryTarget}
                       />
                     ))}
                   </SortableContext>
                 </DndContext>
               )}
         </div>
+
+        <AlertDialog open={!!systemCategoryTarget} onOpenChange={open => !open && setSystemCategoryTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {systemCategoryTarget && isSystemCategoryUpdateAvailable(systemCategoryTarget, getBuiltinCategory(builtinConfig, systemCategoryTarget.id))
+                  ? 'Обновить системную категорию?'
+                  : 'Откатить категорию к системному значению?'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {systemCategoryTarget
+                  ? `Категория «${systemCategoryTarget.name}» будет возвращена к актуальному системному значению. Пользовательские изменения внутри категории будут сброшены.`
+                  : ''}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Отмена</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  if (systemCategoryTarget) {
+                    await handleRestoreSystemCategory(systemCategoryTarget)
+                  }
+                }}
+              >
+                Обновить
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <Dialog open={newCategoryOpen} onOpenChange={setNewCategoryOpen}>
           <DialogContent>

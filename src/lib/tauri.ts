@@ -16,6 +16,7 @@ export interface FileHealthChangedPayload {
 export const isElevated = (): Promise<boolean> => invoke('is_elevated')
 export const ensureConfigDir = (): Promise<string> => invoke('ensure_config_dir')
 export const loadConfig = (): Promise<AppConfig> => invoke('load_config')
+export const getBuiltinConfig = (): Promise<AppConfig> => invoke('get_builtin_config')
 export const saveConfig = (config: AppConfig): Promise<void> => invoke('save_config', { config })
 export const resetConfig = (): Promise<AppConfig> => invoke('reset_config')
 export const configExists = (): Promise<boolean> => invoke('config_exists')
