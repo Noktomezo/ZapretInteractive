@@ -1,4 +1,5 @@
 import type { ListMode } from '@/lib/types'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import {
   AlertCircle,
   Loader2,
@@ -27,6 +28,103 @@ import { useUpdaterStore } from '@/stores/updater.store'
 
 const terminalGridMul: [number, number] = [2, 1]
 
+export function MainPageTerminalBackdrop({ visible }: { visible: boolean }) {
+  const status = useConnectionStore(state => state.status)
+  const mainTerminalTimeOffset = useAppStore(state => state.mainTerminalTimeOffset)
+  const mainPageVisited = useAppStore(state => state.mainPageVisited)
+  const terminalTint = status === 'connected'
+    ? 'var(--terminal-tint-success)'
+    : status === 'connecting' || status === 'disconnecting'
+      ? 'var(--terminal-tint-warning)'
+      : 'var(--terminal-tint-danger)'
+  const terminalBackgroundTint = 'var(--terminal-background-tint)'
+  const terminalFlickerAmount = status === 'connected' ? 0 : 1
+  const terminalCurvature = status === 'connected' || status === 'disconnecting' ? 0 : 0.1
+  const terminalScanlineIntensity = status === 'disconnected' ? 0.22 : 0
+  const [isTerminalVisible, setIsTerminalVisible] = useState(true)
+
+  useMountEffect(() => {
+    const appWindow = getCurrentWindow()
+    let disposed = false
+
+    const syncTerminalVisibility = async () => {
+      const pageVisible = typeof document === 'undefined' || document.visibilityState === 'visible'
+
+      try {
+        const windowVisible = await appWindow.isVisible()
+        if (!disposed) {
+          setIsTerminalVisible(pageVisible && windowVisible)
+        }
+      }
+      catch {
+        if (!disposed) {
+          setIsTerminalVisible(pageVisible)
+        }
+      }
+    }
+
+    const handleVisibilityChange = () => {
+      void syncTerminalVisibility()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleVisibilityChange)
+    window.addEventListener('blur', handleVisibilityChange)
+
+    const visibilityPollId = window.setInterval(() => {
+      void syncTerminalVisibility()
+    }, 1000)
+
+    const unlistenFocusChangedPromise = appWindow.onFocusChanged(() => {
+      void syncTerminalVisibility()
+    })
+
+    void syncTerminalVisibility()
+
+    return () => {
+      disposed = true
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleVisibilityChange)
+      window.removeEventListener('blur', handleVisibilityChange)
+      window.clearInterval(visibilityPollId)
+      void unlistenFocusChangedPromise.then(unlisten => unlisten())
+    }
+  })
+
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      <FaultyTerminal
+        aria-hidden="true"
+        scale={1.5}
+        gridMul={terminalGridMul}
+        digitSize={1.2}
+        timeScale={0.1}
+        timeOffset={mainTerminalTimeOffset}
+        pause={!visible || !isTerminalVisible}
+        scanlineIntensity={terminalScanlineIntensity}
+        glitchAmount={1}
+        flickerAmount={terminalFlickerAmount}
+        noiseAmp={1}
+        chromaticAberration={0}
+        dither={0}
+        curvature={terminalCurvature}
+        tint={terminalTint}
+        backgroundTint={terminalBackgroundTint}
+        mouseReact
+        mouseStrength={0.5}
+        pageLoadAnimation={visible && !mainPageVisited}
+        brightness={0.55}
+        className={cn(
+          'pointer-events-none transition-opacity duration-200',
+          visible ? 'opacity-90' : 'opacity-0',
+        )}
+        role="presentation"
+        tabIndex={-1}
+      />
+    </div>
+  )
+}
+
 export function MainPage() {
   const availableUpdatesPromptKeyRef = useRef('')
   const dismissedPromptKeysRef = useRef<Set<string>>(new Set())
@@ -54,7 +152,6 @@ export function MainPage() {
   const availableUpdates = useAppStore(state => state.availableUpdates)
   const configMissing = useAppStore(state => state.configMissing)
   const initialize = useAppStore(state => state.initialize)
-  const mainTerminalTimeOffset = useAppStore(state => state.mainTerminalTimeOffset)
   const setMainPageVisited = useAppStore(state => state.setMainPageVisited)
   const setConfigMissing = useAppStore(state => state.setConfigMissing)
   const addConfigLog = useConnectionStore(state => state.addConfigLog)
@@ -64,17 +161,6 @@ export function MainPage() {
   const dismissedAppUpdateVersion = useUpdaterStore(state => state.dismissedVersionThisSession)
   const installAvailableAppUpdate = useUpdaterStore(state => state.installAvailableUpdate)
   const dismissCurrentAppUpdate = useUpdaterStore(state => state.dismissCurrentVersionUntilRestart)
-
-  const terminalTint = status === 'connected'
-    ? 'var(--terminal-tint-success)'
-    : status === 'connecting' || status === 'disconnecting'
-      ? 'var(--terminal-tint-warning)'
-      : 'var(--terminal-tint-danger)'
-  const terminalBackgroundTint = 'var(--terminal-background-tint)'
-  const terminalFlickerAmount = status === 'connected' ? 0 : 1
-  const terminalCurvature = status === 'connected' || status === 'disconnecting' ? 0 : 0.1
-  const terminalScanlineIntensity = status === 'disconnected' ? 0.22 : 0
-  const [shouldAnimateTerminal] = useState(() => !useAppStore.getState().mainPageVisited)
   const selectedListMode = config?.listMode ?? 'ipset'
   const [focusedListModeIndex, setFocusedListModeIndex] = useState<number | null>(null)
   const activeListModeIndex = focusedListModeIndex ?? (selectedListMode === 'exclude' ? 1 : 0)
@@ -358,8 +444,6 @@ export function MainPage() {
       return
     }
 
-    const notesPreview = appUpdate.notes?.split('\n').find(line => line.trim().length > 0)?.trim()
-
     dismissActiveAppUpdateToast()
     appUpdatePromptKeyRef.current = promptKey
     activeAppUpdateToastIdRef.current = toast.custom(() => (
@@ -371,9 +455,6 @@ export function MainPage() {
             {' '}
             {appUpdate.version}
           </p>
-          {notesPreview && (
-            <p className="text-xs text-muted-foreground line-clamp-2">{notesPreview}</p>
-          )}
         </div>
         <div className="mt-3 flex gap-2">
           <Button size="sm" onClick={() => { void handleInstallAppUpdate() }}>
@@ -549,200 +630,171 @@ export function MainPage() {
   }
 
   return (
-    <div className="relative flex h-full flex-col">
-      <div className="absolute inset-0 overflow-hidden">
-        <FaultyTerminal
-          aria-hidden="true"
-          scale={1.5}
-          gridMul={terminalGridMul}
-          digitSize={1.2}
-          timeScale={0.1}
-          timeOffset={mainTerminalTimeOffset}
-          pause={false}
-          scanlineIntensity={terminalScanlineIntensity}
-          glitchAmount={1}
-          flickerAmount={terminalFlickerAmount}
-          noiseAmp={1}
-          chromaticAberration={0}
-          dither={0}
-          curvature={terminalCurvature}
-          tint={terminalTint}
-          backgroundTint={terminalBackgroundTint}
-          mouseReact
-          mouseStrength={0.5}
-          pageLoadAnimation={shouldAnimateTerminal}
-          brightness={0.55}
-          className="pointer-events-auto opacity-90"
-          role="presentation"
-          tabIndex={-1}
-        />
-      </div>
-      <div className="relative z-10 flex flex-1 items-center justify-center p-8">
-        <div className="space-y-6 text-center">
-          <div className="relative">
-            <Button
-              onClick={handleToggleConnection}
-              disabled={
-                status === 'connecting' || status === 'disconnecting' || !config
-              }
-              variant="ghost"
-              className={cn(
-                'h-32 w-32 rounded-full border border-white/10 shadow-lg shadow-black/10 backdrop-blur-xl transition-[background-color,color,box-shadow,transform,backdrop-filter] duration-500 ease-out disabled:opacity-100',
-                status === 'connected'
-                && 'animate-pulse-glow bg-success/48 text-white hover:border-white/14 hover:bg-success/60 hover:backdrop-blur-xl dark:border-white/8 dark:text-background',
-                status === 'connecting'
-                && 'animate-pulse-glow-yellow border-warning/30 bg-warning/48 text-white dark:border-white/8 dark:text-background',
-                status === 'disconnecting'
-                && 'animate-pulse-glow-yellow border-warning/30 bg-warning/48 text-white dark:border-white/8 dark:text-background',
-                status === 'error' && 'bg-destructive/48 text-white hover:border-white/14 hover:bg-destructive/60 hover:backdrop-blur-xl dark:border-white/8 dark:text-background',
-                status === 'disconnected'
-                && 'animate-pulse-glow-neutral bg-foreground/48 text-background hover:border-white/14 hover:bg-foreground/60 hover:backdrop-blur-xl dark:border-white/8',
-              )}
-            >
-              <Power className="size-12" />
-            </Button>
-          </div>
-
-          <div>
-            <h2 className="text-2xl font-medium">
-              {status === 'connected'
-                ? 'Подключено'
-                : status === 'connecting'
-                  ? 'Подключение...'
-                  : status === 'disconnecting'
-                    ? 'Отключение...'
-                    : status === 'error'
-                      ? 'Ошибка'
-                      : 'Отключено'}
-            </h2>
-          </div>
-
-          <div
-            role="radiogroup"
-            aria-label="Режим списков"
-            className="relative mx-auto grid w-fit grid-cols-2 gap-1 rounded-xl border border-border/60 bg-background/76 p-1 shadow-lg shadow-black/10 backdrop-blur-md"
+    <div className="relative z-10 flex h-full flex-1 items-center justify-center p-8">
+      <div className="space-y-6 text-center">
+        <div className="relative">
+          <Button
+            onClick={handleToggleConnection}
+            disabled={
+              status === 'connecting' || status === 'disconnecting' || !config
+            }
+            variant="ghost"
+            className={cn(
+              'h-32 w-32 rounded-full border border-white/10 shadow-lg shadow-black/10 backdrop-blur-xl transition-[background-color,color,box-shadow,transform,backdrop-filter] duration-500 ease-out disabled:opacity-100',
+              status === 'connected'
+              && 'animate-pulse-glow bg-success/48 text-white hover:border-white/14 hover:bg-success/60 hover:backdrop-blur-xl dark:border-white/8 dark:text-background',
+              status === 'connecting'
+              && 'animate-pulse-glow-yellow border-warning/30 bg-warning/48 text-white dark:border-white/8 dark:text-background',
+              status === 'disconnecting'
+              && 'animate-pulse-glow-yellow border-warning/30 bg-warning/48 text-white dark:border-white/8 dark:text-background',
+              status === 'error' && 'bg-destructive/48 text-white hover:border-white/14 hover:bg-destructive/60 hover:backdrop-blur-xl dark:border-white/8 dark:text-background',
+              status === 'disconnected'
+              && 'animate-pulse-glow-neutral bg-foreground/48 text-background hover:border-white/14 hover:bg-foreground/60 hover:backdrop-blur-xl dark:border-white/8',
+            )}
           >
-            <div
-              className={cn(
-                'pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-md border shadow-sm transition-all duration-300 ease-out',
-                selectedListMode === 'ipset'
-                  ? 'translate-x-0 border-success/30 bg-success/10'
-                  : 'translate-x-full border-warning/30 bg-warning/12',
+            <Power className="size-12" />
+          </Button>
+        </div>
+
+        <div>
+          <h2 className="text-2xl font-medium">
+            {status === 'connected'
+              ? 'Подключено'
+              : status === 'connecting'
+                ? 'Подключение...'
+                : status === 'disconnecting'
+                  ? 'Отключение...'
+                  : status === 'error'
+                    ? 'Ошибка'
+                    : 'Отключено'}
+          </h2>
+        </div>
+
+        <div
+          role="radiogroup"
+          aria-label="Режим списков"
+          className="relative mx-auto grid w-fit grid-cols-2 gap-1 rounded-xl border border-border/60 bg-background/76 p-1 shadow-lg shadow-black/10 backdrop-blur-md"
+        >
+          <div
+            className={cn(
+              'pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-md border shadow-sm transition-all duration-300 ease-out',
+              selectedListMode === 'ipset'
+                ? 'translate-x-0 border-success/30 bg-success/10'
+                : 'translate-x-full border-warning/30 bg-warning/12',
+            )}
+          />
+          {status === 'disconnected'
+            ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      ref={(element) => {
+                        listModeButtonRefs.current[0] = element
+                      }}
+                      type="button"
+                      role="radio"
+                      aria-checked={selectedListMode === 'ipset'}
+                      disabled={listModeDisabled}
+                      tabIndex={activeListModeIndex === 0 ? 0 : -1}
+                      onFocus={() => setFocusedListModeIndex(0)}
+                      onKeyDown={event => handleListModeKeyDown(event, 0)}
+                      onClick={() => void handleListModeChange('ipset')}
+                      className={cn(
+                        'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
+                        selectedListMode === 'ipset'
+                          ? 'text-success'
+                          : 'text-foreground/80 hover:text-foreground',
+                        listModeDisabled && 'cursor-not-allowed opacity-50',
+                      )}
+                    >
+                      Только заблокированные
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-center">
+                    Обрабатываются только заблокированные в России IP-адреса. Достоверность 99.9%
+                  </TooltipContent>
+                </Tooltip>
+              )
+            : (
+                <button
+                  ref={(element) => {
+                    listModeButtonRefs.current[0] = element
+                  }}
+                  type="button"
+                  role="radio"
+                  aria-checked={selectedListMode === 'ipset'}
+                  disabled={listModeDisabled}
+                  tabIndex={activeListModeIndex === 0 ? 0 : -1}
+                  onFocus={() => setFocusedListModeIndex(0)}
+                  onKeyDown={event => handleListModeKeyDown(event, 0)}
+                  onClick={() => void handleListModeChange('ipset')}
+                  className={cn(
+                    'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
+                    selectedListMode === 'ipset'
+                      ? 'text-success'
+                      : 'text-foreground/80 hover:text-foreground',
+                    listModeDisabled && 'cursor-not-allowed opacity-50',
+                  )}
+                >
+                  Только заблокированные
+                </button>
               )}
-            />
-            {status === 'disconnected'
-              ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        ref={(element) => {
-                          listModeButtonRefs.current[0] = element
-                        }}
-                        type="button"
-                        role="radio"
-                        aria-checked={selectedListMode === 'ipset'}
-                        disabled={listModeDisabled}
-                        tabIndex={activeListModeIndex === 0 ? 0 : -1}
-                        onFocus={() => setFocusedListModeIndex(0)}
-                        onKeyDown={event => handleListModeKeyDown(event, 0)}
-                        onClick={() => void handleListModeChange('ipset')}
-                        className={cn(
-                          'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
-                          selectedListMode === 'ipset'
-                            ? 'text-success'
-                            : 'text-foreground/80 hover:text-foreground',
-                          listModeDisabled && 'cursor-not-allowed opacity-50',
-                        )}
-                      >
-                        Только заблокированные
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs text-center">
-                      Обрабатываются только заблокированные в России IP-адреса. Достоверность 99.9%
-                    </TooltipContent>
-                  </Tooltip>
-                )
-              : (
-                  <button
-                    ref={(element) => {
-                      listModeButtonRefs.current[0] = element
-                    }}
-                    type="button"
-                    role="radio"
-                    aria-checked={selectedListMode === 'ipset'}
-                    disabled={listModeDisabled}
-                    tabIndex={activeListModeIndex === 0 ? 0 : -1}
-                    onFocus={() => setFocusedListModeIndex(0)}
-                    onKeyDown={event => handleListModeKeyDown(event, 0)}
-                    onClick={() => void handleListModeChange('ipset')}
-                    className={cn(
-                      'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
-                      selectedListMode === 'ipset'
-                        ? 'text-success'
-                        : 'text-foreground/80 hover:text-foreground',
-                      listModeDisabled && 'cursor-not-allowed opacity-50',
-                    )}
-                  >
-                    Только заблокированные
-                  </button>
-                )}
-            {status === 'disconnected'
-              ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        ref={(element) => {
-                          listModeButtonRefs.current[1] = element
-                        }}
-                        type="button"
-                        role="radio"
-                        aria-checked={selectedListMode === 'exclude'}
-                        disabled={listModeDisabled}
-                        tabIndex={activeListModeIndex === 1 ? 0 : -1}
-                        onFocus={() => setFocusedListModeIndex(1)}
-                        onKeyDown={event => handleListModeKeyDown(event, 1)}
-                        onClick={() => void handleListModeChange('exclude')}
-                        className={cn(
-                          'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
-                          selectedListMode === 'exclude'
-                            ? 'text-warning'
-                            : 'text-foreground/80 hover:text-foreground',
-                          listModeDisabled && 'cursor-not-allowed opacity-50',
-                        )}
-                      >
-                        Исключения
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs text-center">
-                      По умолчанию обрабатываются все адреса, кроме тех, которые стратегии ломают
-                    </TooltipContent>
-                  </Tooltip>
-                )
-              : (
-                  <button
-                    ref={(element) => {
-                      listModeButtonRefs.current[1] = element
-                    }}
-                    type="button"
-                    role="radio"
-                    aria-checked={selectedListMode === 'exclude'}
-                    disabled={listModeDisabled}
-                    tabIndex={activeListModeIndex === 1 ? 0 : -1}
-                    onFocus={() => setFocusedListModeIndex(1)}
-                    onKeyDown={event => handleListModeKeyDown(event, 1)}
-                    onClick={() => void handleListModeChange('exclude')}
-                    className={cn(
-                      'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
-                      selectedListMode === 'exclude'
-                        ? 'text-warning'
-                        : 'text-foreground/80 hover:text-foreground',
-                      listModeDisabled && 'cursor-not-allowed opacity-50',
-                    )}
-                  >
-                    Исключения
-                  </button>
-                )}
-          </div>
+          {status === 'disconnected'
+            ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      ref={(element) => {
+                        listModeButtonRefs.current[1] = element
+                      }}
+                      type="button"
+                      role="radio"
+                      aria-checked={selectedListMode === 'exclude'}
+                      disabled={listModeDisabled}
+                      tabIndex={activeListModeIndex === 1 ? 0 : -1}
+                      onFocus={() => setFocusedListModeIndex(1)}
+                      onKeyDown={event => handleListModeKeyDown(event, 1)}
+                      onClick={() => void handleListModeChange('exclude')}
+                      className={cn(
+                        'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
+                        selectedListMode === 'exclude'
+                          ? 'text-warning'
+                          : 'text-foreground/80 hover:text-foreground',
+                        listModeDisabled && 'cursor-not-allowed opacity-50',
+                      )}
+                    >
+                      Исключения
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-center">
+                    По умолчанию обрабатываются все адреса, кроме тех, которые стратегии ломают
+                  </TooltipContent>
+                </Tooltip>
+              )
+            : (
+                <button
+                  ref={(element) => {
+                    listModeButtonRefs.current[1] = element
+                  }}
+                  type="button"
+                  role="radio"
+                  aria-checked={selectedListMode === 'exclude'}
+                  disabled={listModeDisabled}
+                  tabIndex={activeListModeIndex === 1 ? 0 : -1}
+                  onFocus={() => setFocusedListModeIndex(1)}
+                  onKeyDown={event => handleListModeKeyDown(event, 1)}
+                  onClick={() => void handleListModeChange('exclude')}
+                  className={cn(
+                    'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
+                    selectedListMode === 'exclude'
+                      ? 'text-warning'
+                      : 'text-foreground/80 hover:text-foreground',
+                    listModeDisabled && 'cursor-not-allowed opacity-50',
+                  )}
+                >
+                  Исключения
+                </button>
+              )}
         </div>
       </div>
     </div>
