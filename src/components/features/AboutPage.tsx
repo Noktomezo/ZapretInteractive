@@ -278,7 +278,7 @@ export function AboutPage() {
         </Card>
 
         <Card className={PAGE_CARD_CLASS}>
-          <CardHeader className="!flex items-center justify-between gap-3">
+          <CardHeader className="!flex flex-row items-center justify-between gap-3 space-y-0">
             <div className="min-w-0">
               <div className="mb-2 flex items-center gap-2">
                 <CardTitle className="text-lg">Файлы приложения</CardTitle>
