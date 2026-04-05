@@ -83,7 +83,6 @@ fn get_windows_build_number() -> Option<u32> {
             Some(&mut value_size),
         )
     }
-    .ok()
     .is_err()
     {
         return None;
