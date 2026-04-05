@@ -408,22 +408,49 @@ export function FiltersPage() {
       filter.id === systemFilterTarget.id ? buildRestoredFilter(filter, builtinFilter) : filter,
     )
     const nextRemovedFilterIds = (config.systemRemovedFilterIds ?? []).filter(id => id !== builtinFilter.id)
+    const originalFilename = normalizeFilterFilename(systemFilterTarget.filename)
+    const nextFilename = normalizeFilterFilename(builtinFilter.filename)
+    const isCaseInsensitiveSameFile = originalFilename.toLowerCase() === nextFilename.toLowerCase()
+    const originalContent = await tauri.loadFilterFile(originalFilename).catch(() => systemFilterTarget.content)
+    let wroteNextFile = false
+    let deletedOriginalFile = false
 
     try {
-      await tauri.saveFilterFile(builtinFilter.filename, builtinFilter.content)
-      if (systemFilterTarget.filename !== builtinFilter.filename) {
-        await tauri.deleteFilterFile(systemFilterTarget.filename).catch(() => {})
+      await tauri.saveFilterFile(nextFilename, builtinFilter.content)
+      wroteNextFile = true
+      if (!isCaseInsensitiveSameFile && originalFilename !== nextFilename) {
+        await tauri.deleteFilterFile(originalFilename)
+        deletedOriginalFile = true
       }
+
       replaceFiltersState(nextFilters, nextRemovedFilterIds)
       await saveNow()
+    }
+    catch (error) {
+      if (deletedOriginalFile) {
+        await tauri.saveFilterFile(originalFilename, originalContent).catch(() => {})
+      }
+      else if (wroteNextFile && isCaseInsensitiveSameFile) {
+        await tauri.saveFilterFile(originalFilename, originalContent).catch(() => {})
+      }
+
+      if (wroteNextFile && !isCaseInsensitiveSameFile && originalFilename !== nextFilename) {
+        await tauri.deleteFilterFile(nextFilename).catch(() => {})
+      }
+
+      replaceFiltersState(previousFilters, config.systemRemovedFilterIds ?? [])
+      toast.error(`Ошибка обновления фильтра: ${error instanceof Error ? error.message : String(error)}`)
+      return
+    }
+
+    try {
       addConfigLog(`фильтр "${systemFilterTarget.name}" обновлён до системного значения`)
       await restartIfConnected()
       notifyConfigApplied('Фильтр обновлён')
       setSystemFilterTarget(null)
     }
     catch (error) {
-      replaceFiltersState(previousFilters, config.systemRemovedFilterIds ?? [])
-      toast.error(`Ошибка обновления фильтра: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(`Фильтр обновлён, но не удалось применить изменения: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 

@@ -25,7 +25,11 @@ export function InlineMarker({ icon: Icon, label, className, onClick }: InlineMa
         </button>
       )
     : (
-        <span className={`inline-flex h-4 w-4 cursor-help items-center justify-center ${className ?? ''}`} aria-hidden="true">
+        <span
+          className={`inline-flex h-4 w-4 cursor-help items-center justify-center ${className ?? ''}`}
+          role="img"
+          aria-label={label}
+        >
           <Icon className="h-3.5 w-3.5" />
         </span>
       )

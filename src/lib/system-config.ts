@@ -88,7 +88,7 @@ export function buildRestoredCategory(currentCategory: Category, builtinCategory
   const activeByStrategyId = new Map(currentCategory.strategies.map(strategy => [strategy.id, strategy.active]))
 
   return {
-    ...structuredClone(builtinCategory),
+    ...builtinCategory,
     strategies: builtinCategory.strategies.map(strategy => ({
       ...strategy,
       active: activeByStrategyId.get(strategy.id) ?? false,

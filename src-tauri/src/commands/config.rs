@@ -794,14 +794,33 @@ fn normalize_config(mut config: AppConfig) -> NormalizedConfigResult {
                 .join("filters")
                 .join(&filter.filename);
             if let Ok(existing_content) = fs::read_to_string(&filter_path) {
-                if existing_content != filter.content {
-                    let _ = fs::write(&filter_path, &filter.content);
+                if existing_content != filter.content
+                    && let Err(error) = fs::write(&filter_path, &filter.content)
+                {
+                    eprintln!(
+                        "Failed to write normalized filter content for '{}': {error}",
+                        filter.filename
+                    );
+                    unrecoverable_filters.push(filter.filename.clone());
                 }
-            } else if !filter.content.is_empty() {
-                if let Some(parent) = filter_path.parent() {
-                    let _ = fs::create_dir_all(parent);
+            } else {
+                if let Some(parent) = filter_path.parent()
+                    && let Err(error) = fs::create_dir_all(parent)
+                {
+                    eprintln!(
+                        "Failed to create filter directory for '{}': {error}",
+                        filter.filename
+                    );
+                    unrecoverable_filters.push(filter.filename.clone());
+                    continue;
                 }
-                let _ = fs::write(&filter_path, &filter.content);
+                if let Err(error) = fs::write(&filter_path, &filter.content) {
+                    eprintln!(
+                        "Failed to create normalized filter content for '{}': {error}",
+                        filter.filename
+                    );
+                    unrecoverable_filters.push(filter.filename.clone());
+                }
             }
             continue;
         }

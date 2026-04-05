@@ -385,14 +385,21 @@ export function CategoryPage() {
     restoreBuiltinCategory(category.id, buildRestoredCategory(category, builtinCategory))
     try {
       await saveNow()
+    }
+    catch (error) {
+      revertTo(previousConfig)
+      toast.error(`Ошибка обновления категории: ${error instanceof Error ? error.message : String(error)}`)
+      return
+    }
+
+    try {
       addConfigLog(`категория "${category.name}" обновлена до системного значения`)
       await restartIfConnected()
       notifyConfigApplied('Категория обновлена')
       setSystemActionTarget(null)
     }
     catch (error) {
-      revertTo(previousConfig)
-      toast.error(`Ошибка обновления категории: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(`Категория обновлена, но не удалось применить изменения: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 
@@ -412,14 +419,21 @@ export function CategoryPage() {
     restoreBuiltinStrategy(category.id, buildRestoredStrategy(strategy, builtinStrategy))
     try {
       await saveNow()
+    }
+    catch (error) {
+      revertTo(previousConfig)
+      toast.error(`Ошибка обновления стратегии: ${error instanceof Error ? error.message : String(error)}`)
+      return
+    }
+
+    try {
       addConfigLog(`стратегия "${strategy.name}" обновлена до системного значения в категории "${category.name}"`)
       await restartIfConnected()
       notifyConfigApplied('Стратегия обновлена')
       setSystemActionTarget(null)
     }
     catch (error) {
-      revertTo(previousConfig)
-      toast.error(`Ошибка обновления стратегии: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(`Стратегия обновлена, но не удалось применить изменения: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 

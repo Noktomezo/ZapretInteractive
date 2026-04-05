@@ -64,7 +64,6 @@ export function PlaceholdersPage() {
   const addPlaceholder = useConfigStore(state => state.addPlaceholder)
   const revertTo = useConfigStore(state => state.revertTo)
   const updatePlaceholder = useConfigStore(state => state.updatePlaceholder)
-  const setPlaceholders = useConfigStore(state => state.setPlaceholders)
   const replacePlaceholdersState = useConfigStore(state => state.replacePlaceholdersState)
   const addConfigLog = useConnectionStore(state => state.addConfigLog)
 
@@ -264,6 +263,7 @@ export function PlaceholdersPage() {
     if (isSavingRef.current)
       return
     const prevPlaceholders = config?.placeholders?.slice() ?? []
+    const prevRemovedNames = config?.systemRemovedPlaceholderNames ?? []
     const deletedPlaceholder = prevPlaceholders[index]
     const nextPlaceholders = prevPlaceholders.filter((_, currentIndex) => currentIndex !== index)
     const nextRemovedNames = deletedPlaceholder?.system
@@ -280,7 +280,7 @@ export function PlaceholdersPage() {
     }
     catch (e) {
       toast.error(`Ошибка сохранения: ${e}`)
-      setPlaceholders(prevPlaceholders)
+      replacePlaceholdersState(prevPlaceholders, prevRemovedNames)
     }
     finally {
       isSavingRef.current = false

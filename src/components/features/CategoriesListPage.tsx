@@ -165,16 +165,6 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
                 {isSystemCategoryModified(category, config.config) && (
                   <InlineMarker icon={FilePenLine} label="Системная категория изменена пользователем" className="text-warning" />
                 )}
-                {isSystemCategory(category) && (isSystemCategoryModified(category, config.config) || isSystemCategoryUpdateAvailable(category, builtinCategory)) && (
-                  <InlineMarker
-                    icon={isSystemCategoryUpdateAvailable(category, builtinCategory) ? RefreshCcw : RotateCcw}
-                    label={isSystemCategoryUpdateAvailable(category, builtinCategory)
-                      ? 'Обновить категорию до актуального системного значения'
-                      : 'Откатить категорию к системному значению'}
-                    className={isSystemCategoryUpdateAvailable(category, builtinCategory) ? 'text-primary' : 'text-destructive'}
-                    onClick={() => onRestoreSystem(category)}
-                  />
-                )}
                 {activeCount > 0
                   ? (
                       activeStrategiesLabel && (
@@ -216,6 +206,16 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
         </div>
       </Link>
       <div className="flex items-center gap-1">
+        {isSystemCategory(category) && (isSystemCategoryModified(category, config.config) || isSystemCategoryUpdateAvailable(category, builtinCategory)) && (
+          <InlineMarker
+            icon={isSystemCategoryUpdateAvailable(category, builtinCategory) ? RefreshCcw : RotateCcw}
+            label={isSystemCategoryUpdateAvailable(category, builtinCategory)
+              ? 'Обновить категорию до актуального системного значения'
+              : 'Откатить категорию к системному значению'}
+            className={isSystemCategoryUpdateAvailable(category, builtinCategory) ? 'text-primary' : 'text-destructive'}
+            onClick={() => onRestoreSystem(category)}
+          />
+        )}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -392,14 +392,21 @@ export function CategoriesListPage() {
     restoreBuiltinCategory(category.id, buildRestoredCategory(category, builtinCategory))
     try {
       await saveNow()
+    }
+    catch (error) {
+      revertTo(previousConfig)
+      toast.error(`Ошибка обновления категории: ${error instanceof Error ? error.message : String(error)}`)
+      return
+    }
+
+    try {
       addConfigLog(`категория "${category.name}" обновлена до системного значения`)
       await restartIfConnected()
       notifyConfigApplied('Категория обновлена')
       setSystemCategoryTarget(null)
     }
     catch (error) {
-      revertTo(previousConfig)
-      toast.error(`Ошибка обновления категории: ${error instanceof Error ? error.message : String(error)}`)
+      toast.error(`Категория обновлена, но не удалось применить изменения: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 

@@ -207,8 +207,10 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   reset: async () => {
     set({ loading: true })
     try {
-      const config = await tauri.resetConfig()
-      const builtinConfig = await tauri.getBuiltinConfig()
+      const [config, builtinConfig] = await Promise.all([
+        tauri.resetConfig(),
+        tauri.getBuiltinConfig(),
+      ])
       lastAutosaveErrorKey = null
       set({ config, builtinConfig, loading: false, dirty: false, isSaving: false })
     }
