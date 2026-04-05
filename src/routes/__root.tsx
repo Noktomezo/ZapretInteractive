@@ -1,4 +1,5 @@
 import { createRootRoute, Outlet, useLocation } from '@tanstack/react-router'
+import { LoaderCircle } from 'lucide-react'
 import { Toaster } from 'sonner'
 import { MainPageTerminalBackdrop } from '@/components/features/MainPage'
 import { Sidebar } from '@/components/features/Sidebar'
@@ -57,6 +58,7 @@ function RootLayout() {
         <div data-theme={resolvedTheme} data-webview-material={windowMaterial}>
           <Toaster
             position="bottom-right"
+            icons={{ loading: <LoaderCircle className="size-6 animate-spin stroke-[2.6]" /> }}
             theme={resolvedTheme}
             toastOptions={{
               unstyled: true,
@@ -72,9 +74,10 @@ function RootLayout() {
                 warning: 'border-border bg-popover text-popover-foreground [&_[data-icon]]:text-warning',
                 error: 'border-border bg-popover text-popover-foreground [&_[data-icon]]:text-destructive',
                 info: 'border-border bg-popover text-popover-foreground [&_[data-icon]]:text-primary',
-                loading: 'border-border bg-popover text-popover-foreground',
+                loading: 'border-border bg-popover text-popover-foreground [&_[data-icon]]:size-6',
                 default: 'border-border bg-popover text-popover-foreground',
-                icon: 'flex size-5 shrink-0 self-center items-center justify-center text-current',
+                icon: 'relative flex size-5 shrink-0 self-center items-center justify-center text-current',
+                loader: 'absolute inset-0 flex items-center justify-center text-current scale-110',
               },
             }}
           />
