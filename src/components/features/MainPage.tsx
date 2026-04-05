@@ -23,7 +23,6 @@ import { useAppStore } from '@/stores/app.store'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
 import { useDownloadStore } from '@/stores/download.store'
-import { useThemeStore } from '@/stores/theme.store'
 import { useUpdaterStore } from '@/stores/updater.store'
 
 const terminalGridMul: [number, number] = [2, 1]
@@ -65,20 +64,13 @@ export function MainPage() {
   const dismissedAppUpdateVersion = useUpdaterStore(state => state.dismissedVersionThisSession)
   const installAvailableAppUpdate = useUpdaterStore(state => state.installAvailableUpdate)
   const dismissCurrentAppUpdate = useUpdaterStore(state => state.dismissCurrentVersionUntilRestart)
-  const resolvedTheme = useThemeStore(state => state.resolvedTheme)
 
-  const terminalTint = resolvedTheme === 'dark'
-    ? (status === 'connected'
-        ? '#81AF6C'
-        : status === 'connecting' || status === 'disconnecting'
-          ? '#EDB449'
-          : '#D98678')
-    : (status === 'connected'
-        ? '#668E57'
-        : status === 'connecting' || status === 'disconnecting'
-          ? '#C2974D'
-          : '#C76A5A')
-  const terminalBackgroundTint = resolvedTheme === 'dark' ? '#151313' : '#F4EFE2'
+  const terminalTint = status === 'connected'
+    ? 'var(--terminal-tint-success)'
+    : status === 'connecting' || status === 'disconnecting'
+      ? 'var(--terminal-tint-warning)'
+      : 'var(--terminal-tint-danger)'
+  const terminalBackgroundTint = 'var(--terminal-background-tint)'
   const terminalFlickerAmount = status === 'connected' ? 0 : 1
   const terminalCurvature = status === 'connected' || status === 'disconnecting' ? 0 : 0.1
   const terminalScanlineIntensity = status === 'disconnected' ? 0.22 : 0

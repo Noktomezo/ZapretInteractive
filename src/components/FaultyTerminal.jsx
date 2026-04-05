@@ -209,8 +209,34 @@ void main() {
 }
 `
 
-function hexToRgb(hex) {
-  let h = hex.replace('#', '').trim()
+function resolveColorValue(color, element) {
+  const source = element ?? (typeof document !== 'undefined' ? document.documentElement : null)
+  if (typeof color === 'string' && color.trim().startsWith('var(') && source) {
+    const start = color.indexOf('--')
+    const end = color.lastIndexOf(')')
+    if (start !== -1 && end !== -1 && end > start) {
+      const variableName = color.slice(start, end).trim()
+      const resolved = getComputedStyle(source).getPropertyValue(variableName).trim()
+      if (resolved) {
+        return resolved
+      }
+    }
+  }
+
+  return color
+}
+
+function colorToRgb(color, element) {
+  const resolved = resolveColorValue(color, element)
+
+  if (resolved.startsWith('rgb')) {
+    const matches = resolved.match(/[\d.]+/g)
+    if (matches?.length >= 3) {
+      return matches.slice(0, 3).map(value => Number(value) / 255)
+    }
+  }
+
+  let h = resolved.replace('#', '').trim()
   if (h.length === 3) {
     h = h
       .split('')
@@ -272,8 +298,8 @@ export default function FaultyTerminal({
   const currentScanlineRef = useRef(scanlineIntensity)
   const targetScanlineRef = useRef(scanlineIntensity)
 
-  const tintVec = useMemo(() => hexToRgb(tint), [tint])
-  const backgroundVec = useMemo(() => hexToRgb(backgroundTint), [backgroundTint])
+  const tintVec = useMemo(() => colorToRgb(tint, containerRef.current), [tint])
+  const backgroundVec = useMemo(() => colorToRgb(backgroundTint, containerRef.current), [backgroundTint])
   const mergedStyle = useMemo(
     () => ({ ...style, backgroundColor: backgroundTint }),
     [style, backgroundTint],

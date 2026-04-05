@@ -34,7 +34,7 @@ function RootLayout() {
         >
           <SidebarProvider className="flex-col" open={!collapsed} onOpenChange={open => setCollapsed(!open)}>
             <TitleBar />
-            <div className="flex h-screen overflow-hidden pt-[30px]">
+            <div className="flex h-screen overflow-hidden pt-[40px]">
               <Sidebar />
               <SidebarInset className="h-full min-h-0 overflow-hidden rounded-tl-xl">
                 <div className="h-full min-h-0 flex-1 overflow-hidden">
