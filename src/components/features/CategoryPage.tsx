@@ -33,8 +33,10 @@ import { buildRestoredCategory, buildRestoredStrategy, getBuiltinCategory, getBu
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
 
+const CRLF_REGEX = /\r\n/g
+
 function normalizeStrategyText(value: string) {
-  return value.replace(/\r\n/g, '\n').trim()
+  return value.replace(CRLF_REGEX, '\n').trim()
 }
 
 function getStrategyDuplicateError(
@@ -104,6 +106,8 @@ export function CategoryPage() {
 
   const category = config?.categories.find(c => c.id === categoryId)
   const builtinCategory = category ? getBuiltinCategory(builtinConfig, category.id) : null
+  const isSystemCategoryModifiedByUser = category ? isSystemCategoryModified(category, config) : false
+  const isSystemCategoryBuiltinUpdateAvailable = category ? isSystemCategoryUpdateAvailable(category, builtinCategory) : false
 
   const handleAddStrategy = async () => {
     if (!newStrategyName.trim() || !newStrategyContent.trim() || !categoryId) {
@@ -396,10 +400,12 @@ export function CategoryPage() {
       addConfigLog(`категория "${category.name}" обновлена до системного значения`)
       await restartIfConnected()
       notifyConfigApplied('Категория обновлена')
-      setSystemActionTarget(null)
     }
     catch (error) {
       toast.error(`Категория обновлена, но не удалось применить изменения: ${error instanceof Error ? error.message : String(error)}`)
+    }
+    finally {
+      setSystemActionTarget(null)
     }
   }
 
@@ -430,10 +436,12 @@ export function CategoryPage() {
       addConfigLog(`стратегия "${strategy.name}" обновлена до системного значения в категории "${category.name}"`)
       await restartIfConnected()
       notifyConfigApplied('Стратегия обновлена')
-      setSystemActionTarget(null)
     }
     catch (error) {
       toast.error(`Стратегия обновлена, но не удалось применить изменения: ${error instanceof Error ? error.message : String(error)}`)
+    }
+    finally {
+      setSystemActionTarget(null)
     }
   }
 
@@ -478,22 +486,22 @@ export function CategoryPage() {
                     : (
                         <InlineMarker icon={UserRoundPlus} label="Пользовательская категория" className="text-primary/80" />
                       )}
-                  {isSystemCategoryModified(category, config) && (
+                  {isSystemCategoryModifiedByUser && (
                     <InlineMarker icon={FilePenLine} label="Системная категория изменена пользователем" className="text-warning" />
                   )}
-                  {isSystemCategory(category) && (isSystemCategoryModified(category, config) || isSystemCategoryUpdateAvailable(category, builtinCategory)) && (
+                  {isSystemCategory(category) && (isSystemCategoryModifiedByUser || isSystemCategoryBuiltinUpdateAvailable) && (
                     <InlineMarker
-                      icon={isSystemCategoryUpdateAvailable(category, builtinCategory) ? RefreshCcw : RotateCcw}
-                      label={isSystemCategoryUpdateAvailable(category, builtinCategory)
+                      icon={isSystemCategoryBuiltinUpdateAvailable ? RefreshCcw : RotateCcw}
+                      label={isSystemCategoryBuiltinUpdateAvailable
                         ? 'Обновить категорию до актуального системного значения'
                         : 'Откатить категорию к системному значению'}
-                      className={isSystemCategoryUpdateAvailable(category, builtinCategory) ? 'text-primary' : 'text-destructive'}
+                      className={isSystemCategoryBuiltinUpdateAvailable ? 'text-primary' : 'text-destructive'}
                       onClick={() => setSystemActionTarget({
                         type: 'category',
-                        title: isSystemCategoryUpdateAvailable(category, builtinCategory)
+                        title: isSystemCategoryBuiltinUpdateAvailable
                           ? 'Обновить системную категорию?'
                           : 'Откатить категорию к системному значению?',
-                        description: isSystemCategoryUpdateAvailable(category, builtinCategory)
+                        description: isSystemCategoryBuiltinUpdateAvailable
                           ? `Категория «${category.name}» будет обновлена до актуальной системной версии. Пользовательские изменения внутри категории будут сброшены.`
                           : `Категория «${category.name}» будет возвращена к системному значению. Пользовательские изменения внутри категории будут сброшены.`,
                       })}

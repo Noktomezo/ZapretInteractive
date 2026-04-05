@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -9,6 +10,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 THIRDPARTY_DIR = REPO_ROOT / "thirdparty"
 HASHES_PATH = THIRDPARTY_DIR / "hashes.json"
+UPDATE_SCRIPT_PATH = Path(__file__).with_name("update-thirdparty.py")
 
 
 def sha256_file(path: Path) -> str:
@@ -34,6 +36,32 @@ def resolve_manifest_path(key: str) -> Path:
     raise ValueError(f"Unsupported manifest group: {group}")
 
 
+def load_update_module():
+    spec = importlib.util.spec_from_file_location("update_thirdparty", UPDATE_SCRIPT_PATH)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Failed to load update script: {UPDATE_SCRIPT_PATH}")
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def build_expected_keys() -> set[str]:
+    update_module = load_update_module()
+    expected_keys: set[str] = set()
+
+    for name in update_module.BINARY_FILES:
+        expected_keys.add(f"binaries:{name}")
+
+    for name in update_module.FAKE_FILES:
+        expected_keys.add(f"fake:{name}")
+
+    for name in update_module.LIST_FILES:
+        expected_keys.add(f"lists:{name}")
+
+    return expected_keys
+
+
 def main() -> int:
     try:
         manifest = json.loads(HASHES_PATH.read_text(encoding="utf-8"))
@@ -44,9 +72,21 @@ def main() -> int:
         )
         return 1
 
+    expected_keys = build_expected_keys()
+    manifest_keys = set(manifest.keys())
     failures: list[str] = []
 
-    for key, expected_hash in manifest.items():
+    missing_keys = sorted(expected_keys - manifest_keys)
+    extra_keys = sorted(manifest_keys - expected_keys)
+
+    if missing_keys:
+        failures.append("MISSING KEYS\n  " + "\n  ".join(missing_keys))
+
+    if extra_keys:
+        failures.append("EXTRA KEYS\n  " + "\n  ".join(extra_keys))
+
+    for key in sorted(expected_keys & manifest_keys):
+        expected_hash = manifest[key]
         path = resolve_manifest_path(key)
         if not path.is_file():
             failures.append(f"MISSING  {key} -> {path.relative_to(REPO_ROOT).as_posix()}")
