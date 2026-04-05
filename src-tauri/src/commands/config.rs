@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::sync::Mutex;
 
 const DEFAULT_CONFIG: &str = include_str!("../../default-config.json");
@@ -241,6 +241,38 @@ struct NormalizedConfigResult {
     config: AppConfig,
     changed: bool,
     unrecoverable_filters: Vec<String>,
+}
+
+pub(crate) fn validate_filter_filename(filename: &str) -> Result<String, String> {
+    if filename.is_empty() {
+        return Err("Filename cannot be empty".to_string());
+    }
+    if filename.contains('/') || filename.contains('\\') {
+        return Err("Path separators not allowed in filename".to_string());
+    }
+
+    let path = Path::new(filename);
+    let mut components = path.components();
+    let first_component = components
+        .next()
+        .ok_or_else(|| "Filename cannot be empty".to_string())?;
+
+    if components.next().is_some() {
+        return Err("Path separators not allowed in filename".to_string());
+    }
+
+    match first_component {
+        Component::Normal(name) => {
+            let name = name
+                .to_str()
+                .ok_or_else(|| "Invalid filename".to_string())?;
+            if name.is_empty() || name == "." || name == ".." {
+                return Err("Invalid filename".to_string());
+            }
+            Ok(name.to_string())
+        }
+        _ => Err("Invalid filename".to_string()),
+    }
 }
 
 fn default_minimize_to_tray() -> bool {
@@ -789,10 +821,21 @@ fn normalize_config(mut config: AppConfig) -> NormalizedConfigResult {
     }
 
     for filter in config.filters.iter_mut() {
+        let validated_filename = match validate_filter_filename(&filter.filename) {
+            Ok(filename) => filename,
+            Err(error) => {
+                eprintln!(
+                    "Invalid normalized filter filename '{}': {error}",
+                    filter.filename
+                );
+                unrecoverable_filters.push(filter.filename.clone());
+                continue;
+            }
+        };
         if !filter.content.is_empty() {
             let filter_path = get_runtime_data_dir()
                 .join("filters")
-                .join(&filter.filename);
+                .join(&validated_filename);
             if let Ok(existing_content) = fs::read_to_string(&filter_path) {
                 if existing_content != filter.content
                     && let Err(error) = fs::write(&filter_path, &filter.content)
@@ -827,7 +870,7 @@ fn normalize_config(mut config: AppConfig) -> NormalizedConfigResult {
 
         let filter_path = get_runtime_data_dir()
             .join("filters")
-            .join(&filter.filename);
+            .join(&validated_filename);
         match fs::read_to_string(&filter_path) {
             Ok(content) => {
                 filter.content = content;

@@ -292,8 +292,11 @@ export function PlaceholdersPage() {
       return
     }
 
-    const builtinPlaceholder = getBuiltinPlaceholder(builtinConfig, systemPlaceholderTarget.name)
-      ?? (systemPlaceholderTarget.systemBaseName ? getBuiltinPlaceholder(builtinConfig, systemPlaceholderTarget.systemBaseName) : null)
+    const builtinPlaceholder = getBuiltinPlaceholder(
+      builtinConfig,
+      systemPlaceholderTarget.name,
+      systemPlaceholderTarget.systemBaseName,
+    )
     if (!builtinPlaceholder) {
       return
     }

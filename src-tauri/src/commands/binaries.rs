@@ -2,7 +2,7 @@ use crate::commands::process::kill_windivert_service;
 use crate::config::{
     AppConfig, AppState, current_config, ensure_config_exists_and_loaded,
     ensure_managed_resources_dir_ready, ensure_runtime_data_dir_ready, get_config_path,
-    get_managed_resources_dir, get_runtime_data_dir,
+    get_managed_resources_dir, get_runtime_data_dir, validate_filter_filename,
 };
 use futures::stream::{self, StreamExt};
 use notify::{Config as NotifyConfig, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
@@ -177,29 +177,9 @@ fn get_hashes_path() -> PathBuf {
 }
 
 fn sanitize_filename(filename: &str) -> Result<String, String> {
-    if filename.is_empty() {
-        return Err("Filename cannot be empty".to_string());
-    }
-    if filename.contains('/') || filename.contains('\\') {
-        return Err("Path separators not allowed in filename".to_string());
-    }
+    let name = validate_filter_filename(filename)?;
 
-    let name = Path::new(filename)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .ok_or_else(|| "Invalid filename".to_string())?;
-
-    if filename != name {
-        return Err("Path separators not allowed in filename".to_string());
-    }
-    if name.is_empty() {
-        return Err("Filename cannot be empty".to_string());
-    }
-    if name == "." || name == ".." {
-        return Err("Invalid filename".to_string());
-    }
-
-    let file_stem = Path::new(name)
+    let file_stem = Path::new(&name)
         .file_stem()
         .and_then(|s| s.to_str())
         .map(|s| s.to_lowercase());

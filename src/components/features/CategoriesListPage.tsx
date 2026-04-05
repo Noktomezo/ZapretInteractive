@@ -116,6 +116,10 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
   const activeCount = activeStrategies.length
   const activeStrategiesLabel = formatActiveStrategiesLabel(activeStrategies)
   const builtinCategory = getBuiltinCategory(config.builtinConfig, category.id)
+  const isSystem = isSystemCategory(category)
+  const isModified = isSystemCategoryModified(category, config.config)
+  const updateAvailable = builtinCategory ? isSystemCategoryUpdateAvailable(category, builtinCategory) : false
+  const isLegacySystemCategory = isSystem && !builtinCategory
 
   const {
     attributes,
@@ -155,14 +159,14 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
             <div className="flex items-center gap-3">
               <span className="truncate text-sm font-normal">{category.name}</span>
               <div className="flex items-center gap-1 text-muted-foreground">
-                {isSystemCategory(category)
+                {isSystem
                   ? (
                       <InlineMarker icon={Package} label="Системная категория" />
                     )
                   : (
                       <InlineMarker icon={UserRoundPlus} label="Пользовательская категория" className="text-primary/80" />
                     )}
-                {isSystemCategoryModified(category, config.config) && (
+                {isModified && (
                   <InlineMarker icon={FilePenLine} label="Системная категория изменена пользователем" className="text-warning" />
                 )}
                 {activeCount > 0
@@ -206,14 +210,21 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
         </div>
       </Link>
       <div className="flex items-center gap-1">
-        {isSystemCategory(category) && (isSystemCategoryModified(category, config.config) || isSystemCategoryUpdateAvailable(category, builtinCategory)) && (
+        {builtinCategory && isSystem && (isModified || updateAvailable) && (
           <InlineMarker
-            icon={isSystemCategoryUpdateAvailable(category, builtinCategory) ? RefreshCcw : RotateCcw}
-            label={isSystemCategoryUpdateAvailable(category, builtinCategory)
+            icon={updateAvailable ? RefreshCcw : RotateCcw}
+            label={updateAvailable
               ? 'Обновить категорию до актуального системного значения'
               : 'Откатить категорию к системному значению'}
-            className={isSystemCategoryUpdateAvailable(category, builtinCategory) ? 'text-primary' : 'text-destructive'}
+            className={updateAvailable ? 'text-primary' : 'text-destructive'}
             onClick={() => onRestoreSystem(category)}
+          />
+        )}
+        {isLegacySystemCategory && (
+          <InlineMarker
+            icon={RotateCcw}
+            label="Системная категория из старой версии приложения"
+            className="text-warning"
           />
         )}
         <Tooltip>
@@ -506,6 +517,11 @@ export function CategoriesListPage() {
     toast.success('Категория удалена')
   }
 
+  const systemCategoryBuiltin = systemCategoryTarget ? getBuiltinCategory(builtinConfig, systemCategoryTarget.id) : null
+  const systemCategoryUpdateAvailable = systemCategoryTarget && systemCategoryBuiltin
+    ? isSystemCategoryUpdateAvailable(systemCategoryTarget, systemCategoryBuiltin)
+    : false
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -565,7 +581,7 @@ export function CategoriesListPage() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>
-                {systemCategoryTarget && isSystemCategoryUpdateAvailable(systemCategoryTarget, getBuiltinCategory(builtinConfig, systemCategoryTarget.id))
+                {systemCategoryUpdateAvailable
                   ? 'Обновить системную категорию?'
                   : 'Откатить категорию к системному значению?'}
               </AlertDialogTitle>
@@ -579,12 +595,12 @@ export function CategoriesListPage() {
               <AlertDialogCancel>Отмена</AlertDialogCancel>
               <AlertDialogAction
                 onClick={async () => {
-                  if (systemCategoryTarget) {
+                  if (systemCategoryTarget && systemCategoryBuiltin) {
                     await handleRestoreSystemCategory(systemCategoryTarget)
                   }
                 }}
               >
-                Обновить
+                {systemCategoryUpdateAvailable ? 'Обновить' : 'Откатить'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

@@ -497,92 +497,97 @@ export function FiltersPage() {
         </div>
 
         <div className="space-y-3">
-          {config.filters?.map((filter: FilterType) => (
-            <div
-              key={filter.id}
-              className="flex min-h-20 items-center justify-between overflow-hidden rounded-lg border bg-card p-4"
-            >
-              <div className="flex min-w-0 w-0 flex-1 items-center gap-3 overflow-hidden">
-                <Filter className="h-4 w-4 text-muted-foreground" />
-                <div className="min-w-0 w-0 flex-1 overflow-hidden space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor={filter.id} className="block cursor-pointer truncate text-sm font-normal">
-                      {filter.name}
-                    </Label>
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      {isSystemFilter(filter)
-                        ? <InlineMarker icon={Package} label="Системный фильтр" />
-                        : <InlineMarker icon={UserRoundPlus} label="Пользовательский фильтр" className="text-primary/80" />}
-                      {isSystemFilterModified(filter) && (
-                        <InlineMarker icon={FilePenLine} label="Системный фильтр изменён пользователем" className="text-warning" />
-                      )}
-                      {isSystemFilter(filter) && (isSystemFilterModified(filter) || isSystemFilterUpdateAvailable(filter, getBuiltinFilter(builtinConfig, filter.id))) && (
-                        <InlineMarker
-                          icon={isSystemFilterUpdateAvailable(filter, getBuiltinFilter(builtinConfig, filter.id)) ? RefreshCcw : RotateCcw}
-                          label={isSystemFilterUpdateAvailable(filter, getBuiltinFilter(builtinConfig, filter.id))
-                            ? 'Обновить фильтр до актуального системного значения'
-                            : 'Откатить фильтр к системному значению'}
-                          className={isSystemFilterUpdateAvailable(filter, getBuiltinFilter(builtinConfig, filter.id)) ? 'text-primary' : 'text-destructive'}
-                          onClick={() => setSystemFilterTarget(filter)}
-                        />
-                      )}
+          {config.filters?.map((filter: FilterType) => {
+            const builtin = getBuiltinFilter(builtinConfig, filter.id)
+            const hasUpdate = isSystemFilterUpdateAvailable(filter, builtin)
+
+            return (
+              <div
+                key={filter.id}
+                className="flex min-h-20 items-center justify-between overflow-hidden rounded-lg border bg-card p-4"
+              >
+                <div className="flex min-w-0 w-0 flex-1 items-center gap-3 overflow-hidden">
+                  <Filter className="h-4 w-4 text-muted-foreground" />
+                  <div className="min-w-0 w-0 flex-1 overflow-hidden space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor={filter.id} className="block cursor-pointer truncate text-sm font-normal">
+                        {filter.name}
+                      </Label>
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        {isSystemFilter(filter)
+                          ? <InlineMarker icon={Package} label="Системный фильтр" />
+                          : <InlineMarker icon={UserRoundPlus} label="Пользовательский фильтр" className="text-primary/80" />}
+                        {isSystemFilterModified(filter) && (
+                          <InlineMarker icon={FilePenLine} label="Системный фильтр изменён пользователем" className="text-warning" />
+                        )}
+                        {isSystemFilter(filter) && (isSystemFilterModified(filter) || hasUpdate) && (
+                          <InlineMarker
+                            icon={hasUpdate ? RefreshCcw : RotateCcw}
+                            label={hasUpdate
+                              ? 'Обновить фильтр до актуального системного значения'
+                              : 'Откатить фильтр к системному значению'}
+                            className={hasUpdate ? 'text-primary' : 'text-destructive'}
+                            onClick={() => setSystemFilterTarget(filter)}
+                          />
+                        )}
+                      </div>
                     </div>
+                    <p className="truncate overflow-hidden text-xs text-muted-foreground/90" title={getPathLeaf(filter.filename)}>
+                      {getPathLeaf(filter.filename)}
+                    </p>
                   </div>
-                  <p className="truncate overflow-hidden text-xs text-muted-foreground/90" title={getPathLeaf(filter.filename)}>
-                    {getPathLeaf(filter.filename)}
-                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Switch
+                    id={filter.id}
+                    checked={filter.active}
+                    onCheckedChange={() => handleToggleFilter(filter.id)}
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    aria-label={`Редактировать фильтр ${filter.name}`}
+                    title={`Редактировать фильтр ${filter.name}`}
+                    disabled={editInFlight || deleteInFlightId === filter.id}
+                    onClick={() => openEditDialog(filter)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
+                        aria-label={`Удалить фильтр ${filter.name}`}
+                        title={`Удалить фильтр ${filter.name}`}
+                        disabled={deleteInFlightId === filter.id || editInFlight}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Удалить фильтр?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {`Фильтр "${filter.name}" будет удалён из списка, а файл ${filter.filename} будет удалён с диска.`}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Отмена</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDeleteFilter(filter)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Удалить
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
-              <div className="flex items-center gap-1">
-                <Switch
-                  id={filter.id}
-                  checked={filter.active}
-                  onCheckedChange={() => handleToggleFilter(filter.id)}
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  aria-label={`Редактировать фильтр ${filter.name}`}
-                  title={`Редактировать фильтр ${filter.name}`}
-                  disabled={editInFlight || deleteInFlightId === filter.id}
-                  onClick={() => openEditDialog(filter)}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
-                      aria-label={`Удалить фильтр ${filter.name}`}
-                      title={`Удалить фильтр ${filter.name}`}
-                      disabled={deleteInFlightId === filter.id || editInFlight}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Удалить фильтр?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {`Фильтр "${filter.name}" будет удалён из списка, а файл ${filter.filename} будет удалён с диска.`}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Отмена</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => handleDeleteFilter(filter)}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        Удалить
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         <AlertDialog open={!!systemFilterTarget} onOpenChange={open => !open && setSystemFilterTarget(null)}>
