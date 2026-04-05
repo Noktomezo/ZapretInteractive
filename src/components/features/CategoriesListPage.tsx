@@ -83,6 +83,26 @@ function formatActiveStrategiesLabel(category: Category) {
   return `${firstActiveStrategy.name} +${activeCount - 1}`
 }
 
+function formatActiveStrategiesSrText(activeCount: number) {
+  if (activeCount === 0) {
+    return 'Нет активных стратегий'
+  }
+
+  const lastTwoDigits = activeCount % 100
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+    return `${activeCount} активных стратегий`
+  }
+
+  const lastDigit = activeCount % 10
+  if (lastDigit === 1) {
+    return `${activeCount} активная стратегия`
+  }
+  if (lastDigit >= 2 && lastDigit <= 4) {
+    return `${activeCount} активные стратегии`
+  }
+  return `${activeCount} активных стратегий`
+}
+
 function SortableCategoryItem({ category, onClearActive, onRename, onDelete }: SortableCategoryItemProps) {
   const activeCount = category.strategies.filter(s => s.active).length
   const activeStrategiesLabel = formatActiveStrategiesLabel(category)
@@ -136,7 +156,7 @@ function SortableCategoryItem({ category, onClearActive, onRename, onDelete }: S
                 </span>
               )}
               <span className="sr-only">
-                {activeCount > 0 ? 'Есть активная стратегия' : 'Нет активной стратегии'}
+                {formatActiveStrategiesSrText(activeCount)}
               </span>
             </div>
             <p className="text-xs text-muted-foreground">

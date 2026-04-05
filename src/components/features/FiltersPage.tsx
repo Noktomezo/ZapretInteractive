@@ -41,6 +41,7 @@ interface FilterDraft {
 
 const TRAILING_SLASHES = /[/\\]+$/
 const PATH_SEGMENT_SEPARATOR = /[/\\]+/
+const arrayAt = Array.prototype as { at?: (this: string[], index: number) => string | undefined }
 
 function getPathLeaf(path: string) {
   const normalizedPath = path.trim().replace(TRAILING_SLASHES, '')
@@ -49,7 +50,7 @@ function getPathLeaf(path: string) {
   }
 
   const segments = normalizedPath.split(PATH_SEGMENT_SEPARATOR)
-  return segments[segments.length - 1] ?? normalizedPath
+  return arrayAt.at?.call(segments, -1) ?? normalizedPath
 }
 
 function normalizeFilterFilename(filename: string) {
@@ -518,6 +519,7 @@ export function FiltersPage() {
                   onClick={() => createContentTextareaRef.current?.focus()}
                 >
                   <Textarea
+                    data-lenis-prevent
                     ref={createContentTextareaRef}
                     id="filter-content"
                     value={draft.content}
@@ -590,6 +592,7 @@ export function FiltersPage() {
                   onClick={() => editContentTextareaRef.current?.focus()}
                 >
                   <Textarea
+                    data-lenis-prevent
                     ref={editContentTextareaRef}
                     id="edit-filter-content"
                     value={draft.content}

@@ -56,6 +56,11 @@ fn is_benign_service_delete_error(code: i32) -> bool {
 }
 
 #[cfg(windows)]
+fn is_benign_service_state_error(error: &str) -> bool {
+    error.contains("does not exist") || error.contains("marked for deletion")
+}
+
+#[cfg(windows)]
 fn to_wide(value: &str) -> Vec<u16> {
     value.encode_utf16().chain(std::iter::once(0)).collect()
 }
@@ -344,6 +349,10 @@ pub fn kill_windivert_service() -> Result<(), String> {
         let mut errors = Vec::new();
         for service_name in DRIVER_SERVICE_NAMES {
             if let Err(error) = stop_and_delete_service(service_name) {
+                if is_benign_service_state_error(&error) {
+                    eprintln!("Non-fatal driver service state for {service_name}: {error}");
+                    continue;
+                }
                 errors.push(format!("{service_name}: {error}"));
             }
         }

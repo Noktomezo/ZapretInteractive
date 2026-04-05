@@ -400,12 +400,12 @@ export function CategoryPage() {
                     size="icon"
                     className="border-warning/30 bg-warning/12 text-warning hover:bg-warning/18"
                     onClick={handleClearAllActive}
-                    aria-label="Деактивировать текущую стратегию"
+                    aria-label="Деактивировать все активные стратегии"
                   >
                     <BrushCleaning className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Деактивировать текущую стратегию</TooltipContent>
+                <TooltipContent>Деактивировать все активные стратегии</TooltipContent>
               </Tooltip>
             )}
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -565,6 +565,7 @@ export function CategoryPage() {
                   onClick={() => newStrategyContentTextareaRef.current?.focus()}
                 >
                   <Textarea
+                    data-lenis-prevent
                     ref={newStrategyContentTextareaRef}
                     id="strategy-content"
                     placeholder="--dpi-desync=fake&#10;--dpi-desync-autottl=2"
@@ -612,6 +613,7 @@ export function CategoryPage() {
                   onClick={() => editStrategyContentTextareaRef.current?.focus()}
                 >
                   <Textarea
+                    data-lenis-prevent
                     ref={editStrategyContentTextareaRef}
                     id="edit-strategy-content"
                     placeholder="--dpi-desync=fake&#10;--dpi-desync-autottl=2"
