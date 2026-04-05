@@ -14,8 +14,6 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
-import { MarkdownContent } from '@/components/ui/markdown'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useMountEffect } from '@/hooks/use-mount-effect'
 import { runWithPausedConnection } from '@/lib/connection-flow'
@@ -55,6 +53,26 @@ const APP_FOUNDATIONS = [
     href: 'https://github.com/kepano/flexoki',
   },
 ]
+
+function formatAboutTimestamp(value?: string) {
+  if (!value) {
+    return ''
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(date)
+}
 
 const PAGE_CARD_CLASS = '!border-border/60 !bg-background !shadow-none !backdrop-blur-none'
 
@@ -250,22 +268,10 @@ export function AboutPage() {
                       <p className="text-sm font-medium">Доступна новая версия приложения</p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {appUpdate.version}
-                        {appUpdate.date ? ` (${appUpdate.date})` : ''}
+                        {appUpdate.date ? ` (${formatAboutTimestamp(appUpdate.date)})` : ''}
                       </p>
                     </div>
                   </div>
-
-                  {appUpdate.notes && (
-                    <div className="mt-3 rounded-md border border-border/60 bg-background/40">
-                      <ScrollArea className="h-24">
-                        <div className="p-3">
-                          <MarkdownContent>
-                            {appUpdate.notes}
-                          </MarkdownContent>
-                        </div>
-                      </ScrollArea>
-                    </div>
-                  )}
                 </div>
               )}
             </div>

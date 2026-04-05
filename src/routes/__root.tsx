@@ -1,5 +1,6 @@
 import { createRootRoute, Outlet, useLocation } from '@tanstack/react-router'
 import { Toaster } from 'sonner'
+import { MainPageTerminalBackdrop } from '@/components/features/MainPage'
 import { Sidebar } from '@/components/features/Sidebar'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -37,11 +38,12 @@ function RootLayout() {
             <div className="flex h-screen overflow-hidden pt-[var(--titlebar-height)]">
               <Sidebar />
               <SidebarInset className="h-full min-h-0 overflow-hidden rounded-tl-xl">
-                <div className="h-full min-h-0 flex-1 overflow-hidden">
+                <div className="relative h-full min-h-0 flex-1 overflow-hidden">
+                  <MainPageTerminalBackdrop visible={location.pathname === '/'} />
                   <div
                     key={location.pathname}
                     className={cn(
-                      'flex h-full min-h-0 flex-col',
+                      'relative z-10 flex h-full min-h-0 flex-col',
                       location.pathname !== '/' && 'page-fade-in',
                     )}
                   >
