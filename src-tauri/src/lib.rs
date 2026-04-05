@@ -14,8 +14,20 @@ use tauri_plugin_autostart::ManagerExt;
 use window_vibrancy::{
     apply_acrylic, apply_mica, apply_tabbed, clear_acrylic, clear_mica, clear_tabbed,
 };
+#[cfg(target_os = "windows")]
+use windows::{
+    Win32::System::Registry::{HKEY_LOCAL_MACHINE, RRF_RT_REG_SZ, RegGetValueW},
+    core::w,
+};
 
 static CONNECTED: AtomicBool = AtomicBool::new(false);
+
+#[derive(Clone, Copy, serde::Serialize)]
+struct WindowMaterialCapabilities {
+    acrylic: bool,
+    mica: bool,
+    tabbed: bool,
+}
 
 pub(crate) fn sync_list_mode_ui(
     app: &tauri::AppHandle,
@@ -56,10 +68,74 @@ fn should_minimize_to_tray(state: &config::AppState) -> bool {
 }
 
 #[cfg(target_os = "windows")]
+fn get_windows_build_number() -> Option<u32> {
+    let mut value = [0u16; 32];
+    let mut value_size = (value.len() * std::mem::size_of::<u16>()) as u32;
+
+    if unsafe {
+        RegGetValueW(
+            HKEY_LOCAL_MACHINE,
+            w!("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"),
+            w!("CurrentBuildNumber"),
+            RRF_RT_REG_SZ,
+            None,
+            Some(value.as_mut_ptr().cast()),
+            Some(&mut value_size),
+        )
+    }
+    .ok()
+    .is_err()
+    {
+        return None;
+    }
+
+    let value_len = (value_size as usize / std::mem::size_of::<u16>()).saturating_sub(1);
+    let build_str = String::from_utf16_lossy(&value[..value_len]);
+    build_str.trim().parse::<u32>().ok()
+}
+
+#[cfg(not(target_os = "windows"))]
+fn get_windows_build_number() -> Option<u32> {
+    None
+}
+
+fn get_window_material_capabilities_inner() -> WindowMaterialCapabilities {
+    let build_number = get_windows_build_number().unwrap_or_default();
+
+    WindowMaterialCapabilities {
+        acrylic: true,
+        mica: build_number >= 22000,
+        tabbed: build_number >= 22621,
+    }
+}
+
+fn is_window_material_supported(material: config::WindowMaterial) -> bool {
+    let capabilities = get_window_material_capabilities_inner();
+
+    match material {
+        config::WindowMaterial::None | config::WindowMaterial::Acrylic => true,
+        config::WindowMaterial::Mica => capabilities.mica,
+        config::WindowMaterial::Tabbed => capabilities.tabbed,
+    }
+}
+
+#[cfg(target_os = "windows")]
 fn apply_window_material(
     window: &tauri::WebviewWindow,
     material: config::WindowMaterial,
 ) -> Result<(), String> {
+    if !is_window_material_supported(material) {
+        return Err(match material {
+            config::WindowMaterial::Mica => {
+                "Mica поддерживается только на Windows 11 (build 22000+)".to_string()
+            }
+            config::WindowMaterial::Tabbed => {
+                "Tabbed поддерживается только на Windows 11 22H2+ (build 22621+)".to_string()
+            }
+            _ => "Материал окна не поддерживается на этой системе".to_string(),
+        });
+    }
+
     let _ = clear_acrylic(window);
     let _ = clear_mica(window);
     let _ = clear_tabbed(window);
@@ -314,6 +390,7 @@ pub fn run() {
             is_autostart_enabled,
             set_autostart_enabled,
             set_window_material,
+            get_window_material_capabilities,
             was_launched_from_autostart,
         ])
         .run(tauri::generate_context!())
@@ -386,6 +463,11 @@ fn set_autostart_enabled(app: tauri::AppHandle, enabled: bool) -> Result<(), Str
 #[tauri::command]
 fn was_launched_from_autostart() -> bool {
     std::env::args().any(|arg| arg == "--autostart")
+}
+
+#[tauri::command]
+fn get_window_material_capabilities() -> WindowMaterialCapabilities {
+    get_window_material_capabilities_inner()
 }
 
 #[tauri::command]

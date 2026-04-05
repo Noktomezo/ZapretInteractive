@@ -473,6 +473,21 @@ export function CategoryPage() {
                         {strategy.active && <span className="sr-only">Активная стратегия</span>}
                       </div>
                       <div className="flex items-center gap-1">
+                        {!strategy.active && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => handleSetActive(strategy.id)}
+                                aria-label={`Активировать стратегию ${strategy.name}`}
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Активировать</TooltipContent>
+                          </Tooltip>
+                        )}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
@@ -486,38 +501,22 @@ export function CategoryPage() {
                           </TooltipTrigger>
                           <TooltipContent>Редактировать</TooltipContent>
                         </Tooltip>
-                        {strategy.active
-                          ? (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="outline"
-                                    size="icon"
-                                    className="border-warning/35 bg-warning/14 text-warning hover:bg-warning/22"
-                                    onClick={() => handleClearActive(strategy.id)}
-                                    aria-label={`Деактивировать стратегию ${strategy.name}`}
-                                  >
-                                    <BrushCleaning className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Деактивировать</TooltipContent>
-                              </Tooltip>
-                            )
-                          : (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => handleSetActive(strategy.id)}
-                                    aria-label={`Активировать стратегию ${strategy.name}`}
-                                  >
-                                    <Check className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Активировать</TooltipContent>
-                              </Tooltip>
-                            )}
+                        {strategy.active && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="border-warning/35 bg-warning/14 text-warning hover:bg-warning/22"
+                                onClick={() => handleClearActive(strategy.id)}
+                                aria-label={`Деактивировать стратегию ${strategy.name}`}
+                              >
+                                <BrushCleaning className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Деактивировать</TooltipContent>
+                          </Tooltip>
+                        )}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
@@ -534,7 +533,7 @@ export function CategoryPage() {
                         </Tooltip>
                       </div>
                     </div>
-                    <pre className="text-xs text-muted-foreground bg-muted p-3 rounded-md overflow-x-auto">
+                    <pre className="overflow-x-auto rounded-md border border-border/80 bg-background/84 p-3 text-xs text-muted-foreground shadow-[inset_0_1px_0_color-mix(in_oklab,var(--background)_60%,transparent)]">
                       {strategy.content}
                     </pre>
                   </div>

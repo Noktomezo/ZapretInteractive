@@ -1,4 +1,4 @@
-import type { WindowMaterial } from '@/lib/types'
+import type { WindowMaterial, WindowMaterialCapabilities } from '@/lib/types'
 import type { Theme } from '@/stores/theme.store'
 import {
   AppWindow,
@@ -93,6 +93,11 @@ export function SettingsPage() {
   const [autostartLoading, setAutostartLoading] = useState(true)
   const [tcpDraft, setTcpDraft] = useState('')
   const [udpDraft, setUdpDraft] = useState('')
+  const [windowMaterialCapabilities, setWindowMaterialCapabilities] = useState<WindowMaterialCapabilities>({
+    acrylic: true,
+    mica: false,
+    tabbed: false,
+  })
   const prevGlobalPortsRef = useRef<string | undefined>(undefined)
   const tcpFocusedRef = useRef(false)
   const udpFocusedRef = useRef(false)
@@ -139,6 +144,10 @@ export function SettingsPage() {
     const init = async () => {
       try {
         await load()
+        const materialCapabilities = await tauri.getWindowMaterialCapabilities()
+        if (isMounted) {
+          setWindowMaterialCapabilities(materialCapabilities)
+        }
 
         await refreshAutostartState(isMounted)
       }
@@ -256,8 +265,8 @@ export function SettingsPage() {
 
     try {
       await tauri.setWindowMaterial(value)
-      addConfigLog(`материал окна изменён: ${WINDOW_MATERIAL_OPTIONS.find(option => option.value === value)?.label ?? value}`)
-      toast.success(`Материал окна: ${WINDOW_MATERIAL_OPTIONS.find(option => option.value === value)?.label ?? value}`)
+      addConfigLog(`материал изменён: ${WINDOW_MATERIAL_OPTIONS.find(option => option.value === value)?.label ?? value}`)
+      toast.success(`Материал: ${WINDOW_MATERIAL_OPTIONS.find(option => option.value === value)?.label ?? value}`)
     }
     catch (e) {
       setWindowMaterial(previous)
@@ -267,7 +276,7 @@ export function SettingsPage() {
       catch (restoreError) {
         console.error('Failed to restore window material state:', restoreError)
       }
-      toast.error(`Ошибка настройки материала окна: ${e instanceof Error ? e.message : String(e)}`)
+      toast.error(`Ошибка настройки материала: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
@@ -331,9 +340,9 @@ export function SettingsPage() {
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <div className="space-y-0.5">
-                <Label htmlFor="window-material">Материал окна</Label>
+                <Label htmlFor="window-material">Материал</Label>
                 <p className="text-xs text-muted-foreground">
-                  Acrylic, Mica и Tabbed. Последние два поддерживаются на Windows 11
+                  Материал сайдбара и тайтлбара
                 </p>
               </div>
               <div className="w-full sm:w-[11rem]">
@@ -346,7 +355,15 @@ export function SettingsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {WINDOW_MATERIAL_OPTIONS.map(option => (
-                      <SelectItem key={option.value} value={option.value}>
+                      <SelectItem
+                        key={option.value}
+                        value={option.value}
+                        disabled={option.value === 'mica'
+                          ? !windowMaterialCapabilities.mica
+                          : option.value === 'tabbed'
+                            ? !windowMaterialCapabilities.tabbed
+                            : false}
+                      >
                         <span className="flex items-center gap-2">
                           <option.icon className="size-4 text-muted-foreground" />
                           <span>{option.label}</span>

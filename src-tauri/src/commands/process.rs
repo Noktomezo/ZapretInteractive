@@ -57,6 +57,32 @@ fn is_benign_service_delete_error(code: i32) -> bool {
 
 #[cfg(windows)]
 fn is_benign_service_state_error(error: &str) -> bool {
+    fn is_benign_error_code(code: u32) -> bool {
+        matches!(code, 1060 | 1072 | 0x80070424 | 0x80070430)
+    }
+
+    let upper = error.to_ascii_uppercase();
+    for token in upper.split(|c: char| !(c.is_ascii_hexdigit() || c == 'X')) {
+        if token.is_empty() {
+            continue;
+        }
+
+        if let Some(hex) = token.strip_prefix("0X") {
+            if let Ok(code) = u32::from_str_radix(hex, 16)
+                && is_benign_error_code(code)
+            {
+                return true;
+            }
+            continue;
+        }
+
+        if let Ok(code) = token.parse::<u32>()
+            && is_benign_error_code(code)
+        {
+            return true;
+        }
+    }
+
     error.contains("does not exist") || error.contains("marked for deletion")
 }
 

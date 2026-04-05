@@ -67,8 +67,7 @@ function formatStrategiesCount(count: number) {
   return `${count} стратегий`
 }
 
-function formatActiveStrategiesLabel(category: Category) {
-  const activeStrategies = category.strategies.filter(strategy => strategy.active)
+function formatActiveStrategiesLabel(activeStrategies: Category['strategies']) {
   const activeCount = activeStrategies.length
   const firstActiveStrategy = activeStrategies[0]
 
@@ -104,8 +103,9 @@ function formatActiveStrategiesSrText(activeCount: number) {
 }
 
 function SortableCategoryItem({ category, onClearActive, onRename, onDelete }: SortableCategoryItemProps) {
-  const activeCount = category.strategies.filter(s => s.active).length
-  const activeStrategiesLabel = formatActiveStrategiesLabel(category)
+  const activeStrategies = category.strategies.filter(strategy => strategy.active)
+  const activeCount = activeStrategies.length
+  const activeStrategiesLabel = formatActiveStrategiesLabel(activeStrategies)
 
   const {
     attributes,
