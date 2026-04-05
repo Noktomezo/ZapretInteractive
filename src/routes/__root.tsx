@@ -34,7 +34,7 @@ function RootLayout() {
         >
           <SidebarProvider className="flex-col" open={!collapsed} onOpenChange={open => setCollapsed(!open)}>
             <TitleBar />
-            <div className="flex h-screen overflow-hidden pt-[40px]">
+            <div className="flex h-screen overflow-hidden pt-[var(--titlebar-height)]">
               <Sidebar />
               <SidebarInset className="h-full min-h-0 overflow-hidden rounded-tl-xl">
                 <div className="h-full min-h-0 flex-1 overflow-hidden">
@@ -52,7 +52,7 @@ function RootLayout() {
             </div>
           </SidebarProvider>
         </div>
-        <div data-theme={resolvedTheme}>
+        <div data-theme={resolvedTheme} data-webview-material={windowMaterial}>
           <Toaster
             position="bottom-right"
             theme={resolvedTheme}

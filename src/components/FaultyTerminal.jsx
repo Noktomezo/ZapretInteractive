@@ -1,6 +1,8 @@
 import { Color, Mesh, Program, Renderer, Triangle } from 'ogl'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './FaultyTerminal.css'
+
+const RGB_MATCHER = /[\d.]+/g
 
 const vertexShader = `
 attribute vec2 position;
@@ -230,7 +232,7 @@ function colorToRgb(color, element) {
   const resolved = resolveColorValue(color, element)
 
   if (resolved.startsWith('rgb')) {
-    const matches = resolved.match(/[\d.]+/g)
+    const matches = resolved.match(RGB_MATCHER)
     if (matches?.length >= 3) {
       return matches.slice(0, 3).map(value => Number(value) / 255)
     }
@@ -297,9 +299,10 @@ export default function FaultyTerminal({
   const targetCurvatureRef = useRef(curvature)
   const currentScanlineRef = useRef(scanlineIntensity)
   const targetScanlineRef = useRef(scanlineIntensity)
+  const [resolvedThemeVersion, setResolvedThemeVersion] = useState(0)
 
-  const tintVec = useMemo(() => colorToRgb(tint, containerRef.current), [tint])
-  const backgroundVec = useMemo(() => colorToRgb(backgroundTint, containerRef.current), [backgroundTint])
+  const tintVec = useMemo(() => colorToRgb(tint, containerRef.current), [resolvedThemeVersion, tint])
+  const backgroundVec = useMemo(() => colorToRgb(backgroundTint, containerRef.current), [backgroundTint, resolvedThemeVersion])
   const mergedStyle = useMemo(
     () => ({ ...style, backgroundColor: backgroundTint }),
     [style, backgroundTint],
@@ -319,6 +322,34 @@ export default function FaultyTerminal({
     mouseRef.current = {
       x: Math.min(Math.max(x, 0), 1),
       y: Math.min(Math.max(y, 0), 1),
+    }
+  }, [])
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container)
+      return
+
+    const themedRoot = container.closest('[data-theme]') ?? document.documentElement
+    const refreshResolvedColors = () => setResolvedThemeVersion(version => version + 1)
+
+    refreshResolvedColors()
+
+    const observer = new MutationObserver((mutations) => {
+      if (mutations.some(mutation =>
+        mutation.type === 'attributes'
+        && (mutation.attributeName === 'data-theme' || mutation.attributeName === 'data-webview-material'))) {
+        refreshResolvedColors()
+      }
+    })
+
+    observer.observe(themedRoot, {
+      attributes: true,
+      attributeFilter: ['data-theme', 'data-webview-material'],
+    })
+
+    return () => {
+      observer.disconnect()
     }
   }, [])
 

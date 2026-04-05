@@ -49,6 +49,11 @@ const APP_FOUNDATIONS = [
     value: 'Windows bundle и служебные файлы',
     href: 'https://github.com/bol-van/zapret-win-bundle',
   },
+  {
+    label: 'Flexoki',
+    value: 'Используемая тема и палитра интерфейса',
+    href: 'https://github.com/kepano/flexoki',
+  },
 ]
 
 const PAGE_CARD_CLASS = '!border-border/60 !bg-background !shadow-none !backdrop-blur-none'

@@ -171,6 +171,7 @@
 
 :root {
   --radius: 0.5rem;
+  --titlebar-height: 40px;
   --text-markdown: 0.875rem;
   --text-code: 0.75rem;
   --text-ui-header: 0.875rem;
@@ -456,6 +457,15 @@
 
   .animate-pulse-glow-yellow {
     animation: pulse-glow-yellow 2s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-pulse-glow,
+    .animate-pulse-glow-primary,
+    .animate-pulse-glow-neutral,
+    .animate-pulse-glow-yellow {
+      animation: none !important;
+    }
   }
 
   @keyframes page-fade-in {

@@ -12,7 +12,7 @@ export function TitleBar() {
   return (
     <header
       className={cn(
-        'fixed top-0 left-0 right-0 z-50 flex h-[40px] cursor-grab items-center px-2.5 select-none active:cursor-grabbing',
+        'fixed top-0 left-0 right-0 z-50 flex h-[var(--titlebar-height)] cursor-grab items-center px-2.5 select-none active:cursor-grabbing',
         materialEnabled ? 'bg-transparent' : 'bg-background',
       )}
       data-tauri-drag-region
