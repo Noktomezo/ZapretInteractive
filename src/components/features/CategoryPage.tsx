@@ -633,8 +633,9 @@ export function CategoryPage() {
                           )}
                           {(() => {
                             const builtinStrategy = getBuiltinStrategy(builtinCategory, strategy.id)
+                            const updateAvailable = isSystemStrategyUpdateAvailable(strategy, builtinStrategy)
                             const canRestore = isSystemStrategy(strategy)
-                              && (isSystemStrategyModified(strategy) || isSystemStrategyUpdateAvailable(strategy, builtinStrategy))
+                              && (isSystemStrategyModified(strategy) || updateAvailable)
 
                             if (!canRestore) {
                               return null
@@ -642,18 +643,18 @@ export function CategoryPage() {
 
                             return (
                               <InlineMarker
-                                icon={isSystemStrategyUpdateAvailable(strategy, builtinStrategy) ? RefreshCcw : RotateCcw}
-                                label={isSystemStrategyUpdateAvailable(strategy, builtinStrategy)
+                                icon={updateAvailable ? RefreshCcw : RotateCcw}
+                                label={updateAvailable
                                   ? 'Обновить стратегию до актуального системного значения'
                                   : 'Откатить стратегию к системному значению'}
-                                className={isSystemStrategyUpdateAvailable(strategy, builtinStrategy) ? 'text-primary' : 'text-destructive'}
+                                className={updateAvailable ? 'text-primary' : 'text-destructive'}
                                 onClick={() => setSystemActionTarget({
                                   type: 'strategy',
                                   strategyId: strategy.id,
-                                  title: isSystemStrategyUpdateAvailable(strategy, builtinStrategy)
+                                  title: updateAvailable
                                     ? 'Обновить системную стратегию?'
                                     : 'Откатить стратегию к системному значению?',
-                                  description: isSystemStrategyUpdateAvailable(strategy, builtinStrategy)
+                                  description: updateAvailable
                                     ? `Стратегия «${strategy.name}» будет обновлена до актуальной системной версии.`
                                     : `Стратегия «${strategy.name}» будет возвращена к системному значению.`,
                                 })}

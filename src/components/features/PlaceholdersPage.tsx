@@ -367,63 +367,70 @@ export function PlaceholdersPage() {
                 </div>
               )
             : (
-                config.placeholders.map((placeholder: Placeholder, index: number) => (
-                  <div
-                    key={`${index}-${placeholder.name}`}
-                    className="bg-card flex min-h-20 items-center justify-between gap-4 overflow-hidden rounded-lg border p-4"
-                  >
-                    <div className="flex min-w-0 w-0 flex-1 items-center gap-3 overflow-hidden">
-                      <FileCode className="h-4 w-4 text-muted-foreground" />
-                      <div className="min-w-0 w-0 flex-1 overflow-hidden space-y-1">
-                        <div className="flex items-center gap-2 truncate text-sm font-normal text-foreground">
-                          {'{{'}
-                          {placeholder.name}
-                          {'}}'}
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            {isSystemPlaceholder(placeholder)
-                              ? <InlineMarker icon={Package} label="Системный плейсхолдер" />
-                              : <InlineMarker icon={UserRoundPlus} label="Пользовательский плейсхолдер" className="text-primary/80" />}
-                            {isSystemPlaceholderModified(placeholder) && (
-                              <InlineMarker icon={FilePenLine} label="Системный плейсхолдер изменён пользователем" className="text-warning" />
-                            )}
-                            {isSystemPlaceholder(placeholder) && (isSystemPlaceholderModified(placeholder) || isSystemPlaceholderUpdateAvailable(placeholder, getBuiltinPlaceholder(builtinConfig, placeholder.name, placeholder.systemBaseName))) && (
-                              <InlineMarker
-                                icon={isSystemPlaceholderUpdateAvailable(placeholder, getBuiltinPlaceholder(builtinConfig, placeholder.name, placeholder.systemBaseName)) ? RefreshCcw : RotateCcw}
-                                label={isSystemPlaceholderUpdateAvailable(placeholder, getBuiltinPlaceholder(builtinConfig, placeholder.name, placeholder.systemBaseName))
-                                  ? 'Обновить плейсхолдер до актуального системного значения'
-                                  : 'Откатить плейсхолдер к системному значению'}
-                                className={isSystemPlaceholderUpdateAvailable(placeholder, getBuiltinPlaceholder(builtinConfig, placeholder.name, placeholder.systemBaseName)) ? 'text-primary' : 'text-destructive'}
-                                onClick={() => setSystemPlaceholderTarget(placeholder)}
-                              />
-                            )}
+                config.placeholders.map((placeholder: Placeholder, index: number) => {
+                  const builtin = getBuiltinPlaceholder(builtinConfig, placeholder.name, placeholder.systemBaseName)
+                  const isSystem = isSystemPlaceholder(placeholder)
+                  const isModified = isSystemPlaceholderModified(placeholder)
+                  const hasUpdate = isSystemPlaceholderUpdateAvailable(placeholder, builtin)
+
+                  return (
+                    <div
+                      key={`${index}-${placeholder.name}`}
+                      className="bg-card flex min-h-20 items-center justify-between gap-4 overflow-hidden rounded-lg border p-4"
+                    >
+                      <div className="flex min-w-0 w-0 flex-1 items-center gap-3 overflow-hidden">
+                        <FileCode className="h-4 w-4 text-muted-foreground" />
+                        <div className="min-w-0 w-0 flex-1 overflow-hidden space-y-1">
+                          <div className="flex items-center gap-2 truncate text-sm font-normal text-foreground">
+                            {'{{'}
+                            {placeholder.name}
+                            {'}}'}
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              {isSystem
+                                ? <InlineMarker icon={Package} label="Системный плейсхолдер" />
+                                : <InlineMarker icon={UserRoundPlus} label="Пользовательский плейсхолдер" className="text-primary/80" />}
+                              {isModified && (
+                                <InlineMarker icon={FilePenLine} label="Системный плейсхолдер изменён пользователем" className="text-warning" />
+                              )}
+                              {isSystem && (isModified || hasUpdate) && (
+                                <InlineMarker
+                                  icon={hasUpdate ? RefreshCcw : RotateCcw}
+                                  label={hasUpdate
+                                    ? 'Обновить плейсхолдер до актуального системного значения'
+                                    : 'Откатить плейсхолдер к системному значению'}
+                                  className={hasUpdate ? 'text-primary' : 'text-destructive'}
+                                  onClick={() => setSystemPlaceholderTarget(placeholder)}
+                                />
+                              )}
+                            </div>
+                          </div>
+                          <div className="truncate overflow-hidden text-xs text-muted-foreground/90" title={resolvePlaceholderPath(placeholder.path)}>
+                            {resolvePlaceholderPath(placeholder.path)}
                           </div>
                         </div>
-                        <div className="truncate overflow-hidden text-xs text-muted-foreground/90" title={resolvePlaceholderPath(placeholder.path)}>
-                          {resolvePlaceholderPath(placeholder.path)}
-                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          aria-label={`Редактировать плейсхолдер ${placeholder.name}`}
+                          onClick={() => handleEdit(index, placeholder)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
+                          aria-label={`Удалить плейсхолдер ${placeholder.name}`}
+                          onClick={() => handleDelete(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        aria-label={`Редактировать плейсхолдер ${placeholder.name}`}
-                        onClick={() => handleEdit(index, placeholder)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
-                        aria-label={`Удалить плейсхолдер ${placeholder.name}`}
-                        onClick={() => handleDelete(index)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))
+                  )
+                })
               )}
         </div>
 

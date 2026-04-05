@@ -50,13 +50,34 @@ def build_expected_keys() -> set[str]:
     update_module = load_update_module()
     expected_keys: set[str] = set()
 
-    for name in update_module.BINARY_FILES:
+    missing_constants: list[str] = []
+    binary_files = getattr(update_module, "BINARY_FILES", None)
+    fake_files = getattr(update_module, "FAKE_FILES", None)
+    list_files = getattr(update_module, "LIST_FILES", None)
+
+    if binary_files is None:
+        missing_constants.append("BINARY_FILES")
+        binary_files = []
+    if fake_files is None:
+        missing_constants.append("FAKE_FILES")
+        fake_files = []
+    if list_files is None:
+        missing_constants.append("LIST_FILES")
+        list_files = []
+
+    if missing_constants:
+        raise RuntimeError(
+            "update-thirdparty.py is missing required managed file lists: "
+            + ", ".join(missing_constants)
+        )
+
+    for name in binary_files:
         expected_keys.add(f"binaries:{name}")
 
-    for name in update_module.FAKE_FILES:
+    for name in fake_files:
         expected_keys.add(f"fake:{name}")
 
-    for name in update_module.LIST_FILES:
+    for name in list_files:
         expected_keys.add(f"lists:{name}")
 
     return expected_keys

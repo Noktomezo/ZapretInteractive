@@ -403,10 +403,12 @@ export function CategoriesListPage() {
       addConfigLog(`категория "${category.name}" обновлена до системного значения`)
       await restartIfConnected()
       notifyConfigApplied('Категория обновлена')
-      setSystemCategoryTarget(null)
     }
     catch (error) {
       toast.error(`Категория обновлена, но не удалось применить изменения: ${error instanceof Error ? error.message : String(error)}`)
+    }
+    finally {
+      setSystemCategoryTarget(null)
     }
   }
 
