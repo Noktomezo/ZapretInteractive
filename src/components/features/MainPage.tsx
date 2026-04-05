@@ -23,7 +23,6 @@ import { useAppStore } from '@/stores/app.store'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
 import { useDownloadStore } from '@/stores/download.store'
-import { useThemeStore } from '@/stores/theme.store'
 import { useUpdaterStore } from '@/stores/updater.store'
 
 const terminalGridMul: [number, number] = [2, 1]
@@ -55,7 +54,7 @@ export function MainPage() {
   const availableUpdates = useAppStore(state => state.availableUpdates)
   const configMissing = useAppStore(state => state.configMissing)
   const initialize = useAppStore(state => state.initialize)
-  const mainPageVisited = useAppStore(state => state.mainPageVisited)
+  const mainTerminalTimeOffset = useAppStore(state => state.mainTerminalTimeOffset)
   const setMainPageVisited = useAppStore(state => state.setMainPageVisited)
   const setConfigMissing = useAppStore(state => state.setConfigMissing)
   const addConfigLog = useConnectionStore(state => state.addConfigLog)
@@ -65,24 +64,17 @@ export function MainPage() {
   const dismissedAppUpdateVersion = useUpdaterStore(state => state.dismissedVersionThisSession)
   const installAvailableAppUpdate = useUpdaterStore(state => state.installAvailableUpdate)
   const dismissCurrentAppUpdate = useUpdaterStore(state => state.dismissCurrentVersionUntilRestart)
-  const resolvedTheme = useThemeStore(state => state.resolvedTheme)
 
-  const terminalTint = resolvedTheme === 'dark'
-    ? (status === 'connected'
-        ? '#4ADE80'
-        : status === 'connecting' || status === 'disconnecting'
-          ? '#FACC15'
-          : '#F87171')
-    : (status === 'connected'
-        ? '#1F6A4C'
-        : status === 'connecting' || status === 'disconnecting'
-          ? '#946200'
-          : '#B23A3A')
-  const terminalBackgroundTint = resolvedTheme === 'dark' ? '#090C0A' : '#F6F7F4'
+  const terminalTint = status === 'connected'
+    ? 'var(--terminal-tint-success)'
+    : status === 'connecting' || status === 'disconnecting'
+      ? 'var(--terminal-tint-warning)'
+      : 'var(--terminal-tint-danger)'
+  const terminalBackgroundTint = 'var(--terminal-background-tint)'
   const terminalFlickerAmount = status === 'connected' ? 0 : 1
-  const terminalCurvature = status === 'connected' ? 0 : 0.1
+  const terminalCurvature = status === 'connected' || status === 'disconnecting' ? 0 : 0.1
   const terminalScanlineIntensity = status === 'disconnected' ? 0.22 : 0
-  const shouldAnimateTerminal = !mainPageVisited
+  const [shouldAnimateTerminal] = useState(() => !useAppStore.getState().mainPageVisited)
   const selectedListMode = config?.listMode ?? 'ipset'
   const [focusedListModeIndex, setFocusedListModeIndex] = useState<number | null>(null)
   const activeListModeIndex = focusedListModeIndex ?? (selectedListMode === 'exclude' ? 1 : 0)
@@ -111,7 +103,9 @@ export function MainPage() {
   }
 
   useMountEffect(() => {
-    setMainPageVisited(true)
+    if (!useAppStore.getState().mainPageVisited) {
+      setMainPageVisited(true)
+    }
   })
 
   const handleListModeKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
@@ -563,6 +557,7 @@ export function MainPage() {
           gridMul={terminalGridMul}
           digitSize={1.2}
           timeScale={0.1}
+          timeOffset={mainTerminalTimeOffset}
           pause={false}
           scanlineIntensity={terminalScanlineIntensity}
           glitchAmount={1}
@@ -592,16 +587,16 @@ export function MainPage() {
               }
               variant="ghost"
               className={cn(
-                'h-32 w-32 rounded-full transition-[background-color,color,box-shadow,transform] duration-500 ease-out',
+                'h-32 w-32 rounded-full border border-white/10 shadow-lg shadow-black/10 backdrop-blur-xl transition-[background-color,color,box-shadow,transform,backdrop-filter] duration-500 ease-out disabled:opacity-100',
                 status === 'connected'
-                && 'animate-pulse-glow bg-green-600 text-white hover:bg-green-500 dark:hover:bg-green-500',
+                && 'animate-pulse-glow bg-success/48 text-white hover:border-white/14 hover:bg-success/60 hover:backdrop-blur-xl dark:border-white/8 dark:text-background',
                 status === 'connecting'
-                && 'animate-pulse-glow-yellow bg-yellow-600 text-white hover:bg-yellow-500',
+                && 'animate-pulse-glow-yellow border-warning/30 bg-warning/48 text-white dark:border-white/8 dark:text-background',
                 status === 'disconnecting'
-                && 'animate-pulse-glow-yellow bg-orange-600 text-white hover:bg-orange-500',
-                status === 'error' && 'bg-red-600 text-white hover:bg-red-500',
+                && 'animate-pulse-glow-yellow border-warning/30 bg-warning/48 text-white dark:border-white/8 dark:text-background',
+                status === 'error' && 'bg-destructive/48 text-white hover:border-white/14 hover:bg-destructive/60 hover:backdrop-blur-xl dark:border-white/8 dark:text-background',
                 status === 'disconnected'
-                && 'animate-pulse-glow-primary bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200',
+                && 'animate-pulse-glow-neutral bg-foreground/48 text-background hover:border-white/14 hover:bg-foreground/60 hover:backdrop-blur-xl dark:border-white/8',
               )}
             >
               <Power className="size-12" />
@@ -631,8 +626,8 @@ export function MainPage() {
               className={cn(
                 'pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-md border shadow-sm transition-all duration-300 ease-out',
                 selectedListMode === 'ipset'
-                  ? 'translate-x-0 border-green-500/35 bg-green-500/18'
-                  : 'translate-x-full border-amber-500/35 bg-amber-500/18',
+                  ? 'translate-x-0 border-success/30 bg-success/10'
+                  : 'translate-x-full border-warning/30 bg-warning/12',
               )}
             />
             {status === 'disconnected'
@@ -654,7 +649,7 @@ export function MainPage() {
                         className={cn(
                           'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
                           selectedListMode === 'ipset'
-                            ? 'text-green-700 dark:text-green-300'
+                            ? 'text-success'
                             : 'text-foreground/80 hover:text-foreground',
                           listModeDisabled && 'cursor-not-allowed opacity-50',
                         )}
@@ -683,7 +678,7 @@ export function MainPage() {
                     className={cn(
                       'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
                       selectedListMode === 'ipset'
-                        ? 'text-green-700 dark:text-green-300'
+                        ? 'text-success'
                         : 'text-foreground/80 hover:text-foreground',
                       listModeDisabled && 'cursor-not-allowed opacity-50',
                     )}
@@ -710,7 +705,7 @@ export function MainPage() {
                         className={cn(
                           'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
                           selectedListMode === 'exclude'
-                            ? 'text-amber-700 dark:text-amber-300'
+                            ? 'text-warning'
                             : 'text-foreground/80 hover:text-foreground',
                           listModeDisabled && 'cursor-not-allowed opacity-50',
                         )}
@@ -739,7 +734,7 @@ export function MainPage() {
                     className={cn(
                       'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
                       selectedListMode === 'exclude'
-                        ? 'text-amber-700 dark:text-amber-300'
+                        ? 'text-warning'
                         : 'text-foreground/80 hover:text-foreground',
                       listModeDisabled && 'cursor-not-allowed opacity-50',
                     )}

@@ -10,13 +10,13 @@
       "strategies": [
         {
           "id": "preset-http-1",
-          "name": "HTTP 1",
+          "name": "v1",
           "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=fake\n--dpi-desync-autottl=2\n--dpi-desync-fooling=md5sig",
           "active": true
         },
         {
           "id": "preset-http-2",
-          "name": "HTTP 2",
+          "name": "v2",
           "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=fakedsplit\n--dpi-desync-ttl=4\n--dpi-desync-repeats=16",
           "active": false
         }
@@ -28,127 +28,127 @@
       "strategies": [
         {
           "id": "youtube-v01",
-          "name": "YouTube v01",
+          "name": "v1",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--ip-id=zero\n--dpi-desync=multisplit\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-pos=1\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}",
           "active": false
         },
         {
           "id": "youtube-v02",
-          "name": "YouTube v02",
+          "name": "v2",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=multisplit\n--dpi-desync-split-pos=1,sniext+1\n--dpi-desync-split-seqovl=1",
           "active": false
         },
         {
           "id": "youtube-v03",
-          "name": "YouTube v03",
+          "name": "v3",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=fake,multisplit\n--dpi-desync-split-pos=2,sld\n--dpi-desync-fake-tls=0x0F0F0F0F\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=ggpht.com\n--dpi-desync-split-seqovl=620\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fooling=badsum,badseq",
           "active": false
         },
         {
           "id": "youtube-v04",
-          "name": "YouTube v04",
+          "name": "v4",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=split2\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}",
           "active": false
         },
         {
           "id": "youtube-v05",
-          "name": "YouTube v05",
+          "name": "v5",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=fake,fakeddisorder\n--dpi-desync-split-pos=10,midsld\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=fonts.google.com\n--dpi-desync-fake-tls=0x0F0F0F0F\n--dpi-desync-fake-tls-mod=none\n--dpi-desync-fakedsplit-pattern={{TLS_CLIENTHELLO_VK}}\n--dpi-desync-split-seqovl=336\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOSUSLUGI}}\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-badseq-increment=0",
           "active": false
         },
         {
           "id": "youtube-v06",
-          "name": "YouTube v06",
+          "name": "v6",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=multidisorder\n--dpi-desync-split-pos=7,sld+1\n--dpi-desync-fake-tls=0x0F0F0F0F\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com\n--dpi-desync-fooling=badseq\n--dpi-desync-autottl=2:2-12",
           "active": false
         },
         {
           "id": "youtube-v07",
-          "name": "YouTube v07",
+          "name": "v7",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=multidisorder\n--dpi-desync-split-pos=1,midsld,endhost-1\n--dpi-desync-repeats=2\n--dpi-desync-fooling=md5sig\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com",
           "active": false
         },
         {
           "id": "youtube-v08",
-          "name": "YouTube v08",
+          "name": "v8",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=fake,multisplit\n--dpi-desync-fake-tls=0x00000000\n--dpi-desync-fake-tls=!\n--dpi-desync-split-pos=1,midsld\n--dpi-desync-repeats=2\n--dpi-desync-fooling=badseq\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com",
           "active": false
         },
         {
           "id": "youtube-v09",
-          "name": "YouTube v09",
+          "name": "v9",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync-repeats=6\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=2\n--dpi-desync=multidisorder\n--dpi-desync-split-pos=1,midsld\n--dpi-desync-fake-quic={{QUIC_INITIAL_GOOGLE}}",
           "active": false
         },
         {
           "id": "youtube-v10",
-          "name": "YouTube v10",
+          "name": "v10",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=multisplit\n--dpi-desync-split-pos=1,2\n--dpi-desync-split-seqovl=4\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com",
           "active": false
         },
         {
           "id": "youtube-v11",
-          "name": "YouTube v11",
+          "name": "v11",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=multidisorder\n--dpi-desync-split-pos=2,5,105,host+5,sld-1,endsld-5,endsld",
           "active": false
         },
         {
           "id": "youtube-v12",
-          "name": "YouTube v12",
+          "name": "v12",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=multidisorder\n--dpi-desync-split-pos=1,midsld\n--dpi-desync-repeats=2",
           "active": false
         },
         {
           "id": "youtube-v13",
-          "name": "YouTube v13",
+          "name": "v13",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=fake,multidisorder\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=10000000\n--dpi-desync-repeats=2\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=fonts.google.com",
           "active": false
         },
         {
           "id": "youtube-v14",
-          "name": "YouTube v14",
+          "name": "v14",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=fake,multidisorder\n--dpi-desync-split-pos=10,midsld\n--dpi-desync-fake-tls=0x00000000\n--dpi-desync-fake-tls=0x0F0F0F0F\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=fonts.google.com\n--dpi-desync-split-seqovl=336\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fooling=badseq",
           "active": false
         },
         {
           "id": "youtube-v15",
-          "name": "YouTube v15",
+          "name": "v15",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=fake,multisplit\n--dpi-desync-split-pos=2,sld\n--dpi-desync-fake-tls=0x0F0F0F0F\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=ggpht.com\n--dpi-desync-split-seqovl=2108\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fooling=badsum,badseq",
           "active": true
         },
         {
           "id": "youtube-v16",
-          "name": "YouTube v16",
+          "name": "v16",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=multisplit\n--dpi-desync-split-pos=1,sniext+1\n--dpi-desync-split-seqovl=1\n--dpi-desync-fooling=badsum,badseq\n--dpi-desync-badseq-increment=0",
           "active": false
         },
         {
           "id": "youtube-v17",
-          "name": "YouTube v17",
+          "name": "v17",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=fakeddisorder\n--dpi-desync-fooling=md5sig\n--dup=1\n--dup-cutoff=n2\n--dup-fooling=md5sig\n--dpi-desync-split-pos=method+2",
           "active": false
         },
         {
           "id": "youtube-v18",
-          "name": "YouTube v18",
+          "name": "v18",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--ip-id=zero\n--dpi-desync=fake,hostfakesplit\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com\n--dpi-desync-hostfakesplit-mod=host=www.google.com,altorder=1\n--dpi-desync-fooling=ts",
           "active": false
         },
         {
           "id": "youtube-v19",
-          "name": "YouTube v19",
+          "name": "v19",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=hostfakesplit\n--dpi-desync-hostfakesplit-mod=host=google.com\n--dpi-desync-fooling=ts",
           "active": false
         },
         {
           "id": "youtube-v20",
-          "name": "YouTube v20",
+          "name": "v20",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--ip-id=zero\n--dpi-desync=fake,fakedsplit\n--dpi-desync-repeats=6\n--dpi-desync-fooling=ts\n--dpi-desync-fakedsplit-pattern=0x00\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}",
           "active": false
         },
         {
           "id": "youtube-v21",
-          "name": "YouTube v21",
+          "name": "v21",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--ip-id=zero\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=ts\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}",
           "active": false
         }
@@ -160,55 +160,55 @@
       "strategies": [
         {
           "id": "tcp-v1",
-          "name": "TCP v1",
+          "name": "v1",
           "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=split2\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-seqovl-pattern={{STUN}}",
           "active": true
         },
         {
           "id": "tcp-v2",
-          "name": "TCP v2",
+          "name": "v2",
           "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,fakeddisorder\n--dpi-desync-split-pos=10,midsld\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=fonts.google.com\n--dpi-desync-fake-tls=0x0F0F0F0F\n--dpi-desync-fake-tls-mod=none\n--dpi-desync-fakedsplit-pattern={{TLS_CLIENTHELLO_VK}}\n--dpi-desync-split-seqovl=336\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOSUSLUGI}}\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-badseq-increment=0",
           "active": false
         },
         {
           "id": "tcp-v3",
-          "name": "TCP v3",
+          "name": "v3",
           "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,fakeddisorder\n--dpi-desync-split-pos=10,midsld\n--dpi-desync-fake-tls={{T2}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=m.ok.ru\n--dpi-desync-fake-tls=0x0F0F0F0F\n--dpi-desync-fake-tls-mod=none\n--dpi-desync-fakedsplit-pattern={{TLS_CLIENTHELLO_VK}}\n--dpi-desync-split-seqovl=336\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOSUSLUGI}}\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-badseq-increment=0",
           "active": false
         },
         {
           "id": "tcp-v4",
-          "name": "TCP v4",
+          "name": "v4",
           "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=multisplit\n--dpi-desync-split-seqovl=582\n--dpi-desync-split-pos=1\n--dpi-desync-split-seqovl-pattern={{STUN}}",
           "active": false
         },
         {
           "id": "tcp-v5",
-          "name": "TCP v5",
+          "name": "v5",
           "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,fakeddisorder\n--dpi-desync-split-pos=1\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-fake-tls-mod=none\n--dpi-desync-fakedsplit-pattern={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-badseq-increment=0",
           "active": false
         },
         {
           "id": "tcp-v6",
-          "name": "TCP v6",
+          "name": "v6",
           "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=hostfakesplit\n--dpi-desync-hostfakesplit-mod=host=i2.photo.2gis.com\n--dpi-desync-hostfakesplit-midhost=host-2\n--dpi-desync-split-seqovl=726\n--dpi-desync-fooling=badsum,badseq\n--dpi-desync-badseq-increment=0",
           "active": false
         },
         {
           "id": "tcp-v7",
-          "name": "TCP v7",
+          "name": "v7",
           "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=654\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{STUN}}\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-badseq-increment=0",
           "active": false
         },
         {
           "id": "tcp-v8",
-          "name": "TCP v8",
+          "name": "v8",
           "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake\n--dpi-desync-fooling=ts\n--dpi-desync-fake-tls={{4PDA}}\n--dpi-desync-fake-tls-mod=none",
           "active": false
         },
         {
           "id": "tcp-v9",
-          "name": "TCP v9",
+          "name": "v9",
           "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=hostfakesplit\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-hostfakesplit-mod=host=mapgl.2gis.com\n--dpi-desync-badseq-increment=0",
           "active": false
         }
@@ -220,19 +220,19 @@
       "strategies": [
         {
           "id": "quic-v1",
-          "name": "QUIC v1",
+          "name": "v1",
           "content": "--filter-l7=quic\n--dpi-desync=fake\n--dpi-desync-repeats=4\n--dpi-desync-fake-quic={{QUIC_INITIAL_GOOGLE}}",
           "active": true
         },
         {
           "id": "quic-v2",
-          "name": "QUIC v2",
+          "name": "v2",
           "content": "--filter-l7=quic\n--dpi-desync=fake\n--dpi-desync-repeats=6\n--dpi-desync-fake-quic={{QUIC_INITIAL_GOOGLE}}",
           "active": false
         },
         {
           "id": "quic-v3",
-          "name": "QUIC v3",
+          "name": "v3",
           "content": "--filter-l7=quic\n--dpi-desync=fake\n--dpi-desync-fake-quic={{QUIC_INITIAL_GOOGLE}}",
           "active": false
         }
@@ -244,7 +244,7 @@
       "strategies": [
         {
           "id": "discord-stun-v1",
-          "name": "Discord + Stun v1",
+          "name": "v1",
           "content": "--filter-udp=19294-19344,50000-50100\n--filter-l7=discord,stun\n--dpi-desync=fake\n--dpi-desync-repeats=6",
           "active": true
         }
@@ -256,9 +256,27 @@
       "strategies": [
         {
           "id": "unknown-udp-v1",
-          "name": "Unknown UDP v1",
-          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--dpi-desync=fake\n--dpi-desync-cutoff=d2\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{QUIC_INITIAL_GOOGLE}}",
-          "active": true
+          "name": "v1",
+          "active": true,
+          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-cutoff=d2\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{STUN}}"
+        },
+        {
+          "id": "unknown-udp-v2",
+          "name": "v2",
+          "active": false,
+          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=10\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{QUIC_INITIAL_GOOGLE}}\n--dpi-desync-cutoff=n2"
+        },
+        {
+          "id": "unknown-udp-v3",
+          "name": "v3",
+          "active": false,
+          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=10\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{QUIC_INITIAL_GOOGLE}}\n--dpi-desync-cutoff=n3"
+        },
+        {
+          "id": "unknown-udp-v4",
+          "name": "v4",
+          "active": false,
+          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=10\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{QUIC_INITIAL_GOOGLE}}\n--dpi-desync-cutoff=n4"
         }
       ]
     }

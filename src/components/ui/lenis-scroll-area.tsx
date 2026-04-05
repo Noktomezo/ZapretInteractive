@@ -53,7 +53,7 @@ const LenisScrollArea = React.forwardRef<
     <ScrollAreaPrimitive.Root
       ref={rootRef}
       data-slot="lenis-scroll-area"
-      className={cn('relative min-h-0 overflow-hidden', className)}
+      className={cn('relative min-h-0 min-w-0 overflow-hidden', className)}
       {...props}
     >
       <ScrollAreaPrimitive.Viewport
@@ -61,7 +61,7 @@ const LenisScrollArea = React.forwardRef<
         data-slot="lenis-scroll-area-viewport"
         className="focus-visible:ring-ring/50 size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:outline-1"
       >
-        <div ref={contentRef} className={cn('min-h-full', contentClassName)}>
+        <div ref={contentRef} className={cn('min-h-full min-w-0 w-full max-w-full', contentClassName)}>
           {children}
         </div>
       </ScrollAreaPrimitive.Viewport>

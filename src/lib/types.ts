@@ -68,3 +68,9 @@ export interface EnsureManagedFilesResult {
   config_reloaded: boolean
   unrecoverable_filters: string[]
 }
+
+export interface WindowMaterialCapabilities {
+  acrylic: boolean
+  mica: boolean
+  tabbed: boolean
+}

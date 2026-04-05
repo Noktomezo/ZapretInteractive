@@ -1,6 +1,6 @@
 import type { Filter as FilterType } from '@/lib/types'
 import { Filter, FolderOpen, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -28,6 +28,7 @@ import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useMountEffect } from '@/hooks/use-mount-effect'
+import { autosizeTextarea, forwardTextareaWheelToScrollArea } from '@/lib/editor-scroll'
 import * as tauri from '@/lib/tauri'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
@@ -38,7 +39,23 @@ interface FilterDraft {
   content: string
 }
 
-const NORMALIZE_SLASHES_REGEX = /[/\\]+/g
+const TRAILING_SLASHES = /[/\\]+$/
+const PATH_SEGMENT_SEPARATOR = /[/\\]+/
+const arrayAt = Array.prototype as { at?: (this: string[], index: number) => string | undefined }
+
+function getPathLeaf(path: string) {
+  const normalizedPath = path.trim().replace(TRAILING_SLASHES, '')
+  if (!normalizedPath) {
+    return path.trim()
+  }
+
+  const segments = normalizedPath.split(PATH_SEGMENT_SEPARATOR)
+  return arrayAt.at?.call(segments, -1) ?? normalizedPath
+}
+
+function normalizeFilterFilename(filename: string) {
+  return getPathLeaf(filename.trim())
+}
 
 const emptyDraft: FilterDraft = {
   name: '',
@@ -67,28 +84,18 @@ export function FiltersPage() {
   const [editInFlight, setEditInFlight] = useState(false)
   const [deleteInFlightId, setDeleteInFlightId] = useState<string | null>(null)
   const [reservedBundledFilenames, setReservedBundledFilenames] = useState<Set<string>>(new Set())
-  const [filtersPath, setFiltersPath] = useState('')
   const latestMutationIdRef = useRef(0)
+  const createContentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const editContentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   useMountEffect(() => {
     Promise.all([
       load(),
-      tauri.getFiltersPath().then(setFiltersPath),
       tauri.getReservedFilterFilenames().then((names) => {
         setReservedBundledFilenames(new Set(names.map(name => name.trim().toLowerCase())))
       }),
     ]).catch(console.error)
   })
-
-  const resolveFilterPath = useMemo(() => {
-    return (filename: string) => {
-      if (!filtersPath) {
-        return filename
-      }
-      const normalizedFilename = filename.replace(NORMALIZE_SLASHES_REGEX, '\\')
-      return `${filtersPath}\\${normalizedFilename}`
-    }
-  }, [filtersPath])
 
   const resetDraft = () => {
     setDraft(emptyDraft)
@@ -97,6 +104,10 @@ export function FiltersPage() {
     setEditLoadSucceeded(false)
     setCurrentLoadId(null)
     currentLoadIdRef.current = null
+    requestAnimationFrame(() => {
+      autosizeTextarea(createContentTextareaRef.current)
+      autosizeTextarea(editContentTextareaRef.current)
+    })
   }
 
   const updateDraft = (updates: Partial<FilterDraft>) => {
@@ -104,9 +115,9 @@ export function FiltersPage() {
   }
 
   const validateFilename = (filename: string, currentFilename?: string) => {
-    const normalized = filename.trim()
+    const normalized = normalizeFilterFilename(filename)
     const normalizedLower = normalized.toLowerCase()
-    const currentFilenameLower = currentFilename?.trim().toLowerCase()
+    const currentFilenameLower = currentFilename ? normalizeFilterFilename(currentFilename).toLowerCase() : undefined
     if (!normalized) {
       toast.error('Укажите имя файла фильтра')
       return false
@@ -114,8 +125,8 @@ export function FiltersPage() {
 
     const existingFilters = useConfigStore.getState().config?.filters || []
     const hasCollision = existingFilters.some(filter =>
-      filter.filename.trim().toLowerCase() === normalizedLower
-      && filter.filename.trim().toLowerCase() !== currentFilenameLower,
+      normalizeFilterFilename(filter.filename).toLowerCase() === normalizedLower
+      && normalizeFilterFilename(filter.filename).toLowerCase() !== currentFilenameLower,
     )
 
     if (hasCollision) {
@@ -175,7 +186,7 @@ export function FiltersPage() {
     if (!draft.name.trim() || !draft.filename.trim())
       return
 
-    const nextFilename = draft.filename.trim()
+    const nextFilename = normalizeFilterFilename(draft.filename)
     if (!validateFilename(nextFilename))
       return
 
@@ -217,21 +228,22 @@ export function FiltersPage() {
     setEditLoadSucceeded(false)
     setDraft({
       name: filter.name,
-      filename: filter.filename,
+      filename: normalizeFilterFilename(filter.filename),
       content: filter.content,
     })
 
     try {
-      const content = await tauri.loadFilterFile(filter.filename)
+      const content = await tauri.loadFilterFile(normalizeFilterFilename(filter.filename))
       if (currentLoadIdRef.current !== loadId) {
         return
       }
 
       setDraft({
         name: filter.name,
-        filename: filter.filename,
+        filename: normalizeFilterFilename(filter.filename),
         content,
       })
+      requestAnimationFrame(() => autosizeTextarea(editContentTextareaRef.current))
       setEditLoadSucceeded(true)
     }
     catch (e) {
@@ -258,18 +270,19 @@ export function FiltersPage() {
     if (!targetFilter)
       return
 
-    const nextFilename = draft.filename.trim()
+    const nextFilename = normalizeFilterFilename(draft.filename)
     if (!validateFilename(nextFilename, targetFilter.filename))
       return
 
-    const renamed = targetFilter.filename.trim().toLowerCase() !== nextFilename.trim().toLowerCase()
+    const targetFilename = normalizeFilterFilename(targetFilter.filename)
+    const renamed = targetFilename.toLowerCase() !== nextFilename.toLowerCase()
     setEditInFlight(true)
-    const originalContent = await tauri.loadFilterFile(targetFilter.filename).catch(() => draft.content)
+    const originalContent = await tauri.loadFilterFile(targetFilename).catch(() => draft.content)
     try {
       await tauri.saveFilterFile(nextFilename, draft.content)
       if (renamed) {
         try {
-          await tauri.deleteFilterFile(targetFilter.filename)
+          await tauri.deleteFilterFile(targetFilename)
         }
         catch (e) {
           await tauri.deleteFilterFile(nextFilename).catch(() => {})
@@ -291,7 +304,7 @@ export function FiltersPage() {
       await persistFilters(updatedFilters, currentFilters)
       addConfigLog(
         renamed
-          ? `фильтр "${targetFilter.name}" обновлён, файл переименован с ${targetFilter.filename} на ${nextFilename}`
+          ? `фильтр "${targetFilter.name}" обновлён, файл переименован с ${targetFilename} на ${nextFilename}`
           : `обновлён фильтр "${draft.name.trim()}"`,
       )
       resetDraft()
@@ -302,7 +315,7 @@ export function FiltersPage() {
       if (renamed) {
         await tauri.deleteFilterFile(nextFilename).catch(() => {})
       }
-      await tauri.saveFilterFile(targetFilter.filename, originalContent).catch(() => {})
+      await tauri.saveFilterFile(targetFilename, originalContent).catch(() => {})
       toast.error(`Ошибка сохранения фильтра: ${e instanceof Error ? e.message : String(e)}`)
     }
     finally {
@@ -316,11 +329,12 @@ export function FiltersPage() {
     setDeleteInFlightId(filter.id)
     let originalContent: string | undefined
     try {
+      const filterFilename = normalizeFilterFilename(filter.filename)
       try {
-        originalContent = await tauri.loadFilterFile(filter.filename)
+        originalContent = await tauri.loadFilterFile(filterFilename)
       }
       catch {}
-      await tauri.deleteFilterFile(filter.filename)
+      await tauri.deleteFilterFile(filterFilename)
       const currentFilters = useConfigStore.getState().config?.filters || []
       const nextFilters = currentFilters.filter(item => item.id !== filter.id)
       try {
@@ -328,7 +342,7 @@ export function FiltersPage() {
       }
       catch (e) {
         if (originalContent !== undefined) {
-          await tauri.saveFilterFile(filter.filename, originalContent).catch(() => {})
+          await tauri.saveFilterFile(filterFilename, originalContent).catch(() => {})
         }
         throw e
       }
@@ -336,7 +350,7 @@ export function FiltersPage() {
         resetDraft()
         setEditDialogOpen(false)
       }
-      addConfigLog(`удалён фильтр "${filter.name}" (${filter.filename})`)
+      addConfigLog(`удалён фильтр "${filter.name}" (${filterFilename})`)
       toast.success('Фильтр удалён')
     }
     catch (e) {
@@ -393,16 +407,16 @@ export function FiltersPage() {
           {config.filters?.map((filter: FilterType) => (
             <div
               key={filter.id}
-              className="flex min-h-20 items-center justify-between rounded-lg border bg-card p-4"
+              className="flex min-h-20 items-center justify-between overflow-hidden rounded-lg border bg-card p-4"
             >
-              <div className="flex min-w-0 items-center gap-3">
+              <div className="flex min-w-0 w-0 flex-1 items-center gap-3 overflow-hidden">
                 <Filter className="h-4 w-4 text-muted-foreground" />
-                <div className="min-w-0 space-y-1">
+                <div className="min-w-0 w-0 flex-1 overflow-hidden space-y-1">
                   <Label htmlFor={filter.id} className="block cursor-pointer truncate text-sm font-normal">
                     {filter.name}
                   </Label>
-                  <p className="truncate text-xs text-muted-foreground/90" title={resolveFilterPath(filter.filename)}>
-                    {resolveFilterPath(filter.filename)}
+                  <p className="truncate overflow-hidden text-xs text-muted-foreground/90" title={getPathLeaf(filter.filename)}>
+                    {getPathLeaf(filter.filename)}
                   </p>
                 </div>
               </div>
@@ -427,7 +441,7 @@ export function FiltersPage() {
                     <Button
                       variant="outline"
                       size="icon"
-                      className="border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/20 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                      className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
                       aria-label={`Удалить фильтр ${filter.name}`}
                       title={`Удалить фильтр ${filter.name}`}
                       disabled={deleteInFlightId === filter.id || editInFlight}
@@ -493,20 +507,30 @@ export function FiltersPage() {
                 />
                 {draft.filename.trim() && (
                   <p className="text-xs text-muted-foreground break-all">
-                    {resolveFilterPath(draft.filename.trim())}
+                    {getPathLeaf(draft.filename.trim())}
                   </p>
                 )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="filter-content">Содержимое фильтра</Label>
-                <LenisScrollArea className="control-surface max-h-[calc(100vh-22rem)] rounded-md">
+                <LenisScrollArea
+                  className="max-h-[calc(100vh-22rem)] rounded-md border border-border/80 bg-background/92 shadow-xs transition-[border-color,box-shadow,background-color] hover:border-border focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30"
+                  contentClassName="cursor-text"
+                  onClick={() => createContentTextareaRef.current?.focus()}
+                >
                   <Textarea
+                    data-lenis-prevent
+                    ref={createContentTextareaRef}
                     id="filter-content"
                     value={draft.content}
-                    onChange={e => updateDraft({ content: e.target.value })}
+                    onChange={(e) => {
+                      updateDraft({ content: e.target.value })
+                      autosizeTextarea(e.currentTarget)
+                    }}
+                    onWheel={forwardTextareaWheelToScrollArea}
                     placeholder="WinDivert фильтр..."
                     rows={10}
-                    className="min-h-56 resize-none overflow-hidden border-0 bg-transparent font-mono text-sm shadow-none focus-visible:border-transparent focus-visible:ring-0"
+                    className="resize-none overflow-hidden rounded-none border-0 bg-transparent px-3 py-3 font-mono text-sm shadow-none hover:border-transparent focus-visible:border-transparent focus-visible:ring-0"
                   />
                 </LenisScrollArea>
               </div>
@@ -558,23 +582,28 @@ export function FiltersPage() {
                     placeholder="my-filter.txt"
                     disabled={editLoading}
                   />
-                  {draft.filename.trim() && (
-                    <p className="text-xs text-muted-foreground break-all">
-                      {resolveFilterPath(draft.filename.trim())}
-                    </p>
-                  )}
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-filter-content">Содержимое фильтра</Label>
-                <LenisScrollArea className="control-surface max-h-[calc(100vh-22rem)] rounded-md">
+                <LenisScrollArea
+                  className="max-h-[calc(100vh-22rem)] rounded-md border border-border/80 bg-background/92 shadow-xs transition-[border-color,box-shadow,background-color] hover:border-border focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30"
+                  contentClassName="cursor-text"
+                  onClick={() => editContentTextareaRef.current?.focus()}
+                >
                   <Textarea
+                    data-lenis-prevent
+                    ref={editContentTextareaRef}
                     id="edit-filter-content"
                     value={draft.content}
-                    onChange={e => updateDraft({ content: e.target.value })}
+                    onChange={(e) => {
+                      updateDraft({ content: e.target.value })
+                      autosizeTextarea(e.currentTarget)
+                    }}
+                    onWheel={forwardTextareaWheelToScrollArea}
                     placeholder="WinDivert фильтр..."
                     rows={16}
-                    className="min-h-72 resize-none overflow-hidden border-0 bg-transparent font-mono text-sm shadow-none focus-visible:border-transparent focus-visible:ring-0"
+                    className="resize-none overflow-hidden rounded-none border-0 bg-transparent px-3 py-3 font-mono text-sm shadow-none hover:border-transparent focus-visible:border-transparent focus-visible:ring-0"
                     disabled={editLoading}
                   />
                 </LenisScrollArea>

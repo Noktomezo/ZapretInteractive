@@ -67,8 +67,45 @@ function formatStrategiesCount(count: number) {
   return `${count} стратегий`
 }
 
+function formatActiveStrategiesLabel(activeStrategies: Category['strategies']) {
+  const activeCount = activeStrategies.length
+  const firstActiveStrategy = activeStrategies[0]
+
+  if (activeCount === 0 || !firstActiveStrategy) {
+    return null
+  }
+
+  if (activeCount === 1) {
+    return firstActiveStrategy.name
+  }
+
+  return `${firstActiveStrategy.name} +${activeCount - 1}`
+}
+
+function formatActiveStrategiesSrText(activeCount: number) {
+  if (activeCount === 0) {
+    return 'Нет активных стратегий'
+  }
+
+  const lastTwoDigits = activeCount % 100
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+    return `${activeCount} активных стратегий`
+  }
+
+  const lastDigit = activeCount % 10
+  if (lastDigit === 1) {
+    return `${activeCount} активная стратегия`
+  }
+  if (lastDigit >= 2 && lastDigit <= 4) {
+    return `${activeCount} активные стратегии`
+  }
+  return `${activeCount} активных стратегий`
+}
+
 function SortableCategoryItem({ category, onClearActive, onRename, onDelete }: SortableCategoryItemProps) {
-  const activeCount = category.strategies.filter(s => s.active).length
+  const activeStrategies = category.strategies.filter(strategy => strategy.active)
+  const activeCount = activeStrategies.length
+  const activeStrategiesLabel = formatActiveStrategiesLabel(activeStrategies)
 
   const {
     attributes,
@@ -109,12 +146,17 @@ function SortableCategoryItem({ category, onClearActive, onRename, onDelete }: S
               <span className="truncate text-sm font-normal">{category.name}</span>
               <span
                 className={activeCount > 0
-                  ? 'inline-flex h-2 w-2 rounded-full bg-green-500 animate-pulse'
-                  : 'inline-flex h-2 w-2 rounded-full bg-red-500 animate-pulse'}
+                  ? 'inline-flex h-2 w-2 rounded-full bg-success animate-pulse'
+                  : 'inline-flex h-2 w-2 rounded-full bg-destructive animate-pulse'}
                 aria-hidden="true"
               />
+              {activeStrategiesLabel && (
+                <span className="max-w-[14rem] truncate text-xs text-muted-foreground">
+                  {activeStrategiesLabel}
+                </span>
+              )}
               <span className="sr-only">
-                {activeCount > 0 ? 'Есть активная стратегия' : 'Нет активной стратегии'}
+                {formatActiveStrategiesSrText(activeCount)}
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -148,10 +190,10 @@ function SortableCategoryItem({ category, onClearActive, onRename, onDelete }: S
                 variant="outline"
                 size="icon"
                 onClick={e => onClearActive(category.id, e)}
-                className="cursor-pointer"
+                className="cursor-pointer border-warning/35 bg-warning/14 text-warning hover:bg-warning/22"
                 aria-label="Очистить стратегию"
               >
-                <BrushCleaning className="w-4 h-4 text-orange-500 dark:text-orange-400" />
+                <BrushCleaning className="w-4 h-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Деактивировать текущую стратегию</TooltipContent>
@@ -164,7 +206,7 @@ function SortableCategoryItem({ category, onClearActive, onRename, onDelete }: S
                 <Button
                   variant="outline"
                   size="icon"
-                  className="cursor-pointer border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/20 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                  className="cursor-pointer border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
                   aria-label={`Удалить категорию ${category.name}`}
                 >
                   <Trash2 className="w-4 h-4" />

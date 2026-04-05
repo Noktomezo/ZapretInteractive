@@ -1,6 +1,8 @@
 import { Color, Mesh, Program, Renderer, Triangle } from 'ogl'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './FaultyTerminal.css'
+
+const RGB_MATCHER = /[\d.]+/g
 
 const vertexShader = `
 attribute vec2 position;
@@ -209,8 +211,34 @@ void main() {
 }
 `
 
-function hexToRgb(hex) {
-  let h = hex.replace('#', '').trim()
+function resolveColorValue(color, element) {
+  const source = element ?? (typeof document !== 'undefined' ? document.documentElement : null)
+  if (typeof color === 'string' && color.trim().startsWith('var(') && source) {
+    const start = color.indexOf('--')
+    const end = color.lastIndexOf(')')
+    if (start !== -1 && end !== -1 && end > start) {
+      const variableName = color.slice(start, end).trim()
+      const resolved = getComputedStyle(source).getPropertyValue(variableName).trim()
+      if (resolved) {
+        return resolved
+      }
+    }
+  }
+
+  return color
+}
+
+function colorToRgb(color, element) {
+  const resolved = resolveColorValue(color, element)
+
+  if (resolved.startsWith('rgb')) {
+    const matches = resolved.match(RGB_MATCHER)
+    if (matches?.length >= 3) {
+      return matches.slice(0, 3).map(value => Number(value) / 255)
+    }
+  }
+
+  let h = resolved.replace('#', '').trim()
   if (h.length === 3) {
     h = h
       .split('')
@@ -239,6 +267,7 @@ export default function FaultyTerminal({
   mouseReact = true,
   mouseStrength = 0.2,
   dpr = Math.min(window.devicePixelRatio || 1, 2),
+  timeOffset,
   pageLoadAnimation = true,
   brightness = 1,
   className,
@@ -256,7 +285,7 @@ export default function FaultyTerminal({
   const targetSizeRef = useRef({ width: 0, height: 0 })
   const appliedSizeRef = useRef({ width: 0, height: 0 })
   const loadAnimationStartRef = useRef(0)
-  const timeOffsetRef = useRef(Math.random() * 100)
+  const timeOffsetRef = useRef(timeOffset ?? Math.random() * 100)
   const pauseRef = useRef(pause)
   const timeScaleRef = useRef(timeScale)
   const mouseReactRef = useRef(mouseReact)
@@ -270,9 +299,10 @@ export default function FaultyTerminal({
   const targetCurvatureRef = useRef(curvature)
   const currentScanlineRef = useRef(scanlineIntensity)
   const targetScanlineRef = useRef(scanlineIntensity)
+  const [resolvedThemeVersion, setResolvedThemeVersion] = useState(0)
 
-  const tintVec = useMemo(() => hexToRgb(tint), [tint])
-  const backgroundVec = useMemo(() => hexToRgb(backgroundTint), [backgroundTint])
+  const tintVec = useMemo(() => colorToRgb(tint, containerRef.current), [resolvedThemeVersion, tint])
+  const backgroundVec = useMemo(() => colorToRgb(backgroundTint, containerRef.current), [backgroundTint, resolvedThemeVersion])
   const mergedStyle = useMemo(
     () => ({ ...style, backgroundColor: backgroundTint }),
     [style, backgroundTint],
@@ -292,6 +322,34 @@ export default function FaultyTerminal({
     mouseRef.current = {
       x: Math.min(Math.max(x, 0), 1),
       y: Math.min(Math.max(y, 0), 1),
+    }
+  }, [])
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container)
+      return
+
+    const themedRoot = container.closest('[data-theme]') ?? document.documentElement
+    const refreshResolvedColors = () => setResolvedThemeVersion(version => version + 1)
+
+    refreshResolvedColors()
+
+    const observer = new MutationObserver((mutations) => {
+      if (mutations.some(mutation =>
+        mutation.type === 'attributes'
+        && (mutation.attributeName === 'data-theme' || mutation.attributeName === 'data-webview-material'))) {
+        refreshResolvedColors()
+      }
+    })
+
+    observer.observe(themedRoot, {
+      attributes: true,
+      attributeFilter: ['data-theme', 'data-webview-material'],
+    })
+
+    return () => {
+      observer.disconnect()
     }
   }, [])
 
@@ -380,7 +438,6 @@ export default function FaultyTerminal({
       appliedSizeRef.current = { width: 0, height: 0 }
       gl?.getExtension('WEBGL_lose_context')?.loseContext()
       loadAnimationStartRef.current = 0
-      timeOffsetRef.current = Math.random() * 100
     }
 
     try {

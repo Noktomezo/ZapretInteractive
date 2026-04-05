@@ -88,7 +88,7 @@ export function LogsPage() {
           disabled={logs.length === 0}
           className="gap-2"
         >
-          <BrushCleaning className="h-4 w-4 text-orange-500 dark:text-orange-400" />
+          <BrushCleaning className="text-warning h-4 w-4" />
           Очистить
         </Button>
       </div>
@@ -99,7 +99,7 @@ export function LogsPage() {
             type="button"
             size="sm"
             variant="secondary"
-            className="absolute right-4 bottom-4 z-10 border border-border bg-background text-foreground shadow-lg hover:bg-background dark:bg-card dark:hover:bg-card"
+            className="absolute right-4 bottom-4 z-10 border border-border bg-background/60 text-foreground shadow-lg backdrop-blur-md hover:bg-background/72 hover:backdrop-blur-xl dark:bg-card/60 dark:hover:bg-card/72"
             onClick={() => {
               const viewport = getViewport()
               if (!viewport)
