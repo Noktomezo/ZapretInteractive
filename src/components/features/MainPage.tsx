@@ -55,7 +55,7 @@ export function MainPage() {
   const availableUpdates = useAppStore(state => state.availableUpdates)
   const configMissing = useAppStore(state => state.configMissing)
   const initialize = useAppStore(state => state.initialize)
-  const mainPageVisited = useAppStore(state => state.mainPageVisited)
+  const mainTerminalTimeOffset = useAppStore(state => state.mainTerminalTimeOffset)
   const setMainPageVisited = useAppStore(state => state.setMainPageVisited)
   const setConfigMissing = useAppStore(state => state.setConfigMissing)
   const addConfigLog = useConnectionStore(state => state.addConfigLog)
@@ -82,7 +82,7 @@ export function MainPage() {
   const terminalFlickerAmount = status === 'connected' ? 0 : 1
   const terminalCurvature = status === 'connected' || status === 'disconnecting' ? 0 : 0.1
   const terminalScanlineIntensity = status === 'disconnected' ? 0.22 : 0
-  const shouldAnimateTerminal = !mainPageVisited
+  const [shouldAnimateTerminal] = useState(() => !useAppStore.getState().mainPageVisited)
   const selectedListMode = config?.listMode ?? 'ipset'
   const [focusedListModeIndex, setFocusedListModeIndex] = useState<number | null>(null)
   const activeListModeIndex = focusedListModeIndex ?? (selectedListMode === 'exclude' ? 1 : 0)
@@ -111,7 +111,9 @@ export function MainPage() {
   }
 
   useMountEffect(() => {
-    setMainPageVisited(true)
+    if (!useAppStore.getState().mainPageVisited) {
+      setMainPageVisited(true)
+    }
   })
 
   const handleListModeKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
@@ -563,6 +565,7 @@ export function MainPage() {
           gridMul={terminalGridMul}
           digitSize={1.2}
           timeScale={0.1}
+          timeOffset={mainTerminalTimeOffset}
           pause={false}
           scanlineIntensity={terminalScanlineIntensity}
           glitchAmount={1}

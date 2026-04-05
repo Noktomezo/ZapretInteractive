@@ -99,12 +99,12 @@ fn get_windows_build_number() -> Option<u32> {
 }
 
 fn get_window_material_capabilities_inner() -> WindowMaterialCapabilities {
-    let build_number = get_windows_build_number().unwrap_or_default();
+    let build_number = get_windows_build_number();
 
     WindowMaterialCapabilities {
         acrylic: true,
-        mica: build_number >= 22000,
-        tabbed: build_number >= 22621,
+        mica: build_number.is_none_or(|build| build >= 22000),
+        tabbed: build_number.is_none_or(|build| build >= 22621),
     }
 }
 

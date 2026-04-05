@@ -239,6 +239,7 @@ export default function FaultyTerminal({
   mouseReact = true,
   mouseStrength = 0.2,
   dpr = Math.min(window.devicePixelRatio || 1, 2),
+  timeOffset,
   pageLoadAnimation = true,
   brightness = 1,
   className,
@@ -256,7 +257,7 @@ export default function FaultyTerminal({
   const targetSizeRef = useRef({ width: 0, height: 0 })
   const appliedSizeRef = useRef({ width: 0, height: 0 })
   const loadAnimationStartRef = useRef(0)
-  const timeOffsetRef = useRef(Math.random() * 100)
+  const timeOffsetRef = useRef(timeOffset ?? Math.random() * 100)
   const pauseRef = useRef(pause)
   const timeScaleRef = useRef(timeScale)
   const mouseReactRef = useRef(mouseReact)
@@ -380,7 +381,6 @@ export default function FaultyTerminal({
       appliedSizeRef.current = { width: 0, height: 0 }
       gl?.getExtension('WEBGL_lose_context')?.loseContext()
       loadAnimationStartRef.current = 0
-      timeOffsetRef.current = Math.random() * 100
     }
 
     try {

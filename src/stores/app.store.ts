@@ -14,6 +14,7 @@ interface AppStore {
   initialized: boolean
   initializing: boolean
   mainPageVisited: boolean
+  mainTerminalTimeOffset: number
   isElevated: boolean | null
   healthSnapshot: AppHealthSnapshot | null
   binariesOk: boolean | null
@@ -42,6 +43,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   initialized: false,
   initializing: false,
   mainPageVisited: false,
+  mainTerminalTimeOffset: Math.random() * 100,
   isElevated: null,
   healthSnapshot: null,
   binariesOk: null,

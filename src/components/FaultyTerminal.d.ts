@@ -18,6 +18,7 @@ declare interface FaultyTerminalProps extends HTMLAttributes<HTMLDivElement> {
   mouseReact?: boolean
   mouseStrength?: number
   dpr?: number
+  timeOffset?: number
   pageLoadAnimation?: boolean
   brightness?: number
   className?: string
