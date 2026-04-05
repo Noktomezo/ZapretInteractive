@@ -24,8 +24,8 @@
 ## 📸 Скриншоты
 
 <div align="center">
-  <img width="900" height="700" alt="Zapret_Interactive_KfJFSs9bcb" src="https://github.com/user-attachments/assets/48946b34-45fc-4393-b3d2-b079bf02cee1" />
-  <img width="900" height="700" alt="Zapret_Interactive_7K0CjejYUi" src="https://github.com/user-attachments/assets/989bbf63-07fa-46b6-b471-17ad9df00a07" />
+  <img width="900" height="700" alt="Zapret_Interactive_46veTmKOP7" src="https://github.com/user-attachments/assets/5394033e-d518-4fb4-891d-2726e2da71a3" />
+  <img width="900" height="700" alt="Zapret_Interactive_ESjR1JTyi2" src="https://github.com/user-attachments/assets/e5954b1f-6c58-47ae-ba95-5b4568c656d6" />
 </div>
 
 ## 📦 Установка
