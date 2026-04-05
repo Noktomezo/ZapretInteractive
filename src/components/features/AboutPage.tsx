@@ -152,6 +152,7 @@ export function AboutPage() {
       addConfigLog(forceAll
         ? 'запущена переустановка файлов приложения'
         : 'запущено обновление файлов приложения')
+
       await runWithPausedConnection(async () => {
         await tauri.downloadBinaries(forceAll)
       })

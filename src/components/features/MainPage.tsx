@@ -1,4 +1,5 @@
 import type { ListMode } from '@/lib/types'
+import { useNavigate } from '@tanstack/react-router'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import {
   AlertCircle,
@@ -126,6 +127,7 @@ export function MainPageTerminalBackdrop({ visible }: { visible: boolean }) {
 }
 
 export function MainPage() {
+  const navigate = useNavigate()
   const availableUpdatesPromptKeyRef = useRef('')
   const dismissedPromptKeysRef = useRef<Set<string>>(new Set())
   const activeUpdateToastIdRef = useRef<string | number | null>(null)
@@ -386,7 +388,7 @@ export function MainPage() {
     dismissActiveUpdateToast()
     availableUpdatesPromptKeyRef.current = promptKey
     activeUpdateToastIdRef.current = toast.custom(() => (
-      <div className="w-[420px] rounded-lg border bg-background p-4 shadow-lg">
+      <div className="w-full min-w-0">
         <div className="space-y-1">
           <p className="text-sm font-medium">Доступны обновления файлов</p>
           <p className="text-xs text-muted-foreground">
@@ -395,8 +397,16 @@ export function MainPage() {
               : `${availableUpdates.length} файлов: ${availableUpdates.slice(0, 4).join(', ')}${availableUpdates.length > 4 ? '…' : ''}`}
           </p>
         </div>
-        <div className="mt-3 flex gap-2">
-          <Button size="sm" onClick={() => { void handleApplyCoreFileUpdates() }}>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            onClick={() => {
+              void (async () => {
+                await navigate({ to: '/' })
+                await handleApplyCoreFileUpdates()
+              })()
+            }}
+          >
             Обновить
           </Button>
           <Button
@@ -447,7 +457,7 @@ export function MainPage() {
     dismissActiveAppUpdateToast()
     appUpdatePromptKeyRef.current = promptKey
     activeAppUpdateToastIdRef.current = toast.custom(() => (
-      <div className="w-[420px] rounded-lg border bg-background p-4 shadow-lg">
+      <div className="w-full min-w-0">
         <div className="space-y-1">
           <p className="text-sm font-medium">Доступна новая версия приложения</p>
           <p className="text-xs text-muted-foreground">
@@ -456,7 +466,7 @@ export function MainPage() {
             {appUpdate.version}
           </p>
         </div>
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           <Button size="sm" onClick={() => { void handleInstallAppUpdate() }}>
             Да
           </Button>

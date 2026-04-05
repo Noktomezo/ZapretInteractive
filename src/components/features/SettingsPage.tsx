@@ -392,7 +392,7 @@ export function SettingsPage() {
               <div className="space-y-0.5">
                 <Label htmlFor="app-auto-updates">Автоматически проверять обновления приложения</Label>
                 <p className="text-xs text-muted-foreground">
-                  При запуске и каждые 5 минут приложение будет проверять наличие новой версии
+                  При запуске и каждые 30 секунд приложение будет проверять наличие новой версии
                 </p>
               </div>
               <Switch
