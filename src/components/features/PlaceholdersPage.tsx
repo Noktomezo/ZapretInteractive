@@ -315,7 +315,6 @@ export function PlaceholdersPage() {
     try {
       await saveNow()
       addConfigLog(`плейсхолдер "{{${systemPlaceholderTarget.name}}}" обновлён до системного значения`)
-      setSystemPlaceholderTarget(null)
       toast.success('Плейсхолдер обновлён')
     }
     catch (error) {
@@ -323,6 +322,7 @@ export function PlaceholdersPage() {
       toast.error(`Ошибка обновления плейсхолдера: ${error instanceof Error ? error.message : String(error)}`)
     }
     finally {
+      setSystemPlaceholderTarget(null)
       isSavingRef.current = false
     }
   }
