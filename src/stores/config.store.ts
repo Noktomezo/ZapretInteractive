@@ -31,6 +31,7 @@ function reportAutosaveError(reason: string, error: unknown) {
 
 interface ConfigStore {
   config: AppConfig | null
+  builtinConfig: AppConfig | null
   loading: boolean
   error: string | null
   dirty: boolean
@@ -45,6 +46,7 @@ interface ConfigStore {
 
   setGlobalPorts: (ports: GlobalPorts) => void
   setFilters: (filters: Filter[]) => void
+  replaceFiltersState: (filters: Filter[], removedFilterIds?: string[]) => void
   setListMode: (mode: ListMode) => void
   applyPersistedListMode: (mode: ListMode) => void
   setCoreFileUpdatePromptsEnabled: (enabled: boolean) => void
@@ -55,10 +57,12 @@ interface ConfigStore {
   setConnectOnAutostart: (enabled: boolean) => void
   addCategory: (name: string) => void
   updateCategory: (id: string, name: string) => void
+  restoreBuiltinCategory: (categoryId: string, category: Category) => void
   deleteCategory: (id: string) => void
   reorderCategories: (oldIndex: number, newIndex: number) => void
   addStrategy: (categoryId: string, name: string, content: string) => void
   updateStrategy: (categoryId: string, strategyId: string, updates: Partial<Strategy>) => void
+  restoreBuiltinStrategy: (categoryId: string, strategy: Strategy) => void
   deleteStrategy: (categoryId: string, strategyId: string) => void
   setActiveStrategy: (categoryId: string, strategyId: string) => void
   clearActiveStrategy: (categoryId: string, strategyId: string) => void
@@ -67,25 +71,27 @@ interface ConfigStore {
   updatePlaceholder: (index: number, name: string, path: string) => void
   deletePlaceholder: (index: number) => void
   setPlaceholders: (placeholders: Placeholder[]) => void
+  replacePlaceholdersState: (placeholders: Placeholder[], removedPlaceholderNames?: string[]) => void
 }
 
 export const useConfigStore = create<ConfigStore>((set, get) => ({
   config: null,
+  builtinConfig: null,
   loading: false,
   error: null,
   dirty: false,
   isSaving: false,
 
   load: async () => {
-    if (get().config) {
+    if (get().config && get().builtinConfig) {
       return
     }
 
     set({ loading: true, error: null })
     try {
-      const config = await tauri.loadConfig()
+      const [config, builtinConfig] = await Promise.all([tauri.loadConfig(), tauri.getBuiltinConfig()])
       lastAutosaveErrorKey = null
-      set({ config, loading: false, dirty: false, isSaving: false })
+      set({ config, builtinConfig, loading: false, dirty: false, isSaving: false })
     }
     catch (e) {
       set({ error: String(e), loading: false })
@@ -101,9 +107,9 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     lastAutosaveErrorKey = null
     set({ error: null })
     try {
-      const config = await tauri.loadConfig()
+      const [config, builtinConfig] = await Promise.all([tauri.loadConfig(), tauri.getBuiltinConfig()])
       lastAutosaveErrorKey = null
-      set({ config, loading: false, dirty: false, isSaving: false, error: null })
+      set({ config, builtinConfig, loading: false, dirty: false, isSaving: false, error: null })
     }
     catch (e) {
       set({ error: String(e), loading: false, isSaving: false })
@@ -201,9 +207,12 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   reset: async () => {
     set({ loading: true })
     try {
-      const config = await tauri.resetConfig()
+      const [config, builtinConfig] = await Promise.all([
+        tauri.resetConfig(),
+        tauri.getBuiltinConfig(),
+      ])
       lastAutosaveErrorKey = null
-      set({ config, loading: false, dirty: false, isSaving: false })
+      set({ config, builtinConfig, loading: false, dirty: false, isSaving: false })
     }
     catch (e) {
       set({ error: String(e), loading: false })
@@ -220,6 +229,20 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     const { config } = get()
     if (config)
       set({ config: { ...config, filters }, dirty: true })
+  },
+
+  replaceFiltersState: (filters, removedFilterIds) => {
+    const { config } = get()
+    if (config) {
+      set({
+        config: {
+          ...config,
+          filters,
+          systemRemovedFilterIds: removedFilterIds ?? (config.systemRemovedFilterIds ?? []),
+        },
+        dirty: true,
+      })
+    }
   },
 
   setListMode: (mode) => {
@@ -277,6 +300,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
         id: crypto.randomUUID(),
         name,
         strategies: [],
+        system: false,
       }
       set({ config: { ...config, categories: [...config.categories, newCategory] }, dirty: true })
     }
@@ -292,11 +316,44 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     }
   },
 
+  restoreBuiltinCategory: (categoryId, category) => {
+    const { config } = get()
+    if (config) {
+      const removedCategoryIds = (config.systemRemovedCategoryIds ?? []).filter(id => id !== categoryId)
+      const removedStrategyKeys = (config.systemRemovedStrategyKeys ?? []).filter(key => !key.startsWith(`${categoryId}::`))
+      const categories = config.categories.map(item =>
+        item.id === categoryId ? structuredClone(category) : item,
+      )
+      set({
+        config: {
+          ...config,
+          categories,
+          systemRemovedCategoryIds: removedCategoryIds,
+          systemRemovedStrategyKeys: removedStrategyKeys,
+        },
+        dirty: true,
+      })
+    }
+  },
+
   deleteCategory: (id) => {
     const { config } = get()
     if (config) {
+      const category = config.categories.find(c => c.id === id)
       const categories = config.categories.filter(c => c.id !== id)
-      set({ config: { ...config, categories }, dirty: true })
+      const systemRemovedCategoryIds = category?.system
+        ? Array.from(new Set([...(config.systemRemovedCategoryIds ?? []), id]))
+        : (config.systemRemovedCategoryIds ?? [])
+      const systemRemovedStrategyKeys = (config.systemRemovedStrategyKeys ?? []).filter(key => !key.startsWith(`${id}::`))
+      set({
+        config: {
+          ...config,
+          categories,
+          systemRemovedCategoryIds,
+          systemRemovedStrategyKeys,
+        },
+        dirty: true,
+      })
     }
   },
 
@@ -318,6 +375,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
         name,
         content,
         active: false,
+        system: false,
       }
       const categories = config.categories.map(c =>
         c.id === categoryId
@@ -345,15 +403,45 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     }
   },
 
+  restoreBuiltinStrategy: (categoryId, strategy) => {
+    const { config } = get()
+    if (config) {
+      const strategyKey = `${categoryId}::${strategy.id}`
+      const categories = config.categories.map(category => category.id === categoryId
+        ? {
+            ...category,
+            strategies: category.strategies.some(item => item.id === strategy.id)
+              ? category.strategies.map(item => item.id === strategy.id ? structuredClone(strategy) : item)
+              : [...category.strategies, structuredClone(strategy)],
+          }
+        : category)
+      set({
+        config: {
+          ...config,
+          categories,
+          systemRemovedStrategyKeys: (config.systemRemovedStrategyKeys ?? []).filter(key => key !== strategyKey),
+        },
+        dirty: true,
+      })
+    }
+  },
+
   deleteStrategy: (categoryId, strategyId) => {
     const { config } = get()
     if (config) {
+      const strategy = config.categories
+        .find(c => c.id === categoryId)
+        ?.strategies
+        .find(s => s.id === strategyId)
       const categories = config.categories.map(c =>
         c.id === categoryId
           ? { ...c, strategies: c.strategies.filter(s => s.id !== strategyId) }
           : c,
       )
-      set({ config: { ...config, categories }, dirty: true })
+      const systemRemovedStrategyKeys = strategy?.system
+        ? Array.from(new Set([...(config.systemRemovedStrategyKeys ?? []), `${categoryId}::${strategyId}`]))
+        : (config.systemRemovedStrategyKeys ?? [])
+      set({ config: { ...config, categories, systemRemovedStrategyKeys }, dirty: true })
     }
   },
 
@@ -410,7 +498,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   addPlaceholder: (name, path) => {
     const { config } = get()
     if (config) {
-      const newPlaceholder: Placeholder = { name, path }
+      const newPlaceholder: Placeholder = { name, path, system: false }
       set({
         config: { ...config, placeholders: [...config.placeholders, newPlaceholder] },
         dirty: true,
@@ -422,7 +510,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     const { config } = get()
     if (config) {
       const placeholders = [...config.placeholders]
-      placeholders[index] = { name, path }
+      placeholders[index] = { ...placeholders[index], name, path }
       set({ config: { ...config, placeholders }, dirty: true })
     }
   },
@@ -439,6 +527,20 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     const { config } = get()
     if (config) {
       set({ config: { ...config, placeholders }, dirty: true })
+    }
+  },
+
+  replacePlaceholdersState: (placeholders, removedPlaceholderNames) => {
+    const { config } = get()
+    if (config) {
+      set({
+        config: {
+          ...config,
+          placeholders,
+          systemRemovedPlaceholderNames: removedPlaceholderNames ?? (config.systemRemovedPlaceholderNames ?? []),
+        },
+        dirty: true,
+      })
     }
   },
 }))

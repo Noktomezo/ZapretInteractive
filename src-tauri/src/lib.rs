@@ -160,6 +160,14 @@ fn report_window_material_error(app: &tauri::AppHandle, window_label: &str, erro
     let _ = app.emit("window-material-error", format!("{window_label}: {error}"));
 }
 
+fn show_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[cfg(debug_assertions)]
@@ -172,6 +180,9 @@ pub fn run() {
     let builder = tauri::Builder::default();
 
     builder
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            show_main_window(app);
+        }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
@@ -256,10 +267,7 @@ pub fn run() {
                         apply_list_mode(app, config::ListMode::Exclude);
                     }
                     "show" => {
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
+                        show_main_window(app);
                     }
                     "quit" => {
                         app.exit(0);
@@ -271,10 +279,7 @@ pub fn run() {
                         && button == MouseButton::Left
                     {
                         let app = tray.app_handle();
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
+                        show_main_window(app);
                     }
                 });
 
@@ -353,6 +358,7 @@ pub fn run() {
             admin::is_elevated,
             config::ensure_config_dir,
             config::load_config,
+            config::get_builtin_config,
             config::save_config,
             config::reset_config,
             config::get_resources_directory,

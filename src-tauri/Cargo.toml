@@ -43,6 +43,7 @@ tauri-plugin-prevent-default = "2"
 futures = "0.3.31"
 tauri-plugin-updater = "2.10.0"
 tauri-plugin-process = "2.3.1"
+tauri-plugin-single-instance = "2"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authentication_Identity", "Win32_System_Threading", "Win32_System_Services", "Win32_System_Registry", "Win32_System_Diagnostics_ToolHelp"] }

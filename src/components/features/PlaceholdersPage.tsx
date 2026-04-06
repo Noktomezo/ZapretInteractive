@@ -1,7 +1,17 @@
 import type { Placeholder } from '@/lib/types'
-import { FileCode, FolderOpen, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { FileCode, FilePenLine, FolderOpen, Loader2, Package, Pencil, Plus, RefreshCcw, RotateCcw, Trash2, UserRoundPlus } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -10,10 +20,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { InlineMarker } from '@/components/ui/inline-marker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { useMountEffect } from '@/hooks/use-mount-effect'
+import { buildRestoredPlaceholder, getBuiltinPlaceholder, isSystemPlaceholder, isSystemPlaceholderModified, isSystemPlaceholderUpdateAvailable } from '@/lib/system-config'
 import * as tauri from '@/lib/tauri'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
@@ -41,17 +53,18 @@ export function PlaceholdersPage() {
   const [newName, setNewName] = useState('')
   const [newPath, setNewPath] = useState('')
   const [resourcesDir, setResourcesDir] = useState('')
+  const [systemPlaceholderTarget, setSystemPlaceholderTarget] = useState<Placeholder | null>(null)
   const isSavingRef = useRef(false)
 
   const config = useConfigStore(state => state.config)
+  const builtinConfig = useConfigStore(state => state.builtinConfig)
   const loading = useConfigStore(state => state.loading)
   const load = useConfigStore(state => state.load)
   const saveNow = useConfigStore(state => state.saveNow)
   const addPlaceholder = useConfigStore(state => state.addPlaceholder)
   const revertTo = useConfigStore(state => state.revertTo)
   const updatePlaceholder = useConfigStore(state => state.updatePlaceholder)
-  const deletePlaceholder = useConfigStore(state => state.deletePlaceholder)
-  const setPlaceholders = useConfigStore(state => state.setPlaceholders)
+  const replacePlaceholdersState = useConfigStore(state => state.replacePlaceholdersState)
   const addConfigLog = useConnectionStore(state => state.addConfigLog)
 
   useMountEffect(() => {
@@ -123,6 +136,24 @@ export function PlaceholdersPage() {
     return relativePath ? `${RESOURCES_ALIAS_PREFIX}/${relativePath}` : RESOURCES_ALIAS_PREFIX
   }
 
+  const validatePlaceholder = (name: string, path: string, excludedIndex?: number) => {
+    const normalizedName = name.trim().toLocaleLowerCase()
+    const normalizedPath = toStoredPlaceholderPath(path).trim().toLocaleLowerCase()
+    const placeholders = useConfigStore.getState().config?.placeholders ?? []
+
+    if (placeholders.some((placeholder, index) => index !== excludedIndex && placeholder.name.trim().toLocaleLowerCase() === normalizedName)) {
+      toast.error('Плейсхолдер с таким названием уже существует')
+      return false
+    }
+
+    if (placeholders.some((placeholder, index) => index !== excludedIndex && placeholder.path.trim().toLocaleLowerCase() === normalizedPath)) {
+      toast.error('Плейсхолдер с таким путём уже существует')
+      return false
+    }
+
+    return true
+  }
+
   const handleAdd = async () => {
     if (isSavingRef.current) {
       toast.error('Подождите, выполняется сохранение')
@@ -141,6 +172,9 @@ export function PlaceholdersPage() {
     const previousConfig = structuredClone(currentConfig)
     const placeholderName = newName.trim()
     const placeholderPath = toStoredPlaceholderPath(newPath.trim())
+    if (!validatePlaceholder(placeholderName, placeholderPath)) {
+      return
+    }
     addPlaceholder(placeholderName, placeholderPath)
     isSavingRef.current = true
     try {
@@ -199,6 +233,9 @@ export function PlaceholdersPage() {
 
     const previousConfig = structuredClone(currentConfig)
     const previousPlaceholder = previousConfig.placeholders[editingIndex]
+    if (!validatePlaceholder(trimmedName, trimmedPath, editingIndex)) {
+      return
+    }
     updatePlaceholder(editingIndex, trimmedName, trimmedPath)
     isSavingRef.current = true
     try {
@@ -226,8 +263,13 @@ export function PlaceholdersPage() {
     if (isSavingRef.current)
       return
     const prevPlaceholders = config?.placeholders?.slice() ?? []
+    const prevRemovedNames = config?.systemRemovedPlaceholderNames ?? []
     const deletedPlaceholder = prevPlaceholders[index]
-    deletePlaceholder(index)
+    const nextPlaceholders = prevPlaceholders.filter((_, currentIndex) => currentIndex !== index)
+    const nextRemovedNames = deletedPlaceholder?.system
+      ? Array.from(new Set([...(config?.systemRemovedPlaceholderNames ?? []), deletedPlaceholder.systemBaseName ?? deletedPlaceholder.name]))
+      : (config?.systemRemovedPlaceholderNames ?? [])
+    replacePlaceholdersState(nextPlaceholders, nextRemovedNames)
     isSavingRef.current = true
     try {
       await saveNow()
@@ -238,9 +280,49 @@ export function PlaceholdersPage() {
     }
     catch (e) {
       toast.error(`Ошибка сохранения: ${e}`)
-      setPlaceholders(prevPlaceholders)
+      replacePlaceholdersState(prevPlaceholders, prevRemovedNames)
     }
     finally {
+      isSavingRef.current = false
+    }
+  }
+
+  const handleRestorePlaceholder = async () => {
+    if (!systemPlaceholderTarget || !config) {
+      return
+    }
+
+    const builtinPlaceholder = getBuiltinPlaceholder(
+      builtinConfig,
+      systemPlaceholderTarget.name,
+      systemPlaceholderTarget.systemBaseName,
+    )
+    if (!builtinPlaceholder) {
+      return
+    }
+
+    const placeholderIndex = config.placeholders.findIndex(placeholder => placeholder.name === systemPlaceholderTarget.name)
+    if (placeholderIndex < 0) {
+      return
+    }
+
+    const previousPlaceholders = structuredClone(config.placeholders)
+    const nextPlaceholders = structuredClone(config.placeholders)
+    nextPlaceholders[placeholderIndex] = buildRestoredPlaceholder(builtinPlaceholder)
+    const nextRemovedNames = (config.systemRemovedPlaceholderNames ?? []).filter(name => name !== builtinPlaceholder.name)
+    replacePlaceholdersState(nextPlaceholders, nextRemovedNames)
+    isSavingRef.current = true
+    try {
+      await saveNow()
+      addConfigLog(`плейсхолдер "{{${systemPlaceholderTarget.name}}}" обновлён до системного значения`)
+      toast.success('Плейсхолдер обновлён')
+    }
+    catch (error) {
+      replacePlaceholdersState(previousPlaceholders, config.systemRemovedPlaceholderNames ?? [])
+      toast.error(`Ошибка обновления плейсхолдера: ${error instanceof Error ? error.message : String(error)}`)
+    }
+    finally {
+      setSystemPlaceholderTarget(null)
       isSavingRef.current = false
     }
   }
@@ -288,45 +370,70 @@ export function PlaceholdersPage() {
                 </div>
               )
             : (
-                config.placeholders.map((placeholder: Placeholder, index: number) => (
-                  <div
-                    key={`${index}-${placeholder.name}`}
-                    className="bg-card flex min-h-20 items-center justify-between gap-4 overflow-hidden rounded-lg border p-4"
-                  >
-                    <div className="flex min-w-0 w-0 flex-1 items-center gap-3 overflow-hidden">
-                      <FileCode className="h-4 w-4 text-muted-foreground" />
-                      <div className="min-w-0 w-0 flex-1 overflow-hidden space-y-1">
-                        <div className="truncate text-sm font-normal text-foreground">
-                          {'{{'}
-                          {placeholder.name}
-                          {'}}'}
-                        </div>
-                        <div className="truncate overflow-hidden text-xs text-muted-foreground/90" title={resolvePlaceholderPath(placeholder.path)}>
-                          {resolvePlaceholderPath(placeholder.path)}
+                config.placeholders.map((placeholder: Placeholder, index: number) => {
+                  const builtin = getBuiltinPlaceholder(builtinConfig, placeholder.name, placeholder.systemBaseName)
+                  const isSystem = isSystemPlaceholder(placeholder)
+                  const isModified = isSystemPlaceholderModified(placeholder)
+                  const hasUpdate = isSystemPlaceholderUpdateAvailable(placeholder, builtin)
+
+                  return (
+                    <div
+                      key={`${index}-${placeholder.name}`}
+                      className="bg-card flex min-h-20 items-center justify-between gap-4 overflow-hidden rounded-lg border p-4"
+                    >
+                      <div className="flex min-w-0 w-0 flex-1 items-center gap-3 overflow-hidden">
+                        <FileCode className="h-4 w-4 text-muted-foreground" />
+                        <div className="min-w-0 w-0 flex-1 overflow-hidden space-y-1">
+                          <div className="flex items-center gap-2 truncate text-sm font-normal text-foreground">
+                            {'{{'}
+                            {placeholder.name}
+                            {'}}'}
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              {isSystem
+                                ? <InlineMarker icon={Package} label="Системный плейсхолдер" />
+                                : <InlineMarker icon={UserRoundPlus} label="Пользовательский плейсхолдер" className="text-primary/80" />}
+                              {isModified && (
+                                <InlineMarker icon={FilePenLine} label="Системный плейсхолдер изменён пользователем" className="text-warning" />
+                              )}
+                              {isSystem && (isModified || hasUpdate) && (
+                                <InlineMarker
+                                  icon={hasUpdate ? RefreshCcw : RotateCcw}
+                                  label={hasUpdate
+                                    ? 'Обновить плейсхолдер до актуального системного значения'
+                                    : 'Откатить плейсхолдер к системному значению'}
+                                  className={hasUpdate ? 'text-primary' : 'text-destructive'}
+                                  onClick={() => setSystemPlaceholderTarget(placeholder)}
+                                />
+                              )}
+                            </div>
+                          </div>
+                          <div className="truncate overflow-hidden text-xs text-muted-foreground/90" title={resolvePlaceholderPath(placeholder.path)}>
+                            {resolvePlaceholderPath(placeholder.path)}
+                          </div>
                         </div>
                       </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          aria-label={`Редактировать плейсхолдер ${placeholder.name}`}
+                          onClick={() => handleEdit(index, placeholder)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
+                          aria-label={`Удалить плейсхолдер ${placeholder.name}`}
+                          onClick={() => handleDelete(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        aria-label={`Редактировать плейсхолдер ${placeholder.name}`}
-                        onClick={() => handleEdit(index, placeholder)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
-                        aria-label={`Удалить плейсхолдер ${placeholder.name}`}
-                        onClick={() => handleDelete(index)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))
+                  )
+                })
               )}
         </div>
 
@@ -398,6 +505,32 @@ export function PlaceholdersPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <AlertDialog open={!!systemPlaceholderTarget} onOpenChange={open => !open && setSystemPlaceholderTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {systemPlaceholderTarget && isSystemPlaceholderUpdateAvailable(
+                  systemPlaceholderTarget,
+                  getBuiltinPlaceholder(builtinConfig, systemPlaceholderTarget.name, systemPlaceholderTarget.systemBaseName),
+                )
+                  ? 'Обновить системный плейсхолдер?'
+                  : 'Откатить плейсхолдер к системному значению?'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {systemPlaceholderTarget
+                  ? `Плейсхолдер "{{${systemPlaceholderTarget.name}}}" будет возвращён к актуальному системному значению.`
+                  : ''}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Отмена</AlertDialogCancel>
+              <AlertDialogAction onClick={() => void handleRestorePlaceholder()}>
+                Обновить
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </LenisScrollArea>
   )

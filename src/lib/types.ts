@@ -23,17 +23,25 @@ export interface Strategy {
   name: string
   content: string
   active: boolean
+  system?: boolean
+  systemBaseName?: string
+  systemBaseContent?: string
 }
 
 export interface Category {
   id: string
   name: string
   strategies: Strategy[]
+  system?: boolean
+  systemBaseName?: string
 }
 
 export interface Placeholder {
   name: string
   path: string
+  system?: boolean
+  systemBaseName?: string
+  systemBasePath?: string
 }
 
 export interface Filter {
@@ -42,6 +50,11 @@ export interface Filter {
   filename: string
   active: boolean
   content: string
+  system?: boolean
+  systemBaseName?: string
+  systemBaseFilename?: string
+  systemBaseContent?: string
+  systemBaseActive?: boolean
 }
 
 export type ListMode = 'exclude' | 'ipset'
@@ -60,6 +73,11 @@ export interface AppConfig {
   coreFileUpdatePromptsEnabled?: boolean
   appAutoUpdatesEnabled?: boolean
   windowMaterial?: WindowMaterial
+  systemRemovedCategoryIds?: string[]
+  systemRemovedStrategyKeys?: string[]
+  systemRemovedPlaceholderNames?: string[]
+  systemRemovedFilterIds?: string[]
+  systemSyncInitialized?: boolean
 }
 
 export interface EnsureManagedFilesResult {
