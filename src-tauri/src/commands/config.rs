@@ -342,6 +342,30 @@ fn strategy_base_content(strategy: &Strategy) -> &str {
         .unwrap_or(strategy.content.as_str())
 }
 
+fn is_legacy_system_strategy_name(
+    current_name: &str,
+    category_name: &str,
+    strategy_id: &str,
+    builtin_name: &str,
+) -> bool {
+    let mut candidates = vec![format!("{category_name} {builtin_name}")];
+
+    if let Some(version_without_prefix) = builtin_name.strip_prefix('v') {
+        candidates.push(format!("{category_name} {version_without_prefix}"));
+    }
+
+    if let Some(id_suffix) = strategy_id.rsplit('-').next() {
+        candidates.push(format!("{category_name} {id_suffix}"));
+        if let Some(version_without_prefix) = id_suffix.strip_prefix('v') {
+            candidates.push(format!("{category_name} {version_without_prefix}"));
+        }
+    }
+
+    candidates
+        .into_iter()
+        .any(|candidate| current_name == candidate)
+}
+
 fn is_system_strategy_modified(strategy: &Strategy) -> bool {
     strategy.name != strategy_base_name(strategy)
         || strategy.content != strategy_base_content(strategy)
@@ -1191,7 +1215,7 @@ fn sync_builtin_category(
             .strategies
             .iter()
             .find(|item| item.id == strategy.id)
-            && sync_builtin_strategy(strategy, builtin_strategy)
+            && sync_builtin_strategy(strategy, builtin_strategy, &builtin_category.name)
         {
             changed = true;
         }
@@ -1231,7 +1255,11 @@ fn sync_builtin_category(
     changed
 }
 
-fn sync_builtin_strategy(strategy: &mut Strategy, builtin_strategy: &Strategy) -> bool {
+fn sync_builtin_strategy(
+    strategy: &mut Strategy,
+    builtin_strategy: &Strategy,
+    builtin_category_name: &str,
+) -> bool {
     let mut changed = false;
 
     if !strategy.system {
@@ -1249,7 +1277,17 @@ fn sync_builtin_strategy(strategy: &mut Strategy, builtin_strategy: &Strategy) -
         changed = true;
     }
 
-    if !is_system_strategy_modified(strategy) {
+    let can_auto_migrate_legacy_name = strategy.content == strategy_base_content(strategy)
+        && strategy_base_name(strategy) == builtin_strategy.name
+        && strategy_base_content(strategy) == builtin_strategy.content
+        && is_legacy_system_strategy_name(
+            &strategy.name,
+            builtin_category_name,
+            &strategy.id,
+            &builtin_strategy.name,
+        );
+
+    if !is_system_strategy_modified(strategy) || can_auto_migrate_legacy_name {
         if strategy.name != builtin_strategy.name {
             strategy.name = builtin_strategy.name.clone();
             changed = true;
