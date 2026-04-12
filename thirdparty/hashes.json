@@ -40,6 +40,6 @@
   "fake:zero_256.bin": "5341e6b2646979a70e57653007a1f310169421ec9bdd9f1a5648f75ade005af1",
   "fake:zero_512.bin": "076a27c79e5ace2a3d47f9dd2e83e4ff6ea8872b3c2218f66c92b89b55f36560",
   "lists:zapret-hosts-google.txt": "f83a38144f7f65f51dc4996414ec8b6b6eef29524e6a8cfe0ec15078c9699dc1",
-  "lists:zapret-hosts-user-exclude.txt": "b531731f2cc8019a576307ad950f9cc775fd8f050d8072475c9f01157d01bdde",
-  "lists:zapret-ip-user.txt": "a5bf9bf9fee58ef58913adbbe693def75ddbf49a1239f6d392cf3e7c8e90e4c7"
+  "lists:zapret-hosts-user-exclude.txt": "af1b97fde37f45b233c31672916c6bb3e018697bb99f541051dab4800facba5c",
+  "lists:zapret-ip-user.txt": "c3a74db1883178f3495e549eec28348e859ea4018938314284d2014b07da2234"
 }
