@@ -675,29 +675,15 @@ fn migrate_legacy_managed_resources(target_dir: &Path) -> Result<(), String> {
 
 fn migrate_legacy_runtime_data(target_dir: &Path) -> Result<(), String> {
     let config_path = target_dir.join("config.json");
-    if !config_path.exists() {
-        for source in [
-            get_managed_resources_dir().join("config.json"),
-            legacy_zapret_dir().join("config.json"),
-        ] {
-            if source.exists() {
-                copy_tree_if_missing(&source, &config_path)?;
-                break;
-            }
-        }
+    let legacy_config_path = legacy_zapret_dir().join("config.json");
+    if !config_path.exists() && legacy_config_path.exists() {
+        copy_tree_if_missing(&legacy_config_path, &config_path)?;
     }
 
     let filters_dir = target_dir.join("filters");
-    if !filters_dir.exists() {
-        for source in [
-            get_managed_resources_dir().join("filters"),
-            legacy_zapret_dir().join("filters"),
-        ] {
-            if source.exists() {
-                copy_tree_if_missing(&source, &filters_dir)?;
-                break;
-            }
-        }
+    let legacy_filters_dir = legacy_zapret_dir().join("filters");
+    if !filters_dir.exists() && legacy_filters_dir.exists() {
+        copy_tree_if_missing(&legacy_filters_dir, &filters_dir)?;
     }
 
     Ok(())
