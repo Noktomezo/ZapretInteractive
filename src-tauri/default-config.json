@@ -163,7 +163,7 @@
           "id": "tcp-v1",
           "name": "v1",
           "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=split2\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-seqovl-pattern={{STUN}}",
-          "active": true
+          "active": false
         },
         {
           "id": "tcp-v2",
@@ -198,8 +198,8 @@
         {
           "id": "tcp-v7",
           "name": "v7",
-          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=654\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{STUN}}\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-badseq-increment=0",
-          "active": false
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=654\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-split-seqovl-pattern={{STUN}}\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-badseq-increment=0",
+          "active": true
         },
         {
           "id": "tcp-v8",

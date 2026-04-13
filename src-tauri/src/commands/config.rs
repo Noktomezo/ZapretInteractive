@@ -14,9 +14,9 @@ const DEFAULT_FILTER_WIREGUARD: &str =
     include_str!("../../default-filters/windivert_part.wireguard.txt");
 const SOURCE_MANAGED_DIR_NAME: &str = "thirdparty";
 const INSTALLED_RESOURCES_DIR_NAME: &str = "resources";
-const LEGACY_MANAGED_DIR_NAME: &str = ".zapret";
-const LEGACY_MANAGED_PATH_ALIAS: &str = "@thirdparty";
 const MANAGED_PATH_ALIAS: &str = "@resources";
+const LEGACY_MANAGED_PATH_ALIAS: &str = "@thirdparty";
+const LEGACY_INSTALLED_RESOURCES_MARKER: &str = ".legacy-thirdparty-migrated";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GlobalPorts {
@@ -342,6 +342,30 @@ fn strategy_base_content(strategy: &Strategy) -> &str {
         .unwrap_or(strategy.content.as_str())
 }
 
+fn is_legacy_system_strategy_name(
+    current_name: &str,
+    category_name: &str,
+    strategy_id: &str,
+    builtin_name: &str,
+) -> bool {
+    let mut candidates = vec![format!("{category_name} {builtin_name}")];
+
+    if let Some(version_without_prefix) = builtin_name.strip_prefix('v') {
+        candidates.push(format!("{category_name} {version_without_prefix}"));
+    }
+
+    if let Some(id_suffix) = strategy_id.rsplit('-').next() {
+        candidates.push(format!("{category_name} {id_suffix}"));
+        if let Some(version_without_prefix) = id_suffix.strip_prefix('v') {
+            candidates.push(format!("{category_name} {version_without_prefix}"));
+        }
+    }
+
+    candidates
+        .into_iter()
+        .any(|candidate| current_name == candidate)
+}
+
 fn is_system_strategy_modified(strategy: &Strategy) -> bool {
     strategy.name != strategy_base_name(strategy)
         || strategy.content != strategy_base_content(strategy)
@@ -540,21 +564,14 @@ fn find_dev_project_root() -> Option<PathBuf> {
         .find(|candidate| is_dev_project_root(candidate))
 }
 
-fn legacy_zapret_dir() -> PathBuf {
-    dirs::home_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(LEGACY_MANAGED_DIR_NAME)
-}
-
 fn install_resources_dir() -> PathBuf {
     executable_dir()
-        .unwrap_or_else(|| {
-            legacy_zapret_dir()
-                .parent()
-                .map(Path::to_path_buf)
-                .unwrap_or_else(|| PathBuf::from("."))
-        })
+        .unwrap_or_else(|| PathBuf::from("."))
         .join(INSTALLED_RESOURCES_DIR_NAME)
+}
+
+fn legacy_install_resources_dir() -> Option<PathBuf> {
+    executable_dir().map(|dir| dir.join(SOURCE_MANAGED_DIR_NAME))
 }
 
 pub(crate) fn get_runtime_data_dir() -> PathBuf {
@@ -589,27 +606,15 @@ fn normalize_placeholder_path(path: &str) -> Option<String> {
         return Some(normalized);
     }
 
-    if normalized == LEGACY_MANAGED_PATH_ALIAS
-        || normalized.starts_with(&format!("{LEGACY_MANAGED_PATH_ALIAS}/"))
-    {
-        return Some(normalized.replacen(LEGACY_MANAGED_PATH_ALIAS, MANAGED_PATH_ALIAS, 1));
-    }
-
-    let legacy_tilde = format!("~/{LEGACY_MANAGED_DIR_NAME}");
-    if normalized == legacy_tilde {
+    if normalized == LEGACY_MANAGED_PATH_ALIAS {
         return Some(MANAGED_PATH_ALIAS.to_string());
     }
-    if let Some(relative) = normalized.strip_prefix(&format!("{legacy_tilde}/")) {
-        return Some(format!("{MANAGED_PATH_ALIAS}/{relative}"));
+
+    if let Some(suffix) = normalized.strip_prefix(&format!("{LEGACY_MANAGED_PATH_ALIAS}/")) {
+        return Some(format!("{MANAGED_PATH_ALIAS}/{suffix}"));
     }
 
-    let legacy_absolute = legacy_zapret_dir().to_string_lossy().replace('\\', "/");
-    if normalized == legacy_absolute {
-        return Some(MANAGED_PATH_ALIAS.to_string());
-    }
-    normalized
-        .strip_prefix(&format!("{legacy_absolute}/"))
-        .map(|relative| format!("{MANAGED_PATH_ALIAS}/{relative}"))
+    None
 }
 
 fn normalize_placeholder_paths(placeholders: &mut [Placeholder]) -> bool {
@@ -637,70 +642,6 @@ fn resolve_managed_placeholder_path(path: &str) -> Option<String> {
             .to_string_lossy()
             .to_string()
     })
-}
-
-fn copy_tree_if_missing(source: &Path, destination: &Path) -> Result<(), String> {
-    if !source.exists() {
-        return Ok(());
-    }
-
-    if source.is_file() {
-        if destination.exists() {
-            return Ok(());
-        }
-
-        if let Some(parent) = destination.parent() {
-            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-        }
-        fs::copy(source, destination).map_err(|e| e.to_string())?;
-        return Ok(());
-    }
-
-    fs::create_dir_all(destination).map_err(|e| e.to_string())?;
-    for entry in fs::read_dir(source).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        copy_tree_if_missing(&entry.path(), &destination.join(entry.file_name()))?;
-    }
-    Ok(())
-}
-
-fn migrate_legacy_managed_resources(target_dir: &Path) -> Result<(), String> {
-    let legacy_dir = legacy_zapret_dir();
-    if legacy_dir == target_dir || !legacy_dir.exists() {
-        return Ok(());
-    }
-
-    copy_tree_if_missing(&legacy_dir, target_dir)
-}
-
-fn migrate_legacy_runtime_data(target_dir: &Path) -> Result<(), String> {
-    let config_path = target_dir.join("config.json");
-    if !config_path.exists() {
-        for source in [
-            get_managed_resources_dir().join("config.json"),
-            legacy_zapret_dir().join("config.json"),
-        ] {
-            if source.exists() {
-                copy_tree_if_missing(&source, &config_path)?;
-                break;
-            }
-        }
-    }
-
-    let filters_dir = target_dir.join("filters");
-    if !filters_dir.exists() {
-        for source in [
-            get_managed_resources_dir().join("filters"),
-            legacy_zapret_dir().join("filters"),
-        ] {
-            if source.exists() {
-                copy_tree_if_missing(&source, &filters_dir)?;
-                break;
-            }
-        }
-    }
-
-    Ok(())
 }
 
 impl Default for AppConfig {
@@ -739,11 +680,62 @@ pub fn get_managed_resources_dir() -> PathBuf {
     install_resources_dir()
 }
 
+fn copy_missing_tree(source: &Path, destination: &Path) -> Result<(), String> {
+    if !source.is_dir() {
+        return Ok(());
+    }
+
+    fs::create_dir_all(destination).map_err(|e| e.to_string())?;
+
+    for entry in fs::read_dir(source).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let source_path = entry.path();
+        let destination_path = destination.join(entry.file_name());
+
+        if entry.file_type().map_err(|e| e.to_string())?.is_dir() {
+            copy_missing_tree(&source_path, &destination_path)?;
+            continue;
+        }
+
+        if !destination_path.exists() {
+            fs::copy(&source_path, &destination_path).map_err(|e| e.to_string())?;
+        }
+    }
+
+    Ok(())
+}
+
+fn migrate_legacy_installed_resources() -> Result<(), String> {
+    if find_dev_project_root().is_some() {
+        return Ok(());
+    }
+
+    let managed_dir = get_managed_resources_dir();
+    fs::create_dir_all(&managed_dir).map_err(|e| e.to_string())?;
+
+    let marker_path = managed_dir.join(LEGACY_INSTALLED_RESOURCES_MARKER);
+    if marker_path.exists() {
+        return Ok(());
+    }
+
+    let Some(legacy_dir) = legacy_install_resources_dir() else {
+        return Ok(());
+    };
+
+    if legacy_dir == managed_dir || !legacy_dir.is_dir() {
+        return Ok(());
+    }
+
+    copy_missing_tree(&legacy_dir, &managed_dir)?;
+    fs::write(marker_path, []).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 pub fn ensure_managed_resources_dir_ready() -> Result<PathBuf, String> {
     let dir = get_managed_resources_dir();
     if find_dev_project_root().is_none() {
         fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-        migrate_legacy_managed_resources(&dir)?;
+        migrate_legacy_installed_resources()?;
     }
     Ok(dir)
 }
@@ -751,7 +743,6 @@ pub fn ensure_managed_resources_dir_ready() -> Result<PathBuf, String> {
 pub fn ensure_runtime_data_dir_ready() -> Result<PathBuf, String> {
     let dir = get_runtime_data_dir();
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    migrate_legacy_runtime_data(&dir)?;
     Ok(dir)
 }
 
@@ -1205,7 +1196,7 @@ fn sync_builtin_category(
             .strategies
             .iter()
             .find(|item| item.id == strategy.id)
-            && sync_builtin_strategy(strategy, builtin_strategy)
+            && sync_builtin_strategy(strategy, builtin_strategy, &builtin_category.name)
         {
             changed = true;
         }
@@ -1245,7 +1236,11 @@ fn sync_builtin_category(
     changed
 }
 
-fn sync_builtin_strategy(strategy: &mut Strategy, builtin_strategy: &Strategy) -> bool {
+fn sync_builtin_strategy(
+    strategy: &mut Strategy,
+    builtin_strategy: &Strategy,
+    builtin_category_name: &str,
+) -> bool {
     let mut changed = false;
 
     if !strategy.system {
@@ -1263,7 +1258,17 @@ fn sync_builtin_strategy(strategy: &mut Strategy, builtin_strategy: &Strategy) -
         changed = true;
     }
 
-    if !is_system_strategy_modified(strategy) {
+    let can_auto_migrate_legacy_name = strategy.content == strategy_base_content(strategy)
+        && strategy_base_name(strategy) == builtin_strategy.name
+        && strategy_base_content(strategy) == builtin_strategy.content
+        && is_legacy_system_strategy_name(
+            &strategy.name,
+            builtin_category_name,
+            &strategy.id,
+            &builtin_strategy.name,
+        );
+
+    if !is_system_strategy_modified(strategy) || can_auto_migrate_legacy_name {
         if strategy.name != builtin_strategy.name {
             strategy.name = builtin_strategy.name.clone();
             changed = true;
@@ -1286,6 +1291,8 @@ fn sync_builtin_strategy(strategy: &mut Strategy, builtin_strategy: &Strategy) -
 }
 
 fn ensure_config_exists_and_normalized() -> Result<ConfigEnsureResult, String> {
+    ensure_managed_resources_dir_ready()?;
+
     match read_config_from_disk()? {
         Some(config) => {
             let normalized = normalize_config(config);
