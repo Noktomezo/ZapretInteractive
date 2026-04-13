@@ -15,6 +15,8 @@ const DEFAULT_FILTER_WIREGUARD: &str =
 const SOURCE_MANAGED_DIR_NAME: &str = "thirdparty";
 const INSTALLED_RESOURCES_DIR_NAME: &str = "resources";
 const MANAGED_PATH_ALIAS: &str = "@resources";
+const LEGACY_MANAGED_PATH_ALIAS: &str = "@thirdparty";
+const LEGACY_INSTALLED_RESOURCES_MARKER: &str = ".legacy-thirdparty-migrated";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GlobalPorts {
@@ -568,6 +570,10 @@ fn install_resources_dir() -> PathBuf {
         .join(INSTALLED_RESOURCES_DIR_NAME)
 }
 
+fn legacy_install_resources_dir() -> Option<PathBuf> {
+    executable_dir().map(|dir| dir.join(SOURCE_MANAGED_DIR_NAME))
+}
+
 pub(crate) fn get_runtime_data_dir() -> PathBuf {
     executable_dir().unwrap_or_else(|| PathBuf::from("."))
 }
@@ -599,6 +605,15 @@ fn normalize_placeholder_path(path: &str) -> Option<String> {
     {
         return Some(normalized);
     }
+
+    if normalized == LEGACY_MANAGED_PATH_ALIAS {
+        return Some(MANAGED_PATH_ALIAS.to_string());
+    }
+
+    if let Some(suffix) = normalized.strip_prefix(&format!("{LEGACY_MANAGED_PATH_ALIAS}/")) {
+        return Some(format!("{MANAGED_PATH_ALIAS}/{suffix}"));
+    }
+
     None
 }
 
@@ -665,10 +680,62 @@ pub fn get_managed_resources_dir() -> PathBuf {
     install_resources_dir()
 }
 
+fn copy_missing_tree(source: &Path, destination: &Path) -> Result<(), String> {
+    if !source.is_dir() {
+        return Ok(());
+    }
+
+    fs::create_dir_all(destination).map_err(|e| e.to_string())?;
+
+    for entry in fs::read_dir(source).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let source_path = entry.path();
+        let destination_path = destination.join(entry.file_name());
+
+        if entry.file_type().map_err(|e| e.to_string())?.is_dir() {
+            copy_missing_tree(&source_path, &destination_path)?;
+            continue;
+        }
+
+        if !destination_path.exists() {
+            fs::copy(&source_path, &destination_path).map_err(|e| e.to_string())?;
+        }
+    }
+
+    Ok(())
+}
+
+fn migrate_legacy_installed_resources() -> Result<(), String> {
+    if find_dev_project_root().is_some() {
+        return Ok(());
+    }
+
+    let managed_dir = get_managed_resources_dir();
+    fs::create_dir_all(&managed_dir).map_err(|e| e.to_string())?;
+
+    let marker_path = managed_dir.join(LEGACY_INSTALLED_RESOURCES_MARKER);
+    if marker_path.exists() {
+        return Ok(());
+    }
+
+    let Some(legacy_dir) = legacy_install_resources_dir() else {
+        return Ok(());
+    };
+
+    if legacy_dir == managed_dir || !legacy_dir.is_dir() {
+        return Ok(());
+    }
+
+    copy_missing_tree(&legacy_dir, &managed_dir)?;
+    fs::write(marker_path, []).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 pub fn ensure_managed_resources_dir_ready() -> Result<PathBuf, String> {
     let dir = get_managed_resources_dir();
     if find_dev_project_root().is_none() {
         fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        migrate_legacy_installed_resources()?;
     }
     Ok(dir)
 }
@@ -1224,6 +1291,8 @@ fn sync_builtin_strategy(
 }
 
 fn ensure_config_exists_and_normalized() -> Result<ConfigEnsureResult, String> {
+    ensure_managed_resources_dir_ready()?;
+
     match read_config_from_disk()? {
         Some(config) => {
             let normalized = normalize_config(config);

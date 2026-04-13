@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Link } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import { BrushCleaning, ChevronRight, FilePenLine, GripVertical, Loader2, Package, Pencil, Plus, RefreshCcw, RotateCcw, Trash2, UserRoundPlus } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -112,6 +112,7 @@ function formatActiveStrategiesSrText(activeCount: number) {
 }
 
 function SortableCategoryItem({ category, config, onClearActive, onRename, onDelete, onRestoreSystem }: SortableCategoryItemProps) {
+  const navigate = useNavigate()
   const activeStrategies = category.strategies.filter(strategy => strategy.active)
   const activeCount = activeStrategies.length
   const activeStrategiesLabel = formatActiveStrategiesLabel(activeStrategies)
@@ -136,6 +137,10 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
     opacity: isDragging ? 0.5 : 1,
   }
 
+  const openCategory = () => {
+    void navigate({ to: '/strategies/$categoryId', params: { categoryId: category.id } })
+  }
+
   return (
     <div
       ref={setNodeRef}
@@ -149,16 +154,24 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
       >
         <GripVertical className="w-4 h-4" />
       </button>
-      <Link
-        to="/strategies/$categoryId"
-        params={{ categoryId: category.id }}
-        className="-my-4 flex min-w-0 flex-1 self-stretch cursor-pointer items-center justify-between rounded-md py-4"
+      <div
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 self-stretch"
+        role="link"
+        tabIndex={0}
+        aria-label={`Открыть категорию ${category.name}`}
+        onClick={openCategory}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            openCategory()
+          }
+        }}
       >
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="min-w-0 space-y-1">
-            <div className="flex items-center gap-3">
-              <span className="truncate text-sm font-normal">{category.name}</span>
-              <div className="flex items-center gap-1 text-muted-foreground">
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="block min-w-0 shrink-0 truncate text-sm font-normal">{category.name}</span>
+              <div className="flex min-w-0 items-center gap-1 text-muted-foreground">
                 {isSystem
                   ? (
                       <InlineMarker icon={Package} label="Системная категория" />
@@ -168,6 +181,23 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
                     )}
                 {isModified && (
                   <InlineMarker icon={FilePenLine} label="Системная категория изменена пользователем" className="text-warning" />
+                )}
+                {builtinCategory && isSystem && (isModified || updateAvailable) && (
+                  <InlineMarker
+                    icon={updateAvailable ? RefreshCcw : RotateCcw}
+                    label={updateAvailable
+                      ? 'Обновить категорию до актуального системного значения'
+                      : 'Откатить категорию к системному значению'}
+                    className={updateAvailable ? 'text-primary' : 'text-destructive'}
+                    onClick={() => onRestoreSystem(category)}
+                  />
+                )}
+                {isLegacySystemCategory && (
+                  <InlineMarker
+                    icon={RotateCcw}
+                    label="Системная категория из старой версии приложения"
+                    className="text-warning"
+                  />
                 )}
                 {activeCount > 0
                   ? (
@@ -196,37 +226,20 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
                       </Tooltip>
                     )}
               </div>
-              <span className="sr-only">
-                {formatActiveStrategiesSrText(activeCount)}
-              </span>
             </div>
             <p className="text-xs text-muted-foreground">
               {formatStrategiesCount(category.strategies.length)}
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center text-muted-foreground">
+        <span className="sr-only">
+          {formatActiveStrategiesSrText(activeCount)}
+        </span>
+        <div className="-my-4 ml-auto flex shrink-0 self-stretch items-center rounded-md py-4 text-muted-foreground">
           <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
         </div>
-      </Link>
+      </div>
       <div className="flex items-center gap-1">
-        {builtinCategory && isSystem && (isModified || updateAvailable) && (
-          <InlineMarker
-            icon={updateAvailable ? RefreshCcw : RotateCcw}
-            label={updateAvailable
-              ? 'Обновить категорию до актуального системного значения'
-              : 'Откатить категорию к системному значению'}
-            className={updateAvailable ? 'text-primary' : 'text-destructive'}
-            onClick={() => onRestoreSystem(category)}
-          />
-        )}
-        {isLegacySystemCategory && (
-          <InlineMarker
-            icon={RotateCcw}
-            label="Системная категория из старой версии приложения"
-            className="text-warning"
-          />
-        )}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
