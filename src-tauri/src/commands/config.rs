@@ -14,8 +14,6 @@ const DEFAULT_FILTER_WIREGUARD: &str =
     include_str!("../../default-filters/windivert_part.wireguard.txt");
 const SOURCE_MANAGED_DIR_NAME: &str = "thirdparty";
 const INSTALLED_RESOURCES_DIR_NAME: &str = "resources";
-const LEGACY_MANAGED_DIR_NAME: &str = ".zapret";
-const LEGACY_MANAGED_PATH_ALIAS: &str = "@thirdparty";
 const MANAGED_PATH_ALIAS: &str = "@resources";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -564,20 +562,9 @@ fn find_dev_project_root() -> Option<PathBuf> {
         .find(|candidate| is_dev_project_root(candidate))
 }
 
-fn legacy_zapret_dir() -> PathBuf {
-    dirs::home_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(LEGACY_MANAGED_DIR_NAME)
-}
-
 fn install_resources_dir() -> PathBuf {
     executable_dir()
-        .unwrap_or_else(|| {
-            legacy_zapret_dir()
-                .parent()
-                .map(Path::to_path_buf)
-                .unwrap_or_else(|| PathBuf::from("."))
-        })
+        .unwrap_or_else(|| PathBuf::from("."))
         .join(INSTALLED_RESOURCES_DIR_NAME)
 }
 
@@ -612,28 +599,7 @@ fn normalize_placeholder_path(path: &str) -> Option<String> {
     {
         return Some(normalized);
     }
-
-    if normalized == LEGACY_MANAGED_PATH_ALIAS
-        || normalized.starts_with(&format!("{LEGACY_MANAGED_PATH_ALIAS}/"))
-    {
-        return Some(normalized.replacen(LEGACY_MANAGED_PATH_ALIAS, MANAGED_PATH_ALIAS, 1));
-    }
-
-    let legacy_tilde = format!("~/{LEGACY_MANAGED_DIR_NAME}");
-    if normalized == legacy_tilde {
-        return Some(MANAGED_PATH_ALIAS.to_string());
-    }
-    if let Some(relative) = normalized.strip_prefix(&format!("{legacy_tilde}/")) {
-        return Some(format!("{MANAGED_PATH_ALIAS}/{relative}"));
-    }
-
-    let legacy_absolute = legacy_zapret_dir().to_string_lossy().replace('\\', "/");
-    if normalized == legacy_absolute {
-        return Some(MANAGED_PATH_ALIAS.to_string());
-    }
-    normalized
-        .strip_prefix(&format!("{legacy_absolute}/"))
-        .map(|relative| format!("{MANAGED_PATH_ALIAS}/{relative}"))
+    None
 }
 
 fn normalize_placeholder_paths(placeholders: &mut [Placeholder]) -> bool {
@@ -661,56 +627,6 @@ fn resolve_managed_placeholder_path(path: &str) -> Option<String> {
             .to_string_lossy()
             .to_string()
     })
-}
-
-fn copy_tree_if_missing(source: &Path, destination: &Path) -> Result<(), String> {
-    if !source.exists() {
-        return Ok(());
-    }
-
-    if source.is_file() {
-        if destination.exists() {
-            return Ok(());
-        }
-
-        if let Some(parent) = destination.parent() {
-            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-        }
-        fs::copy(source, destination).map_err(|e| e.to_string())?;
-        return Ok(());
-    }
-
-    fs::create_dir_all(destination).map_err(|e| e.to_string())?;
-    for entry in fs::read_dir(source).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        copy_tree_if_missing(&entry.path(), &destination.join(entry.file_name()))?;
-    }
-    Ok(())
-}
-
-fn migrate_legacy_managed_resources(target_dir: &Path) -> Result<(), String> {
-    let legacy_dir = legacy_zapret_dir();
-    if legacy_dir == target_dir || !legacy_dir.exists() {
-        return Ok(());
-    }
-
-    copy_tree_if_missing(&legacy_dir, target_dir)
-}
-
-fn migrate_legacy_runtime_data(target_dir: &Path) -> Result<(), String> {
-    let config_path = target_dir.join("config.json");
-    let legacy_config_path = legacy_zapret_dir().join("config.json");
-    if !config_path.exists() && legacy_config_path.exists() {
-        copy_tree_if_missing(&legacy_config_path, &config_path)?;
-    }
-
-    let filters_dir = target_dir.join("filters");
-    let legacy_filters_dir = legacy_zapret_dir().join("filters");
-    if !filters_dir.exists() && legacy_filters_dir.exists() {
-        copy_tree_if_missing(&legacy_filters_dir, &filters_dir)?;
-    }
-
-    Ok(())
 }
 
 impl Default for AppConfig {
@@ -753,7 +669,6 @@ pub fn ensure_managed_resources_dir_ready() -> Result<PathBuf, String> {
     let dir = get_managed_resources_dir();
     if find_dev_project_root().is_none() {
         fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-        migrate_legacy_managed_resources(&dir)?;
     }
     Ok(dir)
 }
@@ -761,7 +676,6 @@ pub fn ensure_managed_resources_dir_ready() -> Result<PathBuf, String> {
 pub fn ensure_runtime_data_dir_ready() -> Result<PathBuf, String> {
     let dir = get_runtime_data_dir();
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    migrate_legacy_runtime_data(&dir)?;
     Ok(dir)
 }
 
