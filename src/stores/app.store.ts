@@ -271,6 +271,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
             if (restored_files.length > 0) {
               useConnectionStore.getState().addLog(`Watcher восстановил файлы: ${restored_files.join(', ')}`)
+              toast.success(
+                restored_files.length === 1
+                  ? `Восстановлен системный файл: ${restored_files[0]}`
+                  : `Восстановлены системные файлы: ${restored_files.slice(0, 4).join(', ')}${restored_files.length > 4 ? '…' : ''}`,
+              )
             }
 
             if (unrecoverable_filters.length > 0) {

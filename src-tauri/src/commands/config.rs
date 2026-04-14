@@ -571,6 +571,10 @@ fn install_resources_dir() -> PathBuf {
         .join(INSTALLED_RESOURCES_DIR_NAME)
 }
 
+fn source_managed_resources_dir() -> Option<PathBuf> {
+    find_dev_project_root().map(|project_root| project_root.join(SOURCE_MANAGED_DIR_NAME))
+}
+
 fn legacy_install_resources_dir() -> Option<PathBuf> {
     executable_dir().map(|dir| dir.join(SOURCE_MANAGED_DIR_NAME))
 }
@@ -678,10 +682,6 @@ impl Default for AppConfig {
 }
 
 pub fn get_managed_resources_dir() -> PathBuf {
-    if let Some(project_root) = find_dev_project_root() {
-        return project_root.join(SOURCE_MANAGED_DIR_NAME);
-    }
-
     install_resources_dir()
 }
 
@@ -711,10 +711,6 @@ fn copy_missing_tree(source: &Path, destination: &Path) -> Result<(), String> {
 }
 
 fn migrate_legacy_installed_resources() -> Result<(), String> {
-    if find_dev_project_root().is_some() {
-        return Ok(());
-    }
-
     let managed_dir = get_managed_resources_dir();
     fs::create_dir_all(&managed_dir).map_err(|e| e.to_string())?;
 
@@ -751,10 +747,16 @@ fn cleanup_legacy_runtime_data_dir() {
 
 pub fn ensure_managed_resources_dir_ready() -> Result<PathBuf, String> {
     let dir = get_managed_resources_dir();
-    if find_dev_project_root().is_none() {
-        fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-        migrate_legacy_installed_resources()?;
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+
+    if let Some(source_dir) = source_managed_resources_dir()
+        && source_dir != dir
+    {
+        copy_missing_tree(&source_dir, &dir)?;
     }
+
+    migrate_legacy_installed_resources()?;
+
     Ok(dir)
 }
 

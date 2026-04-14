@@ -872,6 +872,11 @@ export function CategoryPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="strategy-content">Содержимое</Label>
+                <p className="text-xs text-muted-foreground">
+                  {'<LIST_MODE>'}
+                  {' '}
+                  автоматически заменяется на текущий режим списков: список исключений или список заблокированных адресов.
+                </p>
                 <LenisScrollArea
                   className="max-h-[calc(100vh-22rem)] rounded-md border border-border/80 bg-background/92 shadow-xs transition-[border-color,box-shadow,background-color] hover:border-border focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30"
                   contentClassName="cursor-text"
@@ -920,6 +925,11 @@ export function CategoryPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-strategy-content">Содержимое</Label>
+                <p className="text-xs text-muted-foreground">
+                  {'<LIST_MODE>'}
+                  {' '}
+                  автоматически заменяется на текущий режим списков: список исключений или список заблокированных адресов.
+                </p>
                 <LenisScrollArea
                   className="max-h-[calc(100vh-22rem)] rounded-md border border-border/80 bg-background/92 shadow-xs transition-[border-color,box-shadow,background-color] hover:border-border focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30"
                   contentClassName="cursor-text"
