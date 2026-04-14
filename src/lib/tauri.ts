@@ -28,7 +28,7 @@ export const ensureManagedFiles = (): Promise<EnsureManagedFilesResult> => invok
 export const restoreHashesFromDisk = (): Promise<void> => invoke('restore_hashes_from_disk')
 export const downloadBinaries = async (forceAll = false): Promise<void> => invoke('download_binaries', { forceAll })
 export const applyCoreFileUpdates = async (): Promise<void> => invoke('apply_core_file_updates')
-export const refreshListsIfStale = (): Promise<number> => invoke('refresh_lists_if_stale')
+export const refreshListsIfStale = (): Promise<string[]> => invoke('refresh_lists_if_stale')
 export const restoreDefaultFilters = (): Promise<void> => invoke('restore_default_filters')
 export const getWinwsPath = (): Promise<string> => invoke('get_winws_path')
 export const startWinws = (args: string[], tcpPorts: string, udpPorts: string): Promise<number> => invoke('start_winws', { args, tcpPorts, udpPorts })

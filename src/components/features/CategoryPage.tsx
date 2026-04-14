@@ -39,6 +39,41 @@ function normalizeStrategyText(value: string) {
   return value.replace(CRLF_REGEX, '\n').trim()
 }
 
+function formatActiveStrategiesLabel(activeStrategies: Strategy[]) {
+  const activeCount = activeStrategies.length
+  const firstActiveStrategy = activeStrategies[0]
+
+  if (activeCount === 0 || !firstActiveStrategy) {
+    return null
+  }
+
+  if (activeCount === 1) {
+    return firstActiveStrategy.name
+  }
+
+  return `${firstActiveStrategy.name} +${activeCount - 1}`
+}
+
+function formatActiveStrategiesSrText(activeCount: number) {
+  if (activeCount === 0) {
+    return 'Нет активных стратегий'
+  }
+
+  const lastTwoDigits = activeCount % 100
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+    return `${activeCount} активных стратегий`
+  }
+
+  const lastDigit = activeCount % 10
+  if (lastDigit === 1) {
+    return `${activeCount} активная стратегия`
+  }
+  if (lastDigit >= 2 && lastDigit <= 4) {
+    return `${activeCount} активные стратегии`
+  }
+  return `${activeCount} активных стратегий`
+}
+
 function getStrategyDuplicateError(
   strategies: Strategy[],
   name: string,
@@ -79,6 +114,7 @@ export function CategoryPage() {
   const [systemActionTarget, setSystemActionTarget] = useState<SystemActionTarget | null>(null)
   const newStrategyContentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const editStrategyContentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const strategyCardRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const config = useConfigStore(state => state.config)
   const builtinConfig = useConfigStore(state => state.builtinConfig)
   const loading = useConfigStore(state => state.loading)
@@ -108,6 +144,22 @@ export function CategoryPage() {
   const builtinCategory = category ? getBuiltinCategory(builtinConfig, category.id) : null
   const isSystemCategoryModifiedByUser = category ? isSystemCategoryModified(category, config) : false
   const isSystemCategoryBuiltinUpdateAvailable = category ? isSystemCategoryUpdateAvailable(category, builtinCategory) : false
+  const isLegacySystemCategory = !!category && isSystemCategory(category) && !builtinCategory
+  const activeStrategies = category?.strategies.filter(strategy => strategy.active) ?? []
+  const activeCount = activeStrategies.length
+  const activeStrategiesLabel = formatActiveStrategiesLabel(activeStrategies)
+  const firstActiveStrategyId = activeStrategies[0]?.id ?? null
+
+  const scrollToActiveStrategy = () => {
+    if (!firstActiveStrategyId) {
+      return
+    }
+
+    strategyCardRefs.current[firstActiveStrategyId]?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+    })
+  }
 
   const handleAddStrategy = async () => {
     if (!newStrategyName.trim() || !newStrategyContent.trim() || !categoryId) {
@@ -507,7 +559,47 @@ export function CategoryPage() {
                       })}
                     />
                   )}
+                  {isLegacySystemCategory && (
+                    <InlineMarker
+                      icon={RotateCcw}
+                      label="Системная категория из старой версии приложения"
+                      className="text-warning"
+                    />
+                  )}
+                  {activeCount > 0
+                    ? (
+                        activeStrategiesLabel && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={scrollToActiveStrategy}
+                                className="max-w-[14rem] cursor-pointer truncate text-xs text-success animate-pulse transition-colors hover:text-success/80"
+                              >
+                                {activeStrategiesLabel}
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {activeCount === 1 ? 'Прокрутить к текущей стратегии' : 'Прокрутить к первой активной стратегии'}
+                            </TooltipContent>
+                          </Tooltip>
+                        )
+                      )
+                    : (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span
+                              className="inline-flex h-2 w-2 cursor-help rounded-full bg-destructive animate-pulse"
+                              aria-hidden="true"
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent>Нет активных стратегий</TooltipContent>
+                        </Tooltip>
+                      )}
                 </div>
+                <span className="sr-only">
+                  {formatActiveStrategiesSrText(activeCount)}
+                </span>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
                 {category.strategies.length}
@@ -610,6 +702,9 @@ export function CategoryPage() {
                 category.strategies.map((strategy: Strategy) => (
                   <div
                     key={strategy.id}
+                    ref={(node) => {
+                      strategyCardRefs.current[strategy.id] = node
+                    }}
                     className={strategy.active
                       ? 'border border-success/30 bg-success/10 rounded-lg p-4 space-y-3'
                       : 'border border-border rounded-lg p-4 space-y-3'}

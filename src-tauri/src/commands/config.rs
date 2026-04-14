@@ -17,6 +17,7 @@ const INSTALLED_RESOURCES_DIR_NAME: &str = "resources";
 const MANAGED_PATH_ALIAS: &str = "@resources";
 const LEGACY_MANAGED_PATH_ALIAS: &str = "@thirdparty";
 const LEGACY_INSTALLED_RESOURCES_MARKER: &str = ".legacy-thirdparty-migrated";
+const LEGACY_RUNTIME_DIR_NAME: &str = ".zapret";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GlobalPorts {
@@ -578,6 +579,10 @@ pub(crate) fn get_runtime_data_dir() -> PathBuf {
     executable_dir().unwrap_or_else(|| PathBuf::from("."))
 }
 
+fn legacy_runtime_data_dir() -> Option<PathBuf> {
+    dirs::home_dir().map(|dir| dir.join(LEGACY_RUNTIME_DIR_NAME))
+}
+
 fn managed_relative_path(path: &str) -> Option<String> {
     let normalized = path.replace('\\', "/");
     if normalized == MANAGED_PATH_ALIAS {
@@ -729,6 +734,19 @@ fn migrate_legacy_installed_resources() -> Result<(), String> {
     copy_missing_tree(&legacy_dir, &managed_dir)?;
     fs::write(marker_path, []).map_err(|e| e.to_string())?;
     Ok(())
+}
+
+fn cleanup_legacy_runtime_data_dir() {
+    let Some(legacy_dir) = legacy_runtime_data_dir() else {
+        return;
+    };
+
+    let runtime_dir = get_runtime_data_dir();
+    if legacy_dir == runtime_dir || !legacy_dir.is_dir() {
+        return;
+    }
+
+    let _ = fs::remove_dir_all(legacy_dir);
 }
 
 pub fn ensure_managed_resources_dir_ready() -> Result<PathBuf, String> {
@@ -1292,6 +1310,7 @@ fn sync_builtin_strategy(
 
 fn ensure_config_exists_and_normalized() -> Result<ConfigEnsureResult, String> {
     ensure_managed_resources_dir_ready()?;
+    cleanup_legacy_runtime_data_dir();
 
     match read_config_from_disk()? {
         Some(config) => {

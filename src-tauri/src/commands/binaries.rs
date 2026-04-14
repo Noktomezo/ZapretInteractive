@@ -1088,13 +1088,13 @@ async fn ensure_managed_files_internal(
     })
 }
 
-async fn refresh_lists_internal() -> Result<usize, String> {
+async fn refresh_lists_internal() -> Result<Vec<String>, String> {
     ensure_helper_files()?;
 
     let lists_dir = get_lists_dir();
     let client = create_http_client()?;
     let remote_hashes = fetch_remote_hashes(&client).await?;
-    let mut updated_count = 0usize;
+    let mut updated_lists = Vec::new();
     for name in LISTS {
         let tracked_file = TrackedFile {
             name,
@@ -1134,7 +1134,7 @@ async fn refresh_lists_internal() -> Result<usize, String> {
                 hashes.insert(hash_key("lists", name), remote_hash.clone());
                 Ok(())
             })?;
-            updated_count += 1;
+            updated_lists.push(name.to_string());
         } else {
             update_hashes(|hashes| {
                 hashes.insert(hash_key("lists", name), remote_hash.clone());
@@ -1142,7 +1142,7 @@ async fn refresh_lists_internal() -> Result<usize, String> {
             })?;
         }
     }
-    Ok(updated_count)
+    Ok(updated_lists)
 }
 
 pub async fn restore_default_filters_internal() -> Result<(), String> {
@@ -1298,7 +1298,7 @@ pub async fn download_binaries(app: AppHandle, force_all: Option<bool>) -> Resul
 }
 
 #[tauri::command]
-pub async fn refresh_lists_if_stale() -> Result<usize, String> {
+pub async fn refresh_lists_if_stale() -> Result<Vec<String>, String> {
     refresh_lists_internal().await
 }
 #[tauri::command]
