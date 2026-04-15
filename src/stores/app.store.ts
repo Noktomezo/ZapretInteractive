@@ -1,4 +1,6 @@
 import type { AppHealthSnapshot } from '@/lib/types'
+import { List } from 'lucide-react'
+import { createElement } from 'react'
 import { toast } from 'sonner'
 import { create } from 'zustand'
 import * as tauri from '../lib/tauri'
@@ -9,6 +11,17 @@ import { useThemeStore } from './theme.store'
 import { useUpdaterStore } from './updater.store'
 
 let shutdownCleanupRegistered = false
+const LIST_REFRESH_TOAST_DELAY_MS = 600
+const LIST_DISPLAY_NAMES: Record<string, string> = {
+  'zapret-hosts-user-exclude.txt': 'список исключений',
+  'zapret-ip-user.txt': 'список заблокированных адресов',
+  'zapret-hosts-google.txt': 'список Google/YouTube',
+}
+
+function formatUpdatedListToast(filename: string) {
+  const label = LIST_DISPLAY_NAMES[filename] ?? filename
+  return `Обновлён ${label}`
+}
 
 interface AppStore {
   initialized: boolean
@@ -82,14 +95,38 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const version = get().refreshVersion + 1
     set({ refreshVersion: version })
 
+    let listRefreshToastId: string | number | null = null
+    const listRefreshToastTimer = window.setTimeout(() => {
+      listRefreshToastId = toast.loading('Обновляю списки...')
+    }, LIST_REFRESH_TOAST_DELAY_MS)
+
     try {
       const updatedLists = await tauri.refreshListsIfStale()
-      if (updatedLists > 0) {
-        useConnectionStore.getState().addLog(`Списки обновлены автоматически: ${updatedLists} файлов`)
+      if (updatedLists.length > 0) {
+        useConnectionStore.getState().addLog(
+          `Списки обновлены автоматически: ${updatedLists.join(', ')}`,
+        )
+        if (listRefreshToastId) {
+          toast.dismiss(listRefreshToastId)
+        }
+        for (const filename of updatedLists) {
+          toast(formatUpdatedListToast(filename), {
+            icon: createElement(List, { className: 'h-4 w-4 text-success' }),
+          })
+        }
+      }
+      else if (listRefreshToastId) {
+        toast.dismiss(listRefreshToastId)
       }
     }
     catch (e) {
       useConnectionStore.getState().addLog(`Не удалось автоматически обновить списки: ${e}`)
+      if (listRefreshToastId) {
+        toast.error(`Не удалось обновить списки: ${e instanceof Error ? e.message : String(e)}`, { id: listRefreshToastId })
+      }
+    }
+    finally {
+      window.clearTimeout(listRefreshToastTimer)
     }
 
     const snapshot = await tauri.getAppHealthSnapshot(true)
@@ -234,6 +271,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
             if (restored_files.length > 0) {
               useConnectionStore.getState().addLog(`Watcher восстановил файлы: ${restored_files.join(', ')}`)
+              toast.success(
+                restored_files.length === 1
+                  ? `Восстановлен системный файл: ${restored_files[0]}`
+                  : `Восстановлены системные файлы: ${restored_files.slice(0, 4).join(', ')}${restored_files.length > 4 ? '…' : ''}`,
+              )
             }
 
             if (unrecoverable_filters.length > 0) {

@@ -17,6 +17,7 @@ const INSTALLED_RESOURCES_DIR_NAME: &str = "resources";
 const MANAGED_PATH_ALIAS: &str = "@resources";
 const LEGACY_MANAGED_PATH_ALIAS: &str = "@thirdparty";
 const LEGACY_INSTALLED_RESOURCES_MARKER: &str = ".legacy-thirdparty-migrated";
+const LEGACY_RUNTIME_DIR_NAME: &str = ".zapret";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GlobalPorts {
@@ -570,12 +571,20 @@ fn install_resources_dir() -> PathBuf {
         .join(INSTALLED_RESOURCES_DIR_NAME)
 }
 
+fn source_managed_resources_dir() -> Option<PathBuf> {
+    find_dev_project_root().map(|project_root| project_root.join(SOURCE_MANAGED_DIR_NAME))
+}
+
 fn legacy_install_resources_dir() -> Option<PathBuf> {
     executable_dir().map(|dir| dir.join(SOURCE_MANAGED_DIR_NAME))
 }
 
 pub(crate) fn get_runtime_data_dir() -> PathBuf {
     executable_dir().unwrap_or_else(|| PathBuf::from("."))
+}
+
+fn legacy_runtime_data_dir() -> Option<PathBuf> {
+    dirs::home_dir().map(|dir| dir.join(LEGACY_RUNTIME_DIR_NAME))
 }
 
 fn managed_relative_path(path: &str) -> Option<String> {
@@ -673,10 +682,6 @@ impl Default for AppConfig {
 }
 
 pub fn get_managed_resources_dir() -> PathBuf {
-    if let Some(project_root) = find_dev_project_root() {
-        return project_root.join(SOURCE_MANAGED_DIR_NAME);
-    }
-
     install_resources_dir()
 }
 
@@ -705,11 +710,56 @@ fn copy_missing_tree(source: &Path, destination: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn migrate_legacy_installed_resources() -> Result<(), String> {
-    if find_dev_project_root().is_some() {
+fn should_replace_file(source: &Path, destination: &Path) -> Result<bool, String> {
+    if !destination.exists() {
+        return Ok(true);
+    }
+
+    let source_metadata = fs::metadata(source).map_err(|e| e.to_string())?;
+    let destination_metadata = fs::metadata(destination).map_err(|e| e.to_string())?;
+
+    if source_metadata.len() != destination_metadata.len() {
+        return Ok(true);
+    }
+
+    if let (Ok(source_modified), Ok(destination_modified)) =
+        (source_metadata.modified(), destination_metadata.modified())
+        && source_modified > destination_modified
+    {
+        return Ok(true);
+    }
+
+    let source_bytes = fs::read(source).map_err(|e| e.to_string())?;
+    let destination_bytes = fs::read(destination).map_err(|e| e.to_string())?;
+    Ok(source_bytes != destination_bytes)
+}
+
+fn sync_tree_with_updates(source: &Path, destination: &Path) -> Result<(), String> {
+    if !source.is_dir() {
         return Ok(());
     }
 
+    fs::create_dir_all(destination).map_err(|e| e.to_string())?;
+
+    for entry in fs::read_dir(source).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let source_path = entry.path();
+        let destination_path = destination.join(entry.file_name());
+
+        if entry.file_type().map_err(|e| e.to_string())?.is_dir() {
+            sync_tree_with_updates(&source_path, &destination_path)?;
+            continue;
+        }
+
+        if should_replace_file(&source_path, &destination_path)? {
+            fs::copy(&source_path, &destination_path).map_err(|e| e.to_string())?;
+        }
+    }
+
+    Ok(())
+}
+
+fn migrate_legacy_installed_resources() -> Result<(), String> {
     let managed_dir = get_managed_resources_dir();
     fs::create_dir_all(&managed_dir).map_err(|e| e.to_string())?;
 
@@ -731,12 +781,53 @@ fn migrate_legacy_installed_resources() -> Result<(), String> {
     Ok(())
 }
 
+fn canonicalize_existing_path(path: &Path) -> Option<PathBuf> {
+    if !path.exists() {
+        return None;
+    }
+
+    fs::canonicalize(path).ok()
+}
+
+fn paths_overlap(first: &Path, second: &Path) -> bool {
+    first == second || first.starts_with(second) || second.starts_with(first)
+}
+
+fn cleanup_legacy_runtime_data_dir() {
+    let Some(legacy_dir) = legacy_runtime_data_dir() else {
+        return;
+    };
+
+    if !get_config_path().is_file() || !legacy_dir.is_dir() {
+        return;
+    }
+
+    let Some(canonical_legacy_dir) = canonicalize_existing_path(&legacy_dir) else {
+        return;
+    };
+    let Some(canonical_runtime_dir) = canonicalize_existing_path(&get_runtime_data_dir()) else {
+        return;
+    };
+
+    if paths_overlap(&canonical_legacy_dir, &canonical_runtime_dir) {
+        return;
+    }
+
+    let _ = fs::remove_dir_all(canonical_legacy_dir);
+}
+
 pub fn ensure_managed_resources_dir_ready() -> Result<PathBuf, String> {
     let dir = get_managed_resources_dir();
-    if find_dev_project_root().is_none() {
-        fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-        migrate_legacy_installed_resources()?;
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+
+    if let Some(source_dir) = source_managed_resources_dir()
+        && source_dir != dir
+    {
+        sync_tree_with_updates(&source_dir, &dir)?;
     }
+
+    migrate_legacy_installed_resources()?;
+
     Ok(dir)
 }
 
@@ -1293,30 +1384,33 @@ fn sync_builtin_strategy(
 fn ensure_config_exists_and_normalized() -> Result<ConfigEnsureResult, String> {
     ensure_managed_resources_dir_ready()?;
 
-    match read_config_from_disk()? {
+    let ensured: ConfigEnsureResult = match read_config_from_disk()? {
         Some(config) => {
             let normalized = normalize_config(config);
             if normalized.changed {
                 save_config_to_disk(&normalized.config)?;
             }
-            Ok(ConfigEnsureResult {
+            ConfigEnsureResult {
                 config: normalized.config,
                 restored_default: false,
                 normalized_and_persisted: normalized.changed,
                 unrecoverable_filters: normalized.unrecoverable_filters,
-            })
+            }
         }
         None => {
             let config = AppConfig::default();
             save_config_to_disk(&config)?;
-            Ok(ConfigEnsureResult {
+            ConfigEnsureResult {
                 config,
                 restored_default: true,
                 normalized_and_persisted: false,
                 unrecoverable_filters: Vec::new(),
-            })
+            }
         }
-    }
+    };
+
+    cleanup_legacy_runtime_data_dir();
+    Ok(ensured)
 }
 
 pub fn ensure_config_exists_and_loaded(state: &AppState) -> Result<ConfigEnsureResult, String> {
