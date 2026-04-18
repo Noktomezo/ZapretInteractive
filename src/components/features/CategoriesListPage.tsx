@@ -10,6 +10,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
+import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import {
   SortableContext,
   sortableKeyboardCoordinates,
@@ -148,9 +149,11 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
       className="group flex h-20 items-center gap-3 rounded-lg border bg-card p-4"
     >
       <button
+        type="button"
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
+        aria-label={`Перетащить категорию ${category.name}`}
+        className="text-muted-foreground hover:text-foreground flex size-9 shrink-0 cursor-grab touch-none items-center justify-center rounded-md border border-border/70 bg-muted/25 transition-colors active:cursor-grabbing"
       >
         <GripVertical className="w-4 h-4" />
       </button>
@@ -568,6 +571,7 @@ export function CategoriesListPage() {
                 <DndContext
                   sensors={sensors}
                   collisionDetection={closestCenter}
+                  modifiers={[restrictToVerticalAxis, restrictToParentElement]}
                   onDragEnd={handleDragEnd}
                 >
                   <SortableContext

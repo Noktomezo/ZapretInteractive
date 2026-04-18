@@ -1,6 +1,6 @@
 mod commands;
 
-use commands::{admin, binaries, config, process};
+use commands::{admin, binaries, config, dns, process, tg_proxy};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{
     Emitter, Manager,
@@ -68,7 +68,7 @@ fn should_minimize_to_tray(state: &config::AppState) -> bool {
 }
 
 #[cfg(target_os = "windows")]
-fn get_windows_build_number() -> Option<u32> {
+pub(crate) fn get_windows_build_number() -> Option<u32> {
     let mut value = [0u16; 32];
     let mut value_size = (value.len() * std::mem::size_of::<u16>()) as u32;
 
@@ -94,7 +94,7 @@ fn get_windows_build_number() -> Option<u32> {
 }
 
 #[cfg(not(target_os = "windows"))]
-fn get_windows_build_number() -> Option<u32> {
+pub(crate) fn get_windows_build_number() -> Option<u32> {
     None
 }
 
@@ -383,6 +383,13 @@ pub fn run() {
             binaries::delete_filter_file,
             binaries::open_app_directory,
             binaries::open_filters_directory,
+            dns::get_dns_proxy_status,
+            dns::start_dns_proxy,
+            dns::stop_dns_proxy,
+            dns::check_dns_provider_latency,
+            tg_proxy::get_tg_ws_proxy_status,
+            tg_proxy::start_tg_ws_proxy,
+            tg_proxy::stop_tg_ws_proxy,
             process::start_winws,
             process::stop_winws,
             process::is_winws_running,

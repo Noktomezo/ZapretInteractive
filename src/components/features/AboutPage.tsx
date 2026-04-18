@@ -52,6 +52,16 @@ const APP_FOUNDATIONS = [
     value: 'Используемая тема и палитра интерфейса',
     href: 'https://github.com/kepano/flexoki',
   },
+  {
+    label: 'dnscrypt-proxy',
+    value: 'Основа DNS-модуля и DoH-прокси',
+    href: 'https://github.com/DNSCrypt/dnscrypt-proxy',
+  },
+  {
+    label: 'tg-ws-proxy-rs',
+    value: 'Основа Telegram WS Proxy модуля',
+    href: 'https://github.com/valnesfjord/tg-ws-proxy-rs',
+  },
 ]
 
 function formatAboutTimestamp(value?: string) {

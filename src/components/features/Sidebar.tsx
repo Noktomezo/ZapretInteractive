@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import { Link, useLocation } from '@tanstack/react-router'
 import {
+  Boxes,
   FileCode,
   Filter,
   Home,
@@ -31,6 +32,7 @@ import { useAppStore } from '@/stores/app.store'
 
 const mainNavItems = [
   { path: '/', label: 'Главная', icon: Home },
+  { path: '/modules', label: 'Модули', icon: Boxes },
   { path: '/strategies', label: 'Стратегии', icon: Layers, requiresFiles: true },
   { path: '/filters', label: 'Фильтры', icon: Filter, requiresFiles: true },
   { path: '/placeholders', label: 'Плейсхолдеры', icon: FileCode, requiresFiles: true },
@@ -57,7 +59,9 @@ function SidebarNavItem({
   const currentPath = location.pathname
   const { open } = useSidebar()
   const binariesOk = useAppStore(state => state.binariesOk)
-  const isActive = currentPath === path
+  const isActive = path === '/'
+    ? currentPath === path
+    : currentPath === path || currentPath.startsWith(`${path}/`)
   const isDisabled = requiresFiles && binariesOk === false
 
   const tooltipLabel = isDisabled

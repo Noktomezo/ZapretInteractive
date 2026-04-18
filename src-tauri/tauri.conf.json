@@ -42,6 +42,7 @@
       "../thirdparty/winws.exe": "resources/winws.exe",
       "../thirdparty/cygwin1.dll": "resources/cygwin1.dll",
       "../thirdparty/hashes.json": "resources/hashes.json",
+      "../thirdparty/modules/": "resources/modules/",
       "../thirdparty/fake/": "resources/fake/",
       "../thirdparty/lists/": "resources/lists/"
     },

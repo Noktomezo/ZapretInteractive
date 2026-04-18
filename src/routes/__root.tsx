@@ -63,7 +63,7 @@ function RootLayout() {
             toastOptions={{
               unstyled: true,
               classNames: {
-                toast: 'app-toast group pointer-events-auto relative flex w-[min(22.5rem,calc(100vw-2rem))] cursor-grab flex-wrap items-start gap-x-3 gap-y-2 rounded-lg border border-border bg-popover p-4 pr-11 text-popover-foreground active:cursor-grabbing',
+                toast: 'app-toast no-select group pointer-events-auto relative flex w-[min(22.5rem,calc(100vw-2rem))] cursor-grab flex-wrap items-start gap-x-3 gap-y-2 rounded-lg border border-border bg-popover p-4 pr-11 text-popover-foreground active:cursor-grabbing',
                 content: 'min-w-0 flex-1 self-center',
                 title: 'text-sm leading-5 font-medium text-popover-foreground',
                 description: 'mt-0.5 text-xs leading-5 text-muted-foreground',

@@ -1,7 +1,11 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::fs;
+use std::io::{BufReader, Read};
+use std::net::IpAddr;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Mutex;
+use uuid::Uuid;
 
 const DEFAULT_CONFIG: &str = include_str!("../../default-config.json");
 const DEFAULT_FILTER_DHT: &str = include_str!("../../default-filters/windivert_part.dht.txt");
@@ -17,7 +21,6 @@ const INSTALLED_RESOURCES_DIR_NAME: &str = "resources";
 const MANAGED_PATH_ALIAS: &str = "@resources";
 const LEGACY_MANAGED_PATH_ALIAS: &str = "@thirdparty";
 const LEGACY_INSTALLED_RESOURCES_MARKER: &str = ".legacy-thirdparty-migrated";
-const LEGACY_RUNTIME_DIR_NAME: &str = ".zapret";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GlobalPorts {
@@ -192,6 +195,29 @@ pub struct AppConfig {
     #[serde(default)]
     pub filters: Vec<Filter>,
     pub binaries_path: String,
+    #[serde(default = "default_dns_preset_id", rename = "dnsPresetId")]
+    pub dns_preset_id: String,
+    #[serde(
+        default = "default_dns_bootstrap_resolvers",
+        rename = "dnsBootstrapResolvers"
+    )]
+    pub dns_bootstrap_resolvers: Vec<String>,
+    #[serde(
+        default = "default_dns_accelerator_enabled",
+        rename = "dnsAcceleratorEnabled"
+    )]
+    pub dns_accelerator_enabled: bool,
+    #[serde(default = "default_dns_module_enabled", rename = "dnsModuleEnabled")]
+    pub dns_module_enabled: bool,
+    #[serde(default = "default_tg_ws_proxy_port", rename = "tgWsProxyPort")]
+    pub tg_ws_proxy_port: u16,
+    #[serde(default = "default_tg_ws_proxy_secret", rename = "tgWsProxySecret")]
+    pub tg_ws_proxy_secret: String,
+    #[serde(
+        default = "default_tg_ws_proxy_module_enabled",
+        rename = "tgWsProxyModuleEnabled"
+    )]
+    pub tg_ws_proxy_module_enabled: bool,
     #[serde(default = "default_minimize_to_tray", rename = "minimizeToTray")]
     pub minimize_to_tray: bool,
     #[serde(default = "default_launch_to_tray", rename = "launchToTray")]
@@ -294,6 +320,59 @@ fn default_core_file_update_prompts_enabled() -> bool {
 
 fn default_app_auto_updates_enabled() -> bool {
     true
+}
+
+fn default_dns_preset_id() -> String {
+    "comss-one".to_string()
+}
+
+fn normalize_dns_preset_id(preset_id: &str) -> String {
+    let normalized = preset_id.trim();
+    if normalized.eq_ignore_ascii_case("malw-link") {
+        return "malw-link-main".to_string();
+    }
+
+    match normalized {
+        "comss-one" | "xbox-dns-ru" | "malw-link-main" | "malw-link-cf" | "mafioznik"
+        | "astracat" => normalized.to_string(),
+        _ => default_dns_preset_id(),
+    }
+}
+
+fn default_dns_bootstrap_resolvers() -> Vec<String> {
+    vec![
+        "77.88.8.8".to_string(),
+        "1.1.1.1".to_string(),
+        "8.8.8.8".to_string(),
+    ]
+}
+
+fn default_dns_accelerator_enabled() -> bool {
+    false
+}
+
+fn default_dns_module_enabled() -> bool {
+    false
+}
+
+fn default_tg_ws_proxy_port() -> u16 {
+    1443
+}
+
+fn default_tg_ws_proxy_secret() -> String {
+    String::new()
+}
+
+fn default_tg_ws_proxy_module_enabled() -> bool {
+    false
+}
+
+fn is_valid_tg_ws_proxy_secret(secret: &str) -> bool {
+    secret.len() == 32 && secret.chars().all(|char| char.is_ascii_hexdigit())
+}
+
+fn generate_tg_ws_proxy_secret() -> String {
+    Uuid::new_v4().simple().to_string()
 }
 
 fn default_window_material() -> WindowMaterial {
@@ -575,16 +654,18 @@ fn source_managed_resources_dir() -> Option<PathBuf> {
     find_dev_project_root().map(|project_root| project_root.join(SOURCE_MANAGED_DIR_NAME))
 }
 
+pub(crate) fn uses_dev_managed_resources_source() -> bool {
+    source_managed_resources_dir()
+        .map(|source_dir| source_dir != get_managed_resources_dir())
+        .unwrap_or(false)
+}
+
 fn legacy_install_resources_dir() -> Option<PathBuf> {
     executable_dir().map(|dir| dir.join(SOURCE_MANAGED_DIR_NAME))
 }
 
 pub(crate) fn get_runtime_data_dir() -> PathBuf {
     executable_dir().unwrap_or_else(|| PathBuf::from("."))
-}
-
-fn legacy_runtime_data_dir() -> Option<PathBuf> {
-    dirs::home_dir().map(|dir| dir.join(LEGACY_RUNTIME_DIR_NAME))
 }
 
 fn managed_relative_path(path: &str) -> Option<String> {
@@ -729,9 +810,31 @@ fn should_replace_file(source: &Path, destination: &Path) -> Result<bool, String
         return Ok(true);
     }
 
-    let source_bytes = fs::read(source).map_err(|e| e.to_string())?;
-    let destination_bytes = fs::read(destination).map_err(|e| e.to_string())?;
-    Ok(source_bytes != destination_bytes)
+    let source_file = fs::File::open(source).map_err(|e| e.to_string())?;
+    let destination_file = fs::File::open(destination).map_err(|e| e.to_string())?;
+    let mut source_reader = BufReader::new(source_file);
+    let mut destination_reader = BufReader::new(destination_file);
+    let mut source_buffer = [0_u8; 64 * 1024];
+    let mut destination_buffer = [0_u8; 64 * 1024];
+    let mut remaining = source_metadata.len() as usize;
+
+    while remaining > 0 {
+        let chunk_size = remaining.min(source_buffer.len());
+        source_reader
+            .read_exact(&mut source_buffer[..chunk_size])
+            .map_err(|e| e.to_string())?;
+        destination_reader
+            .read_exact(&mut destination_buffer[..chunk_size])
+            .map_err(|e| e.to_string())?;
+
+        if source_buffer[..chunk_size] != destination_buffer[..chunk_size] {
+            return Ok(true);
+        }
+
+        remaining -= chunk_size;
+    }
+
+    Ok(false)
 }
 
 fn sync_tree_with_updates(source: &Path, destination: &Path) -> Result<(), String> {
@@ -779,41 +882,6 @@ fn migrate_legacy_installed_resources() -> Result<(), String> {
     copy_missing_tree(&legacy_dir, &managed_dir)?;
     fs::write(marker_path, []).map_err(|e| e.to_string())?;
     Ok(())
-}
-
-fn canonicalize_existing_path(path: &Path) -> Option<PathBuf> {
-    if !path.exists() {
-        return None;
-    }
-
-    fs::canonicalize(path).ok()
-}
-
-fn paths_overlap(first: &Path, second: &Path) -> bool {
-    first == second || first.starts_with(second) || second.starts_with(first)
-}
-
-fn cleanup_legacy_runtime_data_dir() {
-    let Some(legacy_dir) = legacy_runtime_data_dir() else {
-        return;
-    };
-
-    if !get_config_path().is_file() || !legacy_dir.is_dir() {
-        return;
-    }
-
-    let Some(canonical_legacy_dir) = canonicalize_existing_path(&legacy_dir) else {
-        return;
-    };
-    let Some(canonical_runtime_dir) = canonicalize_existing_path(&get_runtime_data_dir()) else {
-        return;
-    };
-
-    if paths_overlap(&canonical_legacy_dir, &canonical_runtime_dir) {
-        return;
-    }
-
-    let _ = fs::remove_dir_all(canonical_legacy_dir);
 }
 
 pub fn ensure_managed_resources_dir_ready() -> Result<PathBuf, String> {
@@ -879,6 +947,55 @@ fn normalize_config(mut config: AppConfig) -> NormalizedConfigResult {
 
     if config.binaries_path != expected_binaries_path {
         config.binaries_path = expected_binaries_path;
+        changed = true;
+    }
+
+    let normalized_dns_preset_id = normalize_dns_preset_id(&config.dns_preset_id);
+    if config.dns_preset_id != normalized_dns_preset_id {
+        config.dns_preset_id = normalized_dns_preset_id;
+        changed = true;
+    }
+
+    if config.tg_ws_proxy_port == 0 {
+        config.tg_ws_proxy_port = default_tg_ws_proxy_port();
+        changed = true;
+    }
+
+    let normalized_tg_ws_proxy_secret = config.tg_ws_proxy_secret.trim().to_ascii_lowercase();
+    if !is_valid_tg_ws_proxy_secret(&normalized_tg_ws_proxy_secret) {
+        config.tg_ws_proxy_secret = generate_tg_ws_proxy_secret();
+        changed = true;
+    } else if config.tg_ws_proxy_secret != normalized_tg_ws_proxy_secret {
+        config.tg_ws_proxy_secret = normalized_tg_ws_proxy_secret;
+        changed = true;
+    }
+
+    let mut seen_bootstrap_resolvers = HashSet::new();
+    let normalized_bootstrap_resolvers = config
+        .dns_bootstrap_resolvers
+        .iter()
+        .map(|resolver| resolver.trim())
+        .filter(|resolver| !resolver.is_empty())
+        .filter_map(|resolver| match resolver.parse::<IpAddr>() {
+            Ok(ip) => {
+                let value = ip.to_string();
+                if seen_bootstrap_resolvers.insert(value.clone()) {
+                    Some(value)
+                } else {
+                    None
+                }
+            }
+            Err(_) => {
+                changed = true;
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+    if normalized_bootstrap_resolvers.is_empty() {
+        config.dns_bootstrap_resolvers = default_dns_bootstrap_resolvers();
+        changed = true;
+    } else if normalized_bootstrap_resolvers != config.dns_bootstrap_resolvers {
+        config.dns_bootstrap_resolvers = normalized_bootstrap_resolvers;
         changed = true;
     }
 
@@ -1409,7 +1526,6 @@ fn ensure_config_exists_and_normalized() -> Result<ConfigEnsureResult, String> {
         }
     };
 
-    cleanup_legacy_runtime_data_dir();
     Ok(ensured)
 }
 

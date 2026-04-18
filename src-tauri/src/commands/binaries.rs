@@ -2,7 +2,8 @@ use crate::commands::process::kill_windivert_service;
 use crate::config::{
     AppConfig, AppState, current_config, ensure_config_exists_and_loaded,
     ensure_managed_resources_dir_ready, ensure_runtime_data_dir_ready, get_config_path,
-    get_managed_resources_dir, get_runtime_data_dir, validate_filter_filename,
+    get_managed_resources_dir, get_runtime_data_dir, uses_dev_managed_resources_source,
+    validate_filter_filename,
 };
 use futures::stream::{self, StreamExt};
 use notify::{Config as NotifyConfig, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
@@ -1089,6 +1090,10 @@ async fn ensure_managed_files_internal(
 }
 
 async fn refresh_lists_internal() -> Result<Vec<String>, String> {
+    if uses_dev_managed_resources_source() {
+        return Ok(Vec::new());
+    }
+
     ensure_helper_files()?;
 
     let lists_dir = get_lists_dir();
@@ -1114,6 +1119,13 @@ async fn refresh_lists_internal() -> Result<Vec<String>, String> {
 
         if local_hash.as_deref() != Some(remote_hash.as_str()) {
             let bytes = download_bytes(&client, &tracked_file.url, name).await?;
+            let downloaded_hash = calculate_sha256_bytes(&bytes);
+            if downloaded_hash != remote_hash {
+                return Err(format!(
+                    "Downloaded list hash mismatch for {name}: expected {remote_hash}, got {downloaded_hash}"
+                ));
+            }
+
             let temp_path = file_path.with_extension("tmp");
             use tokio::io::AsyncWriteExt;
             let mut temp_file = tokio::fs::File::create(&temp_path)

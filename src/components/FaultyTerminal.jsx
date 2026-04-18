@@ -282,6 +282,7 @@ export default function FaultyTerminal({
   const smoothMouseRef = useRef({ x: 0.5, y: 0.5 })
   const frozenTimeRef = useRef(0)
   const rafRef = useRef(0)
+  const resizeObserverRef = useRef(null)
   const targetSizeRef = useRef({ width: 0, height: 0 })
   const appliedSizeRef = useRef({ width: 0, height: 0 })
   const loadAnimationStartRef = useRef(0)
@@ -423,11 +424,10 @@ export default function FaultyTerminal({
     let program = null
     let mesh = null
     let gl = null
-    let resizeObserver = null
-
     const cleanupWebgl = () => {
       cancelAnimationFrame(rafRef.current)
-      resizeObserver?.disconnect()
+      resizeObserverRef.current?.disconnect()
+      resizeObserverRef.current = null
       window.removeEventListener('pointermove', handlePointerMove)
       if (gl?.canvas?.parentElement === ctn)
         ctn.removeChild(gl.canvas)
@@ -507,19 +507,41 @@ export default function FaultyTerminal({
       )
     }
 
+    function renderCurrentFrame() {
+      if (!renderer || !mesh)
+        return
+      renderer.render({ scene: mesh })
+    }
+
     const updateTargetSize = () => {
       if (!ctn)
         return
+
+      const { width, height } = ctn.getBoundingClientRect()
       targetSizeRef.current = {
-        width: ctn.offsetWidth,
-        height: ctn.offsetHeight,
+        width: Math.max(0, Math.round(width)),
+        height: Math.max(0, Math.round(height)),
       }
     }
 
-    resizeObserver = new ResizeObserver(updateTargetSize)
-    resizeObserver.observe(ctn)
     updateTargetSize()
     applySize(targetSizeRef.current.width, targetSizeRef.current.height)
+
+    resizeObserverRef.current = new ResizeObserver(() => {
+      updateTargetSize()
+      const targetSize = targetSizeRef.current
+      const appliedSize = appliedSizeRef.current
+
+      if (
+        targetSize.width > 0
+        && targetSize.height > 0
+        && (targetSize.width !== appliedSize.width || targetSize.height !== appliedSize.height)
+      ) {
+        applySize(targetSize.width, targetSize.height)
+        renderCurrentFrame()
+      }
+    })
+    resizeObserverRef.current.observe(ctn)
 
     const update = (t) => {
       rafRef.current = requestAnimationFrame(update)
@@ -529,16 +551,6 @@ export default function FaultyTerminal({
       const currentMesh = meshRef.current
       if (!currentProgram || !currentRenderer || !currentMesh) {
         return
-      }
-
-      const targetSize = targetSizeRef.current
-      const appliedSize = appliedSizeRef.current
-      if (
-        targetSize.width > 0
-        && targetSize.height > 0
-        && (targetSize.width !== appliedSize.width || targetSize.height !== appliedSize.height)
-      ) {
-        applySize(targetSize.width, targetSize.height)
       }
 
       if (pageLoadAnimationRef.current && loadAnimationStartRef.current === 0) {

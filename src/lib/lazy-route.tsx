@@ -14,7 +14,7 @@ export function lazyRouteComponent<T extends Record<string, ComponentType<any>>>
     return (
       <Suspense
         fallback={(
-          <div className="flex h-full items-center justify-center">
+          <div className="route-lazy-fallback flex h-full items-center justify-center">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-current border-t-transparent" />
           </div>
         )}

@@ -4,6 +4,17 @@
     "udp": "1-65535"
   },
   "listMode": "ipset",
+  "dnsPresetId": "comss-one",
+  "dnsBootstrapResolvers": [
+    "77.88.8.8",
+    "1.1.1.1",
+    "8.8.8.8"
+  ],
+  "dnsAcceleratorEnabled": false,
+  "dnsModuleEnabled": false,
+  "tgWsProxyPort": 1443,
+  "tgWsProxySecret": "",
+  "tgWsProxyModuleEnabled": false,
   "categories": [
     {
       "id": "preset-http",
