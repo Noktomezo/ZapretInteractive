@@ -319,21 +319,40 @@ fn start_tg_ws_proxy_inner(port: u16, secret: String) -> Result<TgWsProxyStatus,
     }
     TG_WS_PROXY_PID.store(pid, Ordering::SeqCst);
 
-    std::thread::sleep(Duration::from_millis(250));
+    let startup_deadline = std::time::Instant::now() + Duration::from_secs(2);
+    loop {
+        let exit_message = {
+            let mut running_handle = TG_WS_PROXY_HANDLE
+                .lock()
+                .map_err(|error| error.to_string())?;
+            match running_handle.take() {
+                Some(handle) => {
+                    let exit_message = handle
+                        .try_wait()
+                        .map_err(|error| format!("Failed to inspect tg-ws-proxy startup: {error}"))?
+                        .map(|status| {
+                            format!("tg-ws-proxy завершился сразу после запуска ({status:?})")
+                        });
+                    if exit_message.is_none() {
+                        *running_handle = Some(handle);
+                    }
+                    exit_message
+                }
+                None => None,
+            }
+        };
 
-    if let Some(handle) = TG_WS_PROXY_HANDLE
-        .lock()
-        .map_err(|error| error.to_string())?
-        .as_ref()
-        && let Some(status) = handle
-            .try_wait()
-            .map_err(|error| format!("Failed to inspect tg-ws-proxy startup: {error}"))?
-    {
-        TG_WS_PROXY_PID.store(0, Ordering::SeqCst);
-        clear_stored_handle();
-        return Err(format!(
-            "tg-ws-proxy завершился сразу после запуска ({status:?})"
-        ));
+        if let Some(message) = exit_message {
+            TG_WS_PROXY_PID.store(0, Ordering::SeqCst);
+            clear_stored_handle();
+            return Err(message);
+        }
+
+        if std::time::Instant::now() >= startup_deadline {
+            break;
+        }
+
+        std::thread::sleep(Duration::from_millis(100));
     }
 
     get_tg_ws_proxy_status_inner()

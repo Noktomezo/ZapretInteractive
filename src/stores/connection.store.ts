@@ -265,11 +265,12 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
   disconnect: async () => {
     const { pid } = get()
     const transitionStartedAt = Date.now()
+    let moduleErrors: string[] = []
     set({ status: 'disconnecting' })
     get().addLog('Начинаю отключение')
 
     try {
-      const moduleErrors = await stopManagedModules(get().addLog)
+      moduleErrors = await stopManagedModules(get().addLog)
 
       if (pid) {
         get().addLog(`Останавливаю winws.exe (PID: ${pid})`)
@@ -293,7 +294,10 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       await ensureMinimumTransition(transitionStartedAt)
       set({ status: 'error', error: String(e) })
       get().updateTrayState(false)
-      get().addLog(`Ошибка отключения: ${e}`)
+      const moduleErrorSuffix = moduleErrors.length > 0 ? `; ошибки модулей: ${moduleErrors.join('; ')}` : ''
+      const message = `Ошибка отключения: ${e}${moduleErrorSuffix}`
+      get().addLog(message)
+      toast.error(message)
     }
   },
 

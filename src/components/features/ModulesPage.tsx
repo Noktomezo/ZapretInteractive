@@ -3,9 +3,10 @@ import { useNavigate } from '@tanstack/react-router'
 import { ChevronRight, Globe, Loader2, Send } from 'lucide-react'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { Switch } from '@/components/ui/switch'
-import { useDnsModule } from '@/hooks/use-dns-module'
-import { useTgWsProxyModule } from '@/hooks/use-tg-ws-proxy-module'
+import { useDnsModuleSummary, useTgWsProxyModuleSummary } from '@/hooks/use-module-summary'
+import { useMountEffect } from '@/hooks/use-mount-effect'
 import { cn } from '@/lib/utils'
+import { useConfigStore } from '@/stores/config.store'
 
 function ModuleCard({
   title,
@@ -79,11 +80,15 @@ function ModuleCard({
 
 export function ModulesPage() {
   const navigate = useNavigate()
-  const dnsModule = useDnsModule()
-  const tgWsProxyModule = useTgWsProxyModule()
+  const config = useConfigStore(state => state.config)
+  const loading = useConfigStore(state => state.loading)
+  const load = useConfigStore(state => state.load)
+  const dnsModule = useDnsModuleSummary()
+  const tgWsProxyModule = useTgWsProxyModuleSummary()
 
-  const config = dnsModule.config
-  const loading = dnsModule.loading || tgWsProxyModule.loading
+  useMountEffect(() => {
+    void load()
+  })
 
   if (loading || !config) {
     return (
