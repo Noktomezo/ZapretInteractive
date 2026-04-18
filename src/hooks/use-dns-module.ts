@@ -34,19 +34,36 @@ export function useDnsModule() {
     return nextStatus
   }
 
+  const resolveStatus = async () => status ?? refreshStatus()
+
   const handleCheckLatency = async () => {
     setIsCheckingLatency(true)
     setLatencyByPreset({})
     try {
       const targets = DNS_PRESETS.map(preset => ({ id: preset.id, url: preset.urls[0] }))
-      await Promise.allSettled(targets.map(async (target) => {
+      const settled = await Promise.allSettled(targets.map(async (target) => {
         const [result] = await tauri.checkDnsProviderLatency([target.url])
         setLatencyByPreset(current => ({
           ...current,
           [target.id]: result?.reachable ? result.latencyMs ?? null : null,
         }))
+
+        return result
       }))
-      toast.success('Пинг DNS обновлён')
+      const hasReachableResult = settled.some((entry) => {
+        if (entry.status !== 'fulfilled') {
+          return false
+        }
+
+        return entry.value?.reachable && entry.value.latencyMs !== null
+      })
+
+      if (hasReachableResult) {
+        toast.success('Пинг DNS обновлён')
+      }
+      else {
+        toast.error('Не удалось измерить пинг DNS')
+      }
     }
     catch (error) {
       toast.error(`Ошибка проверки пинга DNS: ${error instanceof Error ? error.message : String(error)}`)
@@ -74,13 +91,14 @@ export function useDnsModule() {
     setDnsBootstrapResolvers([nextBootstrapResolver])
     setDnsAcceleratorEnabled(accelerator)
 
-    if (!status?.running) {
-      scheduleSave('dns-settings')
-      return
-    }
-
-    setIsBusy(true)
     try {
+      const currentStatus = await resolveStatus()
+      if (!currentStatus.running) {
+        scheduleSave('dns-settings')
+        return
+      }
+
+      setIsBusy(true)
       await saveNow()
       const dohUrls = applyDnsAccelerator(nextPreset.urls.slice(), accelerator)
       await tauri.stopDnsProxy()
@@ -141,20 +159,21 @@ export function useDnsModule() {
     setDnsBootstrapResolvers(normalizedResolvers)
     setDnsPresetId(selectedPreset.id)
 
-    setIsBusy(true)
     try {
+      const currentStatus = await resolveStatus()
+      setIsBusy(true)
       await saveNow()
       const dohUrls = applyDnsAccelerator(selectedPreset.urls.slice(), acceleratorEnabled)
 
-      const nextStatus = status?.running
+      const nextStatus = currentStatus.running
         ? await tauri.stopDnsProxy()
         : await tauri.startDnsProxy(dohUrls, normalizedResolvers)
 
       setStatus(nextStatus)
-      addConfigLog(status?.running
+      addConfigLog(currentStatus.running
         ? 'dnscrypt-proxy отключён и системный DNS восстановлен'
         : `dnscrypt-proxy включён (${selectedPreset.name})`)
-      toast.success(status?.running ? 'DNS выключён' : 'DNS включён')
+      toast.success(currentStatus.running ? 'DNS выключён' : 'DNS включён')
     }
     catch (error) {
       toast.error(`Ошибка переключения DNS: ${error instanceof Error ? error.message : String(error)}`)

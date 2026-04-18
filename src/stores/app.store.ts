@@ -121,8 +121,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }
     catch (e) {
       useConnectionStore.getState().addLog(`Не удалось автоматически обновить списки: ${e}`)
+      const message = `Не удалось обновить списки: ${e instanceof Error ? e.message : String(e)}`
       if (listRefreshToastId) {
-        toast.error(`Не удалось обновить списки: ${e instanceof Error ? e.message : String(e)}`, { id: listRefreshToastId })
+        toast.error(message, { id: listRefreshToastId })
+      }
+      else {
+        toast.error(message)
       }
     }
     finally {

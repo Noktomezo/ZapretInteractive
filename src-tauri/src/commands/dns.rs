@@ -1,14 +1,16 @@
 use super::config::{get_managed_resources_dir, get_runtime_data_dir};
 use dnsstamps::DoHBuilder;
+use futures::future::join_all;
+use reqwest::Client as HttpClient;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
-use surge_ping::{Client, Config, ICMP, PingIdentifier, PingSequence};
-use tokio::net::lookup_host;
+use tokio::net::TcpStream;
+use tokio::time::{Instant, timeout};
+use toml::{Table, Value};
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -23,6 +25,7 @@ use windows::core::PCWSTR;
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 const DNSCRYPT_PROXY_SERVICE_NAME: &str = "dnscrypt-proxy";
+const DOH_TEST_QUERY: &str = "AAABAAABAAAAAAAAB2V4YW1wbGUDY29tAAABAAE";
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -124,8 +127,11 @@ fn query_dns_proxy_service_state() -> Result<Option<bool>, String> {
         };
 
         let mut status = SERVICE_STATUS::default();
-        QueryServiceStatus(service, &mut status)
-            .map_err(|e| format!("Failed to query dnscrypt-proxy service: {e}"))?;
+        if let Err(error) = QueryServiceStatus(service, &mut status) {
+            let _ = CloseServiceHandle(service);
+            let _ = CloseServiceHandle(manager);
+            return Err(format!("Failed to query dnscrypt-proxy service: {error}"));
+        }
 
         let _ = CloseServiceHandle(service);
         let _ = CloseServiceHandle(manager);
@@ -245,6 +251,18 @@ fn normalize_bootstrap_resolvers(resolvers: Vec<String>) -> Result<Vec<String>, 
     Ok(normalized)
 }
 
+fn push_rollback_error(
+    rollback_errors: &mut Vec<String>,
+    context: &str,
+    result: Result<(), String>,
+) {
+    if let Err(error) = result {
+        let message = format!("{context}: {error}");
+        eprintln!("{message}");
+        rollback_errors.push(message);
+    }
+}
+
 fn build_static_stamp(url: &str) -> Result<(String, String), String> {
     let parsed = Url::parse(url).map_err(|e| format!("Некорректный DoH URL '{url}': {e}"))?;
     if parsed.scheme() != "https" {
@@ -293,40 +311,57 @@ fn write_dns_proxy_config(
 
     let config_path = dns_proxy_config_path();
     let log_path = dns_proxy_log_path();
-    let server_names = static_entries
-        .iter()
-        .map(|(name, _)| format!("'{name}'"))
-        .collect::<Vec<_>>()
-        .join(", ");
-    let bootstrap = bootstrap_resolvers
-        .iter()
-        .map(|resolver| format!("'{resolver}'"))
-        .collect::<Vec<_>>()
-        .join(", ");
+    let mut content = Table::new();
+    content.insert(
+        "listen_addresses".to_string(),
+        Value::Array(vec![
+            Value::String("127.0.0.1:53".to_string()),
+            Value::String("[::1]:53".to_string()),
+        ]),
+    );
+    content.insert(
+        "server_names".to_string(),
+        Value::Array(
+            static_entries
+                .iter()
+                .map(|(name, _)| Value::String(name.clone()))
+                .collect(),
+        ),
+    );
+    content.insert(
+        "bootstrap_resolvers".to_string(),
+        Value::Array(
+            bootstrap_resolvers
+                .iter()
+                .map(|resolver| Value::String(resolver.clone()))
+                .collect(),
+        ),
+    );
+    content.insert("ignore_system_dns".to_string(), Value::Boolean(true));
+    content.insert("cache".to_string(), Value::Boolean(true));
+    content.insert("ipv4_servers".to_string(), Value::Boolean(true));
+    content.insert("ipv6_servers".to_string(), Value::Boolean(true));
+    content.insert("dnscrypt_servers".to_string(), Value::Boolean(false));
+    content.insert("doh_servers".to_string(), Value::Boolean(true));
+    content.insert("odoh_servers".to_string(), Value::Boolean(false));
+    content.insert("require_dnssec".to_string(), Value::Boolean(false));
+    content.insert("require_nolog".to_string(), Value::Boolean(false));
+    content.insert("require_nofilter".to_string(), Value::Boolean(false));
+    content.insert(
+        "log_file".to_string(),
+        Value::String(normalize_path_for_toml(&log_path)),
+    );
 
-    let mut content = String::new();
-    content.push_str("listen_addresses = ['127.0.0.1:53', '[::1]:53']\n");
-    content.push_str(&format!("server_names = [{server_names}]\n"));
-    content.push_str(&format!("bootstrap_resolvers = [{bootstrap}]\n"));
-    content.push_str("ignore_system_dns = true\n");
-    content.push_str("cache = true\n");
-    content.push_str("ipv4_servers = true\n");
-    content.push_str("ipv6_servers = true\n");
-    content.push_str("dnscrypt_servers = false\n");
-    content.push_str("doh_servers = true\n");
-    content.push_str("odoh_servers = false\n");
-    content.push_str("require_dnssec = false\n");
-    content.push_str("require_nolog = false\n");
-    content.push_str("require_nofilter = false\n");
-    content.push_str(&format!(
-        "log_file = '{}'\n\n",
-        normalize_path_for_toml(&log_path)
-    ));
-
+    let mut static_table = Table::new();
     for (name, stamp) in static_entries {
-        content.push_str(&format!("[static.'{name}']\n"));
-        content.push_str(&format!("stamp = '{stamp}'\n\n"));
+        let mut entry = Table::new();
+        entry.insert("stamp".to_string(), Value::String(stamp));
+        static_table.insert(name, Value::Table(entry));
     }
+    content.insert("static".to_string(), Value::Table(static_table));
+
+    let content = toml::to_string_pretty(&content)
+        .map_err(|error| format!("Не удалось сериализовать dnscrypt-proxy config: {error}"))?;
 
     fs::write(&config_path, content).map_err(|e| e.to_string())?;
     Ok(config_path)
@@ -355,11 +390,34 @@ fn remove_dns_backup() {
 
 fn capture_current_system_dns() -> Result<DnsSystemBackup, String> {
     let script = r#"
-$indices = @(Get-NetAdapter | Where-Object {
-  $_.Status -eq 'Up' -and $_.Name -notmatch 'Loopback' -and $_.InterfaceDescription -notmatch 'Loopback'
-} | Select-Object -ExpandProperty ifIndex)
+function Get-DnsTargetAdapters {
+  $virtualPattern = 'TAP|WireGuard|OpenVPN|Hyper-V|vEthernet|Container|Loopback'
+  $configs = @(
+    Get-NetIPConfiguration | Where-Object {
+      $_.NetAdapter -ne $null -and
+      $_.NetAdapter.Status -eq 'Up' -and
+      $_.IPv4DefaultGateway -ne $null -and
+      $_.NetAdapter.InterfaceDescription -notmatch $virtualPattern -and
+      $_.NetAdapter.Name -notmatch $virtualPattern
+    } | Sort-Object { $_.NetAdapter.InterfaceMetric }, InterfaceIndex
+  )
+
+  if ($configs.Count -eq 0) {
+    $configs = @(
+      Get-NetIPConfiguration | Where-Object {
+        $_.NetAdapter -ne $null -and
+        $_.NetAdapter.Status -eq 'Up' -and
+        $_.IPv4DefaultGateway -ne $null
+      } | Sort-Object { $_.NetAdapter.InterfaceMetric }, InterfaceIndex
+    )
+  }
+
+  @($configs | Group-Object InterfaceIndex | ForEach-Object { $_.Group[0] })
+}
+
 $entries = @()
-foreach ($index in $indices) {
+foreach ($config in @(Get-DnsTargetAdapters)) {
+  $index = [int]$config.InterfaceIndex
   $servers = @(Get-DnsClientServerAddress -InterfaceIndex $index -ErrorAction SilentlyContinue |
     ForEach-Object { $_.ServerAddresses } |
     Where-Object { $_ -and $_.Trim().Length -gt 0 } |
@@ -382,12 +440,37 @@ foreach ($index in $indices) {
     Ok(DnsSystemBackup { adapters })
 }
 
+// Scope the local DNS redirect to the default-route adapter(s) only.
+// This avoids overriding tunnel / virtual / VPN adapters and mirrors the backup scope.
 fn apply_local_system_dns() -> Result<(), String> {
     let script = r#"
-$indices = @(Get-NetAdapter | Where-Object {
-  $_.Status -eq 'Up' -and $_.Name -notmatch 'Loopback' -and $_.InterfaceDescription -notmatch 'Loopback'
-} | Select-Object -ExpandProperty ifIndex)
-foreach ($index in $indices) {
+function Get-DnsTargetAdapters {
+  $virtualPattern = 'TAP|WireGuard|OpenVPN|Hyper-V|vEthernet|Container|Loopback'
+  $configs = @(
+    Get-NetIPConfiguration | Where-Object {
+      $_.NetAdapter -ne $null -and
+      $_.NetAdapter.Status -eq 'Up' -and
+      $_.IPv4DefaultGateway -ne $null -and
+      $_.NetAdapter.InterfaceDescription -notmatch $virtualPattern -and
+      $_.NetAdapter.Name -notmatch $virtualPattern
+    } | Sort-Object { $_.NetAdapter.InterfaceMetric }, InterfaceIndex
+  )
+
+  if ($configs.Count -eq 0) {
+    $configs = @(
+      Get-NetIPConfiguration | Where-Object {
+        $_.NetAdapter -ne $null -and
+        $_.NetAdapter.Status -eq 'Up' -and
+        $_.IPv4DefaultGateway -ne $null
+      } | Sort-Object { $_.NetAdapter.InterfaceMetric }, InterfaceIndex
+    )
+  }
+
+  @($configs | Group-Object InterfaceIndex | ForEach-Object { $_.Group[0] })
+}
+
+foreach ($config in @(Get-DnsTargetAdapters)) {
+  $index = [int]$config.InterfaceIndex
   Set-DnsClientServerAddress -InterfaceIndex $index -ServerAddresses @('127.0.0.1', '::1') -ErrorAction Stop
 }
 "#;
@@ -435,10 +518,33 @@ if ($errors.Count -gt 0) {{
 
 fn reset_system_dns_for_active_adapters() -> Result<(), String> {
     let script = r#"
-$indices = @(Get-NetAdapter | Where-Object {
-  $_.Status -eq 'Up' -and $_.Name -notmatch 'Loopback' -and $_.InterfaceDescription -notmatch 'Loopback'
-} | Select-Object -ExpandProperty ifIndex)
-foreach ($index in $indices) {
+function Get-DnsTargetAdapters {
+  $virtualPattern = 'TAP|WireGuard|OpenVPN|Hyper-V|vEthernet|Container|Loopback'
+  $configs = @(
+    Get-NetIPConfiguration | Where-Object {
+      $_.NetAdapter -ne $null -and
+      $_.NetAdapter.Status -eq 'Up' -and
+      $_.IPv4DefaultGateway -ne $null -and
+      $_.NetAdapter.InterfaceDescription -notmatch $virtualPattern -and
+      $_.NetAdapter.Name -notmatch $virtualPattern
+    } | Sort-Object { $_.NetAdapter.InterfaceMetric }, InterfaceIndex
+  )
+
+  if ($configs.Count -eq 0) {
+    $configs = @(
+      Get-NetIPConfiguration | Where-Object {
+        $_.NetAdapter -ne $null -and
+        $_.NetAdapter.Status -eq 'Up' -and
+        $_.IPv4DefaultGateway -ne $null
+      } | Sort-Object { $_.NetAdapter.InterfaceMetric }, InterfaceIndex
+    )
+  }
+
+  @($configs | Group-Object InterfaceIndex | ForEach-Object { $_.Group[0] })
+}
+
+foreach ($config in @(Get-DnsTargetAdapters)) {
+  $index = [int]$config.InterfaceIndex
   Set-DnsClientServerAddress -InterfaceIndex $index -ResetServerAddresses -ErrorAction Stop
 }
 "#;
@@ -451,76 +557,128 @@ foreach ($index in $indices) {
 }
 
 async fn measure_dns_latency(url: String) -> DnsLatencyResult {
-    let host = match Url::parse(&url)
-        .ok()
-        .and_then(|parsed| parsed.host_str().map(str::to_string))
-    {
-        Some(host) => host,
-        None => {
-            return DnsLatencyResult {
-                url,
-                reachable: false,
-                latency_ms: None,
-                error: Some("Не удалось извлечь хост из URL".to_string()),
-            };
-        }
-    };
-
-    let target = match lookup_host(format!("{host}:0"))
-        .await
-        .map_err(|error| error.to_string())
-        .and_then(|mut entries| {
-            entries
-                .next()
-                .ok_or_else(|| "Хост не вернул ни одного IP-адреса".to_string())
-        }) {
-        Ok(target) => target,
+    let parsed = match Url::parse(&url) {
+        Ok(parsed) => parsed,
         Err(error) => {
             return DnsLatencyResult {
                 url,
                 reachable: false,
                 latency_ms: None,
-                error: Some(error),
+                error: Some(format!("Не удалось извлечь хост из URL: {error}")),
             };
         }
     };
 
-    let mut config_builder = Config::builder();
-    if target.is_ipv6() {
-        config_builder = config_builder.kind(ICMP::V6);
-    }
-
-    let client = match Client::new(&config_builder.build()) {
+    let mut doh_url = parsed.clone();
+    doh_url.query_pairs_mut().append_pair("dns", DOH_TEST_QUERY);
+    let host = parsed.host_str().unwrap_or_default().to_string();
+    let port = parsed.port_or_known_default().unwrap_or(443);
+    let client = match HttpClient::builder()
+        .timeout(Duration::from_secs(3))
+        .build()
+    {
         Ok(client) => client,
         Err(error) => {
             return DnsLatencyResult {
                 url,
                 reachable: false,
                 latency_ms: None,
-                error: Some(error.to_string()),
+                error: Some(format!("Не удалось создать HTTP клиент: {error}")),
             };
         }
     };
 
-    let mut pinger = client.pinger(target.ip(), PingIdentifier(0)).await;
-    if let SocketAddr::V6(addr) = target {
-        pinger.scope_id(addr.scope_id());
-    }
-    pinger.timeout(Duration::from_secs(1));
+    let start = Instant::now();
+    let http_result = client
+        .get(doh_url)
+        .header("accept", "application/dns-message")
+        .send()
+        .await;
 
-    match pinger.ping(PingSequence(0), &[0; 8]).await {
-        Ok((_, rtt)) => DnsLatencyResult {
-            url,
-            reachable: true,
-            latency_ms: Some(rtt.as_millis() as u64),
-            error: None,
-        },
-        Err(error) => DnsLatencyResult {
-            url,
-            reachable: false,
-            latency_ms: None,
-            error: Some(error.to_string()),
-        },
+    match http_result {
+        Ok(response) => {
+            if !response.status().is_success() {
+                let tcp_latency = timeout(
+                    Duration::from_secs(3),
+                    TcpStream::connect(format!("{host}:{port}")),
+                )
+                .await;
+
+                return match tcp_latency {
+                    Ok(Ok(_)) => DnsLatencyResult {
+                        url,
+                        reachable: true,
+                        latency_ms: Some(start.elapsed().as_millis() as u64),
+                        error: None,
+                    },
+                    Ok(Err(error)) => DnsLatencyResult {
+                        url,
+                        reachable: false,
+                        latency_ms: None,
+                        error: Some(format!(
+                            "DoH ответил статусом {}, fallback TCP не удался: {error}",
+                            response.status()
+                        )),
+                    },
+                    Err(_) => DnsLatencyResult {
+                        url,
+                        reachable: false,
+                        latency_ms: None,
+                        error: Some(format!(
+                            "DoH ответил статусом {}, fallback TCP превысил таймаут",
+                            response.status()
+                        )),
+                    },
+                };
+            }
+
+            match response.bytes().await {
+                Ok(_) => DnsLatencyResult {
+                    url,
+                    reachable: true,
+                    latency_ms: Some(start.elapsed().as_millis() as u64),
+                    error: None,
+                },
+                Err(error) => DnsLatencyResult {
+                    url,
+                    reachable: false,
+                    latency_ms: None,
+                    error: Some(format!("Не удалось прочитать DoH ответ: {error}")),
+                },
+            }
+        }
+        Err(http_error) => {
+            let tcp_latency = timeout(
+                Duration::from_secs(3),
+                TcpStream::connect(format!("{host}:{port}")),
+            )
+            .await;
+
+            match tcp_latency {
+                Ok(Ok(_)) => DnsLatencyResult {
+                    url,
+                    reachable: true,
+                    latency_ms: Some(start.elapsed().as_millis() as u64),
+                    error: None,
+                },
+                Ok(Err(tcp_error)) => DnsLatencyResult {
+                    url,
+                    reachable: false,
+                    latency_ms: None,
+                    error: Some(format!(
+                        "DoH запрос не удался: {http_error}; fallback TCP не удался: {tcp_error}"
+                    )),
+                },
+                Err(_) => DnsLatencyResult {
+                    url,
+                    reachable: false,
+                    latency_ms: None,
+                    error: Some(format!(
+                        "DoH запрос не удался: {http_error}; fallback TCP превысил таймаут"
+                    )),
+                },
+            }
+        }
     }
 }
 
@@ -552,15 +710,47 @@ fn start_dns_proxy_inner(
 
     run_dns_proxy_action(&config_path, "install")?;
     if let Err(error) = run_dns_proxy_action(&config_path, "start") {
-        let _ = run_dns_proxy_action(&config_path, "uninstall");
-        return Err(error);
+        let mut rollback_errors = Vec::new();
+        push_rollback_error(
+            &mut rollback_errors,
+            "run_dns_proxy_action(uninstall)",
+            run_dns_proxy_action(&config_path, "uninstall").map(|_| ()),
+        );
+        if rollback_errors.is_empty() {
+            return Err(error);
+        }
+
+        return Err(format!(
+            "{error}. Дополнительно не удалось откатить запуск: {}",
+            rollback_errors.join(" | ")
+        ));
     }
 
     if let Err(error) = apply_local_system_dns() {
-        let _ = restore_system_dns_from_backup(&backup);
-        let _ = run_dns_proxy_action(&config_path, "stop");
-        let _ = run_dns_proxy_action(&config_path, "uninstall");
-        return Err(error);
+        let mut rollback_errors = Vec::new();
+        push_rollback_error(
+            &mut rollback_errors,
+            "restore_system_dns_from_backup",
+            restore_system_dns_from_backup(&backup),
+        );
+        push_rollback_error(
+            &mut rollback_errors,
+            "run_dns_proxy_action(stop)",
+            run_dns_proxy_action(&config_path, "stop").map(|_| ()),
+        );
+        push_rollback_error(
+            &mut rollback_errors,
+            "run_dns_proxy_action(uninstall)",
+            run_dns_proxy_action(&config_path, "uninstall").map(|_| ()),
+        );
+        if rollback_errors.is_empty() {
+            return Err(error);
+        }
+
+        return Err(format!(
+            "{error}. Дополнительно не удалось откатить изменения: {}",
+            rollback_errors.join(" | ")
+        ));
     }
 
     std::thread::sleep(std::time::Duration::from_millis(350));
@@ -606,9 +796,5 @@ pub async fn stop_dns_proxy() -> Result<DnsProxyStatus, String> {
 pub async fn check_dns_provider_latency(
     urls: Vec<String>,
 ) -> Result<Vec<DnsLatencyResult>, String> {
-    let mut results = Vec::with_capacity(urls.len());
-    for url in urls {
-        results.push(measure_dns_latency(url).await);
-    }
-    Ok(results)
+    Ok(join_all(urls.into_iter().map(measure_dns_latency)).await)
 }

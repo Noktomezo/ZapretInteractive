@@ -1119,6 +1119,13 @@ async fn refresh_lists_internal() -> Result<Vec<String>, String> {
 
         if local_hash.as_deref() != Some(remote_hash.as_str()) {
             let bytes = download_bytes(&client, &tracked_file.url, name).await?;
+            let downloaded_hash = calculate_sha256_bytes(&bytes);
+            if downloaded_hash != remote_hash {
+                return Err(format!(
+                    "Downloaded list hash mismatch for {name}: expected {remote_hash}, got {downloaded_hash}"
+                ));
+            }
+
             let temp_path = file_path.with_extension("tmp");
             use tokio::io::AsyncWriteExt;
             let mut temp_file = tokio::fs::File::create(&temp_path)

@@ -282,6 +282,7 @@ export default function FaultyTerminal({
   const smoothMouseRef = useRef({ x: 0.5, y: 0.5 })
   const frozenTimeRef = useRef(0)
   const rafRef = useRef(0)
+  const resizeObserverRef = useRef(null)
   const targetSizeRef = useRef({ width: 0, height: 0 })
   const appliedSizeRef = useRef({ width: 0, height: 0 })
   const loadAnimationStartRef = useRef(0)
@@ -425,6 +426,8 @@ export default function FaultyTerminal({
     let gl = null
     const cleanupWebgl = () => {
       cancelAnimationFrame(rafRef.current)
+      resizeObserverRef.current?.disconnect()
+      resizeObserverRef.current = null
       window.removeEventListener('pointermove', handlePointerMove)
       if (gl?.canvas?.parentElement === ctn)
         ctn.removeChild(gl.canvas)
@@ -518,18 +521,8 @@ export default function FaultyTerminal({
     updateTargetSize()
     applySize(targetSizeRef.current.width, targetSizeRef.current.height)
 
-    const update = (t) => {
-      rafRef.current = requestAnimationFrame(update)
-
-      const currentProgram = programRef.current
-      const currentRenderer = rendererRef.current
-      const currentMesh = meshRef.current
-      if (!currentProgram || !currentRenderer || !currentMesh) {
-        return
-      }
-
+    resizeObserverRef.current = new ResizeObserver(() => {
       updateTargetSize()
-
       const targetSize = targetSizeRef.current
       const appliedSize = appliedSizeRef.current
       if (
@@ -538,6 +531,18 @@ export default function FaultyTerminal({
         && (targetSize.width !== appliedSize.width || targetSize.height !== appliedSize.height)
       ) {
         applySize(targetSize.width, targetSize.height)
+      }
+    })
+    resizeObserverRef.current.observe(ctn)
+
+    const update = (t) => {
+      rafRef.current = requestAnimationFrame(update)
+
+      const currentProgram = programRef.current
+      const currentRenderer = rendererRef.current
+      const currentMesh = meshRef.current
+      if (!currentProgram || !currentRenderer || !currentMesh) {
+        return
       }
 
       if (pageLoadAnimationRef.current && loadAnimationStartRef.current === 0) {

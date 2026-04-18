@@ -41,11 +41,16 @@ export const BOOTSTRAP_RESOLVER_OPTIONS = [
 ] as const
 
 export function normalizeDnsPresetId(presetId?: string) {
-  if (presetId === 'malw-link') {
+  const normalizedPresetId = presetId?.trim()
+  if (normalizedPresetId === 'malw-link') {
     return 'malw-link-main'
   }
 
-  return presetId ?? DEFAULT_DNS_PRESET_ID
+  if (!normalizedPresetId || !DNS_PRESETS.some(preset => preset.id === normalizedPresetId)) {
+    return DEFAULT_DNS_PRESET_ID
+  }
+
+  return normalizedPresetId
 }
 
 export function applyDnsAccelerator(urls: string[], enabled: boolean) {
@@ -54,8 +59,13 @@ export function applyDnsAccelerator(urls: string[], enabled: boolean) {
   }
 
   return urls.map((url) => {
-    const parsed = new URL(url)
-    return `https://v.recipes/dns/${parsed.host}${parsed.pathname}${parsed.search}`
+    try {
+      const parsed = new URL(url)
+      return `https://v.recipes/dns/${parsed.host}${parsed.pathname}${parsed.search}${parsed.hash}`
+    }
+    catch {
+      return url
+    }
   })
 }
 

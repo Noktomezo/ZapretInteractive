@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::fs;
+use std::io::{BufReader, Read};
+use std::net::IpAddr;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Mutex;
 
@@ -763,9 +766,33 @@ fn should_replace_file(source: &Path, destination: &Path) -> Result<bool, String
         return Ok(true);
     }
 
-    let source_bytes = fs::read(source).map_err(|e| e.to_string())?;
-    let destination_bytes = fs::read(destination).map_err(|e| e.to_string())?;
-    Ok(source_bytes != destination_bytes)
+    let source_file = fs::File::open(source).map_err(|e| e.to_string())?;
+    let destination_file = fs::File::open(destination).map_err(|e| e.to_string())?;
+    let mut source_reader = BufReader::new(source_file);
+    let mut destination_reader = BufReader::new(destination_file);
+    let mut source_buffer = [0_u8; 64 * 1024];
+    let mut destination_buffer = [0_u8; 64 * 1024];
+
+    loop {
+        let source_read = source_reader
+            .read(&mut source_buffer)
+            .map_err(|e| e.to_string())?;
+        let destination_read = destination_reader
+            .read(&mut destination_buffer)
+            .map_err(|e| e.to_string())?;
+
+        if source_read != destination_read {
+            return Ok(true);
+        }
+
+        if source_read == 0 {
+            return Ok(false);
+        }
+
+        if source_buffer[..source_read] != destination_buffer[..destination_read] {
+            return Ok(true);
+        }
+    }
 }
 
 fn sync_tree_with_updates(source: &Path, destination: &Path) -> Result<(), String> {
@@ -847,7 +874,12 @@ fn cleanup_legacy_runtime_data_dir() {
         return;
     }
 
-    let _ = fs::remove_dir_all(canonical_legacy_dir);
+    if let Err(error) = fs::remove_dir_all(&canonical_legacy_dir) {
+        eprintln!(
+            "Failed to remove legacy runtime data directory '{}': {error}",
+            canonical_legacy_dir.display()
+        );
+    }
 }
 
 pub fn ensure_managed_resources_dir_ready() -> Result<PathBuf, String> {
@@ -921,12 +953,26 @@ fn normalize_config(mut config: AppConfig) -> NormalizedConfigResult {
         changed = true;
     }
 
+    let mut seen_bootstrap_resolvers = HashSet::new();
     let normalized_bootstrap_resolvers = config
         .dns_bootstrap_resolvers
         .iter()
         .map(|resolver| resolver.trim())
         .filter(|resolver| !resolver.is_empty())
-        .map(ToString::to_string)
+        .filter_map(|resolver| match resolver.parse::<IpAddr>() {
+            Ok(_) => {
+                let value = resolver.to_string();
+                if seen_bootstrap_resolvers.insert(value.clone()) {
+                    Some(value)
+                } else {
+                    None
+                }
+            }
+            Err(_) => {
+                changed = true;
+                None
+            }
+        })
         .collect::<Vec<_>>();
     if normalized_bootstrap_resolvers.is_empty() {
         config.dns_bootstrap_resolvers = default_dns_bootstrap_resolvers();
