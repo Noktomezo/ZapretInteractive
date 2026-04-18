@@ -67,9 +67,12 @@ async function startEnabledModules(config: AppConfig, addLog: (message: string) 
       else if (!isValidTgWsProxySecret(normalizedSecret)) {
         errors.push('TG WS Proxy: некорректный секрет')
       }
+      else if (tgStatus.running) {
+        addLog(`TG WS Proxy модуль уже запущен${tgStatus.pid ? ` (PID: ${tgStatus.pid})` : ''}`)
+      }
       else if (!tgStatus.running) {
-        await tauri.startTgWsProxy(config.tgWsProxyPort ?? 1443, normalizedSecret)
-        addLog(`TG WS Proxy модуль запущен на порту ${config.tgWsProxyPort ?? 1443}`)
+        const nextStatus = await tauri.startTgWsProxy(config.tgWsProxyPort ?? 1443, normalizedSecret)
+        addLog(`TG WS Proxy модуль запущен на порту ${config.tgWsProxyPort ?? 1443}${nextStatus.pid ? ` (PID: ${nextStatus.pid})` : ''}`)
       }
     }
     catch (error) {
@@ -80,7 +83,7 @@ async function startEnabledModules(config: AppConfig, addLog: (message: string) 
   return errors
 }
 
-async function stopManagedModules(addLog: (message: string) => void) {
+async function stopManagedModules(config: AppConfig | null, addLog: (message: string) => void) {
   const errors: string[] = []
 
   try {
@@ -94,15 +97,20 @@ async function stopManagedModules(addLog: (message: string) => void) {
     errors.push(`DNS: ${error instanceof Error ? error.message : String(error)}`)
   }
 
-  try {
-    const tgStatus = await tauri.getTgWsProxyStatus()
-    if (tgStatus.running) {
-      await tauri.stopTgWsProxy()
-      addLog('TG WS Proxy модуль остановлен')
+  if (config?.tgWsProxyModuleEnabled) {
+    try {
+      const tgStatus = await tauri.getTgWsProxyStatus()
+      if (tgStatus.running) {
+        addLog(`Останавливаю TG WS Proxy модуль${tgStatus.pid ? ` (PID: ${tgStatus.pid})` : ''}`)
+      }
+      const stoppedStatus = await tauri.stopTgWsProxy()
+      if (tgStatus.running || tgStatus.pid || stoppedStatus.pid) {
+        addLog(`TG WS Proxy модуль остановлен${tgStatus.pid ? ` (PID: ${tgStatus.pid})` : ''}`)
+      }
     }
-  }
-  catch (error) {
-    errors.push(`TG WS Proxy: ${error instanceof Error ? error.message : String(error)}`)
+    catch (error) {
+      errors.push(`TG WS Proxy: ${error instanceof Error ? error.message : String(error)}`)
+    }
   }
 
   return errors
@@ -267,13 +275,14 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
 
   disconnect: async () => {
     const { pid } = get()
+    const config = useConfigStore.getState().config
     const transitionStartedAt = Date.now()
     let moduleErrors: string[] = []
     set({ status: 'disconnecting' })
     get().addLog('Начинаю отключение')
 
     try {
-      moduleErrors = await stopManagedModules(get().addLog)
+      moduleErrors = await stopManagedModules(config, get().addLog)
 
       if (pid) {
         get().addLog(`Останавливаю winws.exe (PID: ${pid})`)

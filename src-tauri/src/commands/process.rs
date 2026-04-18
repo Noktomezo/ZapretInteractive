@@ -1,14 +1,17 @@
-use crate::config::get_managed_resources_dir;
+use super::config::{get_managed_resources_dir, get_runtime_data_dir};
 use duct::{Expression, Handle, cmd};
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
+use sysinfo::{Pid, ProcessesToUpdate, System};
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 #[cfg(windows)]
 use windows::Win32::Foundation::{
-    CloseHandle, ERROR_FILE_NOT_FOUND, INVALID_HANDLE_VALUE, WIN32_ERROR,
+    CloseHandle, ERROR_FILE_NOT_FOUND, HANDLE, INVALID_HANDLE_VALUE, WAIT_FAILED, WAIT_OBJECT_0,
+    WAIT_TIMEOUT, WIN32_ERROR,
 };
 #[cfg(windows)]
 use windows::Win32::System::Diagnostics::ToolHelp::{
@@ -28,11 +31,12 @@ use windows::Win32::System::Services::{
 };
 #[cfg(windows)]
 use windows::Win32::System::Threading::{
-    GetExitCodeProcess, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_TERMINATE,
-    TerminateProcess,
+    GetExitCodeProcess, OpenProcess, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
+    PROCESS_SYNCHRONIZE, PROCESS_TERMINATE, QueryFullProcessImageNameW, TerminateProcess,
+    WaitForSingleObject,
 };
 #[cfg(windows)]
-use windows::core::PCWSTR;
+use windows::core::{PCWSTR, PWSTR};
 
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -49,9 +53,71 @@ const DRIVER_SERVICE_NAMES: &[&str] = &["WinDivert", "Monkey64", "Monkey"];
 const STILL_ACTIVE_EXIT_CODE: u32 = 259;
 #[cfg(windows)]
 const DELETE_ACCESS_MASK: u32 = 0x0001_0000;
+const WINWS_PROCESS_NAME: &str = "winws.exe";
 
 static RUNNING_PID: AtomicU32 = AtomicU32::new(0);
 static RUNNING_HANDLE: Mutex<Option<Handle>> = Mutex::new(None);
+
+fn winws_binary_path() -> PathBuf {
+    get_managed_resources_dir().join(WINWS_PROCESS_NAME)
+}
+
+fn winws_pid_path() -> PathBuf {
+    get_runtime_data_dir().join("winws.pid")
+}
+
+fn write_pid_file(path: &Path, pid: u32) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+
+    std::fs::write(path, pid.to_string()).map_err(|error| error.to_string())
+}
+
+fn read_pid_file(path: &Path) -> Option<u32> {
+    let content = std::fs::read_to_string(path).ok()?;
+    content.trim().parse::<u32>().ok().filter(|pid| *pid != 0)
+}
+
+fn clear_pid_file(path: &Path) -> Result<(), String> {
+    match std::fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
+fn kill_process_by_pid_sysinfo(pid: u32) -> bool {
+    let target_pid = Pid::from_u32(pid);
+    let mut system = System::new_all();
+    system.refresh_processes(ProcessesToUpdate::Some(&[target_pid]), true);
+    system
+        .process(target_pid)
+        .is_some_and(|process| process.kill())
+}
+
+#[cfg(windows)]
+fn kill_process_by_pid_taskkill(pid: u32) -> Result<(), String> {
+    let output = std::process::Command::new("taskkill")
+        .args(["/PID", &pid.to_string(), "/T", "/F"])
+        .output()
+        .map_err(|error| format!("Failed to launch taskkill for process {pid}: {error}"))?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let detail = if !stderr.is_empty() {
+            stderr
+        } else if !stdout.is_empty() {
+            stdout
+        } else {
+            format!("exit code {}", output.status)
+        };
+        Err(format!("taskkill failed for process {pid}: {detail}"))
+    }
+}
 
 #[cfg(windows)]
 fn configure_expression(expression: Expression) -> Expression {
@@ -108,20 +174,105 @@ fn to_wide(value: &str) -> Vec<u16> {
 }
 
 #[cfg(windows)]
-fn terminate_process_by_pid(pid: u32) -> Result<(), String> {
+fn normalize_path_for_compare(path: &Path) -> String {
+    std::fs::canonicalize(path)
+        .unwrap_or_else(|_| path.to_path_buf())
+        .to_string_lossy()
+        .replace('/', "\\")
+        .to_ascii_lowercase()
+}
+
+#[cfg(windows)]
+fn query_process_image_path(handle: HANDLE) -> Option<PathBuf> {
     unsafe {
-        let handle = OpenProcess(
-            PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION,
+        let mut size = 32_768u32;
+        let mut buffer = vec![0u16; size as usize];
+        QueryFullProcessImageNameW(
+            handle,
+            PROCESS_NAME_WIN32,
+            PWSTR(buffer.as_mut_ptr()),
+            &mut size,
+        )
+        .ok()?;
+        Some(PathBuf::from(String::from_utf16_lossy(
+            &buffer[..size as usize],
+        )))
+    }
+}
+
+#[cfg(windows)]
+fn terminate_process_by_pid(pid: u32) -> Result<(), String> {
+    let mut errors = Vec::new();
+
+    unsafe {
+        match OpenProcess(
+            PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SYNCHRONIZE,
             false,
             pid,
-        )
-        .map_err(|e| format!("Failed to open process {pid}: {e}"))?;
+        ) {
+            Ok(handle) => match TerminateProcess(handle, 1) {
+                Ok(()) => {
+                    let wait_result = WaitForSingleObject(handle, 2_000);
+                    let _ = CloseHandle(handle);
 
-        let result = TerminateProcess(handle, 1);
-        let _ = CloseHandle(handle);
-
-        result.map_err(|e| format!("Failed to terminate process {pid}: {e}"))
+                    if wait_result == WAIT_OBJECT_0 {
+                        return Ok(());
+                    } else if wait_result == WAIT_TIMEOUT {
+                        errors.push(format!(
+                            "Process {pid} did not exit within 2000 ms after WinAPI termination"
+                        ));
+                    } else if wait_result == WAIT_FAILED {
+                        errors.push(format!(
+                            "Failed to wait for process {pid} termination after WinAPI kill"
+                        ));
+                    } else {
+                        errors.push(format!(
+                            "Unexpected wait result while terminating process {pid}: {:?}",
+                            wait_result
+                        ));
+                    }
+                }
+                Err(error) => {
+                    let _ = CloseHandle(handle);
+                    errors.push(format!("Failed to terminate process {pid}: {error}"));
+                }
+            },
+            Err(error) => errors.push(format!("Failed to open process {pid}: {error}")),
+        }
     }
+
+    if kill_process_by_pid_sysinfo(pid) {
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        while std::time::Instant::now() < deadline {
+            if !is_process_running_by_pid(pid) {
+                return Ok(());
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+        errors.push(format!(
+            "Process {pid} did not exit within 5000 ms after sysinfo kill"
+        ));
+    } else {
+        errors.push(format!("sysinfo failed to kill process {pid}"));
+    }
+
+    match kill_process_by_pid_taskkill(pid) {
+        Ok(()) => {
+            let deadline = std::time::Instant::now() + Duration::from_secs(5);
+            while std::time::Instant::now() < deadline {
+                if !is_process_running_by_pid(pid) {
+                    return Ok(());
+                }
+                std::thread::sleep(Duration::from_millis(100));
+            }
+            errors.push(format!(
+                "Process {pid} did not exit within 5000 ms after taskkill fallback"
+            ));
+        }
+        Err(error) => errors.push(error),
+    }
+
+    Err(errors.join(" | "))
 }
 
 #[cfg(windows)]
@@ -131,9 +282,14 @@ fn is_process_running_by_pid(pid: u32) -> bool {
             return false;
         };
 
+        let expected_path = normalize_path_for_compare(&winws_binary_path());
+        let actual_path = query_process_image_path(handle)
+            .map(|path| normalize_path_for_compare(&path))
+            .is_some_and(|path| path == expected_path);
         let mut exit_code = 0u32;
         let result = GetExitCodeProcess(handle, &mut exit_code).is_ok()
-            && exit_code == STILL_ACTIVE_EXIT_CODE;
+            && exit_code == STILL_ACTIVE_EXIT_CODE
+            && actual_path;
         let _ = CloseHandle(handle);
         result
     }
@@ -175,6 +331,11 @@ fn find_process_pid_by_name(process_name: &str) -> Option<u32> {
         let _ = CloseHandle(snapshot);
         found
     }
+}
+
+#[cfg(windows)]
+fn find_expected_winws_pid() -> Option<u32> {
+    find_process_pid_by_name(WINWS_PROCESS_NAME).filter(|pid| is_process_running_by_pid(*pid))
 }
 
 #[cfg(windows)]
@@ -308,11 +469,32 @@ fn write_tcp1323_opts(value: u32) -> Result<(), String> {
 
 pub fn set_running_pid(pid: u32) {
     RUNNING_PID.store(pid, Ordering::SeqCst);
+    if pid == 0 {
+        let _ = clear_pid_file(&winws_pid_path());
+    } else {
+        let _ = write_pid_file(&winws_pid_path(), pid);
+    }
+}
+
+pub(crate) fn cleanup_orphaned_winws_on_startup() -> Result<(), String> {
+    let pid_path = winws_pid_path();
+    let Some(pid) = read_pid_file(&pid_path) else {
+        return Ok(());
+    };
+
+    if is_process_running_by_pid(pid) {
+        terminate_process_by_pid(pid)?;
+    }
+
+    RUNNING_PID.store(0, Ordering::SeqCst);
+    clear_pid_file(&pid_path)?;
+    kill_windivert_service()?;
+    Ok(())
 }
 
 #[tauri::command]
 pub fn start_winws(args: Vec<String>, tcp_ports: String, udp_ports: String) -> Result<u32, String> {
-    let winws_path = get_managed_resources_dir().join("winws.exe");
+    let winws_path = winws_binary_path();
 
     if !winws_path.exists() {
         return Err("winws.exe not found. Please download binaries first.".to_string());
@@ -335,7 +517,7 @@ pub fn start_winws(args: Vec<String>, tcp_ports: String, udp_ports: String) -> R
 
     let mut running_handle = RUNNING_HANDLE.lock().map_err(|e| e.to_string())?;
     *running_handle = Some(handle);
-    RUNNING_PID.store(pid, Ordering::SeqCst);
+    set_running_pid(pid);
 
     Ok(pid)
 }
@@ -400,7 +582,7 @@ pub fn stop_winws() -> Result<(), String> {
         }
     }
 
-    RUNNING_PID.store(0, Ordering::SeqCst);
+    set_running_pid(0);
     kill_windivert_service()?;
 
     Ok(())
@@ -486,7 +668,7 @@ pub fn enable_tcp_timestamps() -> Result<(), String> {
 pub fn check_and_recover_orphan() -> Option<u32> {
     #[cfg(windows)]
     {
-        let pid = find_process_pid_by_name("winws.exe")?;
+        let pid = find_expected_winws_pid()?;
         set_running_pid(pid);
         Some(pid)
     }

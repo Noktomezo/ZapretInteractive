@@ -69,7 +69,7 @@ export function DnsPage() {
               'gap-2',
               enabled && 'shadow-none hover:shadow-none',
             )}
-            disabled={isBusy || status == null || status.moduleAvailable === false}
+            disabled={isBusy || status == null || (!enabled && status.moduleAvailable === false)}
             onClick={() => void handleToggle()}
           >
             {isBusy
