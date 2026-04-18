@@ -35,7 +35,7 @@
 4. На главной странице нажми кнопку подключения.
 5. Если что-то не работает, открой категорию со стратегиями и попробуй другой вариант.
 
-## Требования
+## 😭 Требования
 
 - Windows 10/11 x64
 - Права администратора
@@ -70,11 +70,11 @@ just build
 
 ## 🙏  Благодарности
 
-- [bol-van/zapret](https://github.com/bol-van/zapret)
-- [bol-van/zapret-win-bundle](https://github.com/bol-van/zapret-win-bundle)
-- [DNSCrypt/dnscrypt-proxy](https://github.com/DNSCrypt/dnscrypt-proxy)
-- [valnesfjord/tg-ws-proxy-rs](https://github.com/valnesfjord/tg-ws-proxy-rs)
-- [kepano/flexoki](https://github.com/kepano/flexoki)
+- [bol-van/zapret](https://github.com/bol-van/zapret) — оригинальный запрет
+- [bol-van/zapret-win-bundle](https://github.com/bol-van/zapret-win-bundle) — бинарники для Windows
+- [DNSCrypt/dnscrypt-proxy](https://github.com/DNSCrypt/dnscrypt-proxy) — бэкенд DNS модуля
+- [valnesfjord/tg-ws-proxy-rs](https://github.com/valnesfjord/tg-ws-proxy-rs) — бэкенд TG WS Proxy модуля
+- [kepano/flexoki](https://github.com/kepano/flexoki) — цветовая палитра приложения
 
 &nbsp;
 
