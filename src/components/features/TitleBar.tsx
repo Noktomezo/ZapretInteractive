@@ -18,6 +18,15 @@ interface BreadcrumbEntry {
   to?: string
 }
 
+function safeDecode(value: string) {
+  try {
+    return decodeURIComponent(value)
+  }
+  catch {
+    return value
+  }
+}
+
 function getBreadcrumbItems(pathname: string, categoryName?: string): BreadcrumbEntry[] {
   if (pathname === '/') {
     return [{ label: 'Главная' }]
@@ -76,7 +85,7 @@ export function TitleBar() {
   const windowMaterial = config?.windowMaterial ?? 'acrylic'
   const materialEnabled = windowMaterial !== 'none'
   const currentCategoryName = location.pathname.startsWith('/strategies/')
-    ? config?.categories.find(category => category.id === decodeURIComponent(location.pathname.slice('/strategies/'.length)))?.name
+    ? config?.categories.find(category => category.id === safeDecode(location.pathname.slice('/strategies/'.length)))?.name
     : undefined
   const breadcrumbItems = getBreadcrumbItems(location.pathname, currentCategoryName)
 
@@ -87,6 +96,7 @@ export function TitleBar() {
         materialEnabled ? 'bg-transparent' : 'bg-background',
       )}
       data-tauri-drag-region
+      data-no-select="true"
     >
       <SidebarTrigger className="ml-[3px] mr-1 size-[30px]" />
       <div

@@ -20,7 +20,6 @@ const INSTALLED_RESOURCES_DIR_NAME: &str = "resources";
 const MANAGED_PATH_ALIAS: &str = "@resources";
 const LEGACY_MANAGED_PATH_ALIAS: &str = "@thirdparty";
 const LEGACY_INSTALLED_RESOURCES_MARKER: &str = ".legacy-thirdparty-migrated";
-const LEGACY_RUNTIME_DIR_NAME: &str = ".zapret";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GlobalPorts {
@@ -313,6 +312,19 @@ fn default_app_auto_updates_enabled() -> bool {
 
 fn default_dns_preset_id() -> String {
     "comss-one".to_string()
+}
+
+fn normalize_dns_preset_id(preset_id: &str) -> String {
+    let normalized = preset_id.trim();
+    if normalized.eq_ignore_ascii_case("malw-link") {
+        return "malw-link-main".to_string();
+    }
+
+    match normalized {
+        "comss-one" | "xbox-dns-ru" | "malw-link-main" | "malw-link-cf" | "mafioznik"
+        | "astracat" => normalized.to_string(),
+        _ => default_dns_preset_id(),
+    }
 }
 
 fn default_dns_bootstrap_resolvers() -> Vec<String> {
@@ -620,10 +632,6 @@ pub(crate) fn get_runtime_data_dir() -> PathBuf {
     executable_dir().unwrap_or_else(|| PathBuf::from("."))
 }
 
-fn legacy_runtime_data_dir() -> Option<PathBuf> {
-    dirs::home_dir().map(|dir| dir.join(LEGACY_RUNTIME_DIR_NAME))
-}
-
 fn managed_relative_path(path: &str) -> Option<String> {
     let normalized = path.replace('\\', "/");
     if normalized == MANAGED_PATH_ALIAS {
@@ -772,27 +780,25 @@ fn should_replace_file(source: &Path, destination: &Path) -> Result<bool, String
     let mut destination_reader = BufReader::new(destination_file);
     let mut source_buffer = [0_u8; 64 * 1024];
     let mut destination_buffer = [0_u8; 64 * 1024];
+    let mut remaining = source_metadata.len() as usize;
 
-    loop {
-        let source_read = source_reader
-            .read(&mut source_buffer)
+    while remaining > 0 {
+        let chunk_size = remaining.min(source_buffer.len());
+        source_reader
+            .read_exact(&mut source_buffer[..chunk_size])
             .map_err(|e| e.to_string())?;
-        let destination_read = destination_reader
-            .read(&mut destination_buffer)
+        destination_reader
+            .read_exact(&mut destination_buffer[..chunk_size])
             .map_err(|e| e.to_string())?;
 
-        if source_read != destination_read {
+        if source_buffer[..chunk_size] != destination_buffer[..chunk_size] {
             return Ok(true);
         }
 
-        if source_read == 0 {
-            return Ok(false);
-        }
-
-        if source_buffer[..source_read] != destination_buffer[..destination_read] {
-            return Ok(true);
-        }
+        remaining -= chunk_size;
     }
+
+    Ok(false)
 }
 
 fn sync_tree_with_updates(source: &Path, destination: &Path) -> Result<(), String> {
@@ -840,46 +846,6 @@ fn migrate_legacy_installed_resources() -> Result<(), String> {
     copy_missing_tree(&legacy_dir, &managed_dir)?;
     fs::write(marker_path, []).map_err(|e| e.to_string())?;
     Ok(())
-}
-
-fn canonicalize_existing_path(path: &Path) -> Option<PathBuf> {
-    if !path.exists() {
-        return None;
-    }
-
-    fs::canonicalize(path).ok()
-}
-
-fn paths_overlap(first: &Path, second: &Path) -> bool {
-    first == second || first.starts_with(second) || second.starts_with(first)
-}
-
-fn cleanup_legacy_runtime_data_dir() {
-    let Some(legacy_dir) = legacy_runtime_data_dir() else {
-        return;
-    };
-
-    if !get_config_path().is_file() || !legacy_dir.is_dir() {
-        return;
-    }
-
-    let Some(canonical_legacy_dir) = canonicalize_existing_path(&legacy_dir) else {
-        return;
-    };
-    let Some(canonical_runtime_dir) = canonicalize_existing_path(&get_runtime_data_dir()) else {
-        return;
-    };
-
-    if paths_overlap(&canonical_legacy_dir, &canonical_runtime_dir) {
-        return;
-    }
-
-    if let Err(error) = fs::remove_dir_all(&canonical_legacy_dir) {
-        eprintln!(
-            "Failed to remove legacy runtime data directory '{}': {error}",
-            canonical_legacy_dir.display()
-        );
-    }
 }
 
 pub fn ensure_managed_resources_dir_ready() -> Result<PathBuf, String> {
@@ -948,8 +914,9 @@ fn normalize_config(mut config: AppConfig) -> NormalizedConfigResult {
         changed = true;
     }
 
-    if config.dns_preset_id.trim().is_empty() {
-        config.dns_preset_id = default_dns_preset_id();
+    let normalized_dns_preset_id = normalize_dns_preset_id(&config.dns_preset_id);
+    if config.dns_preset_id != normalized_dns_preset_id {
+        config.dns_preset_id = normalized_dns_preset_id;
         changed = true;
     }
 
@@ -1509,7 +1476,6 @@ fn ensure_config_exists_and_normalized() -> Result<ConfigEnsureResult, String> {
         }
     };
 
-    cleanup_legacy_runtime_data_dir();
     Ok(ensured)
 }
 

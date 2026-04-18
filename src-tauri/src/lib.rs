@@ -68,7 +68,7 @@ fn should_minimize_to_tray(state: &config::AppState) -> bool {
 }
 
 #[cfg(target_os = "windows")]
-fn get_windows_build_number() -> Option<u32> {
+pub(crate) fn get_windows_build_number() -> Option<u32> {
     let mut value = [0u16; 32];
     let mut value_size = (value.len() * std::mem::size_of::<u16>()) as u32;
 
@@ -94,7 +94,7 @@ fn get_windows_build_number() -> Option<u32> {
 }
 
 #[cfg(not(target_os = "windows"))]
-fn get_windows_build_number() -> Option<u32> {
+pub(crate) fn get_windows_build_number() -> Option<u32> {
     None
 }
 

@@ -17,7 +17,6 @@ export function useDnsModule() {
   const loading = useConfigStore(state => state.loading)
   const load = useConfigStore(state => state.load)
   const saveNow = useConfigStore(state => state.saveNow)
-  const scheduleSave = useConfigStore(state => state.scheduleSave)
   const setDnsPresetId = useConfigStore(state => state.setDnsPresetId)
   const setDnsBootstrapResolvers = useConfigStore(state => state.setDnsBootstrapResolvers)
   const setDnsAcceleratorEnabled = useConfigStore(state => state.setDnsAcceleratorEnabled)
@@ -27,6 +26,12 @@ export function useDnsModule() {
   const selectedPreset = DNS_PRESETS.find(preset => preset.id === selectedPresetId) ?? DNS_PRESETS[0]
   const selectedBootstrapResolver = config?.dnsBootstrapResolvers?.[0] ?? DEFAULT_BOOTSTRAP_RESOLVER
   const acceleratorEnabled = config?.dnsAcceleratorEnabled ?? false
+
+  const applyDnsState = (presetId: string, bootstrapResolver: string, accelerator: boolean) => {
+    setDnsPresetId(presetId)
+    setDnsBootstrapResolvers([bootstrapResolver])
+    setDnsAcceleratorEnabled(accelerator)
+  }
 
   const refreshStatus = async () => {
     const nextStatus = await tauri.getDnsProxyStatus()
@@ -86,20 +91,38 @@ export function useDnsModule() {
     const nextPreset = DNS_PRESETS.find(item => item.id === nextPresetId) ?? DNS_PRESETS[0]
     const nextBootstrapResolver = bootstrapResolver ?? selectedBootstrapResolver
     const accelerator = nextAcceleratorEnabled ?? acceleratorEnabled
+    const previousState = {
+      presetId: selectedPreset.id,
+      bootstrapResolver: selectedBootstrapResolver,
+      acceleratorEnabled,
+    }
 
-    setDnsPresetId(nextPreset.id)
-    setDnsBootstrapResolvers([nextBootstrapResolver])
-    setDnsAcceleratorEnabled(accelerator)
+    applyDnsState(nextPreset.id, nextBootstrapResolver, accelerator)
 
+    let currentStatus: DnsProxyStatus
     try {
-      const currentStatus = await resolveStatus()
-      if (!currentStatus.running) {
-        scheduleSave('dns-settings')
-        return
-      }
-
+      currentStatus = await resolveStatus()
       setIsBusy(true)
       await saveNow()
+    }
+    catch (error) {
+      applyDnsState(
+        previousState.presetId,
+        previousState.bootstrapResolver,
+        previousState.acceleratorEnabled,
+      )
+      toast.error(`Ошибка применения настроек DNS: ${error instanceof Error ? error.message : String(error)}`)
+      await refreshStatus().catch(() => {})
+      setIsBusy(false)
+      return
+    }
+
+    if (!currentStatus.running) {
+      setIsBusy(false)
+      return
+    }
+
+    try {
       const dohUrls = applyDnsAccelerator(nextPreset.urls.slice(), accelerator)
       await tauri.stopDnsProxy()
       const nextStatus = await tauri.startDnsProxy(dohUrls, [nextBootstrapResolver])
@@ -156,13 +179,32 @@ export function useDnsModule() {
     }
 
     const normalizedResolvers = [selectedBootstrapResolver]
-    setDnsBootstrapResolvers(normalizedResolvers)
-    setDnsPresetId(selectedPreset.id)
+    const previousState = {
+      presetId: selectedPreset.id,
+      bootstrapResolver: selectedBootstrapResolver,
+      acceleratorEnabled,
+    }
+    applyDnsState(selectedPreset.id, selectedBootstrapResolver, acceleratorEnabled)
 
+    let currentStatus: DnsProxyStatus
     try {
-      const currentStatus = await resolveStatus()
+      currentStatus = await resolveStatus()
       setIsBusy(true)
       await saveNow()
+    }
+    catch (error) {
+      applyDnsState(
+        previousState.presetId,
+        previousState.bootstrapResolver,
+        previousState.acceleratorEnabled,
+      )
+      toast.error(`Ошибка переключения DNS: ${error instanceof Error ? error.message : String(error)}`)
+      await refreshStatus().catch(() => {})
+      setIsBusy(false)
+      return
+    }
+
+    try {
       const dohUrls = applyDnsAccelerator(selectedPreset.urls.slice(), acceleratorEnabled)
 
       const nextStatus = currentStatus.running

@@ -36,18 +36,20 @@ export function ModulesPage() {
             'group flex h-20 cursor-pointer items-center gap-3 rounded-lg border bg-card p-4',
             status?.moduleAvailable === false && 'opacity-60',
           )}
-          role="link"
-          tabIndex={0}
-          aria-label="Открыть модуль DNS"
-          onClick={openDnsPage}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault()
-              openDnsPage()
-            }
-          }}
         >
-          <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div
+            className="flex min-w-0 flex-1 items-center gap-3"
+            role="link"
+            tabIndex={0}
+            aria-label="Открыть модуль DNS"
+            onClick={openDnsPage}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                openDnsPage()
+              }
+            }}
+          >
             <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
               <Globe className="size-4" />
             </div>
@@ -57,20 +59,21 @@ export function ModulesPage() {
                 Дополнительный обход геоблока иностранных сервисов через DNS
               </p>
             </div>
-          </div>
-
-          <div
-            className="flex shrink-0 items-center gap-2"
-            onClick={event => event.stopPropagation()}
-            onKeyDown={event => event.stopPropagation()}
-          >
             <span className="text-muted-foreground flex size-5 shrink-0 items-center justify-center">
               <ChevronRight className="size-4 transition-transform group-hover:translate-x-1" />
             </span>
+          </div>
+
+          <div
+            className="flex shrink-0 items-center"
+            onClick={event => event.stopPropagation()}
+            onKeyDown={event => event.stopPropagation()}
+          >
             <Switch
               size="sm"
               checked={Boolean(status?.running)}
-              disabled={isBusy || status?.moduleAvailable === false}
+              aria-label="Переключить DNS модуль"
+              disabled={isBusy || status == null || status.moduleAvailable === false}
               onCheckedChange={() => void handleToggle()}
             />
           </div>

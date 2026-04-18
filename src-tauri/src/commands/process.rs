@@ -1,6 +1,8 @@
 use crate::config::get_managed_resources_dir;
-use std::process::Command;
+use duct::{Expression, Handle, cmd};
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::time::Duration;
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -49,6 +51,20 @@ const STILL_ACTIVE_EXIT_CODE: u32 = 259;
 const DELETE_ACCESS_MASK: u32 = 0x0001_0000;
 
 static RUNNING_PID: AtomicU32 = AtomicU32::new(0);
+static RUNNING_HANDLE: Mutex<Option<Handle>> = Mutex::new(None);
+
+#[cfg(windows)]
+fn configure_expression(expression: Expression) -> Expression {
+    expression.before_spawn(|command| {
+        command.creation_flags(CREATE_NO_WINDOW);
+        Ok(())
+    })
+}
+
+#[cfg(not(windows))]
+fn configure_expression(expression: Expression) -> Expression {
+    expression
+}
 
 #[cfg(windows)]
 fn is_benign_service_delete_error(code: i32) -> bool {
@@ -308,13 +324,17 @@ pub fn start_winws(args: Vec<String>, tcp_ports: String, udp_ports: String) -> R
     ];
     full_args.extend(args);
 
-    let child = Command::new(&winws_path)
-        .args(&full_args)
-        .creation_flags(CREATE_NO_WINDOW)
-        .spawn()
-        .map_err(|e| format!("Failed to start winws.exe: {}", e))?;
+    let handle = configure_expression(cmd(winws_path.to_string_lossy().into_owned(), full_args))
+        .start()
+        .map_err(|e| format!("Failed to start winws.exe: {e}"))?;
+    let pid = handle
+        .pids()
+        .into_iter()
+        .next()
+        .ok_or_else(|| "Failed to get winws.exe PID from duct handle".to_string())?;
 
-    let pid = child.id();
+    let mut running_handle = RUNNING_HANDLE.lock().map_err(|e| e.to_string())?;
+    *running_handle = Some(handle);
     RUNNING_PID.store(pid, Ordering::SeqCst);
 
     Ok(pid)
@@ -323,20 +343,34 @@ pub fn start_winws(args: Vec<String>, tcp_ports: String, udp_ports: String) -> R
 #[tauri::command]
 pub fn stop_winws() -> Result<(), String> {
     let pid = RUNNING_PID.load(Ordering::SeqCst);
+    let handle = RUNNING_HANDLE.lock().map_err(|e| e.to_string())?.take();
 
-    if pid == 0 {
+    if pid == 0 && handle.is_none() {
         return Ok(());
     }
 
-    #[cfg(windows)]
-    terminate_process_by_pid(pid)?;
+    if let Some(handle) = handle {
+        if handle
+            .try_wait()
+            .map_err(|e| format!("Failed to inspect winws.exe state: {e}"))?
+            .is_none()
+        {
+            handle
+                .kill()
+                .map_err(|e| format!("Failed to kill winws.exe: {e}"))?;
+            let _ = handle.wait_timeout(Duration::from_secs(2));
+        }
+    } else {
+        #[cfg(windows)]
+        terminate_process_by_pid(pid)?;
 
-    #[cfg(not(windows))]
-    {
-        Command::new("kill")
-            .args(["-9", &pid.to_string()])
-            .output()
-            .map_err(|e| format!("Failed to kill winws.exe: {}", e))?;
+        #[cfg(not(windows))]
+        {
+            Command::new("kill")
+                .args(["-9", &pid.to_string()])
+                .output()
+                .map_err(|e| format!("Failed to kill winws.exe: {}", e))?;
+        }
     }
 
     RUNNING_PID.store(0, Ordering::SeqCst);

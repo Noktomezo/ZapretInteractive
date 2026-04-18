@@ -247,9 +247,8 @@
   --terminal-background-tint: #f4efe2;
 }
 
-html,
-body,
-#root {
+[data-no-select="true"],
+.no-select {
   user-select: none;
   -webkit-user-select: none;
 }
