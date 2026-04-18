@@ -507,6 +507,12 @@ export default function FaultyTerminal({
       )
     }
 
+    function renderCurrentFrame() {
+      if (!renderer || !mesh)
+        return
+      renderer.render({ scene: mesh })
+    }
+
     const updateTargetSize = () => {
       if (!ctn)
         return
@@ -525,12 +531,14 @@ export default function FaultyTerminal({
       updateTargetSize()
       const targetSize = targetSizeRef.current
       const appliedSize = appliedSizeRef.current
+
       if (
         targetSize.width > 0
         && targetSize.height > 0
         && (targetSize.width !== appliedSize.width || targetSize.height !== appliedSize.height)
       ) {
         applySize(targetSize.width, targetSize.height)
+        renderCurrentFrame()
       }
     })
     resizeObserverRef.current.observe(ctn)
