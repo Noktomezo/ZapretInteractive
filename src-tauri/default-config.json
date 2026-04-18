@@ -11,6 +11,10 @@
     "8.8.8.8"
   ],
   "dnsAcceleratorEnabled": false,
+  "dnsModuleEnabled": false,
+  "tgWsProxyPort": 1443,
+  "tgWsProxySecret": "",
+  "tgWsProxyModuleEnabled": false,
   "categories": [
     {
       "id": "preset-http",

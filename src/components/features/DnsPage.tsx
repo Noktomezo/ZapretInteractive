@@ -36,6 +36,7 @@ export function DnsPage() {
     selectedPreset,
     selectedBootstrapResolver,
     acceleratorEnabled,
+    enabled,
     handleCheckLatency,
     handlePresetSelect,
     handleBootstrapSelect,
@@ -63,10 +64,10 @@ export function DnsPage() {
           </div>
           <Button
             type="button"
-            variant={status?.running ? 'destructive' : 'default'}
+            variant={enabled ? 'destructive' : 'default'}
             className={cn(
               'gap-2',
-              status?.running && 'shadow-none hover:shadow-none',
+              enabled && 'shadow-none hover:shadow-none',
             )}
             disabled={isBusy || status?.moduleAvailable === false}
             onClick={() => void handleToggle()}
@@ -75,8 +76,8 @@ export function DnsPage() {
               ? <Loader2 className="size-4 animate-spin" />
               : <Power className="size-4" />}
             {isBusy
-              ? status?.running ? 'Отключение...' : 'Подключение...'
-              : status?.running ? 'Выключить' : 'Включить'}
+              ? 'Сохранение...'
+              : enabled ? 'Выключить модуль' : 'Включить модуль'}
           </Button>
         </div>
 

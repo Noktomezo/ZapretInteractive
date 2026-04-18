@@ -1,7 +1,10 @@
+import type { AppConfig } from '../lib/types'
 import { toast } from 'sonner'
 import { create } from 'zustand'
+import { applyDnsAccelerator, DNS_PRESETS, normalizeDnsPresetId } from '../lib/dns'
 import { buildFiltersCommand, buildFiltersCommandArray, buildStrategyCommand } from '../lib/strategy'
 import * as tauri from '../lib/tauri'
+import { isValidTgWsProxySecret, normalizeTgWsProxySecret } from '../lib/tg-ws-proxy'
 import { useConfigStore } from './config.store'
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'disconnecting' | 'error'
@@ -21,6 +24,85 @@ async function ensureMinimumTransition(startedAt: number) {
   if (remaining > 0) {
     await delay(remaining)
   }
+}
+
+function getSelectedDnsPreset(config: AppConfig) {
+  const presetId = normalizeDnsPresetId(config.dnsPresetId)
+  return DNS_PRESETS.find(preset => preset.id === presetId) ?? DNS_PRESETS[0]
+}
+
+async function startEnabledModules(config: AppConfig, addLog: (message: string) => void) {
+  const errors: string[] = []
+
+  if (config.dnsModuleEnabled) {
+    try {
+      const dnsStatus = await tauri.getDnsProxyStatus()
+      if (!dnsStatus.moduleAvailable) {
+        errors.push('DNS модуль недоступен')
+      }
+      else if (!dnsStatus.running) {
+        const dnsPreset = getSelectedDnsPreset(config)
+        await tauri.startDnsProxy(
+          applyDnsAccelerator(dnsPreset.urls.slice(), config.dnsAcceleratorEnabled ?? false),
+          config.dnsBootstrapResolvers ?? [],
+        )
+        addLog(`DNS модуль запущен (${dnsPreset.name})`)
+      }
+    }
+    catch (error) {
+      errors.push(`DNS: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  if (config.tgWsProxyModuleEnabled) {
+    try {
+      const tgStatus = await tauri.getTgWsProxyStatus()
+      const normalizedSecret = normalizeTgWsProxySecret(config.tgWsProxySecret)
+      if (!tgStatus.moduleAvailable) {
+        errors.push('TG WS Proxy модуль недоступен')
+      }
+      else if (!isValidTgWsProxySecret(normalizedSecret)) {
+        errors.push('TG WS Proxy: некорректный секрет')
+      }
+      else if (!tgStatus.running) {
+        await tauri.startTgWsProxy(config.tgWsProxyPort ?? 1443, normalizedSecret)
+        addLog(`TG WS Proxy модуль запущен на порту ${config.tgWsProxyPort ?? 1443}`)
+      }
+    }
+    catch (error) {
+      errors.push(`TG WS Proxy: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  return errors
+}
+
+async function stopManagedModules(addLog: (message: string) => void) {
+  const errors: string[] = []
+
+  try {
+    const dnsStatus = await tauri.getDnsProxyStatus()
+    if (dnsStatus.running) {
+      await tauri.stopDnsProxy()
+      addLog('DNS модуль остановлен')
+    }
+  }
+  catch (error) {
+    errors.push(`DNS: ${error instanceof Error ? error.message : String(error)}`)
+  }
+
+  try {
+    const tgStatus = await tauri.getTgWsProxyStatus()
+    if (tgStatus.running) {
+      await tauri.stopTgWsProxy()
+      addLog('TG WS Proxy модуль остановлен')
+    }
+  }
+  catch (error) {
+    errors.push(`TG WS Proxy: ${error instanceof Error ? error.message : String(error)}`)
+  }
+
+  return errors
 }
 
 export interface LogEntry {
@@ -87,6 +169,16 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
         set({ status: 'connected', pid })
         get().addLog(`Найден активный процесс winws.exe (PID: ${pid})`)
         get().updateTrayState(true)
+
+        const config = useConfigStore.getState().config
+        if (config) {
+          const moduleErrors = await startEnabledModules(config, get().addLog)
+          if (moduleErrors.length > 0) {
+            const message = `Некоторые модули не запустились: ${moduleErrors.join('; ')}`
+            get().addLog(message)
+            toast.error(message)
+          }
+        }
       }
       else {
         set({ status: 'disconnected', pid: null })
@@ -148,6 +240,14 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       set({ status: 'connected', pid })
       get().updateTrayState(true)
       get().addLog(`Подключение установлено, PID: ${pid}`)
+
+      const moduleErrors = await startEnabledModules(config, get().addLog)
+      if (moduleErrors.length > 0) {
+        const message = `Некоторые модули не запустились: ${moduleErrors.join('; ')}`
+        get().addLog(message)
+        toast.error(message)
+      }
+
       if (get().pendingRestart && !restartPromise) {
         queueMicrotask(() => {
           void get().restartIfConnected()
@@ -169,6 +269,8 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     get().addLog('Начинаю отключение')
 
     try {
+      const moduleErrors = await stopManagedModules(get().addLog)
+
       if (pid) {
         get().addLog(`Останавливаю winws.exe (PID: ${pid})`)
         await tauri.stopWinws()
@@ -181,6 +283,11 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       set({ status: 'disconnected', pid: null })
       get().updateTrayState(false)
       get().addLog('Подключение остановлено')
+      if (moduleErrors.length > 0) {
+        const message = `Некоторые модули не остановились: ${moduleErrors.join('; ')}`
+        get().addLog(message)
+        toast.error(message)
+      }
     }
     catch (e) {
       await ensureMinimumTransition(transitionStartedAt)
@@ -284,6 +391,16 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       set({ recovered: true, status: 'connected' })
       get().addLog('Восстановлено состояние уже запущенного подключения')
       get().updateTrayState(true)
+      const config = useConfigStore.getState().config
+      if (config) {
+        void startEnabledModules(config, get().addLog).then((moduleErrors) => {
+          if (moduleErrors.length > 0) {
+            const message = `Некоторые модули не запустились: ${moduleErrors.join('; ')}`
+            get().addLog(message)
+            toast.error(message)
+          }
+        })
+      }
     }
     else {
       set({ recovered: false })

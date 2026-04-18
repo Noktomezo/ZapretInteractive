@@ -1,6 +1,6 @@
 mod commands;
 
-use commands::{admin, binaries, config, dns, process};
+use commands::{admin, binaries, config, dns, process, tg_proxy};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{
     Emitter, Manager,
@@ -387,6 +387,9 @@ pub fn run() {
             dns::start_dns_proxy,
             dns::stop_dns_proxy,
             dns::check_dns_provider_latency,
+            tg_proxy::get_tg_ws_proxy_status,
+            tg_proxy::start_tg_ws_proxy,
+            tg_proxy::stop_tg_ws_proxy,
             process::start_winws,
             process::stop_winws,
             process::is_winws_running,

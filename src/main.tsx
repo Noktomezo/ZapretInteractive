@@ -11,6 +11,7 @@ import { Route as placeholdersRoute } from './routes/placeholders'
 import { Route as settingsRoute } from './routes/settings'
 import { Route as strategiesRoute } from './routes/strategies'
 import { Route as strategiesCategoryIdRoute } from './routes/strategies.$categoryId'
+import { Route as tgWsProxyRoute } from './routes/tg-ws-proxy'
 import './index.css'
 
 const routeTree = rootRoute.addChildren([
@@ -18,6 +19,7 @@ const routeTree = rootRoute.addChildren([
   aboutRoute,
   modulesRoute,
   dnsRoute,
+  tgWsProxyRoute,
   strategiesRoute,
   strategiesCategoryIdRoute,
   filtersRoute,

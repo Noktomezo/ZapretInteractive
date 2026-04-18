@@ -1,17 +1,89 @@
+import type { ReactNode } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { ChevronRight, Globe, Loader2 } from 'lucide-react'
+import { ChevronRight, Globe, Loader2, Send } from 'lucide-react'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { Switch } from '@/components/ui/switch'
 import { useDnsModule } from '@/hooks/use-dns-module'
+import { useTgWsProxyModule } from '@/hooks/use-tg-ws-proxy-module'
 import { cn } from '@/lib/utils'
+
+function ModuleCard({
+  title,
+  description,
+  icon,
+  enabled,
+  status,
+  isBusy,
+  openModule,
+  handleToggle,
+}: {
+  title: string
+  description: string
+  icon: ReactNode
+  enabled: boolean
+  status: { running: boolean, moduleAvailable: boolean } | null
+  isBusy: boolean
+  openModule: () => void
+  handleToggle: () => void
+}) {
+  return (
+    <div
+      className={cn(
+        'group flex h-20 items-center gap-3 rounded-lg border bg-card p-4',
+        status?.moduleAvailable === false && 'opacity-60',
+      )}
+    >
+      <div
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-3"
+        role="link"
+        tabIndex={0}
+        aria-label={`Открыть модуль ${title}`}
+        onClick={openModule}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            openModule()
+          }
+        }}
+      >
+        <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
+          {icon}
+        </div>
+        <div className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-normal">{title}</span>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {description}
+          </p>
+        </div>
+        <span className="text-muted-foreground flex size-5 shrink-0 items-center justify-center">
+          <ChevronRight className="size-4 transition-transform group-hover:translate-x-1" />
+        </span>
+      </div>
+
+      <div
+        className="flex shrink-0 items-center"
+        onClick={event => event.stopPropagation()}
+        onKeyDown={event => event.stopPropagation()}
+      >
+        <Switch
+          size="sm"
+          checked={enabled}
+          aria-label={`Переключить модуль ${title}`}
+          disabled={isBusy || status == null || status.moduleAvailable === false}
+          onCheckedChange={handleToggle}
+        />
+      </div>
+    </div>
+  )
+}
 
 export function ModulesPage() {
   const navigate = useNavigate()
-  const { config, loading, status, isBusy, handleToggle } = useDnsModule()
+  const dnsModule = useDnsModule()
+  const tgWsProxyModule = useTgWsProxyModule()
 
-  const openDnsPage = () => {
-    void navigate({ to: '/modules/dns' })
-  }
+  const config = dnsModule.config ?? tgWsProxyModule.config
+  const loading = dnsModule.loading || tgWsProxyModule.loading
 
   if (loading || !config) {
     return (
@@ -31,52 +103,46 @@ export function ModulesPage() {
           </p>
         </div>
 
-        <div
-          className={cn(
-            'group flex h-20 cursor-pointer items-center gap-3 rounded-lg border bg-card p-4',
-            status?.moduleAvailable === false && 'opacity-60',
-          )}
-        >
-          <div
-            className="flex min-w-0 flex-1 items-center gap-3"
-            role="link"
-            tabIndex={0}
-            aria-label="Открыть модуль DNS"
-            onClick={openDnsPage}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault()
-                openDnsPage()
-              }
+        <div className="space-y-3">
+          <ModuleCard
+            title="DNS"
+            description="Дополнительный обход геоблока иностранных сервисов через DNS"
+            icon={<Globe className="size-4" />}
+            enabled={dnsModule.enabled}
+            status={dnsModule.status
+              ? {
+                  running: dnsModule.status.running,
+                  moduleAvailable: dnsModule.status.moduleAvailable,
+                }
+              : null}
+            isBusy={dnsModule.isBusy}
+            openModule={() => {
+              void navigate({ to: '/modules/dns' })
             }}
-          >
-            <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
-              <Globe className="size-4" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-normal">DNS</span>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Дополнительный обход геоблока иностранных сервисов через DNS
-              </p>
-            </div>
-            <span className="text-muted-foreground flex size-5 shrink-0 items-center justify-center">
-              <ChevronRight className="size-4 transition-transform group-hover:translate-x-1" />
-            </span>
-          </div>
+            handleToggle={() => {
+              void dnsModule.handleToggle()
+            }}
+          />
 
-          <div
-            className="flex shrink-0 items-center"
-            onClick={event => event.stopPropagation()}
-            onKeyDown={event => event.stopPropagation()}
-          >
-            <Switch
-              size="sm"
-              checked={Boolean(status?.running)}
-              aria-label="Переключить DNS модуль"
-              disabled={isBusy || status == null || status.moduleAvailable === false}
-              onCheckedChange={() => void handleToggle()}
-            />
-          </div>
+          <ModuleCard
+            title="TG WS Proxy"
+            description="Локальный MTProto-прокси для Telegram Desktop через WebSocket"
+            icon={<Send className="size-4" />}
+            enabled={tgWsProxyModule.enabled}
+            status={tgWsProxyModule.status
+              ? {
+                  running: tgWsProxyModule.status.running,
+                  moduleAvailable: tgWsProxyModule.status.moduleAvailable,
+                }
+              : null}
+            isBusy={tgWsProxyModule.isBusy}
+            openModule={() => {
+              void navigate({ to: '/modules/tg-ws-proxy' })
+            }}
+            handleToggle={() => {
+              void tgWsProxyModule.handleToggle()
+            }}
+          />
         </div>
       </div>
     </LenisScrollArea>

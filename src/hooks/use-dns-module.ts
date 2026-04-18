@@ -20,17 +20,21 @@ export function useDnsModule() {
   const setDnsPresetId = useConfigStore(state => state.setDnsPresetId)
   const setDnsBootstrapResolvers = useConfigStore(state => state.setDnsBootstrapResolvers)
   const setDnsAcceleratorEnabled = useConfigStore(state => state.setDnsAcceleratorEnabled)
+  const setDnsModuleEnabled = useConfigStore(state => state.setDnsModuleEnabled)
   const addConfigLog = useConnectionStore(state => state.addConfigLog)
+  const connectionStatus = useConnectionStore(state => state.status)
 
   const selectedPresetId = normalizeDnsPresetId(config?.dnsPresetId)
   const selectedPreset = DNS_PRESETS.find(preset => preset.id === selectedPresetId) ?? DNS_PRESETS[0]
   const selectedBootstrapResolver = config?.dnsBootstrapResolvers?.[0] ?? DEFAULT_BOOTSTRAP_RESOLVER
   const acceleratorEnabled = config?.dnsAcceleratorEnabled ?? false
+  const enabled = config?.dnsModuleEnabled ?? false
 
-  const applyDnsState = (presetId: string, bootstrapResolver: string, accelerator: boolean) => {
+  const applyDnsState = (presetId: string, bootstrapResolver: string, accelerator: boolean, nextEnabled = enabled) => {
     setDnsPresetId(presetId)
     setDnsBootstrapResolvers([bootstrapResolver])
     setDnsAcceleratorEnabled(accelerator)
+    setDnsModuleEnabled(nextEnabled)
   }
 
   const refreshStatus = async () => {
@@ -95,9 +99,10 @@ export function useDnsModule() {
       presetId: selectedPreset.id,
       bootstrapResolver: selectedBootstrapResolver,
       acceleratorEnabled,
+      enabled,
     }
 
-    applyDnsState(nextPreset.id, nextBootstrapResolver, accelerator)
+    applyDnsState(nextPreset.id, nextBootstrapResolver, accelerator, enabled)
 
     let currentStatus: DnsProxyStatus
     try {
@@ -110,6 +115,7 @@ export function useDnsModule() {
         previousState.presetId,
         previousState.bootstrapResolver,
         previousState.acceleratorEnabled,
+        previousState.enabled,
       )
       toast.error(`Ошибка применения настроек DNS: ${error instanceof Error ? error.message : String(error)}`)
       await refreshStatus().catch(() => {})
@@ -117,14 +123,17 @@ export function useDnsModule() {
       return
     }
 
-    if (!currentStatus.running) {
+    if (!enabled || connectionStatus !== 'connected') {
       setIsBusy(false)
+      toast.success('Параметры DNS сохранены')
       return
     }
 
     try {
       const dohUrls = applyDnsAccelerator(nextPreset.urls.slice(), accelerator)
-      await tauri.stopDnsProxy()
+      if (currentStatus.running) {
+        await tauri.stopDnsProxy()
+      }
       const nextStatus = await tauri.startDnsProxy(dohUrls, [nextBootstrapResolver])
       setStatus(nextStatus)
       addConfigLog(`dnscrypt-proxy перезапущен (${nextPreset.name})`)
@@ -178,17 +187,19 @@ export function useDnsModule() {
       return
     }
 
+    const nextEnabled = !enabled
+    applyDnsState(selectedPreset.id, selectedBootstrapResolver, acceleratorEnabled, nextEnabled)
+
     const normalizedResolvers = [selectedBootstrapResolver]
     const previousState = {
       presetId: selectedPreset.id,
       bootstrapResolver: selectedBootstrapResolver,
       acceleratorEnabled,
+      enabled,
     }
-    applyDnsState(selectedPreset.id, selectedBootstrapResolver, acceleratorEnabled)
 
-    let currentStatus: DnsProxyStatus
     try {
-      currentStatus = await resolveStatus()
+      await resolveStatus()
       setIsBusy(true)
       await saveNow()
     }
@@ -197,6 +208,7 @@ export function useDnsModule() {
         previousState.presetId,
         previousState.bootstrapResolver,
         previousState.acceleratorEnabled,
+        previousState.enabled,
       )
       toast.error(`Ошибка переключения DNS: ${error instanceof Error ? error.message : String(error)}`)
       await refreshStatus().catch(() => {})
@@ -205,17 +217,29 @@ export function useDnsModule() {
     }
 
     try {
-      const dohUrls = applyDnsAccelerator(selectedPreset.urls.slice(), acceleratorEnabled)
+      if (connectionStatus === 'connected') {
+        const nextStatus = nextEnabled
+          ? await tauri.startDnsProxy(
+              applyDnsAccelerator(selectedPreset.urls.slice(), acceleratorEnabled),
+              normalizedResolvers,
+            )
+          : await tauri.stopDnsProxy()
 
-      const nextStatus = currentStatus.running
-        ? await tauri.stopDnsProxy()
-        : await tauri.startDnsProxy(dohUrls, normalizedResolvers)
+        setStatus(nextStatus)
+        addConfigLog(nextEnabled
+          ? `DNS модуль включён и запущен (${selectedPreset.name})`
+          : 'DNS модуль выключен и остановлен')
+      }
+      else {
+        await refreshStatus().catch(() => {})
+        addConfigLog(nextEnabled ? 'DNS модуль включён' : 'DNS модуль выключен')
+      }
 
-      setStatus(nextStatus)
-      addConfigLog(currentStatus.running
-        ? 'dnscrypt-proxy отключён и системный DNS восстановлен'
-        : `dnscrypt-proxy включён (${selectedPreset.name})`)
-      toast.success(currentStatus.running ? 'DNS выключён' : 'DNS включён')
+      toast.success(
+        connectionStatus === 'connected'
+          ? nextEnabled ? 'DNS модуль включён' : 'DNS модуль выключен'
+          : nextEnabled ? 'DNS модуль включён и будет запущен при подключении' : 'DNS модуль выключен',
+      )
     }
     catch (error) {
       toast.error(`Ошибка переключения DNS: ${error instanceof Error ? error.message : String(error)}`)
@@ -236,6 +260,7 @@ export function useDnsModule() {
     selectedPreset,
     selectedBootstrapResolver,
     acceleratorEnabled,
+    enabled,
     handleCheckLatency,
     handlePresetSelect,
     handleBootstrapSelect,

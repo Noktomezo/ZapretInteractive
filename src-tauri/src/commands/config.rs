@@ -5,6 +5,7 @@ use std::io::{BufReader, Read};
 use std::net::IpAddr;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Mutex;
+use uuid::Uuid;
 
 const DEFAULT_CONFIG: &str = include_str!("../../default-config.json");
 const DEFAULT_FILTER_DHT: &str = include_str!("../../default-filters/windivert_part.dht.txt");
@@ -206,6 +207,17 @@ pub struct AppConfig {
         rename = "dnsAcceleratorEnabled"
     )]
     pub dns_accelerator_enabled: bool,
+    #[serde(default = "default_dns_module_enabled", rename = "dnsModuleEnabled")]
+    pub dns_module_enabled: bool,
+    #[serde(default = "default_tg_ws_proxy_port", rename = "tgWsProxyPort")]
+    pub tg_ws_proxy_port: u16,
+    #[serde(default = "default_tg_ws_proxy_secret", rename = "tgWsProxySecret")]
+    pub tg_ws_proxy_secret: String,
+    #[serde(
+        default = "default_tg_ws_proxy_module_enabled",
+        rename = "tgWsProxyModuleEnabled"
+    )]
+    pub tg_ws_proxy_module_enabled: bool,
     #[serde(default = "default_minimize_to_tray", rename = "minimizeToTray")]
     pub minimize_to_tray: bool,
     #[serde(default = "default_launch_to_tray", rename = "launchToTray")]
@@ -337,6 +349,30 @@ fn default_dns_bootstrap_resolvers() -> Vec<String> {
 
 fn default_dns_accelerator_enabled() -> bool {
     false
+}
+
+fn default_dns_module_enabled() -> bool {
+    false
+}
+
+fn default_tg_ws_proxy_port() -> u16 {
+    1443
+}
+
+fn default_tg_ws_proxy_secret() -> String {
+    String::new()
+}
+
+fn default_tg_ws_proxy_module_enabled() -> bool {
+    false
+}
+
+fn is_valid_tg_ws_proxy_secret(secret: &str) -> bool {
+    secret.len() == 32 && secret.chars().all(|char| char.is_ascii_hexdigit())
+}
+
+fn generate_tg_ws_proxy_secret() -> String {
+    Uuid::new_v4().simple().to_string()
 }
 
 fn default_window_material() -> WindowMaterial {
@@ -917,6 +953,20 @@ fn normalize_config(mut config: AppConfig) -> NormalizedConfigResult {
     let normalized_dns_preset_id = normalize_dns_preset_id(&config.dns_preset_id);
     if config.dns_preset_id != normalized_dns_preset_id {
         config.dns_preset_id = normalized_dns_preset_id;
+        changed = true;
+    }
+
+    if config.tg_ws_proxy_port == 0 {
+        config.tg_ws_proxy_port = default_tg_ws_proxy_port();
+        changed = true;
+    }
+
+    let normalized_tg_ws_proxy_secret = config.tg_ws_proxy_secret.trim().to_ascii_lowercase();
+    if !is_valid_tg_ws_proxy_secret(&normalized_tg_ws_proxy_secret) {
+        config.tg_ws_proxy_secret = generate_tg_ws_proxy_secret();
+        changed = true;
+    } else if config.tg_ws_proxy_secret != normalized_tg_ws_proxy_secret {
+        config.tg_ws_proxy_secret = normalized_tg_ws_proxy_secret;
         changed = true;
     }
 

@@ -74,6 +74,13 @@ function getBreadcrumbItems(pathname: string, categoryName?: string): Breadcrumb
     ]
   }
 
+  if (pathname === '/modules/tg-ws-proxy') {
+    return [
+      { label: 'Модули', to: '/modules' },
+      { label: 'TG WS Proxy' },
+    ]
+  }
+
   return []
 }
 

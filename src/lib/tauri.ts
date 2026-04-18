@@ -1,4 +1,4 @@
-import type { AppConfig, AppHealthSnapshot, DnsLatencyResult, DnsProxyStatus, EnsureManagedFilesResult, ListMode, WindowMaterial, WindowMaterialCapabilities } from './types'
+import type { AppConfig, AppHealthSnapshot, DnsLatencyResult, DnsProxyStatus, EnsureManagedFilesResult, ListMode, TgWsProxyStatus, WindowMaterial, WindowMaterialCapabilities } from './types'
 import { getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
@@ -53,6 +53,9 @@ export function startDnsProxy(dohUrls: string[], bootstrapResolvers: string[]): 
 }
 export const stopDnsProxy = (): Promise<DnsProxyStatus> => invoke('stop_dns_proxy')
 export const checkDnsProviderLatency = (urls: string[]): Promise<DnsLatencyResult[]> => invoke('check_dns_provider_latency', { urls })
+export const getTgWsProxyStatus = (): Promise<TgWsProxyStatus> => invoke('get_tg_ws_proxy_status')
+export const startTgWsProxy = (port: number, secret: string): Promise<TgWsProxyStatus> => invoke('start_tg_ws_proxy', { port, secret })
+export const stopTgWsProxy = (): Promise<TgWsProxyStatus> => invoke('stop_tg_ws_proxy')
 
 export function saveFilterFile(filename: string, content: string): Promise<void> {
   return invoke('save_filter_file', { filename, content })

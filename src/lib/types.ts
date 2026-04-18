@@ -33,6 +33,14 @@ export interface DnsLatencyResult {
   error?: string | null
 }
 
+export interface TgWsProxyStatus {
+  running: boolean
+  moduleAvailable: boolean
+  binaryPath: string
+  logPath: string
+  pid?: number | null
+}
+
 export interface Strategy {
   id: string
   name: string
@@ -85,6 +93,10 @@ export interface AppConfig {
   dnsPresetId?: string
   dnsBootstrapResolvers?: string[]
   dnsAcceleratorEnabled?: boolean
+  dnsModuleEnabled?: boolean
+  tgWsProxyPort?: number
+  tgWsProxySecret?: string
+  tgWsProxyModuleEnabled?: boolean
   minimizeToTray?: boolean
   launchToTray?: boolean
   connectOnAutostart?: boolean

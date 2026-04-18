@@ -52,6 +52,10 @@ interface ConfigStore {
   setDnsPresetId: (presetId: string) => void
   setDnsBootstrapResolvers: (resolvers: string[]) => void
   setDnsAcceleratorEnabled: (enabled: boolean) => void
+  setDnsModuleEnabled: (enabled: boolean) => void
+  setTgWsProxyPort: (port: number) => void
+  setTgWsProxySecret: (secret: string) => void
+  setTgWsProxyModuleEnabled: (enabled: boolean) => void
   setCoreFileUpdatePromptsEnabled: (enabled: boolean) => void
   setAppAutoUpdatesEnabled: (enabled: boolean) => void
   setWindowMaterial: (material: WindowMaterial) => void
@@ -276,6 +280,30 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     const { config } = get()
     if (config)
       set({ config: { ...config, dnsAcceleratorEnabled: enabled }, dirty: true })
+  },
+
+  setDnsModuleEnabled: (enabled) => {
+    const { config } = get()
+    if (config)
+      set({ config: { ...config, dnsModuleEnabled: enabled }, dirty: true })
+  },
+
+  setTgWsProxyPort: (port) => {
+    const { config } = get()
+    if (config)
+      set({ config: { ...config, tgWsProxyPort: port }, dirty: true })
+  },
+
+  setTgWsProxySecret: (secret) => {
+    const { config } = get()
+    if (config)
+      set({ config: { ...config, tgWsProxySecret: secret }, dirty: true })
+  },
+
+  setTgWsProxyModuleEnabled: (enabled) => {
+    const { config } = get()
+    if (config)
+      set({ config: { ...config, tgWsProxyModuleEnabled: enabled }, dirty: true })
   },
 
   setCoreFileUpdatePromptsEnabled: (enabled) => {
