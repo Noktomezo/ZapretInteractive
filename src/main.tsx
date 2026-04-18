@@ -2,9 +2,11 @@ import { createRouter, RouterProvider } from '@tanstack/react-router'
 import ReactDOM from 'react-dom/client'
 import { Route as rootRoute } from './routes/__root'
 import { Route as aboutRoute } from './routes/about'
+import { Route as dnsRoute } from './routes/dns'
 import { Route as filtersRoute } from './routes/filters'
 import { Route as indexRoute } from './routes/index'
 import { Route as logsRoute } from './routes/logs'
+import { Route as modulesRoute } from './routes/modules'
 import { Route as placeholdersRoute } from './routes/placeholders'
 import { Route as settingsRoute } from './routes/settings'
 import { Route as strategiesRoute } from './routes/strategies'
@@ -14,6 +16,8 @@ import './index.css'
 const routeTree = rootRoute.addChildren([
   indexRoute,
   aboutRoute,
+  modulesRoute,
+  dnsRoute,
   strategiesRoute,
   strategiesCategoryIdRoute,
   filtersRoute,

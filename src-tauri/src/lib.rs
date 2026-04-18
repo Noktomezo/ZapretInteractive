@@ -1,6 +1,6 @@
 mod commands;
 
-use commands::{admin, binaries, config, process};
+use commands::{admin, binaries, config, dns, process};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{
     Emitter, Manager,
@@ -383,6 +383,10 @@ pub fn run() {
             binaries::delete_filter_file,
             binaries::open_app_directory,
             binaries::open_filters_directory,
+            dns::get_dns_proxy_status,
+            dns::start_dns_proxy,
+            dns::stop_dns_proxy,
+            dns::check_dns_provider_latency,
             process::start_winws,
             process::stop_winws,
             process::is_winws_running,

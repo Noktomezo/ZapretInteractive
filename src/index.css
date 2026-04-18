@@ -247,6 +247,21 @@
   --terminal-background-tint: #f4efe2;
 }
 
+html,
+body,
+#root {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+input,
+textarea,
+[contenteditable="true"],
+[data-allow-select="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 .dark,
 [data-theme="dark"] {
   --background: oklch(0.16 0.01 30);

@@ -192,6 +192,18 @@ pub struct AppConfig {
     #[serde(default)]
     pub filters: Vec<Filter>,
     pub binaries_path: String,
+    #[serde(default = "default_dns_preset_id", rename = "dnsPresetId")]
+    pub dns_preset_id: String,
+    #[serde(
+        default = "default_dns_bootstrap_resolvers",
+        rename = "dnsBootstrapResolvers"
+    )]
+    pub dns_bootstrap_resolvers: Vec<String>,
+    #[serde(
+        default = "default_dns_accelerator_enabled",
+        rename = "dnsAcceleratorEnabled"
+    )]
+    pub dns_accelerator_enabled: bool,
     #[serde(default = "default_minimize_to_tray", rename = "minimizeToTray")]
     pub minimize_to_tray: bool,
     #[serde(default = "default_launch_to_tray", rename = "launchToTray")]
@@ -294,6 +306,22 @@ fn default_core_file_update_prompts_enabled() -> bool {
 
 fn default_app_auto_updates_enabled() -> bool {
     true
+}
+
+fn default_dns_preset_id() -> String {
+    "comss-one".to_string()
+}
+
+fn default_dns_bootstrap_resolvers() -> Vec<String> {
+    vec![
+        "77.88.8.8".to_string(),
+        "1.1.1.1".to_string(),
+        "8.8.8.8".to_string(),
+    ]
+}
+
+fn default_dns_accelerator_enabled() -> bool {
+    false
 }
 
 fn default_window_material() -> WindowMaterial {
@@ -573,6 +601,12 @@ fn install_resources_dir() -> PathBuf {
 
 fn source_managed_resources_dir() -> Option<PathBuf> {
     find_dev_project_root().map(|project_root| project_root.join(SOURCE_MANAGED_DIR_NAME))
+}
+
+pub(crate) fn uses_dev_managed_resources_source() -> bool {
+    source_managed_resources_dir()
+        .map(|source_dir| source_dir != get_managed_resources_dir())
+        .unwrap_or(false)
 }
 
 fn legacy_install_resources_dir() -> Option<PathBuf> {
@@ -879,6 +913,26 @@ fn normalize_config(mut config: AppConfig) -> NormalizedConfigResult {
 
     if config.binaries_path != expected_binaries_path {
         config.binaries_path = expected_binaries_path;
+        changed = true;
+    }
+
+    if config.dns_preset_id.trim().is_empty() {
+        config.dns_preset_id = default_dns_preset_id();
+        changed = true;
+    }
+
+    let normalized_bootstrap_resolvers = config
+        .dns_bootstrap_resolvers
+        .iter()
+        .map(|resolver| resolver.trim())
+        .filter(|resolver| !resolver.is_empty())
+        .map(ToString::to_string)
+        .collect::<Vec<_>>();
+    if normalized_bootstrap_resolvers.is_empty() {
+        config.dns_bootstrap_resolvers = default_dns_bootstrap_resolvers();
+        changed = true;
+    } else if normalized_bootstrap_resolvers != config.dns_bootstrap_resolvers {
+        config.dns_bootstrap_resolvers = normalized_bootstrap_resolvers;
         changed = true;
     }
 

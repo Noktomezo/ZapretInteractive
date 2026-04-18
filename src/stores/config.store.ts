@@ -49,6 +49,9 @@ interface ConfigStore {
   replaceFiltersState: (filters: Filter[], removedFilterIds?: string[]) => void
   setListMode: (mode: ListMode) => void
   applyPersistedListMode: (mode: ListMode) => void
+  setDnsPresetId: (presetId: string) => void
+  setDnsBootstrapResolvers: (resolvers: string[]) => void
+  setDnsAcceleratorEnabled: (enabled: boolean) => void
   setCoreFileUpdatePromptsEnabled: (enabled: boolean) => void
   setAppAutoUpdatesEnabled: (enabled: boolean) => void
   setWindowMaterial: (material: WindowMaterial) => void
@@ -255,6 +258,24 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     const { config } = get()
     if (config)
       set({ config: { ...config, listMode: mode } })
+  },
+
+  setDnsPresetId: (presetId) => {
+    const { config } = get()
+    if (config)
+      set({ config: { ...config, dnsPresetId: presetId }, dirty: true })
+  },
+
+  setDnsBootstrapResolvers: (resolvers) => {
+    const { config } = get()
+    if (config)
+      set({ config: { ...config, dnsBootstrapResolvers: resolvers }, dirty: true })
+  },
+
+  setDnsAcceleratorEnabled: (enabled) => {
+    const { config } = get()
+    if (config)
+      set({ config: { ...config, dnsAcceleratorEnabled: enabled }, dirty: true })
   },
 
   setCoreFileUpdatePromptsEnabled: (enabled) => {

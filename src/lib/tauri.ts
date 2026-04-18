@@ -1,4 +1,4 @@
-import type { AppConfig, AppHealthSnapshot, EnsureManagedFilesResult, ListMode, WindowMaterial, WindowMaterialCapabilities } from './types'
+import type { AppConfig, AppHealthSnapshot, DnsLatencyResult, DnsProxyStatus, EnsureManagedFilesResult, ListMode, WindowMaterial, WindowMaterialCapabilities } from './types'
 import { getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
@@ -47,6 +47,12 @@ export const wasLaunchedFromAutostart = (): Promise<boolean> => invoke('was_laun
 export const getAppVersion = (): Promise<string> => getVersion()
 export const setWindowMaterial = (material: WindowMaterial): Promise<void> => invoke('set_window_material', { material })
 export const getWindowMaterialCapabilities = (): Promise<WindowMaterialCapabilities> => invoke('get_window_material_capabilities')
+export const getDnsProxyStatus = (): Promise<DnsProxyStatus> => invoke('get_dns_proxy_status')
+export function startDnsProxy(dohUrls: string[], bootstrapResolvers: string[]): Promise<DnsProxyStatus> {
+  return invoke('start_dns_proxy', { dohUrls, bootstrapResolvers })
+}
+export const stopDnsProxy = (): Promise<DnsProxyStatus> => invoke('stop_dns_proxy')
+export const checkDnsProviderLatency = (urls: string[]): Promise<DnsLatencyResult[]> => invoke('check_dns_provider_latency', { urls })
 
 export function saveFilterFile(filename: string, content: string): Promise<void> {
   return invoke('save_filter_file', { filename, content })

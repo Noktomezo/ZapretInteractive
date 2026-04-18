@@ -423,11 +423,8 @@ export default function FaultyTerminal({
     let program = null
     let mesh = null
     let gl = null
-    let resizeObserver = null
-
     const cleanupWebgl = () => {
       cancelAnimationFrame(rafRef.current)
-      resizeObserver?.disconnect()
       window.removeEventListener('pointermove', handlePointerMove)
       if (gl?.canvas?.parentElement === ctn)
         ctn.removeChild(gl.canvas)
@@ -510,14 +507,14 @@ export default function FaultyTerminal({
     const updateTargetSize = () => {
       if (!ctn)
         return
+
+      const { width, height } = ctn.getBoundingClientRect()
       targetSizeRef.current = {
-        width: ctn.offsetWidth,
-        height: ctn.offsetHeight,
+        width: Math.max(0, Math.round(width)),
+        height: Math.max(0, Math.round(height)),
       }
     }
 
-    resizeObserver = new ResizeObserver(updateTargetSize)
-    resizeObserver.observe(ctn)
     updateTargetSize()
     applySize(targetSizeRef.current.width, targetSizeRef.current.height)
 
@@ -530,6 +527,8 @@ export default function FaultyTerminal({
       if (!currentProgram || !currentRenderer || !currentMesh) {
         return
       }
+
+      updateTargetSize()
 
       const targetSize = targetSizeRef.current
       const appliedSize = appliedSizeRef.current

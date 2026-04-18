@@ -18,6 +18,21 @@ export interface AppHealthSnapshot {
   config_missing: boolean
 }
 
+export interface DnsProxyStatus {
+  installed: boolean
+  running: boolean
+  moduleAvailable: boolean
+  configPath: string
+  serviceName: string
+}
+
+export interface DnsLatencyResult {
+  url: string
+  reachable: boolean
+  latencyMs: number | null
+  error?: string | null
+}
+
 export interface Strategy {
   id: string
   name: string
@@ -67,6 +82,9 @@ export interface AppConfig {
   filters: Filter[]
   binaries_path: string
   listMode?: ListMode
+  dnsPresetId?: string
+  dnsBootstrapResolvers?: string[]
+  dnsAcceleratorEnabled?: boolean
   minimizeToTray?: boolean
   launchToTray?: boolean
   connectOnAutostart?: boolean

@@ -602,7 +602,7 @@ export function SettingsPage() {
                   <Button
                     variant="destructive"
                     size="sm"
-                    className="border border-destructive/35 bg-destructive/72 hover:bg-destructive/82 dark:border-destructive/30 dark:bg-destructive/58 dark:hover:bg-destructive/68"
+                    className="border border-destructive/35 bg-destructive/72 shadow-none hover:bg-destructive/82 hover:shadow-none dark:border-destructive/30 dark:bg-destructive/58 dark:hover:bg-destructive/68"
                   >
                     <RotateCcw className="size-4" />
                     Сбросить

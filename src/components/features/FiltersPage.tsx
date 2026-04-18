@@ -507,7 +507,9 @@ export function FiltersPage() {
                 className="flex min-h-20 items-center justify-between overflow-hidden rounded-lg border bg-card p-4"
               >
                 <div className="flex min-w-0 w-0 flex-1 items-center gap-3 overflow-hidden">
-                  <Filter className="h-4 w-4 text-muted-foreground" />
+                  <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
+                    <Filter className="h-4 w-4" />
+                  </div>
                   <div className="min-w-0 w-0 flex-1 overflow-hidden space-y-1">
                     <div className="flex items-center gap-2">
                       <Label htmlFor={filter.id} className="block cursor-pointer truncate text-sm font-normal">
