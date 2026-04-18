@@ -4,15 +4,16 @@ use crate::get_windows_build_number;
 use dnsstamps::DoHBuilder;
 use duct::{Expression, cmd};
 use futures::future::join_all;
-use reqwest::Client as HttpClient;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::net::IpAddr;
 #[cfg(windows)]
 use std::net::Ipv4Addr;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
-use tokio::net::TcpStream;
+use surge_ping::ping as icmp_ping;
+use tokio::net::{TcpStream, lookup_host};
 use tokio::time::{Instant, timeout};
 use toml::{Table, Value};
 
@@ -43,7 +44,6 @@ use windows::core::PCWSTR;
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 const DNSCRYPT_PROXY_SERVICE_NAME: &str = "dnscrypt-proxy";
-const DOH_TEST_QUERY: &str = "AAABAAABAAAAAAAAB2V4YW1wbGUDY29tAAABAAE";
 #[cfg(windows)]
 const NATIVE_INTERFACE_DNS_MIN_BUILD: u32 = 19041;
 #[cfg(windows)]
@@ -899,55 +899,49 @@ async fn measure_dns_latency(url: String) -> DnsLatencyResult {
         }
     };
 
-    let mut doh_url = parsed.clone();
-    doh_url.query_pairs_mut().append_pair("dns", DOH_TEST_QUERY);
     let host = parsed.host_str().unwrap_or_default().to_string();
     let port = parsed.port_or_known_default().unwrap_or(443);
-    let client = match HttpClient::builder()
-        .timeout(Duration::from_secs(3))
-        .build()
-    {
-        Ok(client) => client,
-        Err(error) => {
-            return DnsLatencyResult {
-                url,
-                reachable: false,
-                latency_ms: None,
-                error: Some(format!("Не удалось создать HTTP клиент: {error}")),
-            };
-        }
+    let resolved_ip = match lookup_host((host.as_str(), port)).await {
+        Ok(mut addresses) => addresses
+            .find(|address| matches!(address.ip(), IpAddr::V4(_) | IpAddr::V6(_)))
+            .map(|address| address.ip()),
+        Err(_) => None,
     };
 
-    let start = Instant::now();
-    let http_result = client
-        .get(doh_url)
-        .header("accept", "application/dns-message")
-        .send()
-        .await;
+    if let Some(ip) = resolved_ip {
+        let payload = [0_u8; 8];
+        let icmp_result = timeout(Duration::from_millis(1500), icmp_ping(ip, &payload)).await;
 
-    match http_result {
-        Ok(response) => {
-            if !response.status().is_success() {
-                let tcp_latency = timeout(
-                    Duration::from_secs(3),
+        match icmp_result {
+            Ok(Ok((_packet, duration))) => {
+                return DnsLatencyResult {
+                    url,
+                    reachable: true,
+                    latency_ms: Some(duration.as_millis() as u64),
+                    error: None,
+                };
+            }
+            Ok(Err(icmp_error)) => {
+                let tcp_started_at = Instant::now();
+                let tcp_result = timeout(
+                    Duration::from_millis(1500),
                     TcpStream::connect(format!("{host}:{port}")),
                 )
                 .await;
 
-                return match tcp_latency {
+                return match tcp_result {
                     Ok(Ok(_)) => DnsLatencyResult {
                         url,
                         reachable: true,
-                        latency_ms: Some(start.elapsed().as_millis() as u64),
+                        latency_ms: Some(tcp_started_at.elapsed().as_millis() as u64),
                         error: None,
                     },
-                    Ok(Err(error)) => DnsLatencyResult {
+                    Ok(Err(tcp_error)) => DnsLatencyResult {
                         url,
                         reachable: false,
                         latency_ms: None,
                         error: Some(format!(
-                            "DoH ответил статусом {}, fallback TCP не удался: {error}",
-                            response.status()
+                            "ICMP не удался: {icmp_error}; fallback TCP не удался: {tcp_error}"
                         )),
                     },
                     Err(_) => DnsLatencyResult {
@@ -955,60 +949,71 @@ async fn measure_dns_latency(url: String) -> DnsLatencyResult {
                         reachable: false,
                         latency_ms: None,
                         error: Some(format!(
-                            "DoH ответил статусом {}, fallback TCP превысил таймаут",
-                            response.status()
+                            "ICMP не удался: {icmp_error}; fallback TCP превысил таймаут"
                         )),
                     },
                 };
             }
+            Err(_) => {
+                let tcp_started_at = Instant::now();
+                let tcp_result = timeout(
+                    Duration::from_millis(1500),
+                    TcpStream::connect(format!("{host}:{port}")),
+                )
+                .await;
 
-            match response.bytes().await {
-                Ok(_) => DnsLatencyResult {
-                    url,
-                    reachable: true,
-                    latency_ms: Some(start.elapsed().as_millis() as u64),
-                    error: None,
-                },
-                Err(error) => DnsLatencyResult {
-                    url,
-                    reachable: false,
-                    latency_ms: None,
-                    error: Some(format!("Не удалось прочитать DoH ответ: {error}")),
-                },
+                return match tcp_result {
+                    Ok(Ok(_)) => DnsLatencyResult {
+                        url,
+                        reachable: true,
+                        latency_ms: Some(tcp_started_at.elapsed().as_millis() as u64),
+                        error: None,
+                    },
+                    Ok(Err(tcp_error)) => DnsLatencyResult {
+                        url,
+                        reachable: false,
+                        latency_ms: None,
+                        error: Some(format!(
+                            "ICMP превысил таймаут; fallback TCP не удался: {tcp_error}"
+                        )),
+                    },
+                    Err(_) => DnsLatencyResult {
+                        url,
+                        reachable: false,
+                        latency_ms: None,
+                        error: Some("ICMP и fallback TCP превысили таймаут".to_string()),
+                    },
+                };
             }
         }
-        Err(http_error) => {
-            let tcp_latency = timeout(
-                Duration::from_secs(3),
-                TcpStream::connect(format!("{host}:{port}")),
-            )
-            .await;
+    }
 
-            match tcp_latency {
-                Ok(Ok(_)) => DnsLatencyResult {
-                    url,
-                    reachable: true,
-                    latency_ms: Some(start.elapsed().as_millis() as u64),
-                    error: None,
-                },
-                Ok(Err(tcp_error)) => DnsLatencyResult {
-                    url,
-                    reachable: false,
-                    latency_ms: None,
-                    error: Some(format!(
-                        "DoH запрос не удался: {http_error}; fallback TCP не удался: {tcp_error}"
-                    )),
-                },
-                Err(_) => DnsLatencyResult {
-                    url,
-                    reachable: false,
-                    latency_ms: None,
-                    error: Some(format!(
-                        "DoH запрос не удался: {http_error}; fallback TCP превысил таймаут"
-                    )),
-                },
-            }
-        }
+    let tcp_started_at = Instant::now();
+    let tcp_result = timeout(
+        Duration::from_millis(1500),
+        TcpStream::connect(format!("{host}:{port}")),
+    )
+    .await;
+
+    match tcp_result {
+        Ok(Ok(_)) => DnsLatencyResult {
+            url,
+            reachable: true,
+            latency_ms: Some(tcp_started_at.elapsed().as_millis() as u64),
+            error: None,
+        },
+        Ok(Err(error)) => DnsLatencyResult {
+            url,
+            reachable: false,
+            latency_ms: None,
+            error: Some(format!("Не удалось подключиться по TCP: {error}")),
+        },
+        Err(_) => DnsLatencyResult {
+            url,
+            reachable: false,
+            latency_ms: None,
+            error: Some("Не удалось разрешить адрес и fallback TCP превысил таймаут".to_string()),
+        },
     }
 }
 

@@ -977,8 +977,8 @@ fn normalize_config(mut config: AppConfig) -> NormalizedConfigResult {
         .map(|resolver| resolver.trim())
         .filter(|resolver| !resolver.is_empty())
         .filter_map(|resolver| match resolver.parse::<IpAddr>() {
-            Ok(_) => {
-                let value = resolver.to_string();
+            Ok(ip) => {
+                let value = ip.to_string();
                 if seen_bootstrap_resolvers.insert(value.clone()) {
                     Some(value)
                 } else {

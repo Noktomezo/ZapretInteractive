@@ -12,6 +12,7 @@ import { buildTgWsProxyHttpLink, generateTgWsProxySecret, isValidTgWsProxySecret
 import { cn } from '@/lib/utils'
 
 const PAGE_CARD_CLASS = '!border-border/60 !bg-background !shadow-none !backdrop-blur-none'
+const TG_WS_PROXY_PORT_RE = /^\d+$/
 
 function TgWsProxyPageContent({
   port,
@@ -37,7 +38,8 @@ function TgWsProxyPageContent({
   const tgHttpLink = buildTgWsProxyHttpLink(port, secret)
 
   const normalizedDraftSecret = normalizeTgWsProxySecret(draftSecret)
-  const parsedDraftPort = Number.parseInt(draftPort, 10)
+  const isDraftPortNumeric = TG_WS_PROXY_PORT_RE.test(draftPort)
+  const parsedDraftPort = isDraftPortNumeric ? Number.parseInt(draftPort, 10) : Number.NaN
   const canApply = parsedDraftPort === port && normalizedDraftSecret === secret
     ? false
     : Number.isInteger(parsedDraftPort) && parsedDraftPort >= 1 && parsedDraftPort <= 65535 && isValidTgWsProxySecret(normalizedDraftSecret)
@@ -81,7 +83,7 @@ function TgWsProxyPageContent({
             type="button"
             variant={enabled ? 'destructive' : 'default'}
             className={cn('gap-2', enabled && 'shadow-none hover:shadow-none')}
-            disabled={isBusy || status?.moduleAvailable === false}
+            disabled={isBusy || status == null || status.moduleAvailable === false}
             onClick={() => void handleToggle()}
           >
             {isBusy

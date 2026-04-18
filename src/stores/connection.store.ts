@@ -393,13 +393,19 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       get().updateTrayState(true)
       const config = useConfigStore.getState().config
       if (config) {
-        void startEnabledModules(config, get().addLog).then((moduleErrors) => {
-          if (moduleErrors.length > 0) {
-            const message = `Некоторые модули не запустились: ${moduleErrors.join('; ')}`
+        void startEnabledModules(config, get().addLog)
+          .then((moduleErrors) => {
+            if (moduleErrors.length > 0) {
+              const message = `Некоторые модули не запустились: ${moduleErrors.join('; ')}`
+              get().addLog(message)
+              toast.error(message)
+            }
+          })
+          .catch((error) => {
+            const message = `Ошибка автозапуска модулей: ${error instanceof Error ? error.message : String(error)}`
             get().addLog(message)
             toast.error(message)
-          }
-        })
+          })
       }
     }
     else {

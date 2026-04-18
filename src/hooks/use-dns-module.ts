@@ -198,8 +198,9 @@ export function useDnsModule() {
       enabled,
     }
 
+    let currentStatus: DnsProxyStatus
     try {
-      await resolveStatus()
+      currentStatus = await resolveStatus()
       setIsBusy(true)
       await saveNow()
     }
@@ -218,12 +219,16 @@ export function useDnsModule() {
 
     try {
       if (connectionStatus === 'connected') {
-        const nextStatus = nextEnabled
-          ? await tauri.startDnsProxy(
-              applyDnsAccelerator(selectedPreset.urls.slice(), acceleratorEnabled),
-              normalizedResolvers,
-            )
-          : await tauri.stopDnsProxy()
+        let nextStatus = currentStatus
+        if (nextEnabled && !currentStatus.running) {
+          nextStatus = await tauri.startDnsProxy(
+            applyDnsAccelerator(selectedPreset.urls.slice(), acceleratorEnabled),
+            normalizedResolvers,
+          )
+        }
+        else if (!nextEnabled && currentStatus.running) {
+          nextStatus = await tauri.stopDnsProxy()
+        }
 
         setStatus(nextStatus)
         addConfigLog(nextEnabled

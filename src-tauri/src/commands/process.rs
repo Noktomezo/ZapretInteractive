@@ -350,14 +350,41 @@ pub fn stop_winws() -> Result<(), String> {
     }
 
     if let Some(handle) = handle {
-        if handle
-            .try_wait()
-            .map_err(|e| format!("Failed to inspect winws.exe state: {e}"))?
-            .is_none()
-        {
-            handle
-                .kill()
-                .map_err(|e| format!("Failed to kill winws.exe: {e}"))?;
+        let wait_result = match handle.try_wait() {
+            Ok(wait_result) => wait_result,
+            Err(error) => {
+                if let Ok(mut running_handle) = RUNNING_HANDLE.lock() {
+                    *running_handle = Some(handle);
+                }
+                return Err(format!("Failed to inspect winws.exe state: {error}"));
+            }
+        };
+
+        if wait_result.is_none() {
+            if let Err(error) = handle.kill() {
+                #[cfg(windows)]
+                {
+                    match terminate_process_by_pid(pid) {
+                        Ok(()) => {}
+                        Err(fallback_error) => {
+                            if let Ok(mut running_handle) = RUNNING_HANDLE.lock() {
+                                *running_handle = Some(handle);
+                            }
+                            return Err(format!(
+                                "Failed to kill winws.exe: {error}; fallback by PID failed: {fallback_error}"
+                            ));
+                        }
+                    }
+                }
+
+                #[cfg(not(windows))]
+                {
+                    if let Ok(mut running_handle) = RUNNING_HANDLE.lock() {
+                        *running_handle = Some(handle);
+                    }
+                    return Err(format!("Failed to kill winws.exe: {error}"));
+                }
+            }
             let _ = handle.wait_timeout(Duration::from_secs(2));
         }
     } else {

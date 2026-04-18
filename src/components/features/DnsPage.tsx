@@ -69,7 +69,7 @@ export function DnsPage() {
               'gap-2',
               enabled && 'shadow-none hover:shadow-none',
             )}
-            disabled={isBusy || status?.moduleAvailable === false}
+            disabled={isBusy || status == null || status.moduleAvailable === false}
             onClick={() => void handleToggle()}
           >
             {isBusy
@@ -167,7 +167,6 @@ export function DnsPage() {
                 <button
                   key={preset.id}
                   type="button"
-                  aria-disabled={isBusy}
                   className={cn(
                     'rounded-xl border p-4 text-left transition-colors',
                     isSelected

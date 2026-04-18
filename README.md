@@ -45,6 +45,13 @@
 - Запуск от имени администратора (для WinDivert драйвера)
 - WebView2 Runtime (устанавливается автоматически)
 
+## ℹ️ Метаданные и ссылки
+
+- Разработчик: [Noktomezo](https://github.com/Noktomezo)
+- Исходники: [Noktomezo/ZapretInteractive](https://github.com/Noktomezo/ZapretInteractive)
+- Релизы: [страница релизов](https://github.com/Noktomezo/ZapretInteractive/releases)
+- Лицензия: [MIT](https://github.com/Noktomezo/ZapretInteractive/blob/main/LICENSE)
+
 ## 🛠️ Разработка
 
 ### Зависимости
@@ -71,6 +78,12 @@ just build
 
 - [bol-van/zapret](https://github.com/bol-van/zapret)
 - [bol-van/zapret-win-bundle](https://github.com/bol-van/zapret-win-bundle)
+- [kepano/flexoki](https://github.com/kepano/flexoki)
+
+## Respect / Благодарности
+
+- [DNSCrypt/dnscrypt-proxy](https://github.com/DNSCrypt/dnscrypt-proxy) — основа DNS-модуля и DoH-прокси
+- [valnesfjord/tg-ws-proxy-rs](https://github.com/valnesfjord/tg-ws-proxy-rs) — основа Telegram WS Proxy модуля
 
 &nbsp;
 

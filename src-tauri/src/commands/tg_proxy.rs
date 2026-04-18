@@ -1,6 +1,7 @@
 use super::config::{get_managed_resources_dir, get_runtime_data_dir};
 use duct::{Expression, Handle, cmd};
 use serde::Serialize;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
@@ -8,21 +9,21 @@ use std::time::Duration;
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 #[cfg(windows)]
-use windows::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
+use windows::Win32::Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE, WAIT_TIMEOUT};
 #[cfg(windows)]
 use windows::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS,
 };
 #[cfg(windows)]
 use windows::Win32::System::Threading::{
-    GetExitCodeProcess, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_TERMINATE,
-    TerminateProcess,
+    OpenProcess, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_TERMINATE,
+    QueryFullProcessImageNameW, TerminateProcess, WaitForSingleObject,
 };
+#[cfg(windows)]
+use windows::core::PWSTR;
 
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
-#[cfg(windows)]
-const STILL_ACTIVE_EXIT_CODE: u32 = 259;
 const TG_WS_PROXY_PROCESS_NAME: &str = "tg-ws-proxy.exe";
 
 static TG_WS_PROXY_PID: AtomicU32 = AtomicU32::new(0);
@@ -71,6 +72,33 @@ fn validate_tg_ws_proxy_secret(secret: &str) -> Result<String, String> {
 }
 
 #[cfg(windows)]
+fn normalize_path_for_compare(path: &Path) -> String {
+    std::fs::canonicalize(path)
+        .unwrap_or_else(|_| path.to_path_buf())
+        .to_string_lossy()
+        .replace('/', "\\")
+        .to_ascii_lowercase()
+}
+
+#[cfg(windows)]
+fn query_process_image_path(handle: HANDLE) -> Option<PathBuf> {
+    unsafe {
+        let mut size = 32_768u32;
+        let mut buffer = vec![0u16; size as usize];
+        QueryFullProcessImageNameW(
+            handle,
+            PROCESS_NAME_WIN32,
+            PWSTR(buffer.as_mut_ptr()),
+            &mut size,
+        )
+        .ok()?;
+        Some(PathBuf::from(String::from_utf16_lossy(
+            &buffer[..size as usize],
+        )))
+    }
+}
+
+#[cfg(windows)]
 fn configure_expression(expression: Expression) -> Expression {
     expression.before_spawn(|command| {
         command.creation_flags(CREATE_NO_WINDOW);
@@ -100,17 +128,20 @@ fn terminate_process_by_pid(pid: u32) -> Result<(), String> {
 }
 
 #[cfg(windows)]
-fn is_process_running_by_pid(pid: u32) -> bool {
+fn is_expected_tg_ws_proxy_process(pid: u32) -> bool {
     unsafe {
         let Ok(handle) = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) else {
             return false;
         };
 
-        let mut exit_code = 0u32;
-        let result = GetExitCodeProcess(handle, &mut exit_code).is_ok()
-            && exit_code == STILL_ACTIVE_EXIT_CODE;
+        let wait_result = WaitForSingleObject(handle, 0);
+        let expected_path = normalize_path_for_compare(&tg_ws_proxy_binary_path());
+        let actual_path = query_process_image_path(handle)
+            .map(|path| normalize_path_for_compare(&path))
+            .is_some_and(|path| path == expected_path);
         let _ = CloseHandle(handle);
-        result
+
+        wait_result == WAIT_TIMEOUT && actual_path
     }
 }
 
@@ -161,6 +192,14 @@ fn recover_running_pids() -> Vec<u32> {
 #[cfg(windows)]
 fn recover_running_pids() -> Vec<u32> {
     find_process_pids_by_name(TG_WS_PROXY_PROCESS_NAME)
+        .into_iter()
+        .filter(|pid| is_expected_tg_ws_proxy_process(*pid))
+        .collect()
+}
+
+#[cfg(windows)]
+fn is_process_running_by_pid(pid: u32) -> bool {
+    is_expected_tg_ws_proxy_process(pid)
 }
 
 fn clear_stored_handle() {

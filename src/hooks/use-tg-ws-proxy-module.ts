@@ -106,6 +106,7 @@ export function useTgWsProxyModule() {
       return
     }
 
+    const previousConfig = structuredClone(config)
     const nextEnabled = !enabled
     if (nextEnabled && !isValidTgWsProxySecret(secret)) {
       toast.error('Сначала сохраните корректный секрет TG WS Proxy')
@@ -118,7 +119,16 @@ export function useTgWsProxyModule() {
       await resolveStatus()
       setIsBusy(true)
       await saveNow()
+    }
+    catch (error) {
+      revertTo(previousConfig)
+      toast.error(`Ошибка переключения TG WS Proxy: ${error instanceof Error ? error.message : String(error)}`)
+      await refreshStatus().catch(() => {})
+      setIsBusy(false)
+      return
+    }
 
+    try {
       if (connectionStatus === 'connected') {
         const nextStatus = nextEnabled
           ? await tauri.startTgWsProxy(port, secret)

@@ -82,7 +82,7 @@ export function ModulesPage() {
   const dnsModule = useDnsModule()
   const tgWsProxyModule = useTgWsProxyModule()
 
-  const config = dnsModule.config ?? tgWsProxyModule.config
+  const config = dnsModule.config
   const loading = dnsModule.loading || tgWsProxyModule.loading
 
   if (loading || !config) {
