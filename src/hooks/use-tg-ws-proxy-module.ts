@@ -115,8 +115,9 @@ export function useTgWsProxyModule() {
 
     applyConfigState(port, secret, nextEnabled)
 
+    let currentStatus: TgWsProxyStatus
     try {
-      await resolveStatus()
+      currentStatus = await resolveStatus()
       setIsBusy(true)
       await saveNow()
     }
@@ -130,9 +131,11 @@ export function useTgWsProxyModule() {
 
     try {
       if (connectionStatus === 'connected') {
-        const nextStatus = nextEnabled
+        const nextStatus = nextEnabled && !currentStatus.running
           ? await tauri.startTgWsProxy(port, secret)
-          : await tauri.stopTgWsProxy()
+          : !nextEnabled && currentStatus.running
+              ? await tauri.stopTgWsProxy()
+              : currentStatus
 
         setStatus(nextStatus)
         addConfigLog(nextEnabled
@@ -151,6 +154,8 @@ export function useTgWsProxyModule() {
       )
     }
     catch (error) {
+      revertTo(previousConfig)
+      await saveNow().catch(() => {})
       toast.error(`Ошибка переключения TG WS Proxy: ${error instanceof Error ? error.message : String(error)}`)
       await refreshStatus().catch(() => {})
     }

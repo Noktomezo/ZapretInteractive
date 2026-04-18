@@ -242,6 +242,7 @@ fn get_tg_ws_proxy_status_inner() -> Result<TgWsProxyStatus, String> {
 }
 
 fn stop_tg_ws_proxy_inner() -> Result<TgWsProxyStatus, String> {
+    let mut stop_errors = Vec::new();
     let handle = TG_WS_PROXY_HANDLE
         .lock()
         .map_err(|error| error.to_string())?
@@ -253,9 +254,9 @@ fn stop_tg_ws_proxy_inner() -> Result<TgWsProxyStatus, String> {
             .map_err(|error| format!("Failed to inspect tg-ws-proxy state: {error}"))?
             .is_none()
     {
-        handle
-            .kill()
-            .map_err(|error| format!("Failed to kill tg-ws-proxy: {error}"))?;
+        if let Err(error) = handle.kill() {
+            stop_errors.push(format!("Failed to kill tg-ws-proxy: {error}"));
+        }
         let _ = handle.wait_timeout(Duration::from_secs(2));
     }
 
@@ -263,13 +264,24 @@ fn stop_tg_ws_proxy_inner() -> Result<TgWsProxyStatus, String> {
     {
         for pid in recover_running_pids() {
             if let Err(error) = terminate_process_by_pid(pid) {
-                eprintln!("Failed to terminate tg-ws-proxy process {pid}: {error}");
+                stop_errors.push(format!(
+                    "Failed to terminate tg-ws-proxy process {pid}: {error}"
+                ));
             }
         }
     }
 
     TG_WS_PROXY_PID.store(0, Ordering::SeqCst);
-    get_tg_ws_proxy_status_inner()
+    let status = get_tg_ws_proxy_status_inner()?;
+    if status.running {
+        stop_errors.push("tg-ws-proxy.exe всё ещё запущен после остановки".to_string());
+    }
+
+    if stop_errors.is_empty() {
+        Ok(status)
+    } else {
+        Err(stop_errors.join(" | "))
+    }
 }
 
 fn start_tg_ws_proxy_inner(port: u16, secret: String) -> Result<TgWsProxyStatus, String> {
@@ -284,7 +296,11 @@ fn start_tg_ws_proxy_inner(port: u16, secret: String) -> Result<TgWsProxyStatus,
     }
 
     ensure_tg_ws_proxy_runtime_dir()?;
-    let _ = stop_tg_ws_proxy_inner();
+    if let Err(error) = stop_tg_ws_proxy_inner() {
+        return Err(format!(
+            "Failed to stop existing tg-ws-proxy before restart: {error}"
+        ));
+    }
 
     let args = vec![
         "--host".to_string(),

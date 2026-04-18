@@ -40,6 +40,9 @@ async function startEnabledModules(config: AppConfig, addLog: (message: string) 
       if (!dnsStatus.moduleAvailable) {
         errors.push('DNS модуль недоступен')
       }
+      else if (dnsStatus.running && !dnsStatus.appManaged) {
+        errors.push('DNS: обнаружен внешний dnscrypt-proxy, модуль не будет перехватывать управление')
+      }
       else if (!dnsStatus.running) {
         const dnsPreset = getSelectedDnsPreset(config)
         await tauri.startDnsProxy(
@@ -82,7 +85,7 @@ async function stopManagedModules(addLog: (message: string) => void) {
 
   try {
     const dnsStatus = await tauri.getDnsProxyStatus()
-    if (dnsStatus.running) {
+    if (dnsStatus.running && dnsStatus.appManaged) {
       await tauri.stopDnsProxy()
       addLog('DNS модуль остановлен')
     }

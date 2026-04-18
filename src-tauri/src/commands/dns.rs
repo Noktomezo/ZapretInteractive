@@ -62,6 +62,7 @@ const ADAPTER_EXCLUDE_PATTERNS: &[&str] = &[
 pub struct DnsProxyStatus {
     installed: bool,
     running: bool,
+    app_managed: bool,
     module_available: bool,
     config_path: String,
     service_name: String,
@@ -136,10 +137,27 @@ fn dns_proxy_backup_path() -> PathBuf {
     dns_proxy_runtime_dir().join("system-dns-backup.json")
 }
 
+fn dns_proxy_managed_marker_path() -> PathBuf {
+    dns_proxy_runtime_dir().join("managed-by-app.marker")
+}
+
 fn ensure_dns_proxy_runtime_dir() -> Result<PathBuf, String> {
     let dir = dns_proxy_runtime_dir();
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     Ok(dir)
+}
+
+fn is_dns_proxy_app_managed() -> bool {
+    dns_proxy_managed_marker_path().is_file()
+}
+
+fn write_dns_managed_marker() -> Result<(), String> {
+    ensure_dns_proxy_runtime_dir()?;
+    fs::write(dns_proxy_managed_marker_path(), []).map_err(|e| e.to_string())
+}
+
+fn remove_dns_managed_marker() {
+    let _ = fs::remove_file(dns_proxy_managed_marker_path());
 }
 
 fn normalize_path_for_toml(path: &Path) -> String {
@@ -512,6 +530,7 @@ fn build_dns_proxy_status(installed: bool, running: bool) -> DnsProxyStatus {
     DnsProxyStatus {
         installed,
         running,
+        app_managed: running && is_dns_proxy_app_managed(),
         module_available: dns_proxy_binary_path().is_file(),
         config_path: dns_proxy_config_path().to_string_lossy().to_string(),
         service_name: DNSCRYPT_PROXY_SERVICE_NAME.to_string(),
@@ -560,10 +579,11 @@ fn query_dns_proxy_service_state() -> Result<Option<bool>, String> {
 
 fn get_dns_proxy_status_inner() -> Result<DnsProxyStatus, String> {
     let state = query_dns_proxy_service_state()?;
-    Ok(build_dns_proxy_status(
-        state.is_some(),
-        state.unwrap_or(false),
-    ))
+    let running = state.unwrap_or(false);
+    if !running {
+        remove_dns_managed_marker();
+    }
+    Ok(build_dns_proxy_status(state.is_some(), running))
 }
 
 #[cfg(windows)]
@@ -838,6 +858,35 @@ fn remove_dns_backup() {
     let _ = fs::remove_file(dns_proxy_backup_path());
 }
 
+fn capture_fresh_dns_backup() -> Result<DnsSystemBackup, String> {
+    let captured = capture_current_system_dns()?;
+    if backup_has_only_loopback_dns(&captured) {
+        return Err(
+            "Не удалось сохранить резервную копию системного DNS: обнаружены только loopback-адреса"
+                .to_string(),
+        );
+    }
+
+    write_dns_backup(&captured)?;
+    Ok(captured)
+}
+
+fn cleanup_failed_dns_start(was_app_managed: bool) {
+    if was_app_managed {
+        return;
+    }
+
+    remove_dns_managed_marker();
+
+    if !query_dns_proxy_service_state()
+        .ok()
+        .flatten()
+        .unwrap_or(false)
+    {
+        remove_dns_backup();
+    }
+}
+
 fn capture_current_system_dns() -> Result<DnsSystemBackup, String> {
     #[cfg(windows)]
     if supports_native_interface_dns_api() {
@@ -1031,19 +1080,18 @@ fn start_dns_proxy_inner(
     let normalized_bootstrap_resolvers = normalize_bootstrap_resolvers(bootstrap_resolvers)?;
     let config_path = write_dns_proxy_config(doh_urls, normalized_bootstrap_resolvers)?;
     check_dns_proxy_config(&config_path)?;
+    let previous_status = get_dns_proxy_status_inner()?;
+    let was_app_managed = previous_status.running && previous_status.app_managed;
 
-    let backup = if let Some(existing) = get_reusable_dns_backup()? {
-        existing
-    } else {
-        let captured = capture_current_system_dns()?;
-        if backup_has_only_loopback_dns(&captured) {
-            return Err(
-                "Не удалось сохранить резервную копию системного DNS: обнаружены только loopback-адреса"
-                    .to_string(),
-            );
+    let backup = if was_app_managed {
+        if let Some(existing) = get_reusable_dns_backup()? {
+            existing
+        } else {
+            capture_fresh_dns_backup()?
         }
-        write_dns_backup(&captured)?;
-        captured
+    } else {
+        remove_dns_backup();
+        capture_fresh_dns_backup()?
     };
 
     let _ = run_dns_proxy_action(&config_path, "stop");
@@ -1057,6 +1105,7 @@ fn start_dns_proxy_inner(
             "run_dns_proxy_action(uninstall)",
             run_dns_proxy_action(&config_path, "uninstall").map(|_| ()),
         );
+        cleanup_failed_dns_start(was_app_managed);
         if rollback_errors.is_empty() {
             return Err(error);
         }
@@ -1085,6 +1134,9 @@ fn start_dns_proxy_inner(
             run_dns_proxy_action(&config_path, "uninstall").map(|_| ()),
         );
         if rollback_errors.is_empty() {
+            cleanup_failed_dns_start(was_app_managed);
+        }
+        if rollback_errors.is_empty() {
             return Err(error);
         }
 
@@ -1093,6 +1145,8 @@ fn start_dns_proxy_inner(
             rollback_errors.join(" | ")
         ));
     }
+
+    write_dns_managed_marker()?;
 
     std::thread::sleep(std::time::Duration::from_millis(350));
     get_dns_proxy_status_inner()
@@ -1103,7 +1157,7 @@ fn stop_dns_proxy_inner() -> Result<DnsProxyStatus, String> {
 
     if let Some(backup) = read_dns_backup()? {
         match restore_system_dns_from_backup(&backup) {
-            Ok(()) => remove_dns_backup(),
+            Ok(()) => {}
             Err(error) => push_rollback_error(
                 &mut shutdown_errors,
                 "restore_system_dns_from_backup",
@@ -1136,6 +1190,9 @@ fn stop_dns_proxy_inner() -> Result<DnsProxyStatus, String> {
             shutdown_errors.join(" | ")
         ));
     }
+
+    remove_dns_backup();
+    remove_dns_managed_marker();
 
     std::thread::sleep(std::time::Duration::from_millis(250));
     get_dns_proxy_status_inner()

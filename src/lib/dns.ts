@@ -42,15 +42,16 @@ export const BOOTSTRAP_RESOLVER_OPTIONS = [
 
 export function normalizeDnsPresetId(presetId?: string) {
   const normalizedPresetId = presetId?.trim()
-  if (normalizedPresetId === 'malw-link') {
+  const normalizedPresetKey = normalizedPresetId?.toLowerCase()
+  if (normalizedPresetKey === 'malw-link') {
     return 'malw-link-main'
   }
 
-  if (!normalizedPresetId || !DNS_PRESETS.some(preset => preset.id === normalizedPresetId)) {
+  if (!normalizedPresetKey) {
     return DEFAULT_DNS_PRESET_ID
   }
 
-  return normalizedPresetId
+  return DNS_PRESETS.find(preset => preset.id.toLowerCase() === normalizedPresetKey)?.id ?? DEFAULT_DNS_PRESET_ID
 }
 
 export function applyDnsAccelerator(urls: string[], enabled: boolean) {

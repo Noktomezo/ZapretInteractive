@@ -45,6 +45,21 @@ export function useDnsModule() {
 
   const resolveStatus = async () => status ?? refreshStatus()
 
+  const restoreDnsState = async (previousState: {
+    presetId: string
+    bootstrapResolver: string
+    acceleratorEnabled: boolean
+    enabled: boolean
+  }) => {
+    applyDnsState(
+      previousState.presetId,
+      previousState.bootstrapResolver,
+      previousState.acceleratorEnabled,
+      previousState.enabled,
+    )
+    await saveNow().catch(() => {})
+  }
+
   const handleCheckLatency = async () => {
     setIsCheckingLatency(true)
     setLatencyByPreset({})
@@ -129,10 +144,18 @@ export function useDnsModule() {
       return
     }
 
+    let stoppedOldProxy = false
     try {
+      if (currentStatus.running && !currentStatus.appManaged) {
+        toast.error('Обнаружен внешний dnscrypt-proxy. Параметры сохранены, но не применены к активному сервису.')
+        await refreshStatus().catch(() => {})
+        return
+      }
+
       const dohUrls = applyDnsAccelerator(nextPreset.urls.slice(), accelerator)
       if (currentStatus.running) {
         await tauri.stopDnsProxy()
+        stoppedOldProxy = true
       }
       const nextStatus = await tauri.startDnsProxy(dohUrls, [nextBootstrapResolver])
       setStatus(nextStatus)
@@ -140,6 +163,14 @@ export function useDnsModule() {
       toast.success('Настройки DNS применены')
     }
     catch (error) {
+      await restoreDnsState(previousState)
+      if (currentStatus.running && currentStatus.appManaged && stoppedOldProxy) {
+        const previousPreset = DNS_PRESETS.find(item => item.id === previousState.presetId) ?? DNS_PRESETS[0]
+        const previousDohUrls = applyDnsAccelerator(previousPreset.urls.slice(), previousState.acceleratorEnabled)
+        await tauri.startDnsProxy(previousDohUrls, [previousState.bootstrapResolver])
+          .then(setStatus)
+          .catch(() => {})
+      }
       toast.error(`Ошибка применения настроек DNS: ${error instanceof Error ? error.message : String(error)}`)
       await refreshStatus().catch(() => {})
     }
@@ -220,6 +251,19 @@ export function useDnsModule() {
     try {
       if (connectionStatus === 'connected') {
         let nextStatus = currentStatus
+        if (currentStatus.running && !currentStatus.appManaged) {
+          if (nextEnabled) {
+            toast.success('DNS модуль включён. Обнаружен внешний dnscrypt-proxy, он оставлен без изменений.')
+          }
+          else {
+            toast.success('DNS модуль выключен. Внешний dnscrypt-proxy не останавливался.')
+          }
+
+          await refreshStatus().catch(() => {})
+          addConfigLog(nextEnabled ? 'DNS модуль включён' : 'DNS модуль выключен')
+          return
+        }
+
         if (nextEnabled && !currentStatus.running) {
           nextStatus = await tauri.startDnsProxy(
             applyDnsAccelerator(selectedPreset.urls.slice(), acceleratorEnabled),
@@ -247,6 +291,7 @@ export function useDnsModule() {
       )
     }
     catch (error) {
+      await restoreDnsState(previousState)
       toast.error(`Ошибка переключения DNS: ${error instanceof Error ? error.message : String(error)}`)
       await refreshStatus().catch(() => {})
     }

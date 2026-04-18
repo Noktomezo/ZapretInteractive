@@ -58,6 +58,19 @@ export function useDnsModuleSummary() {
     try {
       if (connectionStatus === 'connected') {
         let nextStatus = currentStatus
+        if (currentStatus.running && !currentStatus.appManaged) {
+          if (nextEnabled) {
+            toast.success('DNS модуль включён. Обнаружен внешний dnscrypt-proxy, он оставлен без изменений.')
+          }
+          else {
+            toast.success('DNS модуль выключен. Внешний dnscrypt-proxy не останавливался.')
+          }
+
+          await refreshStatus().catch(() => {})
+          addConfigLog(nextEnabled ? 'DNS модуль включён' : 'DNS модуль выключен')
+          return
+        }
+
         if (nextEnabled && !currentStatus.running) {
           nextStatus = await tauri.startDnsProxy(
             applyDnsAccelerator(selectedPreset.urls.slice(), acceleratorEnabled),
@@ -85,6 +98,8 @@ export function useDnsModuleSummary() {
       )
     }
     catch (error) {
+      setDnsModuleEnabled(previousEnabled)
+      await saveNow().catch(() => {})
       toast.error(`Ошибка переключения DNS: ${error instanceof Error ? error.message : String(error)}`)
       await refreshStatus().catch(() => {})
     }
@@ -158,8 +173,9 @@ export function useTgWsProxyModuleSummary() {
 
     setTgWsProxyModuleEnabled(nextEnabled)
 
+    let currentStatus: TgWsProxyStatus
     try {
-      await resolveStatus()
+      currentStatus = await resolveStatus()
       setIsBusy(true)
       await saveNow()
     }
@@ -173,7 +189,6 @@ export function useTgWsProxyModuleSummary() {
 
     try {
       if (connectionStatus === 'connected') {
-        const currentStatus = await resolveStatus()
         const nextStatus = nextEnabled && !currentStatus.running
           ? await tauri.startTgWsProxy(port, secret)
           : !nextEnabled && currentStatus.running
@@ -197,6 +212,8 @@ export function useTgWsProxyModuleSummary() {
       )
     }
     catch (error) {
+      revertTo(previousConfig)
+      await saveNow().catch(() => {})
       toast.error(`Ошибка переключения TG WS Proxy: ${error instanceof Error ? error.message : String(error)}`)
       await refreshStatus().catch(() => {})
     }

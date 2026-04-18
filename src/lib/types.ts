@@ -21,6 +21,7 @@ export interface AppHealthSnapshot {
 export interface DnsProxyStatus {
   installed: boolean
   running: boolean
+  appManaged: boolean
   moduleAvailable: boolean
   configPath: string
   serviceName: string
