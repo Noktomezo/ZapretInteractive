@@ -15,11 +15,11 @@
 
 ## ✨ Фичи
 
-- 🗂️ Управление конфигурацией прямо из GUI без ручного редактирования файлов
-- 🔄 Автоматическое проверка обновлений восстановление важных файлов
-- 📜 Логирование состояния подключения и внутренних событий
-- ⚙️ Автозапуск, запуск в трей и автоподключение
-- 🖥️ Нативный desktop UI на Tauri + React под Windows
+- ⚡ Унифицированное подключение из одного места без миллиона батников.
+- 📦 Готовые стратегии по категориям с возможностью редактировать их прямо интерфейсе.
+- 💫 Автообновление приложения и системных файлов.
+- 🛟 Доп. модули, расширяющие доступ к тому или иному специфически заблокированному сервису
+- ♻️ Автозапуск, трей и автоподключение после входа в систему.
 
 ## 📸 Скриншоты
 
@@ -28,41 +28,28 @@
   <img width="900" height="700" alt="Zapret_Interactive_ESjR1JTyi2" src="https://github.com/user-attachments/assets/e5954b1f-6c58-47ae-ba95-5b4568c656d6" />
 </div>
 
-## 📦 Установка
+## 🤔 Как начать
 
-Скачать готовый установщик можно в [последних релизах](https://github.com/Noktomezo/ZapretInteractive/releases).
+1. Скачай установщик на странице [релизов](https://github.com/Noktomezo/ZapretInteractive/releases).
+2. Установи приложение и запусти его от имени администратора.
+4. На главной странице нажми кнопку подключения.
+5. Если что-то не работает, открой категорию со стратегиями и попробуй другой вариант.
 
-После установки:
-
-- запусти приложение от имени администратора
-- дождись проверки и восстановления нужных файлов
-- запусти подключение
-- по желанию, редактируй/удаляй/добавляй стратегии
-
-## ⚡ Требования для запуска
+## 😭 Требования
 
 - Windows 10/11 x64
-- Запуск от имени администратора (для WinDivert драйвера)
+- Права администратора
 - WebView2 Runtime (устанавливается автоматически)
-
-## ℹ️ Метаданные и ссылки
-
-- Разработчик: [Noktomezo](https://github.com/Noktomezo)
-- Исходники: [Noktomezo/ZapretInteractive](https://github.com/Noktomezo/ZapretInteractive)
-- Релизы: [страница релизов](https://github.com/Noktomezo/ZapretInteractive/releases)
-- Лицензия: [MIT](https://github.com/Noktomezo/ZapretInteractive/blob/main/LICENSE)
 
 ## 🛠️ Разработка
 
-### Зависимости
-
+**Зависимости:**
 - [Rust](https://rust-lang.org/) >= 1.8
 - [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) с выбранным `Desktop development with C++ (MSVC + Windows SDK)`
 - [Bun](https://bun.com/)
 - [Just](https://github.com/casey/just)
 
-### Основные команды
-
+**Основные команды:**
 ```bash
 # Установка зависимостей
 just bootstrap
@@ -74,16 +61,13 @@ just dev
 just build
 ```
 
-## 🙏 Основа проекта
+## 🙏  Благодарности
 
-- [bol-van/zapret](https://github.com/bol-van/zapret)
-- [bol-van/zapret-win-bundle](https://github.com/bol-van/zapret-win-bundle)
-- [kepano/flexoki](https://github.com/kepano/flexoki)
-
-## Respect / Благодарности
-
-- [DNSCrypt/dnscrypt-proxy](https://github.com/DNSCrypt/dnscrypt-proxy) — основа DNS-модуля и DoH-прокси
-- [valnesfjord/tg-ws-proxy-rs](https://github.com/valnesfjord/tg-ws-proxy-rs) — основа Telegram WS Proxy модуля
+- [bol-van/zapret](https://github.com/bol-van/zapret) — оригинальный запрет
+- [bol-van/zapret-win-bundle](https://github.com/bol-van/zapret-win-bundle) — бинарники для Windows
+- [DNSCrypt/dnscrypt-proxy](https://github.com/DNSCrypt/dnscrypt-proxy) — бэкенд DNS модуля
+- [valnesfjord/tg-ws-proxy-rs](https://github.com/valnesfjord/tg-ws-proxy-rs) — бэкенд TG WS Proxy модуля
+- [kepano/flexoki](https://github.com/kepano/flexoki) — цветовая палитра приложения
 
 &nbsp;
 

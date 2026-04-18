@@ -586,6 +586,15 @@ fn get_dns_proxy_status_inner() -> Result<DnsProxyStatus, String> {
     Ok(build_dns_proxy_status(state.is_some(), running))
 }
 
+pub(crate) fn cleanup_orphaned_dns_proxy_on_startup() -> Result<(), String> {
+    ensure_dns_proxy_runtime_dir()?;
+    let status = get_dns_proxy_status_inner()?;
+    if status.running && status.app_managed {
+        stop_dns_proxy_inner()?;
+    }
+    Ok(())
+}
+
 #[cfg(windows)]
 fn configure_expression(expression: Expression) -> Expression {
     expression.before_spawn(|command| {

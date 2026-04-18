@@ -67,9 +67,12 @@ async function startEnabledModules(config: AppConfig, addLog: (message: string) 
       else if (!isValidTgWsProxySecret(normalizedSecret)) {
         errors.push('TG WS Proxy: некорректный секрет')
       }
+      else if (tgStatus.running) {
+        addLog(`TG WS Proxy модуль уже запущен${tgStatus.pid ? ` (PID: ${tgStatus.pid})` : ''}`)
+      }
       else if (!tgStatus.running) {
-        await tauri.startTgWsProxy(config.tgWsProxyPort ?? 1443, normalizedSecret)
-        addLog(`TG WS Proxy модуль запущен на порту ${config.tgWsProxyPort ?? 1443}`)
+        const nextStatus = await tauri.startTgWsProxy(config.tgWsProxyPort ?? 1443, normalizedSecret)
+        addLog(`TG WS Proxy модуль запущен на порту ${config.tgWsProxyPort ?? 1443}${nextStatus.pid ? ` (PID: ${nextStatus.pid})` : ''}`)
       }
     }
     catch (error) {
@@ -97,8 +100,11 @@ async function stopManagedModules(addLog: (message: string) => void) {
   try {
     const tgStatus = await tauri.getTgWsProxyStatus()
     if (tgStatus.running) {
-      await tauri.stopTgWsProxy()
-      addLog('TG WS Proxy модуль остановлен')
+      addLog(`Останавливаю TG WS Proxy модуль${tgStatus.pid ? ` (PID: ${tgStatus.pid})` : ''}`)
+    }
+    const stoppedStatus = await tauri.stopTgWsProxy()
+    if (tgStatus.running || tgStatus.pid || stoppedStatus.pid) {
+      addLog(`TG WS Proxy модуль остановлен${tgStatus.pid ? ` (PID: ${tgStatus.pid})` : ''}`)
     }
   }
   catch (error) {

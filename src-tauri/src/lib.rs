@@ -206,6 +206,16 @@ pub fn run() {
                 Some(vec!["--autostart"]),
             ))?;
 
+            if let Err(error) = process::cleanup_orphaned_winws_on_startup() {
+                eprintln!("Failed to clean up orphaned winws on startup: {error}");
+            }
+            if let Err(error) = tg_proxy::cleanup_orphaned_tg_ws_proxy_on_startup() {
+                eprintln!("Failed to clean up orphaned tg-ws-proxy on startup: {error}");
+            }
+            if let Err(error) = dns::cleanup_orphaned_dns_proxy_on_startup() {
+                eprintln!("Failed to clean up orphaned dnscrypt-proxy on startup: {error}");
+            }
+
             let app_state = config::AppState::new()?;
             let list_mode = app_state
                 .config
