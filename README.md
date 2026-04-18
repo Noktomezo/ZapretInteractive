@@ -41,13 +41,6 @@
 - Права администратора
 - WebView2 Runtime (устанавливается автоматически)
 
-## ℹ️ Метаданные и ссылки
-
-- Разработчик: [Noktomezo](https://github.com/Noktomezo)
-- Исходники: [Noktomezo/ZapretInteractive](https://github.com/Noktomezo/ZapretInteractive)
-- Релизы: [страница релизов](https://github.com/Noktomezo/ZapretInteractive/releases)
-- Лицензия: [MIT](https://github.com/Noktomezo/ZapretInteractive/blob/main/LICENSE)
-
 ## 🛠️ Разработка
 
 **Зависимости:**
