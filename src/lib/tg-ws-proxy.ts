@@ -15,7 +15,11 @@ export function generateTgWsProxySecret() {
   return crypto.randomUUID().replace(DASH_REGEX, '')
 }
 
-function buildTgWsProxyParams(port: number, secret: string, host = DEFAULT_TG_WS_PROXY_HOST) {
+function buildTgWsProxyParams(
+  port: number,
+  secret: string,
+  host = DEFAULT_TG_WS_PROXY_HOST,
+) {
   return new URLSearchParams({
     server: host,
     port: String(port),
@@ -23,12 +27,20 @@ function buildTgWsProxyParams(port: number, secret: string, host = DEFAULT_TG_WS
   })
 }
 
-export function buildTgWsProxyLink(port: number, secret: string, host = DEFAULT_TG_WS_PROXY_HOST) {
+export function buildTgWsProxyLink(
+  port: number,
+  secret: string,
+  host = DEFAULT_TG_WS_PROXY_HOST,
+) {
   const params = buildTgWsProxyParams(port, secret, host)
   return `tg://proxy?${params.toString()}`
 }
 
-export function buildTgWsProxyHttpLink(port: number, secret: string, host = DEFAULT_TG_WS_PROXY_HOST) {
+export function buildTgWsProxyHttpLink(
+  port: number,
+  secret: string,
+  host = DEFAULT_TG_WS_PROXY_HOST,
+) {
   const params = buildTgWsProxyParams(port, secret, host)
-  return `https://t.me/proxy?${params.toString()}`
+  return `tg://proxy?${params.toString()}`
 }
