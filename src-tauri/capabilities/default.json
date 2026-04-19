@@ -16,6 +16,10 @@
     "opener:default",
     "opener:allow-open-url",
     {
+      "identifier": "opener:allow-open-url",
+      "allow": [{ "url": "tg:*" }]
+    },
+    {
       "identifier": "opener:allow-open-path",
       "allow": [
         {
