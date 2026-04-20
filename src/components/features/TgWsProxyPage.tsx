@@ -99,55 +99,7 @@ function TgWsProxyPageContent({
             icon={ShieldCheck}
             title="Параметры"
             description="Основные параметры локального Telegram-прокси на этом ПК"
-          />
-          <CardContent className="space-y-4 p-4!">
-            <div className="space-y-2">
-              <ModuleSettingLabel
-                htmlFor="tg-ws-proxy-port"
-                icon={Link2}
-                description="Локальный порт, через который Telegram Desktop подключается к прокси."
-              >
-                Порт
-              </ModuleSettingLabel>
-              <Input
-                id="tg-ws-proxy-port"
-                inputMode="numeric"
-                value={draftPort}
-                disabled={isBusy}
-                onChange={event => setDraftPort(event.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <ModuleSettingLabel
-                htmlFor="tg-ws-proxy-secret"
-                icon={KeyRound}
-                description="Секретный ключ для подключения клиента к локальному прокси."
-              >
-                Секрет
-              </ModuleSettingLabel>
-              <div className="flex gap-2">
-                <Input
-                  id="tg-ws-proxy-secret"
-                  value={draftSecret}
-                  disabled={isBusy}
-                  onChange={event => setDraftSecret(event.target.value)}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="shrink-0"
-                  disabled={isBusy}
-                  aria-label="Сгенерировать новый секрет"
-                  onClick={() => setDraftSecret(generateTgWsProxySecret())}
-                >
-                  <RefreshCw className="size-4" />
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex justify-end">
+            action={(
               <Button
                 type="button"
                 className="gap-2"
@@ -159,7 +111,56 @@ function TgWsProxyPageContent({
                   : <KeyRound className="size-4" />}
                 Применить
               </Button>
+            )}
+          />
+          <CardContent className="space-y-4 p-4!">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <ModuleSettingLabel
+                htmlFor="tg-ws-proxy-port"
+                icon={Link2}
+                description="Локальный порт, через который Telegram Desktop подключается к прокси."
+              >
+                Порт
+              </ModuleSettingLabel>
+              <div className="w-full sm:w-[8rem]">
+                <Input
+                  id="tg-ws-proxy-port"
+                  inputMode="numeric"
+                  value={draftPort}
+                  disabled={isBusy}
+                  onChange={event => setDraftPort(event.target.value)}
+                />
+              </div>
             </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <ModuleSettingLabel
+                htmlFor="tg-ws-proxy-secret"
+                icon={KeyRound}
+                description="32 шестнадцатеричных символа."
+              >
+                Секрет
+              </ModuleSettingLabel>
+              <div className="relative w-full sm:w-[24rem]">
+                <Input
+                  id="tg-ws-proxy-secret"
+                  className="pr-10"
+                  value={draftSecret}
+                  disabled={isBusy}
+                  onChange={event => setDraftSecret(event.target.value)}
+                />
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 inline-flex size-4 -translate-y-1/2 cursor-pointer items-center justify-center transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={isBusy}
+                  aria-label="Сгенерировать новый секрет"
+                  onClick={() => setDraftSecret(generateTgWsProxySecret())}
+                >
+                  <RefreshCw className="size-4" />
+                </button>
+              </div>
+            </div>
+
           </CardContent>
         </Card>
 
@@ -168,37 +169,86 @@ function TgWsProxyPageContent({
             icon={Send}
             title="Подключение"
             description="Используйте ссылку ниже, чтобы быстро добавить прокси в Telegram Desktop"
+            action={(
+              <Button type="button" className="gap-2" onClick={() => void handleOpenTelegram()}>
+                <Link2 className="size-4" />
+                Открыть в Telegram
+              </Button>
+            )}
           />
           <CardContent className="space-y-4 p-4!">
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-xl border border-border/60 bg-muted/18 p-3">
                 <p className="text-xs text-muted-foreground">Хост</p>
-                <p className="mt-1 text-sm font-medium">127.0.0.1</p>
+                <div className="-mx-3 mt-2 border-t border-border/60 px-3 pt-2">
+                  <div className="flex items-end justify-between gap-3">
+                    <p className="text-sm font-medium">127.0.0.1</p>
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-foreground inline-flex size-4 shrink-0 cursor-pointer items-center justify-center transition-colors"
+                      aria-label="Скопировать хост"
+                      onClick={() => void navigator.clipboard.writeText('127.0.0.1').then(() => toast.success('Хост скопирован')).catch((error) => {
+                        toast.error(`Не удалось скопировать хост: ${error instanceof Error ? error.message : String(error)}`)
+                      })}
+                    >
+                      <Copy className="size-4" />
+                    </button>
+                  </div>
+                </div>
               </div>
               <div className="rounded-xl border border-border/60 bg-muted/18 p-3">
                 <p className="text-xs text-muted-foreground">Порт</p>
-                <p className="mt-1 text-sm font-medium">{port}</p>
+                <div className="-mx-3 mt-2 border-t border-border/60 px-3 pt-2">
+                  <div className="flex items-end justify-between gap-3">
+                    <p className="text-sm font-medium">{port}</p>
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-foreground inline-flex size-4 shrink-0 cursor-pointer items-center justify-center transition-colors"
+                      aria-label="Скопировать порт"
+                      onClick={() => void navigator.clipboard.writeText(String(port)).then(() => toast.success('Порт скопирован')).catch((error) => {
+                        toast.error(`Не удалось скопировать порт: ${error instanceof Error ? error.message : String(error)}`)
+                      })}
+                    >
+                      <Copy className="size-4" />
+                    </button>
+                  </div>
+                </div>
               </div>
               <div className="rounded-xl border border-border/60 bg-muted/18 p-3">
                 <p className="text-xs text-muted-foreground">PID</p>
-                <p className="mt-1 text-sm font-medium">{status?.pid ?? 'не запущен'}</p>
+                <div className="-mx-3 mt-2 border-t border-border/60 px-3 pt-2">
+                  <div className="flex items-end justify-between gap-3">
+                    <p className="text-sm font-medium">{status?.pid ?? 'не запущен'}</p>
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-foreground inline-flex size-4 shrink-0 cursor-pointer items-center justify-center transition-colors"
+                      aria-label="Скопировать PID"
+                      onClick={() => void navigator.clipboard.writeText(String(status?.pid ?? 'не запущен')).then(() => toast.success('PID скопирован')).catch((error) => {
+                        toast.error(`Не удалось скопировать PID: ${error instanceof Error ? error.message : String(error)}`)
+                      })}
+                    >
+                      <Copy className="size-4" />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
             <div className="rounded-xl border border-border/60 bg-muted/18 p-3">
               <p className="text-xs text-muted-foreground">Ссылка</p>
-              <p className="mt-1 break-all text-sm">{tgLink}</p>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" className="gap-2" onClick={() => void handleCopyLink()}>
-                <Copy className="size-4" />
-                Копировать ссылку
-              </Button>
-              <Button type="button" className="gap-2" onClick={() => void handleOpenTelegram()}>
-                <Link2 className="size-4" />
-                Открыть в Telegram
-              </Button>
+              <div className="-mx-3 mt-2 border-t border-border/60 px-3 pt-2">
+                <div className="flex items-end justify-between gap-3">
+                  <p className="break-all text-sm">{tgLink}</p>
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:text-foreground inline-flex size-4 shrink-0 cursor-pointer items-center justify-center transition-colors"
+                    aria-label="Скопировать ссылку TG WS Proxy"
+                    onClick={() => void handleCopyLink()}
+                  >
+                    <Copy className="size-4" />
+                  </button>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -43,8 +43,24 @@ type DiscordPresenceSyncGlobal = typeof globalThis & {
 
 let lastDiscordPresenceKey: string | null = null
 let discordPresenceSyncPromise: Promise<void> = Promise.resolve()
+let discordPresenceRetryTimeoutId: number | null = null
 
-function syncDiscordPresenceState() {
+function clearDiscordPresenceRetryTimeout() {
+  if (discordPresenceRetryTimeoutId !== null) {
+    window.clearTimeout(discordPresenceRetryTimeoutId)
+    discordPresenceRetryTimeoutId = null
+  }
+}
+
+function scheduleDiscordPresenceRetry() {
+  clearDiscordPresenceRetryTimeout()
+  discordPresenceRetryTimeoutId = window.setTimeout(() => {
+    discordPresenceRetryTimeoutId = null
+    syncDiscordPresenceState(true)
+  }, 5000)
+}
+
+function syncDiscordPresenceState(force = false) {
   const config = useConfigStore.getState().config
   if (!config) {
     return
@@ -56,7 +72,7 @@ function syncDiscordPresenceState() {
   const state = getDiscordPresenceState(useConnectionStore.getState().status)
   const nextKey = JSON.stringify([enabled, activityType, details, state])
 
-  if (nextKey === lastDiscordPresenceKey) {
+  if (!force && nextKey === lastDiscordPresenceKey) {
     return
   }
 
@@ -66,10 +82,15 @@ function syncDiscordPresenceState() {
       const synced = await tauri.syncDiscordPresence(enabled, details, state, activityType)
       if (!enabled || synced) {
         lastDiscordPresenceKey = nextKey
+        clearDiscordPresenceRetryTimeout()
+      }
+      else {
+        scheduleDiscordPresenceRetry()
       }
     })
     .catch((error) => {
       console.error('Failed to sync Discord presence:', error)
+      scheduleDiscordPresenceRetry()
     })
 }
 
@@ -92,7 +113,13 @@ const cleanupDiscordPresenceConnectionSubscription = useConnectionStore.subscrib
   }
 })
 
+const discordPresenceRefreshIntervalId = window.setInterval(() => {
+  syncDiscordPresenceState(true)
+}, 30000)
+
 discordPresenceSyncGlobal.__zapretDiscordPresenceSyncCleanup__ = () => {
+  clearDiscordPresenceRetryTimeout()
+  window.clearInterval(discordPresenceRefreshIntervalId)
   cleanupDiscordPresenceRouteSubscription()
   cleanupDiscordPresenceConfigSubscription()
   cleanupDiscordPresenceConnectionSubscription()

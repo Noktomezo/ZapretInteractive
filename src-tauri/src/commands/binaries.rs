@@ -687,13 +687,20 @@ fn event_affects_tracked_files(paths: &[PathBuf]) -> bool {
     let filters_dir = get_filters_dir();
     let hashes_path = get_hashes_path();
     let config_path = get_config_path();
-    let tracked_dest_paths: Vec<PathBuf> = tracked_files()
-        .into_iter()
-        .map(|file| file.dest_path)
-        .collect();
-    let tracked_parent_dirs: Vec<PathBuf> = tracked_dest_paths
+    let managed_root = get_managed_resources_dir();
+    let tracked_files = tracked_files();
+    let tracked_dest_paths: Vec<PathBuf> = tracked_files
         .iter()
-        .filter_map(|path| path.parent().map(Path::to_path_buf))
+        .map(|file| file.dest_path.clone())
+        .collect();
+    let tracked_parent_dirs: Vec<PathBuf> = tracked_files
+        .iter()
+        .filter_map(|file| {
+            file.dest_path
+                .parent()
+                .filter(|parent| *parent != managed_root.as_path())
+                .map(Path::to_path_buf)
+        })
         .collect();
     paths.iter().any(|path| {
         path_is_inside(path, &filters_dir)
