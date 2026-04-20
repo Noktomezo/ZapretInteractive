@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import fnmatch
 import hashlib
+import io
 import json
 import urllib.request
 from urllib.parse import urlparse
 from pathlib import Path
+from zipfile import ZipFile
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 THIRDPARTY_DIR = REPO_ROOT / "thirdparty"
@@ -63,6 +66,11 @@ LIST_FILES = [
     "zapret-ip-user.txt",
 ]
 
+MODULE_FILES = [
+    "dnscrypt-proxy/dnscrypt-proxy.exe",
+    "tg-ws-proxy-rs/tg-ws-proxy.exe",
+]
+
 UPSTREAMS = [
     (
         "https://raw.githubusercontent.com/StressOzz/Zapret-Manager/refs/heads/main/zapret-hosts-user-exclude.txt",
@@ -90,6 +98,21 @@ UPSTREAMS = [
     ),
 ]
 
+GITHUB_RELEASE_ZIP_UPSTREAMS = [
+    {
+        "repo": "DNSCrypt/dnscrypt-proxy",
+        "asset_pattern": "dnscrypt-proxy-win64-*.zip",
+        "member_pattern": "*/dnscrypt-proxy.exe",
+        "destination": THIRDPARTY_DIR / "modules" / "dnscrypt-proxy" / "dnscrypt-proxy.exe",
+    },
+    {
+        "repo": "valnesfjord/tg-ws-proxy-rs",
+        "asset_pattern": "tg-ws-proxy-x86_64-pc-windows-gnu.zip",
+        "member_pattern": "tg-ws-proxy.exe",
+        "destination": THIRDPARTY_DIR / "modules" / "tg-ws-proxy-rs" / "tg-ws-proxy.exe",
+    },
+]
+
 
 def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
@@ -114,6 +137,43 @@ def download(url: str) -> bytes:
     )
     with urllib.request.urlopen(request, timeout=120) as response:
         return response.read()
+
+
+def download_json(url: str) -> dict:
+    return json.loads(download(url).decode("utf-8"))
+
+
+def fetch_latest_release_asset(repo: str, asset_pattern: str) -> bytes:
+    release = download_json(f"https://api.github.com/repos/{repo}/releases/latest")
+    assets = release.get("assets", [])
+    for asset in assets:
+        asset_name = asset.get("name", "")
+        if fnmatch.fnmatch(asset_name, asset_pattern):
+            asset_url = asset.get("browser_download_url")
+            if not asset_url:
+                raise ValueError(
+                    f"Latest release asset {asset_name} for {repo} has no browser_download_url"
+                )
+            return download(asset_url)
+
+    available_assets = ", ".join(
+        sorted(asset.get("name", "<unnamed>") for asset in assets)
+    )
+    raise FileNotFoundError(
+        f"Latest release asset for {repo} matching {asset_pattern!r} not found. "
+        f"Available assets: {available_assets}"
+    )
+
+
+def extract_zip_member(data: bytes, member_pattern: str) -> bytes:
+    with ZipFile(io.BytesIO(data)) as archive:
+        for member_name in archive.namelist():
+            normalized_name = member_name.replace("\\", "/")
+            if fnmatch.fnmatch(normalized_name, member_pattern):
+                with archive.open(member_name) as handle:
+                    return handle.read()
+
+    raise FileNotFoundError(f"Zip member matching {member_pattern!r} not found")
 
 
 def normalize_download(destination: Path, data: bytes) -> bytes:
@@ -169,6 +229,12 @@ def build_hash_manifest() -> dict[str, str]:
             raise FileNotFoundError(f"Missing managed list: {path}")
         manifest[f"lists:{name}"] = sha256_file(path)
 
+    for name in MODULE_FILES:
+        path = THIRDPARTY_DIR / "modules" / name
+        if not path.is_file():
+            raise FileNotFoundError(f"Missing managed module binary: {path}")
+        manifest[f"modules:{name}"] = sha256_file(path)
+
     return manifest
 
 
@@ -179,6 +245,15 @@ def main() -> None:
         data = normalize_download(destination, download(url))
         if write_if_changed(destination, data):
             changed_paths.append(destination.relative_to(REPO_ROOT).as_posix())
+
+    for upstream in GITHUB_RELEASE_ZIP_UPSTREAMS:
+        archive_bytes = fetch_latest_release_asset(
+            upstream["repo"],
+            upstream["asset_pattern"],
+        )
+        extracted_bytes = extract_zip_member(archive_bytes, upstream["member_pattern"])
+        if write_if_changed(upstream["destination"], extracted_bytes):
+            changed_paths.append(upstream["destination"].relative_to(REPO_ROOT).as_posix())
 
     manifest = build_hash_manifest()
     hashes_payload = json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n"

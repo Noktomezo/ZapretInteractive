@@ -33,6 +33,8 @@ def resolve_manifest_path(key: str) -> Path:
         return THIRDPARTY_DIR / "fake" / name
     if group == "lists":
         return THIRDPARTY_DIR / "lists" / name
+    if group == "modules":
+        return THIRDPARTY_DIR / "modules" / name
     raise ValueError(f"Unsupported manifest group: {group}")
 
 
@@ -54,6 +56,7 @@ def build_expected_keys() -> set[str]:
     binary_files = getattr(update_module, "BINARY_FILES", None)
     fake_files = getattr(update_module, "FAKE_FILES", None)
     list_files = getattr(update_module, "LIST_FILES", None)
+    module_files = getattr(update_module, "MODULE_FILES", None)
 
     if binary_files is None:
         missing_constants.append("BINARY_FILES")
@@ -64,6 +67,9 @@ def build_expected_keys() -> set[str]:
     if list_files is None:
         missing_constants.append("LIST_FILES")
         list_files = []
+    if module_files is None:
+        missing_constants.append("MODULE_FILES")
+        module_files = []
 
     if missing_constants:
         raise RuntimeError(
@@ -79,6 +85,9 @@ def build_expected_keys() -> set[str]:
 
     for name in list_files:
         expected_keys.add(f"lists:{name}")
+
+    for name in module_files:
+        expected_keys.add(f"modules:{name}")
 
     return expected_keys
 

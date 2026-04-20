@@ -31,22 +31,33 @@ fn clear_presence(state: &mut DiscordPresenceState) {
     }
 }
 
+fn log_reconnect_failure(context: &str, error: &str) {
+    eprintln!("Discord presence: {context}: {error}");
+}
+
 #[tauri::command]
-pub fn sync_discord_presence(enabled: bool, details: String, state: String) -> Result<(), String> {
+pub fn sync_discord_presence(
+    enabled: bool,
+    details: String,
+    state: String,
+) -> Result<bool, String> {
     let mut presence_state = DISCORD_PRESENCE_STATE.lock().map_err(|e| e.to_string())?;
 
     if !enabled {
         clear_presence(&mut presence_state);
-        return Ok(());
+        return Ok(true);
     }
 
     let next_key = format!("{details}\u{0}{state}");
     if presence_state.last_key.as_deref() == Some(next_key.as_str()) {
-        return Ok(());
+        return Ok(true);
     }
 
-    if presence_state.client.is_none() && reconnect_client(&mut presence_state).is_err() {
-        return Ok(());
+    if presence_state.client.is_none()
+        && let Err(error) = reconnect_client(&mut presence_state)
+    {
+        log_reconnect_failure("initial reconnect failed", &error);
+        return Ok(false);
     }
 
     let activity = activity::Activity::new()
@@ -66,12 +77,16 @@ pub fn sync_discord_presence(enabled: bool, details: String, state: String) -> R
     match update_result {
         Ok(()) => {
             presence_state.last_key = Some(next_key);
-            Ok(())
+            Ok(true)
         }
-        Err(_) => {
+        Err(error) => {
             clear_presence(&mut presence_state);
-            if reconnect_client(&mut presence_state).is_err() {
-                return Ok(());
+            if let Err(reconnect_error) = reconnect_client(&mut presence_state) {
+                log_reconnect_failure(
+                    "retry reconnect failed after activity update error",
+                    &reconnect_error,
+                );
+                return Ok(false);
             }
 
             let retry_activity = activity::Activity::new().details(details).state(state);
@@ -79,9 +94,11 @@ pub fn sync_discord_presence(enabled: bool, details: String, state: String) -> R
                 && client.set_activity(retry_activity).is_ok()
             {
                 presence_state.last_key = Some(next_key);
+                return Ok(true);
             }
 
-            Ok(())
+            eprintln!("Discord presence: activity update failed: {error}");
+            Ok(false)
         }
     }
 }

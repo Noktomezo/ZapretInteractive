@@ -1,4 +1,4 @@
-import type { AppConfig } from '../lib/types'
+import type { AppConfig, ConnectionStatus } from '../lib/types'
 import { toast } from 'sonner'
 import { create } from 'zustand'
 import { applyDnsAccelerator, DNS_PRESETS, normalizeDnsPresetId } from '../lib/dns'
@@ -7,7 +7,6 @@ import * as tauri from '../lib/tauri'
 import { isValidTgWsProxySecret, normalizeTgWsProxySecret } from '../lib/tg-ws-proxy'
 import { useConfigStore } from './config.store'
 
-type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'disconnecting' | 'error'
 const MAX_LOGS = 500
 const CONNECTION_TRANSITION_DELAY_MS = 500
 let trayUpdatePromise: Promise<void> = Promise.resolve()

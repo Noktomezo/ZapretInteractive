@@ -81,6 +81,7 @@ export interface Filter {
   systemBaseActive?: boolean
 }
 
+export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'disconnecting' | 'error'
 export type ListMode = 'exclude' | 'ipset'
 export type WindowMaterial = 'none' | 'acrylic' | 'mica' | 'tabbed'
 

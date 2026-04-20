@@ -42,6 +42,7 @@ type DiscordPresenceSyncGlobal = typeof globalThis & {
 }
 
 let lastDiscordPresenceKey: string | null = null
+let discordPresenceSyncPromise: Promise<void> = Promise.resolve()
 
 function syncDiscordPresenceState() {
   const config = useConfigStore.getState().config
@@ -49,7 +50,7 @@ function syncDiscordPresenceState() {
     return
   }
 
-  const enabled = config.discordPresenceEnabled ?? true
+  const enabled = config.discordPresenceEnabled ?? false
   const details = getDiscordPresenceDetails(router.state.location.pathname, config)
   const state = getDiscordPresenceState(useConnectionStore.getState().status)
   const nextKey = JSON.stringify([enabled, details, state])
@@ -58,10 +59,17 @@ function syncDiscordPresenceState() {
     return
   }
 
-  lastDiscordPresenceKey = nextKey
-  void tauri.syncDiscordPresence(enabled, details, state).catch((error) => {
-    console.error('Failed to sync Discord presence:', error)
-  })
+  discordPresenceSyncPromise = discordPresenceSyncPromise
+    .catch(() => {})
+    .then(async () => {
+      const synced = await tauri.syncDiscordPresence(enabled, details, state)
+      if (!enabled || synced) {
+        lastDiscordPresenceKey = nextKey
+      }
+    })
+    .catch((error) => {
+      console.error('Failed to sync Discord presence:', error)
+    })
 }
 
 const discordPresenceSyncGlobal = globalThis as DiscordPresenceSyncGlobal

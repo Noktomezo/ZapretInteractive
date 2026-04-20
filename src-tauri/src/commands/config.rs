@@ -373,7 +373,7 @@ fn default_tg_ws_proxy_module_enabled() -> bool {
 }
 
 fn default_discord_presence_enabled() -> bool {
-    true
+    false
 }
 
 fn is_valid_tg_ws_proxy_secret(secret: &str) -> bool {
@@ -385,7 +385,7 @@ fn generate_tg_ws_proxy_secret() -> String {
 }
 
 fn default_window_material() -> WindowMaterial {
-    WindowMaterial::Acrylic
+    WindowMaterial::None
 }
 
 fn system_strategy_key(category_id: &str, strategy_id: &str) -> String {

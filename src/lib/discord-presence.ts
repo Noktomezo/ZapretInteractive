@@ -1,6 +1,4 @@
-import type { AppConfig } from './types'
-
-type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'disconnecting' | 'error'
+import type { AppConfig, ConnectionStatus } from './types'
 
 function safeDecodePathSegment(value: string) {
   try {

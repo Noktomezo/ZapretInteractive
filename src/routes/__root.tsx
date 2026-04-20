@@ -19,7 +19,7 @@ function RootLayout() {
   const config = useConfigStore(state => state.config)
   const loadConfig = useConfigStore(state => state.load)
   const resolvedTheme = useThemeStore(state => state.resolvedTheme)
-  const windowMaterial = config?.windowMaterial ?? 'acrylic'
+  const windowMaterial = config?.windowMaterial ?? 'none'
   const materialEnabled = windowMaterial !== 'none'
 
   useMountEffect(() => {

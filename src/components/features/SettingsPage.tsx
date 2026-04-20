@@ -188,7 +188,7 @@ export function SettingsPage() {
   const theme = useThemeStore(state => state.theme)
   const setTheme = useThemeStore(state => state.setTheme)
   const selectedTheme = THEME_OPTIONS.find(option => option.value === theme) ?? THEME_OPTIONS[2]
-  const selectedWindowMaterial = WINDOW_MATERIAL_OPTIONS.find(option => option.value === (config?.windowMaterial ?? 'acrylic')) ?? WINDOW_MATERIAL_OPTIONS[1]
+  const selectedWindowMaterial = WINDOW_MATERIAL_OPTIONS.find(option => option.value === (config?.windowMaterial ?? 'none')) ?? WINDOW_MATERIAL_OPTIONS[0]
 
   const refreshAutostartState = async (isMounted = true) => {
     try {
@@ -328,7 +328,7 @@ export function SettingsPage() {
   }
 
   const handleDiscordPresenceEnabledChange = async (checked: boolean) => {
-    const previous = config?.discordPresenceEnabled ?? true
+    const previous = config?.discordPresenceEnabled ?? false
     setDiscordPresenceEnabled(checked)
     try {
       await saveNow()
@@ -344,7 +344,7 @@ export function SettingsPage() {
   }
 
   const handleWindowMaterialChange = async (value: WindowMaterial) => {
-    const previous = config?.windowMaterial ?? 'acrylic'
+    const previous = config?.windowMaterial ?? 'none'
     setWindowMaterial(value)
 
     try {
@@ -428,7 +428,7 @@ export function SettingsPage() {
                 Материал
               </SettingLabel>
               <div className="w-full sm:w-[11rem]">
-                <Select value={config.windowMaterial ?? 'acrylic'} onValueChange={value => void handleWindowMaterialChange(value as WindowMaterial)}>
+                <Select value={config.windowMaterial ?? 'none'} onValueChange={value => void handleWindowMaterialChange(value as WindowMaterial)}>
                   <SelectTrigger id="window-material" className="w-full cursor-pointer">
                     <span className="flex items-center gap-2">
                       <selectedWindowMaterial.icon className="size-4 text-muted-foreground" />
@@ -595,7 +595,7 @@ export function SettingsPage() {
               </SettingLabel>
               <Switch
                 id="discord-presence"
-                checked={config.discordPresenceEnabled ?? true}
+                checked={config.discordPresenceEnabled ?? false}
                 onCheckedChange={handleDiscordPresenceEnabledChange}
               />
             </div>
