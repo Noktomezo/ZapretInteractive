@@ -82,6 +82,7 @@ export interface Filter {
 }
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'disconnecting' | 'error'
+export type DiscordPresenceActivityType = 'playing' | 'listening' | 'watching' | 'competing'
 export type ListMode = 'exclude' | 'ipset'
 export type WindowMaterial = 'none' | 'acrylic' | 'mica' | 'tabbed'
 
@@ -100,6 +101,7 @@ export interface AppConfig {
   tgWsProxySecret?: string
   tgWsProxyModuleEnabled?: boolean
   discordPresenceEnabled?: boolean
+  discordPresenceActivityType?: DiscordPresenceActivityType
   minimizeToTray?: boolean
   launchToTray?: boolean
   connectOnAutostart?: boolean

@@ -51,9 +51,10 @@ function syncDiscordPresenceState() {
   }
 
   const enabled = config.discordPresenceEnabled ?? false
+  const activityType = config.discordPresenceActivityType ?? 'playing'
   const details = getDiscordPresenceDetails(router.state.location.pathname, config)
   const state = getDiscordPresenceState(useConnectionStore.getState().status)
-  const nextKey = JSON.stringify([enabled, details, state])
+  const nextKey = JSON.stringify([enabled, activityType, details, state])
 
   if (nextKey === lastDiscordPresenceKey) {
     return
@@ -62,7 +63,7 @@ function syncDiscordPresenceState() {
   discordPresenceSyncPromise = discordPresenceSyncPromise
     .catch(() => {})
     .then(async () => {
-      const synced = await tauri.syncDiscordPresence(enabled, details, state)
+      const synced = await tauri.syncDiscordPresence(enabled, details, state, activityType)
       if (!enabled || synced) {
         lastDiscordPresenceKey = nextKey
       }

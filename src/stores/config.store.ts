@@ -1,4 +1,4 @@
-import type { AppConfig, Category, Filter, GlobalPorts, ListMode, Placeholder, Strategy, WindowMaterial } from '../lib/types'
+import type { AppConfig, Category, DiscordPresenceActivityType, Filter, GlobalPorts, ListMode, Placeholder, Strategy, WindowMaterial } from '../lib/types'
 import { toast } from 'sonner'
 import { create } from 'zustand'
 import * as tauri from '../lib/tauri'
@@ -57,6 +57,7 @@ interface ConfigStore {
   setTgWsProxySecret: (secret: string) => void
   setTgWsProxyModuleEnabled: (enabled: boolean) => void
   setDiscordPresenceEnabled: (enabled: boolean) => void
+  setDiscordPresenceActivityType: (activityType: DiscordPresenceActivityType) => void
   setCoreFileUpdatePromptsEnabled: (enabled: boolean) => void
   setAppAutoUpdatesEnabled: (enabled: boolean) => void
   setWindowMaterial: (material: WindowMaterial) => void
@@ -311,6 +312,12 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     const { config } = get()
     if (config)
       set({ config: { ...config, discordPresenceEnabled: enabled }, dirty: true })
+  },
+
+  setDiscordPresenceActivityType: (activityType) => {
+    const { config } = get()
+    if (config)
+      set({ config: { ...config, discordPresenceActivityType: activityType }, dirty: true })
   },
 
   setCoreFileUpdatePromptsEnabled: (enabled) => {

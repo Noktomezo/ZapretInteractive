@@ -147,6 +147,16 @@ impl std::fmt::Display for ListMode {
     }
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum DiscordPresenceActivityType {
+    #[default]
+    Playing,
+    Listening,
+    Watching,
+    Competing,
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum WindowMaterial {
@@ -223,6 +233,11 @@ pub struct AppConfig {
         rename = "discordPresenceEnabled"
     )]
     pub discord_presence_enabled: bool,
+    #[serde(
+        default = "default_discord_presence_activity_type",
+        rename = "discordPresenceActivityType"
+    )]
+    pub discord_presence_activity_type: DiscordPresenceActivityType,
     #[serde(default = "default_minimize_to_tray", rename = "minimizeToTray")]
     pub minimize_to_tray: bool,
     #[serde(default = "default_launch_to_tray", rename = "launchToTray")]
@@ -374,6 +389,10 @@ fn default_tg_ws_proxy_module_enabled() -> bool {
 
 fn default_discord_presence_enabled() -> bool {
     false
+}
+
+fn default_discord_presence_activity_type() -> DiscordPresenceActivityType {
+    DiscordPresenceActivityType::Playing
 }
 
 fn is_valid_tg_ws_proxy_secret(secret: &str) -> bool {

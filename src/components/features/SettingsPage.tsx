@@ -1,12 +1,14 @@
-import type { WindowMaterial, WindowMaterialCapabilities } from '@/lib/types'
+import type { DiscordPresenceActivityType, WindowMaterial, WindowMaterialCapabilities } from '@/lib/types'
 import type { Theme } from '@/stores/theme.store'
 import {
   AppWindow,
   ArrowLeftRight,
   BellRing,
   CircleOff,
+  Clapperboard,
   Download,
   Gamepad2,
+  Headphones,
   Laptop,
   Layers3,
   Loader2,
@@ -22,6 +24,7 @@ import {
   Router,
   Sparkles,
   SunMedium,
+  Trophy,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -68,6 +71,16 @@ const WINDOW_MATERIAL_OPTIONS: { value: WindowMaterial, label: string, icon: Rea
   { value: 'acrylic', label: 'Акрил', icon: Layers3 },
   { value: 'mica', label: 'Mica', icon: Sparkles },
   { value: 'tabbed', label: 'Tabbed', icon: PanelTop },
+]
+const DISCORD_PRESENCE_ACTIVITY_OPTIONS: { value: DiscordPresenceActivityType, label: string, icon: React.ComponentType<{ className?: string }> }[] = [
+  { value: 'playing', label: 'Играет', icon: Gamepad2 },
+  { value: 'listening', label: 'Слушает', icon: Headphones },
+  { value: 'watching', label: 'Смотрит', icon: Clapperboard },
+  { value: 'competing', label: 'Соревнуется', icon: Trophy },
+]
+const DISCORD_PRESENCE_SELECT_OPTIONS: { value: 'none' | DiscordPresenceActivityType, label: string, icon: React.ComponentType<{ className?: string }> }[] = [
+  { value: 'none', label: 'Нет', icon: CircleOff },
+  ...DISCORD_PRESENCE_ACTIVITY_OPTIONS,
 ]
 
 const PAGE_CARD_CLASS = '!gap-0 !rounded-lg !border !border-border/60 !bg-card !py-0 !shadow-none !backdrop-blur-none'
@@ -178,6 +191,7 @@ export function SettingsPage() {
   const setCoreFileUpdatePromptsEnabled = useConfigStore(state => state.setCoreFileUpdatePromptsEnabled)
   const setAppAutoUpdatesEnabled = useConfigStore(state => state.setAppAutoUpdatesEnabled)
   const setDiscordPresenceEnabled = useConfigStore(state => state.setDiscordPresenceEnabled)
+  const setDiscordPresenceActivityType = useConfigStore(state => state.setDiscordPresenceActivityType)
   const setWindowMaterial = useConfigStore(state => state.setWindowMaterial)
   const setMinimizeToTray = useConfigStore(state => state.setMinimizeToTray)
   const setLaunchToTray = useConfigStore(state => state.setLaunchToTray)
@@ -189,6 +203,10 @@ export function SettingsPage() {
   const setTheme = useThemeStore(state => state.setTheme)
   const selectedTheme = THEME_OPTIONS.find(option => option.value === theme) ?? THEME_OPTIONS[2]
   const selectedWindowMaterial = WINDOW_MATERIAL_OPTIONS.find(option => option.value === (config?.windowMaterial ?? 'none')) ?? WINDOW_MATERIAL_OPTIONS[0]
+  const selectedDiscordPresenceValue = (config?.discordPresenceEnabled ?? false)
+    ? (config?.discordPresenceActivityType ?? 'playing')
+    : 'none'
+  const selectedDiscordPresenceOption = DISCORD_PRESENCE_SELECT_OPTIONS.find(option => option.value === selectedDiscordPresenceValue) ?? DISCORD_PRESENCE_SELECT_OPTIONS[0]
 
   const refreshAutostartState = async (isMounted = true) => {
     try {
@@ -327,18 +345,28 @@ export function SettingsPage() {
     }
   }
 
-  const handleDiscordPresenceEnabledChange = async (checked: boolean) => {
-    const previous = config?.discordPresenceEnabled ?? false
-    setDiscordPresenceEnabled(checked)
+  const handleDiscordPresenceChange = async (value: 'none' | DiscordPresenceActivityType) => {
+    const previousEnabled = config?.discordPresenceEnabled ?? false
+    const previous = config?.discordPresenceActivityType ?? 'playing'
+    const nextEnabled = value !== 'none'
+    setDiscordPresenceEnabled(nextEnabled)
+    if (value !== 'none') {
+      setDiscordPresenceActivityType(value)
+    }
     try {
       await saveNow()
-      addConfigLog(checked
-        ? 'Discord Rich Presence включён'
-        : 'Discord Rich Presence отключён')
-      toast.success(checked ? 'Discord Rich Presence включён' : 'Discord Rich Presence отключён')
+      if (!nextEnabled) {
+        addConfigLog('Discord Rich Presence отключён')
+        toast.success('Discord Rich Presence отключён')
+      }
+      else {
+        addConfigLog(`тип активности Discord Rich Presence изменён: ${value}`)
+        toast.success(`Discord статус: ${DISCORD_PRESENCE_ACTIVITY_OPTIONS.find(option => option.value === value)?.label ?? value}`)
+      }
     }
     catch (e) {
-      setDiscordPresenceEnabled(previous)
+      setDiscordPresenceEnabled(previousEnabled)
+      setDiscordPresenceActivityType(previous)
       toast.error(`Ошибка настройки Discord Rich Presence: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
@@ -593,11 +621,31 @@ export function SettingsPage() {
               >
                 Discord Rich Presence
               </SettingLabel>
-              <Switch
-                id="discord-presence"
-                checked={config.discordPresenceEnabled ?? false}
-                onCheckedChange={handleDiscordPresenceEnabledChange}
-              />
+              <div className="w-[10.5rem]">
+                <Select
+                  value={selectedDiscordPresenceValue}
+                  onValueChange={value => void handleDiscordPresenceChange(value as 'none' | DiscordPresenceActivityType)}
+                >
+                  <SelectTrigger id="discord-presence" className="w-full cursor-pointer">
+                    <span className="flex items-center gap-2">
+                      <selectedDiscordPresenceOption.icon className="size-4 text-muted-foreground" />
+                      <SelectValue placeholder="Выберите статус">
+                        {selectedDiscordPresenceOption.label}
+                      </SelectValue>
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DISCORD_PRESENCE_SELECT_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        <span className="flex items-center gap-2">
+                          <option.icon className="size-4 text-muted-foreground" />
+                          <span>{option.label}</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -1,7 +1,9 @@
+use crate::commands::config::DiscordPresenceActivityType;
 use discord_rich_presence::{DiscordIpc, DiscordIpcClient, activity};
 use std::sync::{LazyLock, Mutex};
 
 const DISCORD_CLIENT_ID: &str = "1495773045904769255";
+const DISCORD_GITHUB_URL: &str = "https://github.com/Noktomezo/ZapretInteractive";
 
 #[derive(Default)]
 struct DiscordPresenceState {
@@ -35,11 +37,21 @@ fn log_reconnect_failure(context: &str, error: &str) {
     eprintln!("Discord presence: {context}: {error}");
 }
 
+fn map_activity_type(activity_type: DiscordPresenceActivityType) -> activity::ActivityType {
+    match activity_type {
+        DiscordPresenceActivityType::Playing => activity::ActivityType::Playing,
+        DiscordPresenceActivityType::Listening => activity::ActivityType::Listening,
+        DiscordPresenceActivityType::Watching => activity::ActivityType::Watching,
+        DiscordPresenceActivityType::Competing => activity::ActivityType::Competing,
+    }
+}
+
 #[tauri::command]
 pub fn sync_discord_presence(
     enabled: bool,
     details: String,
     state: String,
+    activity_type: DiscordPresenceActivityType,
 ) -> Result<bool, String> {
     let mut presence_state = DISCORD_PRESENCE_STATE.lock().map_err(|e| e.to_string())?;
 
@@ -61,8 +73,13 @@ pub fn sync_discord_presence(
     }
 
     let activity = activity::Activity::new()
+        .activity_type(map_activity_type(activity_type))
         .details(details.clone())
-        .state(state.clone());
+        .state(state.clone())
+        .buttons(vec![activity::Button::new(
+            "Доступ в интернет",
+            DISCORD_GITHUB_URL,
+        )]);
 
     let update_result = presence_state
         .client
@@ -89,7 +106,14 @@ pub fn sync_discord_presence(
                 return Ok(false);
             }
 
-            let retry_activity = activity::Activity::new().details(details).state(state);
+            let retry_activity = activity::Activity::new()
+                .activity_type(map_activity_type(activity_type))
+                .details(details)
+                .state(state)
+                .buttons(vec![activity::Button::new(
+                    "Доступ в интернет",
+                    DISCORD_GITHUB_URL,
+                )]);
             if let Some(client) = presence_state.client.as_mut()
                 && client.set_activity(retry_activity).is_ok()
             {

@@ -16,6 +16,7 @@
   "tgWsProxySecret": "",
   "tgWsProxyModuleEnabled": false,
   "discordPresenceEnabled": false,
+  "discordPresenceActivityType": "playing",
   "categories": [
     {
       "id": "preset-http",
