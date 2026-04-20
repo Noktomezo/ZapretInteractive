@@ -60,7 +60,7 @@ pub fn sync_discord_presence(
         return Ok(true);
     }
 
-    let next_key = format!("{details}\u{0}{state}");
+    let next_key = format!("{activity_type:?}\u{0}{details}\u{0}{state}");
     if presence_state.last_key.as_deref() == Some(next_key.as_str()) {
         return Ok(true);
     }

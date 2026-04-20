@@ -146,34 +146,64 @@ def download_json(url: str) -> dict:
 def fetch_latest_release_asset(repo: str, asset_pattern: str) -> bytes:
     release = download_json(f"https://api.github.com/repos/{repo}/releases/latest")
     assets = release.get("assets", [])
-    for asset in assets:
-        asset_name = asset.get("name", "")
-        if fnmatch.fnmatch(asset_name, asset_pattern):
-            asset_url = asset.get("browser_download_url")
-            if not asset_url:
-                raise ValueError(
-                    f"Latest release asset {asset_name} for {repo} has no browser_download_url"
-                )
-            return download(asset_url)
+    matches = [
+        asset for asset in assets
+        if fnmatch.fnmatch(asset.get("name", ""), asset_pattern)
+    ]
 
-    available_assets = ", ".join(
-        sorted(asset.get("name", "<unnamed>") for asset in assets)
-    )
-    raise FileNotFoundError(
-        f"Latest release asset for {repo} matching {asset_pattern!r} not found. "
-        f"Available assets: {available_assets}"
-    )
+    if not matches:
+        available_assets = ", ".join(
+            sorted(asset.get("name", "<unnamed>") for asset in assets)
+        )
+        raise FileNotFoundError(
+            f"Latest release asset for {repo} matching {asset_pattern!r} not found. "
+            f"Available assets: {available_assets}"
+        )
+
+    if len(matches) > 1:
+        ambiguous_assets = ", ".join(
+            sorted(
+                f"{asset.get('name', '<unnamed>')} ({asset.get('browser_download_url', '<no-url>')})"
+                for asset in matches
+            )
+        )
+        raise ValueError(
+            f"Latest release asset lookup for {repo} with pattern {asset_pattern!r} "
+            f"is ambiguous: {ambiguous_assets}"
+        )
+
+    asset = matches[0]
+    asset_name = asset.get("name", "")
+    asset_url = asset.get("browser_download_url")
+    if not asset_url:
+        raise ValueError(
+            f"Latest release asset {asset_name} for {repo} has no browser_download_url"
+        )
+    return download(asset_url)
 
 
 def extract_zip_member(data: bytes, member_pattern: str) -> bytes:
     with ZipFile(io.BytesIO(data)) as archive:
-        for member_name in archive.namelist():
-            normalized_name = member_name.replace("\\", "/")
-            if fnmatch.fnmatch(normalized_name, member_pattern):
-                with archive.open(member_name) as handle:
-                    return handle.read()
+        matches = [
+            member_name
+            for member_name in archive.namelist()
+            if fnmatch.fnmatch(member_name.replace("\\", "/"), member_pattern)
+        ]
 
-    raise FileNotFoundError(f"Zip member matching {member_pattern!r} not found")
+        if not matches:
+            raise FileNotFoundError(f"Zip member matching {member_pattern!r} not found")
+
+        if len(matches) > 1:
+            normalized_matches = ", ".join(
+                sorted(member_name.replace("\\", "/") for member_name in matches)
+            )
+            raise ValueError(
+                f"Zip member lookup with pattern {member_pattern!r} is ambiguous: "
+                f"{normalized_matches}"
+            )
+
+        with archive.open(matches[0]) as handle:
+            return handle.read()
 
 
 def normalize_download(destination: Path, data: bytes) -> bytes:

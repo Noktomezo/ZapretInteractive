@@ -160,8 +160,8 @@ pub enum DiscordPresenceActivityType {
 #[derive(Debug, Clone, Copy, Serialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum WindowMaterial {
-    None,
     #[default]
+    None,
     Acrylic,
     Mica,
     Tabbed,

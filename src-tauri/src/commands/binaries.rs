@@ -632,7 +632,12 @@ fn expected_hash<'a>(
 fn ensure_base_directories() -> Result<(), String> {
     let _ = ensure_managed_resources_dir_ready()?;
     let _ = ensure_runtime_data_dir_ready()?;
-    for dir in [get_fake_dir(), get_lists_dir(), get_filters_dir()] {
+    for dir in [
+        get_fake_dir(),
+        get_lists_dir(),
+        get_filters_dir(),
+        get_modules_dir(),
+    ] {
         if !dir.exists() {
             fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
         }
@@ -682,11 +687,18 @@ fn event_affects_tracked_files(paths: &[PathBuf]) -> bool {
         .into_iter()
         .map(|file| file.dest_path)
         .collect();
+    let tracked_parent_dirs: Vec<PathBuf> = tracked_dest_paths
+        .iter()
+        .filter_map(|path| path.parent().map(Path::to_path_buf))
+        .collect();
     paths.iter().any(|path| {
         path_is_inside(path, &filters_dir)
             || path == &hashes_path
             || path == &config_path
             || tracked_dest_paths.iter().any(|dest_path| path == dest_path)
+            || tracked_parent_dirs
+                .iter()
+                .any(|parent_dir| path == parent_dir || path_is_inside(path, parent_dir))
     })
 }
 
@@ -1288,7 +1300,7 @@ pub async fn apply_core_file_updates(app: AppHandle) -> Result<(), String> {
             .notification()
             .builder()
             .title("Готово")
-            .body("Удалённых обновлений для winws/fake файлов не найдено")
+            .body("Удалённых обновлений для winws/fake файлов и модулей не найдено")
             .show();
     } else {
         let _ = app
@@ -1303,6 +1315,25 @@ pub async fn apply_core_file_updates(app: AppHandle) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tracked_file_events_include_module_parent_directories() {
+        let module_dir = get_modules_dir().join("dnscrypt-proxy");
+        assert!(event_affects_tracked_files(&[module_dir]));
+    }
+
+    #[test]
+    fn tracked_file_events_include_paths_inside_module_parent_directories() {
+        let module_temp_path = get_modules_dir()
+            .join("tg-ws-proxy-rs")
+            .join("tg-ws-proxy.exe.tmp");
+        assert!(event_affects_tracked_files(&[module_temp_path]));
+    }
 }
 
 #[tauri::command]
