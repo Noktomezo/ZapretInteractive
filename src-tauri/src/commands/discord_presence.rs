@@ -46,6 +46,21 @@ fn map_activity_type(activity_type: DiscordPresenceActivityType) -> activity::Ac
     }
 }
 
+fn build_discord_activity(
+    details: String,
+    state: String,
+    activity_type: DiscordPresenceActivityType,
+) -> activity::Activity<'static> {
+    activity::Activity::new()
+        .activity_type(map_activity_type(activity_type))
+        .details(details)
+        .state(state)
+        .buttons(vec![activity::Button::new(
+            "Доступ в интернет",
+            DISCORD_GITHUB_URL,
+        )])
+}
+
 #[tauri::command]
 pub fn sync_discord_presence(
     enabled: bool,
@@ -72,14 +87,7 @@ pub fn sync_discord_presence(
         return Ok(false);
     }
 
-    let activity = activity::Activity::new()
-        .activity_type(map_activity_type(activity_type))
-        .details(details.clone())
-        .state(state.clone())
-        .buttons(vec![activity::Button::new(
-            "Доступ в интернет",
-            DISCORD_GITHUB_URL,
-        )]);
+    let activity = build_discord_activity(details.clone(), state.clone(), activity_type);
 
     let update_result = presence_state
         .client
@@ -106,14 +114,7 @@ pub fn sync_discord_presence(
                 return Ok(false);
             }
 
-            let retry_activity = activity::Activity::new()
-                .activity_type(map_activity_type(activity_type))
-                .details(details)
-                .state(state)
-                .buttons(vec![activity::Button::new(
-                    "Доступ в интернет",
-                    DISCORD_GITHUB_URL,
-                )]);
+            let retry_activity = build_discord_activity(details, state, activity_type);
             if let Some(client) = presence_state.client.as_mut()
                 && client.set_activity(retry_activity).is_ok()
             {

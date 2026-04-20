@@ -334,11 +334,15 @@ fn tracked_file_url(group: &str, name: &str) -> String {
 }
 
 fn tracked_display_name(file: &TrackedFile) -> String {
-    match file.group {
-        "fake" => format!("fake/{}", file.name),
-        "lists" => format!("lists/{}", file.name),
-        "modules" => format!("modules/{}", file.name),
-        _ => file.name.to_string(),
+    tracked_group_display_name(file.group, file.name)
+}
+
+fn tracked_group_display_name(group: &str, name: &str) -> String {
+    match group {
+        "fake" => format!("fake/{name}"),
+        "lists" => format!("lists/{name}"),
+        "modules" => format!("modules/{name}"),
+        _ => name.to_string(),
     }
 }
 
@@ -1094,12 +1098,7 @@ async fn execute_download_plan(
             })?;
         }
 
-        downloaded.push(match file.phase.as_str() {
-            "fake" => format!("fake/{}", file.name),
-            "lists" => format!("lists/{}", file.name),
-            "modules" => format!("modules/{}", file.name),
-            _ => file.name.clone(),
-        });
+        downloaded.push(tracked_group_display_name(&file.phase, &file.name));
     }
 
     if let Some(app) = app {

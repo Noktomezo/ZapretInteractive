@@ -30,7 +30,7 @@ function ModuleCard({
   return (
     <div
       className={cn(
-        'group flex h-[4.5rem] items-center gap-3 rounded-lg border bg-card px-4 py-3',
+        'group flex min-h-[4.5rem] items-center gap-3 rounded-lg border bg-card px-4 py-3',
         status?.moduleAvailable === false && 'opacity-60',
       )}
     >

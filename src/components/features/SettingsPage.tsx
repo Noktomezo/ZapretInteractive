@@ -83,7 +83,7 @@ const DISCORD_PRESENCE_SELECT_OPTIONS: { value: 'none' | DiscordPresenceActivity
   ...DISCORD_PRESENCE_ACTIVITY_OPTIONS,
 ]
 
-const PAGE_CARD_CLASS = '!gap-0 !rounded-lg !border !border-border/60 !bg-card !py-0 !shadow-none !backdrop-blur-none'
+const PAGE_CARD_CLASS = 'gap-0! rounded-lg! border! border-border/60! bg-card! py-0! shadow-none! backdrop-blur-none!'
 
 function SettingsSectionHeader({
   icon: Icon,
@@ -100,7 +100,7 @@ function SettingsSectionHeader({
 }) {
   return (
     <CardHeader className={cn(
-      '!flex !flex-row !items-center !gap-3 !p-4',
+      'flex! flex-row! items-center! gap-3! p-4!',
       withDivider && 'border-b border-border/60',
     )}
     >
@@ -416,7 +416,7 @@ export function SettingsPage() {
             title="Тема"
             description="Внешний вид приложения"
           />
-          <CardContent className="space-y-4 !p-4">
+          <CardContent className="space-y-4 p-4!">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <SettingLabel
                 htmlFor="theme-select"
@@ -493,7 +493,7 @@ export function SettingsPage() {
             title="Обновления"
             description="Настройки фоновых проверок и автоматических предложений"
           />
-          <CardContent className="space-y-4 !p-4">
+          <CardContent className="space-y-4 p-4!">
             <div className="flex items-center justify-between gap-4">
               <SettingLabel
                 htmlFor="app-auto-updates"
@@ -532,7 +532,7 @@ export function SettingsPage() {
             title="Поведение"
             description="Настройки запуска и закрытия приложения"
           />
-          <CardContent className="space-y-4 !p-4">
+          <CardContent className="space-y-4 p-4!">
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-4">
                 <SettingLabel
@@ -656,7 +656,7 @@ export function SettingsPage() {
             title="Порты"
             description="Глобальные порты для фильтрации трафика"
           />
-          <CardContent className="space-y-4 !p-4">
+          <CardContent className="space-y-4 p-4!">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <SettingLabel
                 htmlFor="tcpPortsInput"

@@ -7,10 +7,10 @@ import {
   Route,
   ShieldCheck,
 } from 'lucide-react'
+import { MODULE_PAGE_CARD_CLASS, ModuleSectionHeader, ModuleSettingLabel } from '@/components/features/module-ui'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
+import { Card, CardContent } from '@/components/ui/card'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import {
   Select,
@@ -23,61 +23,6 @@ import { Switch } from '@/components/ui/switch'
 import { useDnsModule } from '@/hooks/use-dns-module'
 import { BOOTSTRAP_RESOLVER_OPTIONS, DNS_PRESETS, getDnsLatencyBadgeClass } from '@/lib/dns'
 import { cn } from '@/lib/utils'
-
-const PAGE_CARD_CLASS = '!gap-0 !rounded-lg !border !border-border/60 !bg-card !py-0 !shadow-none !backdrop-blur-none'
-
-function ModuleSectionHeader({
-  icon: Icon,
-  title,
-  description,
-  action,
-}: {
-  icon: React.ComponentType<{ className?: string }>
-  title: React.ReactNode
-  description: React.ReactNode
-  action?: React.ReactNode
-}) {
-  return (
-    <CardHeader className="!flex !flex-row !items-center !gap-3 border-b border-border/60 !p-4">
-      <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
-        <Icon className="size-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <CardTitle className="font-sans text-sm leading-5 font-normal tracking-normal">{title}</CardTitle>
-        <CardDescription className="mt-1 text-xs leading-4">{description}</CardDescription>
-      </div>
-      {action ? <CardAction className="self-center">{action}</CardAction> : null}
-    </CardHeader>
-  )
-}
-
-function ModuleSettingLabel({
-  htmlFor,
-  icon: Icon,
-  description,
-  children,
-}: {
-  htmlFor: string
-  icon: React.ComponentType<{ className?: string }>
-  description?: React.ReactNode
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex items-center gap-3">
-      <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
-        <Icon className="size-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <Label htmlFor={htmlFor} className="text-sm leading-5 font-normal">
-          {children}
-        </Label>
-        {description
-          ? <p className="mt-1 text-xs leading-4 text-muted-foreground">{description}</p>
-          : null}
-      </div>
-    </div>
-  )
-}
 
 export function DnsPage() {
   const {
@@ -135,13 +80,13 @@ export function DnsPage() {
           </Button>
         </div>
 
-        <Card className={PAGE_CARD_CLASS}>
+        <Card className={MODULE_PAGE_CARD_CLASS}>
           <ModuleSectionHeader
             icon={ShieldCheck}
             title="Параметры"
             description="Основные параметры работы DNS-подключения"
           />
-          <CardContent className="space-y-4 !p-4">
+          <CardContent className="space-y-4 p-4!">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <ModuleSettingLabel
                 htmlFor="dns-bootstrap-resolvers"
@@ -184,7 +129,7 @@ export function DnsPage() {
           </CardContent>
         </Card>
 
-        <Card className={PAGE_CARD_CLASS}>
+        <Card className={MODULE_PAGE_CARD_CLASS}>
           <ModuleSectionHeader
             icon={Globe}
             title="DNS провайдеры"
@@ -205,7 +150,7 @@ export function DnsPage() {
               </Button>
             )}
           />
-          <CardContent className="grid gap-3 !p-4 lg:grid-cols-2">
+          <CardContent className="grid gap-3 p-4! lg:grid-cols-2">
             {DNS_PRESETS.map((preset) => {
               const isSelected = preset.id === selectedPreset.id
               const latency = latencyByPreset[preset.id]

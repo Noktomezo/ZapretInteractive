@@ -84,7 +84,7 @@ function formatAboutTimestamp(value?: string) {
   }).format(date)
 }
 
-const PAGE_CARD_CLASS = '!gap-0 !rounded-lg !border !border-border/60 !bg-card !py-0 !shadow-none !backdrop-blur-none'
+const PAGE_CARD_CLASS = 'gap-0! rounded-lg! border! border-border/60! bg-card! py-0! shadow-none! backdrop-blur-none!'
 
 function AboutSectionHeader({
   icon: Icon,
@@ -101,7 +101,7 @@ function AboutSectionHeader({
 }) {
   return (
     <CardHeader className={[
-      '!flex !flex-row !items-center !gap-3 !p-4',
+      'flex! flex-row! items-center! gap-3! p-4!',
       withDivider ? 'border-b border-border/60' : '',
     ].join(' ').trim()}
     >
@@ -256,7 +256,7 @@ export function AboutPage() {
             title={APP_NAME}
             description="Desktop GUI для zapret-win-bundle с управлением стратегиями, фильтрами, плейсхолдерами и обновлениями"
           />
-          <CardContent className="space-y-3 !p-4">
+          <CardContent className="space-y-3 p-4!">
             <div className="flex h-full flex-col rounded-xl border border-border/60 bg-muted/25 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -392,7 +392,7 @@ export function AboutPage() {
             )}
           />
           {showBinaryDetails && (
-            <CardContent className="space-y-4 !p-4">
+            <CardContent className="space-y-4 p-4!">
               {showBinaryStatusText && (
                 <p className="text-sm text-muted-foreground">
                   {binariesOk === false
@@ -434,7 +434,7 @@ export function AboutPage() {
             title="Метаданные и ссылки"
             description="Базовая информация о проекте и полезные ссылки"
           />
-          <CardContent className="space-y-4 !p-4">
+          <CardContent className="space-y-4 p-4!">
             <div className="grid gap-3 sm:grid-cols-2">
               {APP_LINKS.map(({ label, value, href, icon: Icon }) => (
                 <button

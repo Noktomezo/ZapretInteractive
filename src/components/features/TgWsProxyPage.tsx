@@ -2,70 +2,16 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { Copy, KeyRound, Link2, Loader2, Power, RefreshCw, Send, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { MODULE_PAGE_CARD_CLASS, ModuleSectionHeader, ModuleSettingLabel } from '@/components/features/module-ui'
 import { Button } from '@/components/ui/button'
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { useTgWsProxyModule } from '@/hooks/use-tg-ws-proxy-module'
 import { buildTgWsProxyHttpLink, generateTgWsProxySecret, isValidTgWsProxySecret, normalizeTgWsProxySecret } from '@/lib/tg-ws-proxy'
 import { cn } from '@/lib/utils'
 
-const PAGE_CARD_CLASS = '!gap-0 !rounded-lg !border !border-border/60 !bg-card !py-0 !shadow-none !backdrop-blur-none'
 const TG_WS_PROXY_PORT_RE = /^\d+$/
-
-function ModuleSectionHeader({
-  icon: Icon,
-  title,
-  description,
-  action,
-}: {
-  icon: React.ComponentType<{ className?: string }>
-  title: React.ReactNode
-  description: React.ReactNode
-  action?: React.ReactNode
-}) {
-  return (
-    <CardHeader className="!flex !flex-row !items-center !gap-3 border-b border-border/60 !p-4">
-      <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
-        <Icon className="size-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <CardTitle className="font-sans text-sm leading-5 font-normal tracking-normal">{title}</CardTitle>
-        <CardDescription className="mt-1 text-xs leading-4">{description}</CardDescription>
-      </div>
-      {action ? <CardAction className="self-center">{action}</CardAction> : null}
-    </CardHeader>
-  )
-}
-
-function ModuleSettingLabel({
-  htmlFor,
-  icon: Icon,
-  description,
-  children,
-}: {
-  htmlFor: string
-  icon: React.ComponentType<{ className?: string }>
-  description?: React.ReactNode
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex items-center gap-3">
-      <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
-        <Icon className="size-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <Label htmlFor={htmlFor} className="text-sm leading-5 font-normal">
-          {children}
-        </Label>
-        {description
-          ? <p className="mt-1 text-xs leading-4 text-muted-foreground">{description}</p>
-          : null}
-      </div>
-    </div>
-  )
-}
 
 function TgWsProxyPageContent({
   port,
@@ -148,13 +94,13 @@ function TgWsProxyPageContent({
           </Button>
         </div>
 
-        <Card className={PAGE_CARD_CLASS}>
+        <Card className={MODULE_PAGE_CARD_CLASS}>
           <ModuleSectionHeader
             icon={ShieldCheck}
             title="Параметры"
             description="Основные параметры локального Telegram-прокси на этом ПК"
           />
-          <CardContent className="space-y-4 !p-4">
+          <CardContent className="space-y-4 p-4!">
             <div className="space-y-2">
               <ModuleSettingLabel
                 htmlFor="tg-ws-proxy-port"
@@ -217,13 +163,13 @@ function TgWsProxyPageContent({
           </CardContent>
         </Card>
 
-        <Card className={PAGE_CARD_CLASS}>
+        <Card className={MODULE_PAGE_CARD_CLASS}>
           <ModuleSectionHeader
             icon={Send}
             title="Подключение"
             description="Используйте ссылку ниже, чтобы быстро добавить прокси в Telegram Desktop"
           />
-          <CardContent className="space-y-4 !p-4">
+          <CardContent className="space-y-4 p-4!">
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-xl border border-border/60 bg-muted/18 p-3">
                 <p className="text-xs text-muted-foreground">Хост</p>
