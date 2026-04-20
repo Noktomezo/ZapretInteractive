@@ -1,5 +1,7 @@
 import { createRouter, RouterProvider } from '@tanstack/react-router'
 import ReactDOM from 'react-dom/client'
+import { getDiscordPresenceDetails, getDiscordPresenceState } from './lib/discord-presence'
+import * as tauri from './lib/tauri'
 import { Route as rootRoute } from './routes/__root'
 import { Route as aboutRoute } from './routes/about'
 import { Route as dnsRoute } from './routes/dns'
@@ -12,6 +14,8 @@ import { Route as settingsRoute } from './routes/settings'
 import { Route as strategiesRoute } from './routes/strategies'
 import { Route as strategiesCategoryIdRoute } from './routes/strategies.$categoryId'
 import { Route as tgWsProxyRoute } from './routes/tg-ws-proxy'
+import { useConfigStore } from './stores/config.store'
+import { useConnectionStore } from './stores/connection.store'
 import './index.css'
 
 const routeTree = rootRoute.addChildren([
@@ -32,6 +36,60 @@ const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
 })
+
+type DiscordPresenceSyncGlobal = typeof globalThis & {
+  __zapretDiscordPresenceSyncCleanup__?: () => void
+}
+
+let lastDiscordPresenceKey: string | null = null
+
+function syncDiscordPresenceState() {
+  const config = useConfigStore.getState().config
+  if (!config) {
+    return
+  }
+
+  const enabled = config.discordPresenceEnabled ?? true
+  const details = getDiscordPresenceDetails(router.state.location.pathname, config)
+  const state = getDiscordPresenceState(useConnectionStore.getState().status)
+  const nextKey = JSON.stringify([enabled, details, state])
+
+  if (nextKey === lastDiscordPresenceKey) {
+    return
+  }
+
+  lastDiscordPresenceKey = nextKey
+  void tauri.syncDiscordPresence(enabled, details, state).catch((error) => {
+    console.error('Failed to sync Discord presence:', error)
+  })
+}
+
+const discordPresenceSyncGlobal = globalThis as DiscordPresenceSyncGlobal
+discordPresenceSyncGlobal.__zapretDiscordPresenceSyncCleanup__?.()
+
+const cleanupDiscordPresenceRouteSubscription = router.subscribe('onResolved', () => {
+  syncDiscordPresenceState()
+})
+
+const cleanupDiscordPresenceConfigSubscription = useConfigStore.subscribe((state, previousState) => {
+  if (state.config !== previousState.config) {
+    syncDiscordPresenceState()
+  }
+})
+
+const cleanupDiscordPresenceConnectionSubscription = useConnectionStore.subscribe((state, previousState) => {
+  if (state.status !== previousState.status) {
+    syncDiscordPresenceState()
+  }
+})
+
+discordPresenceSyncGlobal.__zapretDiscordPresenceSyncCleanup__ = () => {
+  cleanupDiscordPresenceRouteSubscription()
+  cleanupDiscordPresenceConfigSubscription()
+  cleanupDiscordPresenceConnectionSubscription()
+}
+
+syncDiscordPresenceState()
 
 declare module '@tanstack/react-router' {
   interface Register {

@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useMountEffect } from '@/hooks/use-mount-effect'
@@ -84,7 +84,38 @@ function formatAboutTimestamp(value?: string) {
   }).format(date)
 }
 
-const PAGE_CARD_CLASS = '!border-border/60 !bg-background !shadow-none !backdrop-blur-none'
+const PAGE_CARD_CLASS = '!gap-0 !rounded-lg !border !border-border/60 !bg-card !py-0 !shadow-none !backdrop-blur-none'
+
+function AboutSectionHeader({
+  icon: Icon,
+  title,
+  description,
+  action,
+  withDivider = true,
+}: {
+  icon: typeof Package
+  title: React.ReactNode
+  description: React.ReactNode
+  action?: React.ReactNode
+  withDivider?: boolean
+}) {
+  return (
+    <CardHeader className={[
+      '!flex !flex-row !items-center !gap-3 !p-4',
+      withDivider ? 'border-b border-border/60' : '',
+    ].join(' ').trim()}
+    >
+      <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
+        <Icon className="size-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <CardTitle className="font-sans text-sm leading-5 font-normal tracking-normal">{title}</CardTitle>
+        <CardDescription className="mt-1 text-xs leading-4">{description}</CardDescription>
+      </div>
+      {action ? <CardAction className="self-center">{action}</CardAction> : null}
+    </CardHeader>
+  )
+}
 
 function MetaItem({
   icon: Icon,
@@ -220,13 +251,12 @@ export function AboutPage() {
         </div>
 
         <Card className={PAGE_CARD_CLASS}>
-          <CardHeader>
-            <CardTitle className="text-lg">{APP_NAME}</CardTitle>
-            <CardDescription>
-              Desktop GUI для zapret-win-bundle с управлением стратегиями, фильтрами, плейсхолдерами и обновлениями
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
+          <AboutSectionHeader
+            icon={Package}
+            title={APP_NAME}
+            description="Desktop GUI для zapret-win-bundle с управлением стратегиями, фильтрами, плейсхолдерами и обновлениями"
+          />
+          <CardContent className="space-y-3 !p-4">
             <div className="flex h-full flex-col rounded-xl border border-border/60 bg-muted/25 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -295,10 +325,11 @@ export function AboutPage() {
         </Card>
 
         <Card className={PAGE_CARD_CLASS}>
-          <CardHeader className="!flex flex-row items-center justify-between gap-3 space-y-0">
-            <div className="min-w-0">
-              <div className="mb-2 flex items-center gap-2">
-                <CardTitle className="text-lg">Файлы приложения</CardTitle>
+          <AboutSectionHeader
+            icon={FolderOpen}
+            title={(
+              <div className="flex items-center gap-2">
+                <span>Файлы приложения</span>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span
@@ -325,44 +356,43 @@ export function AboutPage() {
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <CardDescription>
-                WinDivert, winws.exe, fake-файлы и списки
-              </CardDescription>
-            </div>
-
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
-              {!isDownloading && (
-                <Button
-                  onClick={handleDownloadBinaries}
-                  disabled={isDownloading}
-                  variant={binariesOk === false ? 'default' : 'outline'}
-                >
-                  <Download className="size-4" />
-                  {binariesOk === false
-                    ? 'Загрузить'
-                    : availableUpdates.length > 0
-                      ? 'Обновить'
-                      : 'Переустановить'}
-                </Button>
-              )}
-
-              <Tooltip>
-                <TooltipTrigger asChild>
+            )}
+            description="WinDivert, winws.exe, fake-файлы и списки"
+            action={(
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                {!isDownloading && (
                   <Button
-                    variant="outline"
-                    size="icon"
-                    aria-label="Открыть папку приложения"
-                    onClick={() => { void handleOpenAppDirectory() }}
+                    onClick={handleDownloadBinaries}
+                    disabled={isDownloading}
+                    variant={binariesOk === false ? 'default' : 'outline'}
                   >
-                    <FolderOpen className="size-4" />
+                    <Download className="size-4" />
+                    {binariesOk === false
+                      ? 'Загрузить'
+                      : availableUpdates.length > 0
+                        ? 'Обновить'
+                        : 'Переустановить'}
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent sideOffset={6}>Открыть папку приложения</TooltipContent>
-              </Tooltip>
-            </div>
-          </CardHeader>
+                )}
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label="Открыть папку приложения"
+                      onClick={() => { void handleOpenAppDirectory() }}
+                    >
+                      <FolderOpen className="size-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent sideOffset={6}>Открыть папку приложения</TooltipContent>
+                </Tooltip>
+              </div>
+            )}
+          />
           {showBinaryDetails && (
-            <CardContent className="space-y-4 pt-0">
+            <CardContent className="space-y-4 !p-4">
               {showBinaryStatusText && (
                 <p className="text-sm text-muted-foreground">
                   {binariesOk === false
@@ -399,13 +429,12 @@ export function AboutPage() {
         </Card>
 
         <Card className={PAGE_CARD_CLASS}>
-          <CardHeader>
-            <CardTitle className="text-lg">Метаданные и ссылки</CardTitle>
-            <CardDescription>
-              Базовая информация о проекте и полезные ссылки
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <AboutSectionHeader
+            icon={Github}
+            title="Метаданные и ссылки"
+            description="Базовая информация о проекте и полезные ссылки"
+          />
+          <CardContent className="space-y-4 !p-4">
             <div className="grid gap-3 sm:grid-cols-2">
               {APP_LINKS.map(({ label, value, href, icon: Icon }) => (
                 <button

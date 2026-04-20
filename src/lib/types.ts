@@ -98,6 +98,7 @@ export interface AppConfig {
   tgWsProxyPort?: number
   tgWsProxySecret?: string
   tgWsProxyModuleEnabled?: boolean
+  discordPresenceEnabled?: boolean
   minimizeToTray?: boolean
   launchToTray?: boolean
   connectOnAutostart?: boolean

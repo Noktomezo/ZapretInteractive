@@ -218,6 +218,11 @@ pub struct AppConfig {
         rename = "tgWsProxyModuleEnabled"
     )]
     pub tg_ws_proxy_module_enabled: bool,
+    #[serde(
+        default = "default_discord_presence_enabled",
+        rename = "discordPresenceEnabled"
+    )]
+    pub discord_presence_enabled: bool,
     #[serde(default = "default_minimize_to_tray", rename = "minimizeToTray")]
     pub minimize_to_tray: bool,
     #[serde(default = "default_launch_to_tray", rename = "launchToTray")]
@@ -365,6 +370,10 @@ fn default_tg_ws_proxy_secret() -> String {
 
 fn default_tg_ws_proxy_module_enabled() -> bool {
     false
+}
+
+fn default_discord_presence_enabled() -> bool {
+    true
 }
 
 fn is_valid_tg_ws_proxy_secret(secret: &str) -> bool {

@@ -1,6 +1,6 @@
 mod commands;
 
-use commands::{admin, binaries, config, dns, process, tg_proxy};
+use commands::{admin, binaries, config, discord_presence, dns, process, tg_proxy};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{
     Emitter, Manager,
@@ -393,6 +393,7 @@ pub fn run() {
             binaries::delete_filter_file,
             binaries::open_app_directory,
             binaries::open_filters_directory,
+            discord_presence::sync_discord_presence,
             dns::get_dns_proxy_status,
             dns::start_dns_proxy,
             dns::stop_dns_proxy,

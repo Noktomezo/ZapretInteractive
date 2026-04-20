@@ -15,6 +15,7 @@
   "tgWsProxyPort": 1443,
   "tgWsProxySecret": "",
   "tgWsProxyModuleEnabled": false,
+  "discordPresenceEnabled": true,
   "categories": [
     {
       "id": "preset-http",

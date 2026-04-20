@@ -56,6 +56,7 @@ export const checkDnsProviderLatency = (urls: string[]): Promise<DnsLatencyResul
 export const getTgWsProxyStatus = (): Promise<TgWsProxyStatus> => invoke('get_tg_ws_proxy_status')
 export const startTgWsProxy = (port: number, secret: string): Promise<TgWsProxyStatus> => invoke('start_tg_ws_proxy', { port, secret })
 export const stopTgWsProxy = (): Promise<TgWsProxyStatus> => invoke('stop_tg_ws_proxy')
+export const syncDiscordPresence = (enabled: boolean, details: string, state: string): Promise<void> => invoke('sync_discord_presence', { enabled, details, state })
 
 export function saveFilterFile(filename: string, content: string): Promise<void> {
   return invoke('save_filter_file', { filename, content })

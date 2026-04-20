@@ -56,6 +56,7 @@ interface ConfigStore {
   setTgWsProxyPort: (port: number) => void
   setTgWsProxySecret: (secret: string) => void
   setTgWsProxyModuleEnabled: (enabled: boolean) => void
+  setDiscordPresenceEnabled: (enabled: boolean) => void
   setCoreFileUpdatePromptsEnabled: (enabled: boolean) => void
   setAppAutoUpdatesEnabled: (enabled: boolean) => void
   setWindowMaterial: (material: WindowMaterial) => void
@@ -304,6 +305,12 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     const { config } = get()
     if (config)
       set({ config: { ...config, tgWsProxyModuleEnabled: enabled }, dirty: true })
+  },
+
+  setDiscordPresenceEnabled: (enabled) => {
+    const { config } = get()
+    if (config)
+      set({ config: { ...config, discordPresenceEnabled: enabled }, dirty: true })
   },
 
   setCoreFileUpdatePromptsEnabled: (enabled) => {

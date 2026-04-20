@@ -504,7 +504,7 @@ export function FiltersPage() {
             return (
               <div
                 key={filter.id}
-                className="flex min-h-20 items-center justify-between overflow-hidden rounded-lg border bg-card p-4"
+                className="flex min-h-[4.5rem] items-center justify-between overflow-hidden rounded-lg border bg-card px-4 py-3"
               >
                 <div className="flex min-w-0 w-0 flex-1 items-center gap-3 overflow-hidden">
                   <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">

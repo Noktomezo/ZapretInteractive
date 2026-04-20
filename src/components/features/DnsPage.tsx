@@ -4,11 +4,12 @@ import {
   Loader2,
   Power,
   RefreshCw,
+  Route,
   ShieldCheck,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import {
@@ -23,7 +24,60 @@ import { useDnsModule } from '@/hooks/use-dns-module'
 import { BOOTSTRAP_RESOLVER_OPTIONS, DNS_PRESETS, getDnsLatencyBadgeClass } from '@/lib/dns'
 import { cn } from '@/lib/utils'
 
-const PAGE_CARD_CLASS = '!border-border/60 !bg-background !shadow-none !backdrop-blur-none'
+const PAGE_CARD_CLASS = '!gap-0 !rounded-lg !border !border-border/60 !bg-card !py-0 !shadow-none !backdrop-blur-none'
+
+function ModuleSectionHeader({
+  icon: Icon,
+  title,
+  description,
+  action,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  title: React.ReactNode
+  description: React.ReactNode
+  action?: React.ReactNode
+}) {
+  return (
+    <CardHeader className="!flex !flex-row !items-center !gap-3 border-b border-border/60 !p-4">
+      <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
+        <Icon className="size-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <CardTitle className="font-sans text-sm leading-5 font-normal tracking-normal">{title}</CardTitle>
+        <CardDescription className="mt-1 text-xs leading-4">{description}</CardDescription>
+      </div>
+      {action ? <CardAction className="self-center">{action}</CardAction> : null}
+    </CardHeader>
+  )
+}
+
+function ModuleSettingLabel({
+  htmlFor,
+  icon: Icon,
+  description,
+  children,
+}: {
+  htmlFor: string
+  icon: React.ComponentType<{ className?: string }>
+  description?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
+        <Icon className="size-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <Label htmlFor={htmlFor} className="text-sm leading-5 font-normal">
+          {children}
+        </Label>
+        {description
+          ? <p className="mt-1 text-xs leading-4 text-muted-foreground">{description}</p>
+          : null}
+      </div>
+    </div>
+  )
+}
 
 export function DnsPage() {
   const {
@@ -82,23 +136,20 @@ export function DnsPage() {
         </div>
 
         <Card className={PAGE_CARD_CLASS}>
-          <CardHeader className="gap-1">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <ShieldCheck className="size-4 text-muted-foreground" />
-              <span>Параметры</span>
-            </CardTitle>
-            <CardDescription>
-              Основные параметры работы DNS-подключения
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <ModuleSectionHeader
+            icon={ShieldCheck}
+            title="Параметры"
+            description="Основные параметры работы DNS-подключения"
+          />
+          <CardContent className="space-y-4 !p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="dns-bootstrap-resolvers">Начальный резолвер</Label>
-                <p className="text-xs text-muted-foreground">
-                  Нужен для первого подключения к DNS-серверу.
-                </p>
-              </div>
+              <ModuleSettingLabel
+                htmlFor="dns-bootstrap-resolvers"
+                icon={ShieldCheck}
+                description="Нужен для первого подключения к DNS-серверу."
+              >
+                Начальный резолвер
+              </ModuleSettingLabel>
               <div className="w-full sm:w-[11rem]">
                 <Select value={selectedBootstrapResolver} onValueChange={handleBootstrapSelect} disabled={isBusy}>
                   <SelectTrigger id="dns-bootstrap-resolvers" className="w-full cursor-pointer">
@@ -116,12 +167,13 @@ export function DnsPage() {
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="dns-accelerator">Акселератор</Label>
-                <p className="text-xs text-muted-foreground">
-                  Может ускорить работу DNS и сделать подключение к некоторым сервисам стабильнее.
-                </p>
-              </div>
+              <ModuleSettingLabel
+                htmlFor="dns-accelerator"
+                icon={Route}
+                description="Может ускорить работу DNS и сделать подключение к некоторым сервисам стабильнее."
+              >
+                Акселератор
+              </ModuleSettingLabel>
               <Switch
                 id="dns-accelerator"
                 checked={acceleratorEnabled}
@@ -133,17 +185,11 @@ export function DnsPage() {
         </Card>
 
         <Card className={PAGE_CARD_CLASS}>
-          <CardHeader className="gap-1">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-1">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Globe className="size-4 text-muted-foreground" />
-                  <span>DNS провайдеры</span>
-                </CardTitle>
-                <CardDescription>
-                  Выбор адреса для DNS-подключения
-                </CardDescription>
-              </div>
+          <ModuleSectionHeader
+            icon={Globe}
+            title="DNS провайдеры"
+            description="Выбор адреса для DNS-подключения"
+            action={(
               <Button
                 type="button"
                 variant="outline"
@@ -157,9 +203,9 @@ export function DnsPage() {
                   : <RefreshCw className="size-4" />}
                 Проверить пинг
               </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="grid gap-3 lg:grid-cols-2">
+            )}
+          />
+          <CardContent className="grid gap-3 !p-4 lg:grid-cols-2">
             {DNS_PRESETS.map((preset) => {
               const isSelected = preset.id === selectedPreset.id
               const latency = latencyByPreset[preset.id]
