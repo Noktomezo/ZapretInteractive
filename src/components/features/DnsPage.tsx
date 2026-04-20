@@ -4,12 +4,13 @@ import {
   Loader2,
   Power,
   RefreshCw,
+  Route,
   ShieldCheck,
 } from 'lucide-react'
+import { MODULE_PAGE_CARD_CLASS, ModuleSectionHeader, ModuleSettingLabel } from '@/components/features/module-ui'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
+import { Card, CardContent } from '@/components/ui/card'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import {
   Select,
@@ -22,8 +23,6 @@ import { Switch } from '@/components/ui/switch'
 import { useDnsModule } from '@/hooks/use-dns-module'
 import { BOOTSTRAP_RESOLVER_OPTIONS, DNS_PRESETS, getDnsLatencyBadgeClass } from '@/lib/dns'
 import { cn } from '@/lib/utils'
-
-const PAGE_CARD_CLASS = '!border-border/60 !bg-background !shadow-none !backdrop-blur-none'
 
 export function DnsPage() {
   const {
@@ -81,24 +80,21 @@ export function DnsPage() {
           </Button>
         </div>
 
-        <Card className={PAGE_CARD_CLASS}>
-          <CardHeader className="gap-1">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <ShieldCheck className="size-4 text-muted-foreground" />
-              <span>Параметры</span>
-            </CardTitle>
-            <CardDescription>
-              Основные параметры работы DNS-подключения
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <Card className={MODULE_PAGE_CARD_CLASS}>
+          <ModuleSectionHeader
+            icon={ShieldCheck}
+            title="Параметры"
+            description="Основные параметры работы DNS-подключения"
+          />
+          <CardContent className="space-y-4 p-4!">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="dns-bootstrap-resolvers">Начальный резолвер</Label>
-                <p className="text-xs text-muted-foreground">
-                  Нужен для первого подключения к DNS-серверу.
-                </p>
-              </div>
+              <ModuleSettingLabel
+                htmlFor="dns-bootstrap-resolvers"
+                icon={ShieldCheck}
+                description="Нужен для первого подключения к DNS-серверу."
+              >
+                Начальный резолвер
+              </ModuleSettingLabel>
               <div className="w-full sm:w-[11rem]">
                 <Select value={selectedBootstrapResolver} onValueChange={handleBootstrapSelect} disabled={isBusy}>
                   <SelectTrigger id="dns-bootstrap-resolvers" className="w-full cursor-pointer">
@@ -116,12 +112,13 @@ export function DnsPage() {
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="dns-accelerator">Акселератор</Label>
-                <p className="text-xs text-muted-foreground">
-                  Может ускорить работу DNS и сделать подключение к некоторым сервисам стабильнее.
-                </p>
-              </div>
+              <ModuleSettingLabel
+                htmlFor="dns-accelerator"
+                icon={Route}
+                description="Может ускорить работу DNS и сделать подключение к некоторым сервисам стабильнее."
+              >
+                Акселератор
+              </ModuleSettingLabel>
               <Switch
                 id="dns-accelerator"
                 checked={acceleratorEnabled}
@@ -132,18 +129,12 @@ export function DnsPage() {
           </CardContent>
         </Card>
 
-        <Card className={PAGE_CARD_CLASS}>
-          <CardHeader className="gap-1">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-1">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Globe className="size-4 text-muted-foreground" />
-                  <span>DNS провайдеры</span>
-                </CardTitle>
-                <CardDescription>
-                  Выбор адреса для DNS-подключения
-                </CardDescription>
-              </div>
+        <Card className={MODULE_PAGE_CARD_CLASS}>
+          <ModuleSectionHeader
+            icon={Globe}
+            title="DNS провайдеры"
+            description="Выбор адреса для DNS-подключения"
+            action={(
               <Button
                 type="button"
                 variant="outline"
@@ -157,9 +148,9 @@ export function DnsPage() {
                   : <RefreshCw className="size-4" />}
                 Проверить пинг
               </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="grid gap-3 lg:grid-cols-2">
+            )}
+          />
+          <CardContent className="grid gap-3 p-4! lg:grid-cols-2">
             {DNS_PRESETS.map((preset) => {
               const isSelected = preset.id === selectedPreset.id
               const latency = latencyByPreset[preset.id]

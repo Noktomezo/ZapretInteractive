@@ -509,19 +509,6 @@ textarea,
     will-change: opacity;
   }
 
-  @keyframes route-lazy-fallback-reveal {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  .route-lazy-fallback {
-    opacity: 0;
-    animation: route-lazy-fallback-reveal 0s linear 140ms forwards;
-  }
 }
 
 @layer components {

@@ -1,19 +1,30 @@
-import type { WindowMaterial, WindowMaterialCapabilities } from '@/lib/types'
+import type { DiscordPresenceActivityType, WindowMaterial, WindowMaterialCapabilities } from '@/lib/types'
 import type { Theme } from '@/stores/theme.store'
 import {
   AppWindow,
+  ArrowLeftRight,
+  BellRing,
   CircleOff,
+  Clapperboard,
   Download,
+  Gamepad2,
+  Headphones,
   Laptop,
   Layers3,
   Loader2,
+  Minimize2,
   MoonStar,
   Palette,
   PanelTop,
+  PlugZap,
+  Power,
+  Radar,
+  RefreshCw,
   RotateCcw,
   Router,
   Sparkles,
   SunMedium,
+  Trophy,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -61,8 +72,77 @@ const WINDOW_MATERIAL_OPTIONS: { value: WindowMaterial, label: string, icon: Rea
   { value: 'mica', label: 'Mica', icon: Sparkles },
   { value: 'tabbed', label: 'Tabbed', icon: PanelTop },
 ]
+const DISCORD_PRESENCE_ACTIVITY_OPTIONS: { value: DiscordPresenceActivityType, label: string, icon: React.ComponentType<{ className?: string }> }[] = [
+  { value: 'playing', label: 'Играет', icon: Gamepad2 },
+  { value: 'listening', label: 'Слушает', icon: Headphones },
+  { value: 'watching', label: 'Смотрит', icon: Clapperboard },
+  { value: 'competing', label: 'Соревнуется', icon: Trophy },
+]
+const DISCORD_PRESENCE_SELECT_OPTIONS: { value: 'none' | DiscordPresenceActivityType, label: string, icon: React.ComponentType<{ className?: string }> }[] = [
+  { value: 'none', label: 'Нет', icon: CircleOff },
+  ...DISCORD_PRESENCE_ACTIVITY_OPTIONS,
+]
 
-const PAGE_CARD_CLASS = '!border-border/60 !bg-background !shadow-none !backdrop-blur-none'
+const PAGE_CARD_CLASS = 'gap-0! rounded-lg! border! border-border/60! bg-card! py-0! shadow-none! backdrop-blur-none!'
+
+function SettingsSectionHeader({
+  icon: Icon,
+  title,
+  description,
+  action,
+  withDivider = true,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  title: React.ReactNode
+  description: React.ReactNode
+  action?: React.ReactNode
+  withDivider?: boolean
+}) {
+  return (
+    <CardHeader className={cn(
+      'flex! flex-row! items-center! gap-3! p-4!',
+      withDivider && 'border-b border-border/60',
+    )}
+    >
+      <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
+        <Icon className="size-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <CardTitle className="font-sans text-sm leading-5 font-normal tracking-normal">{title}</CardTitle>
+        <CardDescription className="mt-1 text-xs leading-4">{description}</CardDescription>
+      </div>
+      {action ? <CardAction className="self-center">{action}</CardAction> : null}
+    </CardHeader>
+  )
+}
+
+function SettingLabel({
+  htmlFor,
+  icon: Icon,
+  description,
+  children,
+}: {
+  htmlFor: string
+  icon: React.ComponentType<{ className?: string }>
+  description?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
+        <Icon className="size-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <Label htmlFor={htmlFor} className="text-sm leading-5 font-normal">
+          {children}
+        </Label>
+        {description
+          ? <p className="mt-1 text-xs leading-4 text-muted-foreground">{description}</p>
+          : null}
+      </div>
+    </div>
+  )
+}
 
 function isValidPortRange(value: string): boolean {
   if (!value.trim())
@@ -110,6 +190,8 @@ export function SettingsPage() {
   const setGlobalPorts = useConfigStore(state => state.setGlobalPorts)
   const setCoreFileUpdatePromptsEnabled = useConfigStore(state => state.setCoreFileUpdatePromptsEnabled)
   const setAppAutoUpdatesEnabled = useConfigStore(state => state.setAppAutoUpdatesEnabled)
+  const setDiscordPresenceEnabled = useConfigStore(state => state.setDiscordPresenceEnabled)
+  const setDiscordPresenceActivityType = useConfigStore(state => state.setDiscordPresenceActivityType)
   const setWindowMaterial = useConfigStore(state => state.setWindowMaterial)
   const setMinimizeToTray = useConfigStore(state => state.setMinimizeToTray)
   const setLaunchToTray = useConfigStore(state => state.setLaunchToTray)
@@ -120,7 +202,11 @@ export function SettingsPage() {
   const theme = useThemeStore(state => state.theme)
   const setTheme = useThemeStore(state => state.setTheme)
   const selectedTheme = THEME_OPTIONS.find(option => option.value === theme) ?? THEME_OPTIONS[2]
-  const selectedWindowMaterial = WINDOW_MATERIAL_OPTIONS.find(option => option.value === (config?.windowMaterial ?? 'acrylic')) ?? WINDOW_MATERIAL_OPTIONS[1]
+  const selectedWindowMaterial = WINDOW_MATERIAL_OPTIONS.find(option => option.value === (config?.windowMaterial ?? 'none')) ?? WINDOW_MATERIAL_OPTIONS[0]
+  const selectedDiscordPresenceValue = (config?.discordPresenceEnabled ?? false)
+    ? (config?.discordPresenceActivityType ?? 'playing')
+    : 'none'
+  const selectedDiscordPresenceOption = DISCORD_PRESENCE_SELECT_OPTIONS.find(option => option.value === selectedDiscordPresenceValue) ?? DISCORD_PRESENCE_SELECT_OPTIONS[0]
 
   const refreshAutostartState = async (isMounted = true) => {
     try {
@@ -259,8 +345,34 @@ export function SettingsPage() {
     }
   }
 
+  const handleDiscordPresenceChange = async (value: 'none' | DiscordPresenceActivityType) => {
+    const previousEnabled = config?.discordPresenceEnabled ?? false
+    const previous = config?.discordPresenceActivityType ?? 'playing'
+    const nextEnabled = value !== 'none'
+    setDiscordPresenceEnabled(nextEnabled)
+    if (value !== 'none') {
+      setDiscordPresenceActivityType(value)
+    }
+    try {
+      await saveNow()
+      if (!nextEnabled) {
+        addConfigLog('Discord Rich Presence отключён')
+        toast.success('Discord Rich Presence отключён')
+      }
+      else {
+        addConfigLog(`тип активности Discord Rich Presence изменён: ${value}`)
+        toast.success(`Discord статус: ${DISCORD_PRESENCE_ACTIVITY_OPTIONS.find(option => option.value === value)?.label ?? value}`)
+      }
+    }
+    catch (e) {
+      setDiscordPresenceEnabled(previousEnabled)
+      setDiscordPresenceActivityType(previous)
+      toast.error(`Ошибка настройки Discord Rich Presence: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
   const handleWindowMaterialChange = async (value: WindowMaterial) => {
-    const previous = config?.windowMaterial ?? 'acrylic'
+    const previous = config?.windowMaterial ?? 'none'
     setWindowMaterial(value)
 
     try {
@@ -299,29 +411,26 @@ export function SettingsPage() {
         </div>
 
         <Card className={PAGE_CARD_CLASS}>
-          <CardHeader className="gap-1">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Palette className="size-4 text-muted-foreground" />
-              <span>Тема</span>
-            </CardTitle>
-            <CardDescription>
-              Внешний вид приложения
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <SettingsSectionHeader
+            icon={Palette}
+            title="Тема"
+            description="Внешний вид приложения"
+          />
+          <CardContent className="space-y-4 p-4!">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="theme-select">Тема</Label>
-                <p className="text-xs text-muted-foreground">
-                  Режим отображения интерфейса приложения
-                </p>
-              </div>
+              <SettingLabel
+                htmlFor="theme-select"
+                icon={SunMedium}
+                description="Режим отображения интерфейса приложения"
+              >
+                Режим
+              </SettingLabel>
               <div className="w-full sm:w-[11rem]">
                 <Select value={theme} onValueChange={value => setTheme(value as Theme)}>
                   <SelectTrigger id="theme-select" className="w-full cursor-pointer">
                     <span className="flex items-center gap-2">
                       <selectedTheme.icon className="size-4 text-muted-foreground" />
-                      <SelectValue placeholder="Выберите тему">{selectedTheme.label}</SelectValue>
+                      <SelectValue placeholder="Выберите режим">{selectedTheme.label}</SelectValue>
                     </span>
                   </SelectTrigger>
                   <SelectContent>
@@ -339,14 +448,15 @@ export function SettingsPage() {
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="window-material">Материал</Label>
-                <p className="text-xs text-muted-foreground">
-                  Материал сайдбара и тайтлбара
-                </p>
-              </div>
+              <SettingLabel
+                htmlFor="window-material"
+                icon={Layers3}
+                description="Материал сайдбара и тайтлбара"
+              >
+                Материал
+              </SettingLabel>
               <div className="w-full sm:w-[11rem]">
-                <Select value={config.windowMaterial ?? 'acrylic'} onValueChange={value => void handleWindowMaterialChange(value as WindowMaterial)}>
+                <Select value={config.windowMaterial ?? 'none'} onValueChange={value => void handleWindowMaterialChange(value as WindowMaterial)}>
                   <SelectTrigger id="window-material" className="w-full cursor-pointer">
                     <span className="flex items-center gap-2">
                       <selectedWindowMaterial.icon className="size-4 text-muted-foreground" />
@@ -378,23 +488,20 @@ export function SettingsPage() {
         </Card>
 
         <Card className={PAGE_CARD_CLASS}>
-          <CardHeader className="gap-1">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Download className="size-4 text-muted-foreground" />
-              <span>Обновления</span>
-            </CardTitle>
-            <CardDescription>
-              Настройки фоновых проверок и автоматических предложений
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <SettingsSectionHeader
+            icon={Download}
+            title="Обновления"
+            description="Настройки фоновых проверок и автоматических предложений"
+          />
+          <CardContent className="space-y-4 p-4!">
             <div className="flex items-center justify-between gap-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="app-auto-updates">Автоматически проверять обновления приложения</Label>
-                <p className="text-xs text-muted-foreground">
-                  При запуске и каждые 30 секунд приложение будет проверять наличие новой версии
-                </p>
-              </div>
+              <SettingLabel
+                htmlFor="app-auto-updates"
+                icon={RefreshCw}
+                description="При запуске и каждые 30 секунд приложение будет проверять наличие новой версии"
+              >
+                Автоматически проверять обновления приложения
+              </SettingLabel>
               <Switch
                 id="app-auto-updates"
                 checked={config.appAutoUpdatesEnabled ?? true}
@@ -403,12 +510,13 @@ export function SettingsPage() {
             </div>
 
             <div className="flex items-center justify-between gap-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="core-file-update-prompts">Уведомлять об обновлениях критических файлов</Label>
-                <p className="text-xs text-muted-foreground">
-                  Отключает только предложения обновить файлы, не саму проверку
-                </p>
-              </div>
+              <SettingLabel
+                htmlFor="core-file-update-prompts"
+                icon={BellRing}
+                description="Отключает только предложения обновить файлы, не саму проверку"
+              >
+                Уведомлять об обновлениях критических файлов
+              </SettingLabel>
               <Switch
                 id="core-file-update-prompts"
                 checked={config.coreFileUpdatePromptsEnabled ?? true}
@@ -419,24 +527,21 @@ export function SettingsPage() {
         </Card>
 
         <Card className={PAGE_CARD_CLASS}>
-          <CardHeader className="gap-1">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <AppWindow className="size-4 text-muted-foreground" />
-              <span>Поведение</span>
-            </CardTitle>
-            <CardDescription>
-              Настройки запуска и закрытия приложения
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <SettingsSectionHeader
+            icon={AppWindow}
+            title="Поведение"
+            description="Настройки запуска и закрытия приложения"
+          />
+          <CardContent className="space-y-4 p-4!">
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-4">
-                <div className="space-y-0.5">
-                  <Label htmlFor="autostart">Автозапуск с Windows</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Приложение будет запускаться автоматически при входе в систему
-                  </p>
-                </div>
+                <SettingLabel
+                  htmlFor="autostart"
+                  icon={Power}
+                  description="Приложение будет запускаться автоматически при входе в систему"
+                >
+                  Автозапуск с Windows
+                </SettingLabel>
                 <Switch
                   id="autostart"
                   checked={autostartEnabled}
@@ -460,12 +565,13 @@ export function SettingsPage() {
               >
                 <div className="overflow-hidden">
                   <div className="flex items-center justify-between gap-4 border-l border-border/60 pl-4">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="connect-on-autostart">Подключаться автоматически</Label>
-                      <p className="text-xs text-muted-foreground">
-                        При запуске из автозагрузки приложение будет сразу запускать подключение
-                      </p>
-                    </div>
+                    <SettingLabel
+                      htmlFor="connect-on-autostart"
+                      icon={PlugZap}
+                      description="При запуске из автозагрузки приложение будет сразу запускать подключение"
+                    >
+                      Подключаться автоматически
+                    </SettingLabel>
                     <Switch
                       id="connect-on-autostart"
                       checked={config.connectOnAutostart ?? false}
@@ -474,12 +580,13 @@ export function SettingsPage() {
                     />
                   </div>
                   <div className="mt-3 flex items-center justify-between gap-4 border-l border-border/60 pl-4">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="launch-to-tray">Запускать свернутым в трей</Label>
-                      <p className="text-xs text-muted-foreground">
-                        При старте приложения основное окно будет скрыто, а доступ останется через иконку в трее
-                      </p>
-                    </div>
+                    <SettingLabel
+                      htmlFor="launch-to-tray"
+                      icon={AppWindow}
+                      description="При старте приложения основное окно будет скрыто, а доступ останется через иконку в трее"
+                    >
+                      Запускать свернутым в трей
+                    </SettingLabel>
                     <Switch
                       id="launch-to-tray"
                       checked={config.launchToTray ?? false}
@@ -492,35 +599,73 @@ export function SettingsPage() {
             </div>
 
             <div className="flex items-center justify-between gap-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="minimize-to-tray">Сворачивать в трей при закрытии</Label>
-                <p className="text-xs text-muted-foreground">
-                  При закрытии окно будет скрыто в системный трей вместо завершения работы
-                </p>
-              </div>
+              <SettingLabel
+                htmlFor="minimize-to-tray"
+                icon={Minimize2}
+                description="При закрытии окно будет скрыто в системный трей вместо завершения работы"
+              >
+                Сворачивать в трей при закрытии
+              </SettingLabel>
               <Switch
                 id="minimize-to-tray"
                 checked={config.minimizeToTray ?? true}
                 onCheckedChange={handleMinimizeToTrayChange}
               />
             </div>
+
+            <div className="flex items-center justify-between gap-4">
+              <SettingLabel
+                htmlFor="discord-presence"
+                icon={Gamepad2}
+                description="Показывает текущую страницу и статус подключения в Discord"
+              >
+                Discord Rich Presence
+              </SettingLabel>
+              <div className="w-[10.5rem]">
+                <Select
+                  value={selectedDiscordPresenceValue}
+                  onValueChange={value => void handleDiscordPresenceChange(value as 'none' | DiscordPresenceActivityType)}
+                >
+                  <SelectTrigger id="discord-presence" className="w-full cursor-pointer">
+                    <span className="flex items-center gap-2">
+                      <selectedDiscordPresenceOption.icon className="size-4 text-muted-foreground" />
+                      <SelectValue placeholder="Выберите статус">
+                        {selectedDiscordPresenceOption.label}
+                      </SelectValue>
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DISCORD_PRESENCE_SELECT_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        <span className="flex items-center gap-2">
+                          <option.icon className="size-4 text-muted-foreground" />
+                          <span>{option.label}</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
         <Card className={PAGE_CARD_CLASS}>
-          <CardHeader className="gap-1">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Router className="size-4 text-muted-foreground" />
-              <span>Порты</span>
-            </CardTitle>
-            <CardDescription>
-              Глобальные порты для фильтрации трафика
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="tcpPortsInput">TCP порты</Label>
+          <SettingsSectionHeader
+            icon={Router}
+            title="Порты"
+            description="Глобальные порты для фильтрации трафика"
+          />
+          <CardContent className="space-y-4 p-4!">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <SettingLabel
+                htmlFor="tcpPortsInput"
+                icon={ArrowLeftRight}
+                description="Порты TCP-трафика, на которые применяются стратегии фильтрации."
+              >
+                TCP порты
+              </SettingLabel>
+              <div className="w-full sm:w-[11rem]">
                 <Input
                   id="tcpPortsInput"
                   value={tcpDraft}
@@ -551,8 +696,16 @@ export function SettingsPage() {
                   placeholder="1-65535"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="udpPortsInput">UDP порты</Label>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <SettingLabel
+                htmlFor="udpPortsInput"
+                icon={Radar}
+                description="Порты UDP-трафика, на которые применяются стратегии фильтрации."
+              >
+                UDP порты
+              </SettingLabel>
+              <div className="w-full sm:w-[11rem]">
                 <Input
                   id="udpPortsInput"
                   value={udpDraft}
@@ -588,15 +741,12 @@ export function SettingsPage() {
         </Card>
 
         <Card className={PAGE_CARD_CLASS}>
-          <CardHeader className="gap-1">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <RotateCcw className="size-4 text-muted-foreground" />
-              <span>Сброс</span>
-            </CardTitle>
-            <CardDescription>
-              Возврат к настройкам по умолчанию
-            </CardDescription>
-            <CardAction className="self-center">
+          <SettingsSectionHeader
+            icon={RotateCcw}
+            title="Сброс"
+            description="Возврат к настройкам по умолчанию"
+            withDivider={false}
+            action={(
               <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
                 <AlertDialogTrigger asChild>
                   <Button
@@ -623,8 +773,8 @@ export function SettingsPage() {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-            </CardAction>
-          </CardHeader>
+            )}
+          />
         </Card>
       </div>
     </LenisScrollArea>

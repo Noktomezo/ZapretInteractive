@@ -89,7 +89,7 @@ export function TitleBar() {
   const handleMinimize = () => getCurrentWindow().minimize()
   const handleClose = () => getCurrentWindow().close()
   const config = useConfigStore(state => state.config)
-  const windowMaterial = config?.windowMaterial ?? 'acrylic'
+  const windowMaterial = config?.windowMaterial ?? 'none'
   const materialEnabled = windowMaterial !== 'none'
   const currentCategoryName = location.pathname.startsWith('/strategies/')
     ? config?.categories.find(category => category.id === safeDecode(location.pathname.slice('/strategies/'.length)))?.name

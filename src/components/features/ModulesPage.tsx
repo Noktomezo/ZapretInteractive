@@ -30,7 +30,7 @@ function ModuleCard({
   return (
     <div
       className={cn(
-        'group flex h-20 items-center gap-3 rounded-lg border bg-card p-4',
+        'group flex min-h-[4.5rem] items-center gap-3 rounded-lg border bg-card px-4 py-3',
         status?.moduleAvailable === false && 'opacity-60',
       )}
     >
@@ -51,8 +51,8 @@ function ModuleCard({
           {icon}
         </div>
         <div className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-normal">{title}</span>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <span className="block truncate text-sm leading-5 font-normal">{title}</span>
+          <p className="mt-1 text-xs leading-4 text-muted-foreground">
             {description}
           </p>
         </div>

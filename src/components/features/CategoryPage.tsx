@@ -706,8 +706,8 @@ export function CategoryPage() {
                       strategyCardRefs.current[strategy.id] = node
                     }}
                     className={strategy.active
-                      ? 'border border-success/30 bg-success/10 rounded-lg p-4 space-y-3'
-                      : 'border border-border rounded-lg p-4 space-y-3'}
+                      ? 'space-y-3 rounded-lg border border-success/40 bg-card p-4 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--success)_18%,transparent)]'
+                      : 'space-y-3 rounded-lg border bg-card p-4'}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3 min-w-0">

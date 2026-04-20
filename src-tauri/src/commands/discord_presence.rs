@@ -1,0 +1,126 @@
+use crate::commands::config::DiscordPresenceActivityType;
+use discord_rich_presence::{DiscordIpc, DiscordIpcClient, activity};
+use std::sync::{LazyLock, Mutex};
+
+const DISCORD_CLIENT_ID: &str = "1495773045904769255";
+const DISCORD_GITHUB_URL: &str = "https://github.com/Noktomezo/ZapretInteractive";
+
+#[derive(Default)]
+struct DiscordPresenceState {
+    client: Option<DiscordIpcClient>,
+    last_key: Option<String>,
+}
+
+static DISCORD_PRESENCE_STATE: LazyLock<Mutex<DiscordPresenceState>> =
+    LazyLock::new(|| Mutex::new(DiscordPresenceState::default()));
+
+fn discord_error_to_string<E: std::fmt::Display>(error: E) -> String {
+    error.to_string()
+}
+
+fn reconnect_client(state: &mut DiscordPresenceState) -> Result<(), String> {
+    let mut client = DiscordIpcClient::new(DISCORD_CLIENT_ID);
+    client.connect().map_err(discord_error_to_string)?;
+    state.client = Some(client);
+    Ok(())
+}
+
+fn clear_presence(state: &mut DiscordPresenceState) {
+    state.last_key = None;
+    if let Some(mut client) = state.client.take() {
+        let _ = client.clear_activity();
+        let _ = client.close();
+    }
+}
+
+fn log_reconnect_failure(context: &str, error: &str) {
+    eprintln!("Discord presence: {context}: {error}");
+}
+
+fn map_activity_type(activity_type: DiscordPresenceActivityType) -> activity::ActivityType {
+    match activity_type {
+        DiscordPresenceActivityType::Playing => activity::ActivityType::Playing,
+        DiscordPresenceActivityType::Listening => activity::ActivityType::Listening,
+        DiscordPresenceActivityType::Watching => activity::ActivityType::Watching,
+        DiscordPresenceActivityType::Competing => activity::ActivityType::Competing,
+    }
+}
+
+fn build_discord_activity(
+    details: String,
+    state: String,
+    activity_type: DiscordPresenceActivityType,
+) -> activity::Activity<'static> {
+    activity::Activity::new()
+        .activity_type(map_activity_type(activity_type))
+        .details(details)
+        .state(state)
+        .buttons(vec![activity::Button::new(
+            "Доступ в интернет",
+            DISCORD_GITHUB_URL,
+        )])
+}
+
+#[tauri::command]
+pub fn sync_discord_presence(
+    enabled: bool,
+    details: String,
+    state: String,
+    activity_type: DiscordPresenceActivityType,
+) -> Result<bool, String> {
+    let mut presence_state = DISCORD_PRESENCE_STATE.lock().map_err(|e| e.to_string())?;
+
+    if !enabled {
+        clear_presence(&mut presence_state);
+        return Ok(true);
+    }
+
+    let next_key = format!("{activity_type:?}\u{0}{details}\u{0}{state}");
+
+    if presence_state.client.is_none()
+        && let Err(error) = reconnect_client(&mut presence_state)
+    {
+        log_reconnect_failure("initial reconnect failed", &error);
+        return Ok(false);
+    }
+
+    let activity = build_discord_activity(details.clone(), state.clone(), activity_type);
+
+    let update_result = presence_state
+        .client
+        .as_mut()
+        .ok_or_else(|| "Discord client was not initialized".to_string())
+        .and_then(|client| {
+            client
+                .set_activity(activity)
+                .map_err(discord_error_to_string)
+        });
+
+    match update_result {
+        Ok(()) => {
+            presence_state.last_key = Some(next_key);
+            Ok(true)
+        }
+        Err(error) => {
+            clear_presence(&mut presence_state);
+            if let Err(reconnect_error) = reconnect_client(&mut presence_state) {
+                log_reconnect_failure(
+                    "retry reconnect failed after activity update error",
+                    &reconnect_error,
+                );
+                return Ok(false);
+            }
+
+            let retry_activity = build_discord_activity(details, state, activity_type);
+            if let Some(client) = presence_state.client.as_mut()
+                && client.set_activity(retry_activity).is_ok()
+            {
+                presence_state.last_key = Some(next_key);
+                return Ok(true);
+            }
+
+            eprintln!("Discord presence: activity update failed: {error}");
+            Ok(false)
+        }
+    }
+}

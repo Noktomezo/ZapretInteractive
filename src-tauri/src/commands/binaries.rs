@@ -85,6 +85,12 @@ const THIRD_PARTY_BASE_URL: &str =
 const REMOTE_HASHES_URL: &str =
     "https://raw.githubusercontent.com/Noktomezo/ZapretInteractive/main/thirdparty/hashes.json";
 const BINARIES: &[&str] = &["WinDivert.dll", "Monkey64.sys", "winws.exe", "cygwin1.dll"];
+const MODULES_BASE_URL: &str =
+    "https://raw.githubusercontent.com/Noktomezo/ZapretInteractive/main/thirdparty/modules";
+const MODULE_FILES: &[&str] = &[
+    "dnscrypt-proxy/dnscrypt-proxy.exe",
+    "tg-ws-proxy-rs/tg-ws-proxy.exe",
+];
 const FAKE_FILES_BASE_URL: &str =
     "https://raw.githubusercontent.com/Noktomezo/ZapretInteractive/main/thirdparty/fake";
 const FAKE_FILES: &[&str] = &[
@@ -169,6 +175,9 @@ fn get_fake_dir() -> PathBuf {
 }
 fn get_lists_dir() -> PathBuf {
     get_managed_resources_dir().join("lists")
+}
+fn get_modules_dir() -> PathBuf {
+    get_managed_resources_dir().join("modules")
 }
 fn get_filters_dir() -> PathBuf {
     get_runtime_data_dir().join("filters")
@@ -273,6 +282,13 @@ fn rebuild_hashes_from_disk() -> Result<(), String> {
         }
     }
 
+    for name in MODULE_FILES {
+        let path = get_modules_dir().join(name);
+        if path.exists() {
+            hashes.insert(hash_key("modules", name), calculate_sha256(&path)?);
+        }
+    }
+
     save_stored_hashes(&hashes)
 }
 
@@ -312,7 +328,21 @@ fn tracked_file_url(group: &str, name: &str) -> String {
         "binaries" => thirdparty_url(name),
         "fake" => format!("{FAKE_FILES_BASE_URL}/{name}"),
         "lists" => format!("{LISTS_BASE_URL}/{name}"),
+        "modules" => format!("{MODULES_BASE_URL}/{name}"),
         _ => unreachable!("unsupported tracked file group: {group}"),
+    }
+}
+
+fn tracked_display_name(file: &TrackedFile) -> String {
+    tracked_group_display_name(file.group, file.name)
+}
+
+fn tracked_group_display_name(group: &str, name: &str) -> String {
+    match group {
+        "fake" => format!("fake/{name}"),
+        "lists" => format!("lists/{name}"),
+        "modules" => format!("modules/{name}"),
+        _ => name.to_string(),
     }
 }
 
@@ -349,6 +379,17 @@ fn tracked_files() -> Vec<TrackedFile> {
             url: tracked_file_url("lists", name),
             required_for_health: true,
             include_in_remote_updates: false,
+        });
+    }
+
+    for name in MODULE_FILES {
+        files.push(TrackedFile {
+            name,
+            group: "modules",
+            dest_path: get_modules_dir().join(name),
+            url: tracked_file_url("modules", name),
+            required_for_health: true,
+            include_in_remote_updates: true,
         });
     }
 
@@ -444,7 +485,7 @@ fn compute_health_snapshot_fields(
 
     for file in files.iter().filter(|file| file.required_for_health) {
         if !tracked_file_is_healthy(file, stored_hashes, inspections) {
-            missing_critical_files.push(file.name.to_string());
+            missing_critical_files.push(tracked_display_name(file));
         }
     }
 
@@ -557,7 +598,7 @@ async fn collect_available_updates_with_context(
             let remote_hash = remote_hash_for(&remote_hashes, &file)?;
             let changed = local_hash.as_deref() != Some(remote_hash);
             Ok::<Option<String>, String>(if changed {
-                Some(file.name.to_string())
+                Some(tracked_display_name(&file))
             } else {
                 None
             })
@@ -595,7 +636,12 @@ fn expected_hash<'a>(
 fn ensure_base_directories() -> Result<(), String> {
     let _ = ensure_managed_resources_dir_ready()?;
     let _ = ensure_runtime_data_dir_ready()?;
-    for dir in [get_fake_dir(), get_lists_dir(), get_filters_dir()] {
+    for dir in [
+        get_fake_dir(),
+        get_lists_dir(),
+        get_filters_dir(),
+        get_modules_dir(),
+    ] {
         if !dir.exists() {
             fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
         }
@@ -638,21 +684,32 @@ fn event_affects_lists(paths: &[PathBuf]) -> bool {
 }
 
 fn event_affects_tracked_files(paths: &[PathBuf]) -> bool {
-    let base_dir = get_managed_resources_dir();
-    let fake_dir = get_fake_dir();
     let filters_dir = get_filters_dir();
     let hashes_path = get_hashes_path();
     let config_path = get_config_path();
-    let critical_binary_names = binary_names();
+    let managed_root = get_managed_resources_dir();
+    let tracked_files = tracked_files();
+    let tracked_dest_paths: Vec<PathBuf> = tracked_files
+        .iter()
+        .map(|file| file.dest_path.clone())
+        .collect();
+    let tracked_parent_dirs: Vec<PathBuf> = tracked_files
+        .iter()
+        .filter_map(|file| {
+            file.dest_path
+                .parent()
+                .filter(|parent| *parent != managed_root.as_path())
+                .map(Path::to_path_buf)
+        })
+        .collect();
     paths.iter().any(|path| {
-        path_is_inside(path, &fake_dir)
-            || path_is_inside(path, &filters_dir)
+        path_is_inside(path, &filters_dir)
             || path == &hashes_path
             || path == &config_path
-            || critical_binary_names
+            || tracked_dest_paths.iter().any(|dest_path| path == dest_path)
+            || tracked_parent_dirs
                 .iter()
-                .any(|name| path == &base_dir.join(name))
-            || LISTS.iter().any(|name| path == &get_lists_dir().join(name))
+                .any(|parent_dir| path == parent_dir || path_is_inside(path, parent_dir))
     })
 }
 
@@ -1048,11 +1105,7 @@ async fn execute_download_plan(
             })?;
         }
 
-        downloaded.push(match file.phase.as_str() {
-            "fake" => format!("fake/{}", file.name),
-            "lists" => format!("lists/{}", file.name),
-            _ => file.name.clone(),
-        });
+        downloaded.push(tracked_group_display_name(&file.phase, &file.name));
     }
 
     if let Some(app) = app {
@@ -1253,7 +1306,7 @@ pub async fn apply_core_file_updates(app: AppHandle) -> Result<(), String> {
             .notification()
             .builder()
             .title("Готово")
-            .body("Удалённых обновлений для winws/fake файлов не найдено")
+            .body("Удалённых обновлений для winws/fake файлов и модулей не найдено")
             .show();
     } else {
         let _ = app
@@ -1268,6 +1321,25 @@ pub async fn apply_core_file_updates(app: AppHandle) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tracked_file_events_include_module_parent_directories() {
+        let module_dir = get_modules_dir().join("dnscrypt-proxy");
+        assert!(event_affects_tracked_files(&[module_dir]));
+    }
+
+    #[test]
+    fn tracked_file_events_include_paths_inside_module_parent_directories() {
+        let module_temp_path = get_modules_dir()
+            .join("tg-ws-proxy-rs")
+            .join("tg-ws-proxy.exe.tmp");
+        assert!(event_affects_tracked_files(&[module_temp_path]));
+    }
 }
 
 #[tauri::command]

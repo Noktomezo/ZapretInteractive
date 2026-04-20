@@ -146,7 +146,7 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
     <div
       ref={setNodeRef}
       style={style}
-      className="group flex h-20 items-center gap-3 rounded-lg border bg-card p-4"
+      className="group flex h-[4.5rem] items-center gap-3 rounded-lg border bg-card px-4 py-3"
     >
       <button
         type="button"
@@ -238,7 +238,7 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
         <span className="sr-only">
           {formatActiveStrategiesSrText(activeCount)}
         </span>
-        <div className="-my-4 ml-auto flex shrink-0 self-stretch items-center rounded-md py-4 text-muted-foreground">
+        <div className="-my-3 ml-auto flex shrink-0 self-stretch items-center rounded-md py-3 text-muted-foreground">
           <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
         </div>
       </div>
