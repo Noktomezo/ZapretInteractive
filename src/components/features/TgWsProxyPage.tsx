@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { useTgWsProxyModule } from '@/hooks/use-tg-ws-proxy-module'
-import { buildTgWsProxyHttpLink, generateTgWsProxySecret, normalizeTgWsProxySecret } from '@/lib/tg-ws-proxy'
+import { buildTgWsProxyHttpLink, buildTgWsProxyLink, generateTgWsProxySecret, normalizeTgWsProxySecret } from '@/lib/tg-ws-proxy'
 import { cn } from '@/lib/utils'
 
 const TG_WS_PROXY_PORT_RE = /^\d+$/
@@ -36,12 +36,23 @@ function TgWsProxyPageContent({
   const [draftPort, setDraftPort] = useState(String(port))
   const [draftSecret, setDraftSecret] = useState(secret)
   const toggleButtonRef = useRef<HTMLButtonElement | null>(null)
-  const tgHttpLink = buildTgWsProxyHttpLink(port, secret)
+  const draftSavePromiseRef = useRef<Promise<boolean> | null>(null)
 
-  const applyDraftSettings = async (nextDraftPort = draftPort, nextDraftSecret = draftSecret) => {
+  const getDraftLinkState = (nextDraftPort = draftPort, nextDraftSecret = draftSecret) => {
     const normalizedSecret = normalizeTgWsProxySecret(nextDraftSecret)
     const isPortNumeric = TG_WS_PROXY_PORT_RE.test(nextDraftPort)
     const parsedPort = isPortNumeric ? Number.parseInt(nextDraftPort, 10) : Number.NaN
+
+    return {
+      normalizedSecret,
+      parsedPort,
+      tgLink: buildTgWsProxyLink(parsedPort, normalizedSecret),
+      tgHttpLink: buildTgWsProxyHttpLink(parsedPort, normalizedSecret),
+    }
+  }
+
+  const applyDraftSettings = async (nextDraftPort = draftPort, nextDraftSecret = draftSecret) => {
+    const { normalizedSecret, parsedPort } = getDraftLinkState(nextDraftPort, nextDraftSecret)
 
     if (parsedPort === port && normalizedSecret === secret) {
       return true
@@ -50,17 +61,34 @@ function TgWsProxyPageContent({
     return applySettings(parsedPort, normalizedSecret)
   }
 
+  const syncDraftSettings = (nextDraftPort = draftPort, nextDraftSecret = draftSecret) => {
+    if (draftSavePromiseRef.current) {
+      return draftSavePromiseRef.current
+    }
+
+    const savePromise = applyDraftSettings(nextDraftPort, nextDraftSecret)
+    draftSavePromiseRef.current = savePromise
+
+    void savePromise.finally(() => {
+      if (draftSavePromiseRef.current === savePromise) {
+        draftSavePromiseRef.current = null
+      }
+    })
+
+    return savePromise
+  }
+
   const handleDraftBlur = async (event: React.FocusEvent<HTMLInputElement>) => {
     if (toggleButtonRef.current?.contains(event.relatedTarget as Node | null)) {
       return
     }
 
-    await applyDraftSettings()
+    await syncDraftSettings()
   }
 
   const handleToggleWithDraftSync = async () => {
     if (!enabled) {
-      const applied = await applyDraftSettings()
+      const applied = await syncDraftSettings()
       if (!applied) {
         return
       }
@@ -70,8 +98,15 @@ function TgWsProxyPageContent({
   }
 
   const handleCopyLink = async () => {
+    const applied = await syncDraftSettings()
+    if (!applied) {
+      return
+    }
+
+    const { tgLink: nextTgLink } = getDraftLinkState()
+
     try {
-      await navigator.clipboard.writeText(tgLink)
+      await navigator.clipboard.writeText(nextTgLink)
       toast.success('Ссылка TG WS Proxy скопирована')
     }
     catch (error) {
@@ -80,12 +115,19 @@ function TgWsProxyPageContent({
   }
 
   const handleOpenTelegram = async () => {
+    const applied = await syncDraftSettings()
+    if (!applied) {
+      return
+    }
+
+    const { tgLink: nextTgLink, tgHttpLink: nextTgHttpLink } = getDraftLinkState()
+
     try {
-      await openUrl(tgLink)
+      await openUrl(nextTgLink)
     }
     catch {
       try {
-        await openUrl(tgHttpLink)
+        await openUrl(nextTgHttpLink)
       }
       catch (fallbackError) {
         const reason = fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
@@ -179,7 +221,7 @@ function TgWsProxyPageContent({
                   onClick={() => {
                     const nextSecret = generateTgWsProxySecret()
                     setDraftSecret(nextSecret)
-                    void applyDraftSettings(draftPort, nextSecret)
+                    void syncDraftSettings(draftPort, nextSecret)
                   }}
                 >
                   <RefreshCw className="size-4" />
