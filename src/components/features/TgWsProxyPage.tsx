@@ -33,10 +33,13 @@ function TgWsProxyPageContent({
   applySettings: ReturnType<typeof useTgWsProxyModule>['applySettings']
   handleToggle: ReturnType<typeof useTgWsProxyModule>['handleToggle']
 }) {
+  interface DraftState { port: string, secret: string }
+
   const [draftPort, setDraftPort] = useState(String(port))
   const [draftSecret, setDraftSecret] = useState(secret)
   const toggleButtonRef = useRef<HTMLButtonElement | null>(null)
   const draftSavePromiseRef = useRef<Promise<boolean> | null>(null)
+  const pendingDraftRef = useRef<DraftState | null>(null)
 
   const getDraftLinkState = (nextDraftPort = draftPort, nextDraftSecret = draftSecret) => {
     const normalizedSecret = normalizeTgWsProxySecret(nextDraftSecret)
@@ -62,11 +65,24 @@ function TgWsProxyPageContent({
   }
 
   const syncDraftSettings = (nextDraftPort = draftPort, nextDraftSecret = draftSecret) => {
+    pendingDraftRef.current = { port: nextDraftPort, secret: nextDraftSecret }
+
     if (draftSavePromiseRef.current) {
       return draftSavePromiseRef.current
     }
 
-    const savePromise = applyDraftSettings(nextDraftPort, nextDraftSecret)
+    const savePromise = (async () => {
+      let lastResult = true
+
+      while (pendingDraftRef.current) {
+        const nextDraft = pendingDraftRef.current
+        pendingDraftRef.current = null
+        lastResult = await applyDraftSettings(nextDraft.port, nextDraft.secret)
+      }
+
+      return lastResult
+    })()
+
     draftSavePromiseRef.current = savePromise
 
     void savePromise.finally(() => {
