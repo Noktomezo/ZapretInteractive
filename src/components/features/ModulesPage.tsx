@@ -64,11 +64,7 @@ function ModuleCard({
         </span>
       </div>
 
-      <div
-        className="relative z-20 flex shrink-0 items-center"
-        onClick={event => event.stopPropagation()}
-        onKeyDown={event => event.stopPropagation()}
-      >
+      <div className="relative z-20 flex shrink-0 items-center">
         <Switch
           checked={enabled}
           aria-label={`Переключить модуль ${title}`}

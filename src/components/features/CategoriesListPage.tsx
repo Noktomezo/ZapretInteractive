@@ -117,6 +117,7 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
   const activeStrategies = category.strategies.filter(strategy => strategy.active)
   const activeCount = activeStrategies.length
   const activeStrategiesLabel = formatActiveStrategiesLabel(activeStrategies)
+  const activeStrategiesSrId = `category-${category.id}-active-strategies`
   const builtinCategory = getBuiltinCategory(config.builtinConfig, category.id)
   const isSystem = isSystemCategory(category)
   const isModified = isSystemCategoryModified(category, config.config)
@@ -152,6 +153,7 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
         type="button"
         className="absolute inset-0 z-0 cursor-pointer rounded-lg"
         aria-label={`Открыть категорию ${category.name}`}
+        aria-describedby={activeStrategiesSrId}
         onClick={openCategory}
       />
       <button
@@ -159,6 +161,7 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
         {...attributes}
         {...listeners}
         aria-label={`Перетащить категорию ${category.name}`}
+        aria-describedby={activeStrategiesSrId}
         className="text-muted-foreground hover:text-foreground relative z-20 flex size-9 shrink-0 cursor-grab touch-none items-center justify-center rounded-md border border-border/70 bg-muted/25 transition-colors active:cursor-grabbing"
       >
         <GripVertical className="w-4 h-4" />
@@ -231,7 +234,7 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
             </p>
           </div>
         </div>
-        <span className="sr-only">
+        <span id={activeStrategiesSrId} className="sr-only">
           {formatActiveStrategiesSrText(activeCount)}
         </span>
         <div className="-my-3 ml-auto flex shrink-0 self-stretch items-center rounded-md py-3 text-muted-foreground">

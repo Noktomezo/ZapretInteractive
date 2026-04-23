@@ -73,11 +73,22 @@ function TgWsProxyPageContent({
 
     const savePromise = (async () => {
       let lastResult = true
+      let reportedError = false
 
       while (pendingDraftRef.current) {
         const nextDraft = pendingDraftRef.current
         pendingDraftRef.current = null
-        lastResult = await applyDraftSettings(nextDraft.port, nextDraft.secret)
+        try {
+          lastResult = await applyDraftSettings(nextDraft.port, nextDraft.secret)
+        }
+        catch (error) {
+          lastResult = false
+          console.error('Failed to sync TG WS Proxy draft settings:', error)
+          if (!reportedError) {
+            reportedError = true
+            toast.error(`Ошибка сохранения параметров TG WS Proxy: ${error instanceof Error ? error.message : String(error)}`)
+          }
+        }
       }
 
       return lastResult
