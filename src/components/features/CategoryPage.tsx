@@ -189,6 +189,7 @@ export function CategoryPage() {
   useEffect(() => {
     const viewport = getScrollViewport()
     if (!viewport) {
+      setShowScrollTopButton(false)
       return
     }
 
@@ -201,7 +202,7 @@ export function CategoryPage() {
     return () => {
       viewport.removeEventListener('scroll', handleScroll)
     }
-  }, [categoryId])
+  }, [categoryId, loading])
 
   const handleAddStrategy = async () => {
     if (!newStrategyName.trim() || !newStrategyContent.trim() || !categoryId) {
@@ -685,7 +686,7 @@ export function CategoryPage() {
                     <Button
                       variant="outline"
                       size="icon"
-                      className="border-warning/30 bg-warning/12 text-warning hover:bg-warning/18"
+                      className="text-warning hover:text-warning"
                       onClick={handleClearAllActive}
                       aria-label="Деактивировать все активные стратегии"
                     >
@@ -702,7 +703,7 @@ export function CategoryPage() {
                       <Button
                         variant="outline"
                         size="icon"
-                        className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
+                        className="text-destructive hover:text-destructive"
                         aria-label={`Удалить категорию ${category.name}`}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -839,7 +840,7 @@ export function CategoryPage() {
                                 <Button
                                   variant="outline"
                                   size="icon"
-                                  className="border-warning/35 bg-warning/14 text-warning hover:bg-warning/22"
+                                  className="text-warning hover:text-warning"
                                   onClick={() => handleClearActive(strategy.id)}
                                   aria-label={`Деактивировать стратегию ${strategy.name}`}
                                 >
@@ -854,7 +855,7 @@ export function CategoryPage() {
                               <Button
                                 variant="outline"
                                 size="icon"
-                                className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
+                                className="text-destructive hover:text-destructive"
                                 onClick={() => handleDeleteStrategy(strategy.id)}
                                 aria-label={`Удалить стратегию ${strategy.name}`}
                               >

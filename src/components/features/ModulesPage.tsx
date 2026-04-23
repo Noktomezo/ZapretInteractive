@@ -70,7 +70,6 @@ function ModuleCard({
         onKeyDown={event => event.stopPropagation()}
       >
         <Switch
-          size="sm"
           checked={enabled}
           aria-label={`Переключить модуль ${title}`}
           disabled={isBusy || status == null || status.moduleAvailable === false}

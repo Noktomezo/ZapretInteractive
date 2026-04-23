@@ -260,7 +260,7 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
                 variant="outline"
                 size="icon"
                 onClick={e => onClearActive(category.id, e)}
-                className="cursor-pointer border-warning/35 bg-warning/14 text-warning hover:bg-warning/22"
+                className="cursor-pointer text-warning hover:text-warning"
                 aria-label="Очистить стратегию"
               >
                 <BrushCleaning className="w-4 h-4" />
@@ -276,7 +276,7 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
                 <Button
                   variant="outline"
                   size="icon"
-                  className="cursor-pointer border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
+                  className="cursor-pointer text-destructive hover:text-destructive"
                   aria-label={`Удалить категорию ${category.name}`}
                 >
                   <Trash2 className="w-4 h-4" />

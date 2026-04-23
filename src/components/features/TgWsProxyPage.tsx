@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { ArrowLeft, Copy, KeyRound, Link2, Loader2, Power, RefreshCw, Send, ShieldCheck } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { MODULE_PAGE_CARD_CLASS, ModuleSectionHeader, ModuleSettingLabel } from '@/components/features/module-ui'
 import { Button } from '@/components/ui/button'
@@ -35,6 +35,7 @@ function TgWsProxyPageContent({
 }) {
   const [draftPort, setDraftPort] = useState(String(port))
   const [draftSecret, setDraftSecret] = useState(secret)
+  const toggleButtonRef = useRef<HTMLButtonElement | null>(null)
   const tgHttpLink = buildTgWsProxyHttpLink(port, secret)
 
   const applyDraftSettings = async (nextDraftPort = draftPort, nextDraftSecret = draftSecret) => {
@@ -43,10 +44,29 @@ function TgWsProxyPageContent({
     const parsedPort = isPortNumeric ? Number.parseInt(nextDraftPort, 10) : Number.NaN
 
     if (parsedPort === port && normalizedSecret === secret) {
+      return true
+    }
+
+    return applySettings(parsedPort, normalizedSecret)
+  }
+
+  const handleDraftBlur = async (event: React.FocusEvent<HTMLInputElement>) => {
+    if (toggleButtonRef.current?.contains(event.relatedTarget as Node | null)) {
       return
     }
 
-    await applySettings(parsedPort, normalizedSecret)
+    await applyDraftSettings()
+  }
+
+  const handleToggleWithDraftSync = async () => {
+    if (!enabled) {
+      const applied = await applyDraftSettings()
+      if (!applied) {
+        return
+      }
+    }
+
+    await handleToggle()
   }
 
   const handleCopyLink = async () => {
@@ -90,11 +110,12 @@ function TgWsProxyPageContent({
             </div>
           </div>
           <Button
+            ref={toggleButtonRef}
             type="button"
             variant={enabled ? 'destructive' : 'default'}
             className={cn('gap-2', enabled && 'shadow-none hover:shadow-none')}
             disabled={isBusy || status == null || (!enabled && status.moduleAvailable === false)}
-            onClick={() => void handleToggle()}
+            onClick={() => { void handleToggleWithDraftSync() }}
           >
             {isBusy
               ? <Loader2 className="size-4 animate-spin" />
@@ -127,7 +148,7 @@ function TgWsProxyPageContent({
                   value={draftPort}
                   disabled={isBusy}
                   onChange={event => setDraftPort(event.target.value)}
-                  onBlur={() => void applyDraftSettings()}
+                  onBlur={(event) => { void handleDraftBlur(event) }}
                 />
               </div>
             </div>
@@ -147,7 +168,7 @@ function TgWsProxyPageContent({
                   value={draftSecret}
                   disabled={isBusy}
                   onChange={event => setDraftSecret(event.target.value)}
-                  onBlur={() => void applyDraftSettings()}
+                  onBlur={(event) => { void handleDraftBlur(event) }}
                 />
                 <button
                   type="button"
@@ -175,7 +196,7 @@ function TgWsProxyPageContent({
             title="Подключение"
             description="Используйте ссылку ниже, чтобы быстро добавить прокси в Telegram Desktop"
             action={(
-              <Button type="button" className="gap-2" onClick={() => void handleOpenTelegram()}>
+              <Button type="button" className="gap-2 shadow-none hover:shadow-none" onClick={() => void handleOpenTelegram()}>
                 <Link2 className="size-4" />
                 Открыть в Telegram
               </Button>

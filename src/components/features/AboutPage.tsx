@@ -213,7 +213,7 @@ export function AboutPage() {
             title={APP_NAME}
             description="Desktop GUI для zapret-win-bundle с управлением стратегиями, фильтрами, плейсхолдерами и обновлениями"
           />
-          <CardContent className="grid grid-cols-2 gap-3 p-4!">
+          <CardContent className="grid grid-cols-1 gap-3 p-4! sm:grid-cols-2">
             <div className="flex h-full flex-col rounded-xl border border-border/60 bg-muted/25 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
