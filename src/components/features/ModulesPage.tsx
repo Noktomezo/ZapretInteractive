@@ -12,6 +12,7 @@ function ModuleCard({
   title,
   description,
   icon,
+  iconClassName,
   enabled,
   status,
   isBusy,
@@ -21,6 +22,7 @@ function ModuleCard({
   title: string
   description: string
   icon: ReactNode
+  iconClassName?: string
   enabled: boolean
   status: { running: boolean, moduleAvailable: boolean } | null
   isBusy: boolean
@@ -30,24 +32,25 @@ function ModuleCard({
   return (
     <div
       className={cn(
-        'group flex min-h-[4.5rem] items-center gap-3 rounded-lg border bg-card px-4 py-3',
+        'group relative flex min-h-[4.5rem] items-center gap-3 rounded-lg border bg-card px-4 py-3',
         status?.moduleAvailable === false && 'opacity-60',
       )}
     >
-      <div
-        className="flex min-w-0 flex-1 cursor-pointer items-center gap-3"
-        role="link"
-        tabIndex={0}
+      <button
+        type="button"
+        className="absolute inset-0 z-0 cursor-pointer rounded-lg"
         aria-label={`Открыть модуль ${title}`}
         onClick={openModule}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
-            openModule()
-          }
-        }}
+      />
+      <div
+        className="pointer-events-none relative z-10 flex min-w-0 flex-1 items-center gap-3 self-stretch"
       >
-        <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
+        <div
+          className={cn(
+            'flex size-9 shrink-0 items-center justify-center rounded-md border',
+            iconClassName ?? 'border-border/70 bg-muted/25 text-muted-foreground',
+          )}
+        >
           {icon}
         </div>
         <div className="min-w-0 flex-1">
@@ -62,7 +65,7 @@ function ModuleCard({
       </div>
 
       <div
-        className="flex shrink-0 items-center"
+        className="relative z-20 flex shrink-0 items-center"
         onClick={event => event.stopPropagation()}
         onKeyDown={event => event.stopPropagation()}
       >
@@ -113,6 +116,7 @@ export function ModulesPage() {
             title="DNS"
             description="Дополнительный обход геоблока иностранных сервисов через DNS"
             icon={<Globe className="size-4" />}
+            iconClassName="border-primary/30 bg-[color-mix(in_oklab,var(--primary)_14%,transparent)] text-primary"
             enabled={dnsModule.enabled}
             status={dnsModule.status
               ? {
@@ -133,6 +137,7 @@ export function ModulesPage() {
             title="TG WS Proxy"
             description="Локальный MTProto-прокси для Telegram Desktop через WebSocket"
             icon={<Send className="size-4" />}
+            iconClassName="border-chart-1/30 bg-[color-mix(in_oklab,var(--chart-1)_14%,transparent)] text-chart-1"
             enabled={tgWsProxyModule.enabled}
             status={tgWsProxyModule.status
               ? {

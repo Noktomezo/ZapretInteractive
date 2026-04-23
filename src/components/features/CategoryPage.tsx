@@ -1,7 +1,7 @@
 import type { Strategy } from '@/lib/types'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
-import { ArrowLeft, BrushCleaning, Check, FilePenLine, Loader2, Package, Pencil, Plus, RefreshCcw, RotateCcw, Trash2, UserRoundPlus } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { ArrowLeft, ArrowUp, BrushCleaning, Check, FilePenLine, Loader2, Package, Pencil, Plus, RefreshCcw, RotateCcw, Trash2, UserRoundPlus } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -30,6 +30,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useMountEffect } from '@/hooks/use-mount-effect'
 import { autosizeTextarea, forwardTextareaWheelToScrollArea } from '@/lib/editor-scroll'
 import { buildRestoredCategory, buildRestoredStrategy, getBuiltinCategory, getBuiltinStrategy, isSystemCategory, isSystemCategoryModified, isSystemCategoryUpdateAvailable, isSystemStrategy, isSystemStrategyModified, isSystemStrategyUpdateAvailable } from '@/lib/system-config'
+import { cn } from '@/lib/utils'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
 
@@ -115,6 +116,8 @@ export function CategoryPage() {
   const newStrategyContentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const editStrategyContentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const strategyCardRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const scrollAreaRef = useRef<HTMLDivElement | null>(null)
+  const [showScrollTopButton, setShowScrollTopButton] = useState(false)
   const config = useConfigStore(state => state.config)
   const builtinConfig = useConfigStore(state => state.builtinConfig)
   const loading = useConfigStore(state => state.loading)
@@ -150,6 +153,28 @@ export function CategoryPage() {
   const activeStrategiesLabel = formatActiveStrategiesLabel(activeStrategies)
   const firstActiveStrategyId = activeStrategies[0]?.id ?? null
 
+  const getScrollViewport = () => {
+    return scrollAreaRef.current?.querySelector('[data-slot="lenis-scroll-area-viewport"], [data-slot="scroll-area-viewport"]') as HTMLDivElement | null
+  }
+
+  const scrollToTop = () => {
+    const viewport = getScrollViewport()
+    if (!viewport) {
+      return
+    }
+
+    const lenis = (viewport as HTMLDivElement & { __lenis?: { scrollTo: (target: number, options?: { duration?: number, easing?: (value: number) => number }) => void } }).__lenis
+    if (lenis) {
+      lenis.scrollTo(0, {
+        duration: 0.45,
+        easing: value => 1 - (1 - value) ** 3,
+      })
+      return
+    }
+
+    viewport.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const scrollToActiveStrategy = () => {
     if (!firstActiveStrategyId) {
       return
@@ -160,6 +185,23 @@ export function CategoryPage() {
       block: 'center',
     })
   }
+
+  useEffect(() => {
+    const viewport = getScrollViewport()
+    if (!viewport) {
+      return
+    }
+
+    const handleScroll = () => {
+      setShowScrollTopButton(viewport.scrollTop > 320)
+    }
+
+    handleScroll()
+    viewport.addEventListener('scroll', handleScroll)
+    return () => {
+      viewport.removeEventListener('scroll', handleScroll)
+    }
+  }, [categoryId])
 
   const handleAddStrategy = async () => {
     if (!newStrategyName.trim() || !newStrategyContent.trim() || !categoryId) {
@@ -520,473 +562,498 @@ export function CategoryPage() {
   }
 
   return (
-    <LenisScrollArea className="h-full min-h-0">
-      <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link to="/strategies" className="text-muted-foreground hover:text-foreground cursor-pointer" aria-label="Назад к категориям">
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-medium">{category.name}</h1>
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  {isSystemCategory(category)
-                    ? (
-                        <InlineMarker icon={Package} label="Системная категория" />
-                      )
-                    : (
-                        <InlineMarker icon={UserRoundPlus} label="Пользовательская категория" className="text-primary/80" />
-                      )}
-                  {isSystemCategoryModifiedByUser && (
-                    <InlineMarker icon={FilePenLine} label="Системная категория изменена пользователем" className="text-warning" />
-                  )}
-                  {isSystemCategory(category) && (isSystemCategoryModifiedByUser || isSystemCategoryBuiltinUpdateAvailable) && (
-                    <InlineMarker
-                      icon={isSystemCategoryBuiltinUpdateAvailable ? RefreshCcw : RotateCcw}
-                      label={isSystemCategoryBuiltinUpdateAvailable
-                        ? 'Обновить категорию до актуального системного значения'
-                        : 'Откатить категорию к системному значению'}
-                      className={isSystemCategoryBuiltinUpdateAvailable ? 'text-primary' : 'text-destructive'}
-                      onClick={() => setSystemActionTarget({
-                        type: 'category',
-                        title: isSystemCategoryBuiltinUpdateAvailable
-                          ? 'Обновить системную категорию?'
-                          : 'Откатить категорию к системному значению?',
-                        description: isSystemCategoryBuiltinUpdateAvailable
-                          ? `Категория «${category.name}» будет обновлена до актуальной системной версии. Пользовательские изменения внутри категории будут сброшены.`
-                          : `Категория «${category.name}» будет возвращена к системному значению. Пользовательские изменения внутри категории будут сброшены.`,
-                      })}
-                    />
-                  )}
-                  {isLegacySystemCategory && (
-                    <InlineMarker
-                      icon={RotateCcw}
-                      label="Системная категория из старой версии приложения"
-                      className="text-warning"
-                    />
-                  )}
-                  {activeCount > 0
-                    ? (
-                        activeStrategiesLabel && (
+    <div className="relative h-full min-h-0">
+      <LenisScrollArea ref={scrollAreaRef} className="h-full min-h-0">
+        <div className="p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link to="/strategies" className="text-muted-foreground hover:text-foreground cursor-pointer" aria-label="Назад к категориям">
+                <ArrowLeft className="w-5 h-5" />
+              </Link>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-medium">{category.name}</h1>
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    {isSystemCategory(category)
+                      ? (
+                          <InlineMarker icon={Package} label="Системная категория" />
+                        )
+                      : (
+                          <InlineMarker icon={UserRoundPlus} label="Пользовательская категория" className="text-primary/80" />
+                        )}
+                    {isSystemCategoryModifiedByUser && (
+                      <InlineMarker icon={FilePenLine} label="Системная категория изменена пользователем" className="text-warning" />
+                    )}
+                    {isSystemCategory(category) && (isSystemCategoryModifiedByUser || isSystemCategoryBuiltinUpdateAvailable) && (
+                      <InlineMarker
+                        icon={isSystemCategoryBuiltinUpdateAvailable ? RefreshCcw : RotateCcw}
+                        label={isSystemCategoryBuiltinUpdateAvailable
+                          ? 'Обновить категорию до актуального системного значения'
+                          : 'Откатить категорию к системному значению'}
+                        className={isSystemCategoryBuiltinUpdateAvailable ? 'text-primary' : 'text-destructive'}
+                        onClick={() => setSystemActionTarget({
+                          type: 'category',
+                          title: isSystemCategoryBuiltinUpdateAvailable
+                            ? 'Обновить системную категорию?'
+                            : 'Откатить категорию к системному значению?',
+                          description: isSystemCategoryBuiltinUpdateAvailable
+                            ? `Категория «${category.name}» будет обновлена до актуальной системной версии. Пользовательские изменения внутри категории будут сброшены.`
+                            : `Категория «${category.name}» будет возвращена к системному значению. Пользовательские изменения внутри категории будут сброшены.`,
+                        })}
+                      />
+                    )}
+                    {isLegacySystemCategory && (
+                      <InlineMarker
+                        icon={RotateCcw}
+                        label="Системная категория из старой версии приложения"
+                        className="text-warning"
+                      />
+                    )}
+                    {activeCount > 0
+                      ? (
+                          activeStrategiesLabel && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  onClick={scrollToActiveStrategy}
+                                  className="max-w-[14rem] cursor-pointer truncate text-xs text-success animate-pulse transition-colors hover:text-success/80"
+                                >
+                                  {activeStrategiesLabel}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {activeCount === 1 ? 'Прокрутить к текущей стратегии' : 'Прокрутить к первой активной стратегии'}
+                              </TooltipContent>
+                            </Tooltip>
+                          )
+                        )
+                      : (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <button
-                                type="button"
-                                onClick={scrollToActiveStrategy}
-                                className="max-w-[14rem] cursor-pointer truncate text-xs text-success animate-pulse transition-colors hover:text-success/80"
-                              >
-                                {activeStrategiesLabel}
-                              </button>
+                              <span
+                                className="inline-flex h-2 w-2 cursor-help rounded-full bg-destructive animate-pulse"
+                                aria-hidden="true"
+                              />
                             </TooltipTrigger>
-                            <TooltipContent>
-                              {activeCount === 1 ? 'Прокрутить к текущей стратегии' : 'Прокрутить к первой активной стратегии'}
-                            </TooltipContent>
+                            <TooltipContent>Нет активных стратегий</TooltipContent>
                           </Tooltip>
-                        )
-                      )
-                    : (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span
-                              className="inline-flex h-2 w-2 cursor-help rounded-full bg-destructive animate-pulse"
-                              aria-hidden="true"
-                            />
-                          </TooltipTrigger>
-                          <TooltipContent>Нет активных стратегий</TooltipContent>
-                        </Tooltip>
-                      )}
+                        )}
+                  </div>
+                  <span className="sr-only">
+                    {formatActiveStrategiesSrText(activeCount)}
+                  </span>
                 </div>
-                <span className="sr-only">
-                  {formatActiveStrategiesSrText(activeCount)}
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                {category.strategies.length}
-                {' '}
-                {(() => {
-                  const n = category.strategies.length
-                  const lastTwo = n % 100
-                  const last = n % 10
-                  if (lastTwo >= 11 && lastTwo <= 14)
+                <p className="text-sm text-muted-foreground mt-1">
+                  {category.strategies.length}
+                  {' '}
+                  {(() => {
+                    const n = category.strategies.length
+                    const lastTwo = n % 100
+                    const last = n % 10
+                    if (lastTwo >= 11 && lastTwo <= 14)
+                      return 'стратегий'
+                    if (last === 1)
+                      return 'стратегия'
+                    if (last >= 2 && last <= 4)
+                      return 'стратегии'
                     return 'стратегий'
-                  if (last === 1)
-                    return 'стратегия'
-                  if (last >= 2 && last <= 4)
-                    return 'стратегии'
-                  return 'стратегий'
-                })()}
-              </p>
+                  })()}
+                </p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button size="icon" onClick={() => setNewStrategyOpen(true)} aria-label="Новая стратегия">
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Новая стратегия</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={openRenameDialog} aria-label="Переименовать категорию">
-                  <Pencil className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Переименовать категорию</TooltipContent>
-            </Tooltip>
-            {category.strategies.some(s => s.active) && (
+            <div className="flex items-center gap-1">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="border-warning/30 bg-warning/12 text-warning hover:bg-warning/18"
-                    onClick={handleClearAllActive}
-                    aria-label="Деактивировать все активные стратегии"
-                  >
-                    <BrushCleaning className="w-4 h-4" />
+                  <Button size="icon" onClick={() => setNewStrategyOpen(true)} aria-label="Новая стратегия">
+                    <Plus className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Деактивировать все активные стратегии</TooltipContent>
+                <TooltipContent>Новая стратегия</TooltipContent>
               </Tooltip>
-            )}
-            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="icon" onClick={openRenameDialog} aria-label="Переименовать категорию">
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Переименовать категорию</TooltipContent>
+              </Tooltip>
+              {category.strategies.some(s => s.active) && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
                     <Button
                       variant="outline"
                       size="icon"
-                      className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
-                      aria-label={`Удалить категорию ${category.name}`}
+                      className="border-warning/30 bg-warning/12 text-warning hover:bg-warning/18"
+                      onClick={handleClearAllActive}
+                      aria-label="Деактивировать все активные стратегии"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <BrushCleaning className="w-4 h-4" />
                     </Button>
-                  </AlertDialogTrigger>
-                </TooltipTrigger>
-                <TooltipContent>Удалить категорию</TooltipContent>
-              </Tooltip>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Удалить категорию?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Категория «
-                    {category.name}
-                    » и все её стратегии будут удалены. Это действие нельзя отменить.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Отмена</AlertDialogCancel>
-                  <Button
-                    onClick={async () => {
-                      await handleDeleteCategory()
-                    }}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Удалить
-                  </Button>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                  </TooltipTrigger>
+                  <TooltipContent>Деактивировать все активные стратегии</TooltipContent>
+                </Tooltip>
+              )}
+              <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
+                        aria-label={`Удалить категорию ${category.name}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>Удалить категорию</TooltipContent>
+                </Tooltip>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Удалить категорию?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Категория «
+                      {category.name}
+                      » и все её стратегии будут удалены. Это действие нельзя отменить.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Отмена</AlertDialogCancel>
+                    <Button
+                      onClick={async () => {
+                        await handleDeleteCategory()
+                      }}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Удалить
+                    </Button>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
-        </div>
 
-        <div className="space-y-4">
-          {category.strategies.length === 0
-            ? (
-                <p className="text-sm text-muted-foreground">Нет стратегий</p>
-              )
-            : (
-                category.strategies.map((strategy: Strategy) => (
-                  <div
-                    key={strategy.id}
-                    ref={(node) => {
-                      strategyCardRefs.current[strategy.id] = node
-                    }}
-                    className={strategy.active
-                      ? 'space-y-3 rounded-lg border border-success/40 bg-card p-4 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--success)_18%,transparent)]'
-                      : 'space-y-3 rounded-lg border bg-card p-4'}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="font-normal">{strategy.name}</span>
-                        <div className="flex items-center gap-1 text-muted-foreground">
-                          {strategy.active && (
-                            <InlineMarker icon={Check} label="Активная стратегия" className="text-success" />
-                          )}
-                          {isSystemStrategy(strategy)
-                            ? (
-                                <InlineMarker icon={Package} label="Системная стратегия" />
+          <div className="space-y-4">
+            {category.strategies.length === 0
+              ? (
+                  <p className="text-sm text-muted-foreground">Нет стратегий</p>
+                )
+              : (
+                  category.strategies.map((strategy: Strategy) => (
+                    <div
+                      key={strategy.id}
+                      ref={(node) => {
+                        strategyCardRefs.current[strategy.id] = node
+                      }}
+                      className={cn(
+                        'space-y-3 rounded-lg border p-4',
+                        strategy.active
+                          ? 'border-success/50 bg-success/8'
+                          : 'border-border bg-card',
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="font-normal">{strategy.name}</span>
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            {isSystemStrategy(strategy)
+                              ? (
+                                  <InlineMarker icon={Package} label="Системная стратегия" />
+                                )
+                              : (
+                                  <InlineMarker icon={UserRoundPlus} label="Пользовательская стратегия" className="text-primary/80" />
+                                )}
+                            {strategy.active && (
+                              <InlineMarker icon={Check} label="Активная стратегия" className="text-success animate-pulse" />
+                            )}
+                            {isSystemStrategyModified(strategy) && (
+                              <InlineMarker icon={FilePenLine} label="Системная стратегия изменена пользователем" className="text-warning" />
+                            )}
+                            {(() => {
+                              const builtinStrategy = getBuiltinStrategy(builtinCategory, strategy.id)
+                              const updateAvailable = isSystemStrategyUpdateAvailable(strategy, builtinStrategy)
+                              const canRestore = isSystemStrategy(strategy)
+                                && (isSystemStrategyModified(strategy) || updateAvailable)
+
+                              if (!canRestore) {
+                                return null
+                              }
+
+                              return (
+                                <InlineMarker
+                                  icon={updateAvailable ? RefreshCcw : RotateCcw}
+                                  label={updateAvailable
+                                    ? 'Обновить стратегию до актуального системного значения'
+                                    : 'Откатить стратегию к системному значению'}
+                                  className={updateAvailable ? 'text-primary' : 'text-destructive'}
+                                  onClick={() => setSystemActionTarget({
+                                    type: 'strategy',
+                                    strategyId: strategy.id,
+                                    title: updateAvailable
+                                      ? 'Обновить системную стратегию?'
+                                      : 'Откатить стратегию к системному значению?',
+                                    description: updateAvailable
+                                      ? `Стратегия «${strategy.name}» будет обновлена до актуальной системной версии.`
+                                      : `Стратегия «${strategy.name}» будет возвращена к системному значению.`,
+                                  })}
+                                />
                               )
-                            : (
-                                <InlineMarker icon={UserRoundPlus} label="Пользовательская стратегия" className="text-primary/80" />
-                              )}
-                          {isSystemStrategyModified(strategy) && (
-                            <InlineMarker icon={FilePenLine} label="Системная стратегия изменена пользователем" className="text-warning" />
+                            })()}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {!strategy.active && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() => handleSetActive(strategy.id)}
+                                  aria-label={`Активировать стратегию ${strategy.name}`}
+                                >
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Активировать</TooltipContent>
+                            </Tooltip>
                           )}
-                          {(() => {
-                            const builtinStrategy = getBuiltinStrategy(builtinCategory, strategy.id)
-                            const updateAvailable = isSystemStrategyUpdateAvailable(strategy, builtinStrategy)
-                            const canRestore = isSystemStrategy(strategy)
-                              && (isSystemStrategyModified(strategy) || updateAvailable)
-
-                            if (!canRestore) {
-                              return null
-                            }
-
-                            return (
-                              <InlineMarker
-                                icon={updateAvailable ? RefreshCcw : RotateCcw}
-                                label={updateAvailable
-                                  ? 'Обновить стратегию до актуального системного значения'
-                                  : 'Откатить стратегию к системному значению'}
-                                className={updateAvailable ? 'text-primary' : 'text-destructive'}
-                                onClick={() => setSystemActionTarget({
-                                  type: 'strategy',
-                                  strategyId: strategy.id,
-                                  title: updateAvailable
-                                    ? 'Обновить системную стратегию?'
-                                    : 'Откатить стратегию к системному значению?',
-                                  description: updateAvailable
-                                    ? `Стратегия «${strategy.name}» будет обновлена до актуальной системной версии.`
-                                    : `Стратегия «${strategy.name}» будет возвращена к системному значению.`,
-                                })}
-                              />
-                            )
-                          })()}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => handleEditStrategy(strategy)}
+                                aria-label={`Редактировать стратегию ${strategy.name}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Редактировать</TooltipContent>
+                          </Tooltip>
+                          {strategy.active && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="border-warning/35 bg-warning/14 text-warning hover:bg-warning/22"
+                                  onClick={() => handleClearActive(strategy.id)}
+                                  aria-label={`Деактивировать стратегию ${strategy.name}`}
+                                >
+                                  <BrushCleaning className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Деактивировать</TooltipContent>
+                            </Tooltip>
+                          )}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
+                                onClick={() => handleDeleteStrategy(strategy.id)}
+                                aria-label={`Удалить стратегию ${strategy.name}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Удалить</TooltipContent>
+                          </Tooltip>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        {!strategy.active && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => handleSetActive(strategy.id)}
-                                aria-label={`Активировать стратегию ${strategy.name}`}
-                              >
-                                <Check className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Активировать</TooltipContent>
-                          </Tooltip>
+                      <pre
+                        className={cn(
+                          'overflow-x-auto rounded-md border p-3 text-xs text-muted-foreground shadow-[inset_0_1px_0_color-mix(in_oklab,var(--background)_60%,transparent)]',
+                          strategy.active
+                            ? 'border-success/30 bg-[color-mix(in_oklab,var(--success)_10%,var(--background))]'
+                            : 'border-border/80 bg-background/84',
                         )}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => handleEditStrategy(strategy)}
-                              aria-label={`Редактировать стратегию ${strategy.name}`}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Редактировать</TooltipContent>
-                        </Tooltip>
-                        {strategy.active && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="border-warning/35 bg-warning/14 text-warning hover:bg-warning/22"
-                                onClick={() => handleClearActive(strategy.id)}
-                                aria-label={`Деактивировать стратегию ${strategy.name}`}
-                              >
-                                <BrushCleaning className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Деактивировать</TooltipContent>
-                          </Tooltip>
-                        )}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
-                              onClick={() => handleDeleteStrategy(strategy.id)}
-                              aria-label={`Удалить стратегию ${strategy.name}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Удалить</TooltipContent>
-                        </Tooltip>
-                      </div>
+                      >
+                        {strategy.content}
+                      </pre>
                     </div>
-                    <pre className="overflow-x-auto rounded-md border border-border/80 bg-background/84 p-3 text-xs text-muted-foreground shadow-[inset_0_1px_0_color-mix(in_oklab,var(--background)_60%,transparent)]">
-                      {strategy.content}
-                    </pre>
-                  </div>
-                ))
-              )}
+                  ))
+                )}
+          </div>
+
+          <AlertDialog open={!!systemActionTarget} onOpenChange={open => !open && setSystemActionTarget(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{systemActionTarget?.title}</AlertDialogTitle>
+                <AlertDialogDescription>{systemActionTarget?.description}</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Отмена</AlertDialogCancel>
+                <Button
+                  onClick={async () => {
+                    if (!systemActionTarget) {
+                      return
+                    }
+
+                    if (systemActionTarget.type === 'category') {
+                      await handleRestoreCategory()
+                      return
+                    }
+
+                    await handleRestoreStrategy(systemActionTarget.strategyId)
+                  }}
+                >
+                  Обновить
+                </Button>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <Dialog open={newStrategyOpen} onOpenChange={setNewStrategyOpen}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Новая стратегия</DialogTitle>
+              </DialogHeader>
+              <div className="py-4 space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="strategy-name">Название стратегии</Label>
+                  <Input
+                    id="strategy-name"
+                    placeholder="Название стратегии"
+                    value={newStrategyName}
+                    onChange={e => setNewStrategyName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="strategy-content">Содержимое</Label>
+                  <p className="text-xs text-muted-foreground">
+                    {'<LIST_MODE>'}
+                    {' '}
+                    автоматически заменяется на текущий режим списков: список исключений или список заблокированных адресов.
+                  </p>
+                  <LenisScrollArea
+                    className="max-h-[calc(100vh-22rem)] rounded-md border border-border/80 bg-background/92 shadow-xs transition-[border-color,box-shadow,background-color] hover:border-border focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30"
+                    contentClassName="cursor-text"
+                    onClick={() => newStrategyContentTextareaRef.current?.focus()}
+                  >
+                    <Textarea
+                      data-lenis-prevent
+                      ref={newStrategyContentTextareaRef}
+                      id="strategy-content"
+                      placeholder="--dpi-desync=fake&#10;--dpi-desync-autottl=2"
+                      value={newStrategyContent}
+                      onChange={(e) => {
+                        setNewStrategyContent(e.target.value)
+                        autosizeTextarea(e.currentTarget)
+                      }}
+                      onWheel={forwardTextareaWheelToScrollArea}
+                      rows={10}
+                      className="resize-none overflow-hidden rounded-none border-0 bg-transparent px-3 py-3 font-mono text-sm shadow-none hover:border-transparent focus-visible:border-transparent focus-visible:ring-0"
+                    />
+                  </LenisScrollArea>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setNewStrategyOpen(false)}>
+                  Отмена
+                </Button>
+                <Button onClick={handleAddStrategy}>Создать</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={!!editingStrategy} onOpenChange={() => setEditingStrategy(null)}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Редактировать стратегию</DialogTitle>
+              </DialogHeader>
+              <div className="py-4 space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-strategy-name">Название стратегии</Label>
+                  <Input
+                    id="edit-strategy-name"
+                    placeholder="Название стратегии"
+                    value={editingName}
+                    onChange={e => setEditingName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-strategy-content">Содержимое</Label>
+                  <p className="text-xs text-muted-foreground">
+                    {'<LIST_MODE>'}
+                    {' '}
+                    автоматически заменяется на текущий режим списков: список исключений или список заблокированных адресов.
+                  </p>
+                  <LenisScrollArea
+                    className="max-h-[calc(100vh-22rem)] rounded-md border border-border/80 bg-background/92 shadow-xs transition-[border-color,box-shadow,background-color] hover:border-border focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30"
+                    contentClassName="cursor-text"
+                    onClick={() => editStrategyContentTextareaRef.current?.focus()}
+                  >
+                    <Textarea
+                      data-lenis-prevent
+                      ref={editStrategyContentTextareaRef}
+                      id="edit-strategy-content"
+                      placeholder="--dpi-desync=fake&#10;--dpi-desync-autottl=2"
+                      value={editingContent}
+                      onChange={(e) => {
+                        setEditingContent(e.target.value)
+                        autosizeTextarea(e.currentTarget)
+                      }}
+                      onWheel={forwardTextareaWheelToScrollArea}
+                      rows={10}
+                      className="resize-none overflow-hidden rounded-none border-0 bg-transparent px-3 py-3 font-mono text-sm shadow-none hover:border-transparent focus-visible:border-transparent focus-visible:ring-0"
+                    />
+                  </LenisScrollArea>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditingStrategy(null)}>
+                  Отмена
+                </Button>
+                <Button onClick={handleSaveEdit}>Сохранить</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Переименовать категорию</DialogTitle>
+              </DialogHeader>
+              <div className="py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="category-name">Название категории</Label>
+                  <Input
+                    id="category-name"
+                    placeholder="Название категории"
+                    value={newCategoryName}
+                    onChange={e => setNewCategoryName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleRenameCategory()}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>
+                  Отмена
+                </Button>
+                <Button onClick={handleRenameCategory}>Сохранить</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
-
-        <AlertDialog open={!!systemActionTarget} onOpenChange={open => !open && setSystemActionTarget(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{systemActionTarget?.title}</AlertDialogTitle>
-              <AlertDialogDescription>{systemActionTarget?.description}</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Отмена</AlertDialogCancel>
-              <Button
-                onClick={async () => {
-                  if (!systemActionTarget) {
-                    return
-                  }
-
-                  if (systemActionTarget.type === 'category') {
-                    await handleRestoreCategory()
-                    return
-                  }
-
-                  await handleRestoreStrategy(systemActionTarget.strategyId)
-                }}
-              >
-                Обновить
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        <Dialog open={newStrategyOpen} onOpenChange={setNewStrategyOpen}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Новая стратегия</DialogTitle>
-            </DialogHeader>
-            <div className="py-4 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="strategy-name">Название стратегии</Label>
-                <Input
-                  id="strategy-name"
-                  placeholder="Название стратегии"
-                  value={newStrategyName}
-                  onChange={e => setNewStrategyName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="strategy-content">Содержимое</Label>
-                <p className="text-xs text-muted-foreground">
-                  {'<LIST_MODE>'}
-                  {' '}
-                  автоматически заменяется на текущий режим списков: список исключений или список заблокированных адресов.
-                </p>
-                <LenisScrollArea
-                  className="max-h-[calc(100vh-22rem)] rounded-md border border-border/80 bg-background/92 shadow-xs transition-[border-color,box-shadow,background-color] hover:border-border focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30"
-                  contentClassName="cursor-text"
-                  onClick={() => newStrategyContentTextareaRef.current?.focus()}
-                >
-                  <Textarea
-                    data-lenis-prevent
-                    ref={newStrategyContentTextareaRef}
-                    id="strategy-content"
-                    placeholder="--dpi-desync=fake&#10;--dpi-desync-autottl=2"
-                    value={newStrategyContent}
-                    onChange={(e) => {
-                      setNewStrategyContent(e.target.value)
-                      autosizeTextarea(e.currentTarget)
-                    }}
-                    onWheel={forwardTextareaWheelToScrollArea}
-                    rows={10}
-                    className="resize-none overflow-hidden rounded-none border-0 bg-transparent px-3 py-3 font-mono text-sm shadow-none hover:border-transparent focus-visible:border-transparent focus-visible:ring-0"
-                  />
-                </LenisScrollArea>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setNewStrategyOpen(false)}>
-                Отмена
-              </Button>
-              <Button onClick={handleAddStrategy}>Создать</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={!!editingStrategy} onOpenChange={() => setEditingStrategy(null)}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Редактировать стратегию</DialogTitle>
-            </DialogHeader>
-            <div className="py-4 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-strategy-name">Название стратегии</Label>
-                <Input
-                  id="edit-strategy-name"
-                  placeholder="Название стратегии"
-                  value={editingName}
-                  onChange={e => setEditingName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-strategy-content">Содержимое</Label>
-                <p className="text-xs text-muted-foreground">
-                  {'<LIST_MODE>'}
-                  {' '}
-                  автоматически заменяется на текущий режим списков: список исключений или список заблокированных адресов.
-                </p>
-                <LenisScrollArea
-                  className="max-h-[calc(100vh-22rem)] rounded-md border border-border/80 bg-background/92 shadow-xs transition-[border-color,box-shadow,background-color] hover:border-border focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30"
-                  contentClassName="cursor-text"
-                  onClick={() => editStrategyContentTextareaRef.current?.focus()}
-                >
-                  <Textarea
-                    data-lenis-prevent
-                    ref={editStrategyContentTextareaRef}
-                    id="edit-strategy-content"
-                    placeholder="--dpi-desync=fake&#10;--dpi-desync-autottl=2"
-                    value={editingContent}
-                    onChange={(e) => {
-                      setEditingContent(e.target.value)
-                      autosizeTextarea(e.currentTarget)
-                    }}
-                    onWheel={forwardTextareaWheelToScrollArea}
-                    rows={10}
-                    className="resize-none overflow-hidden rounded-none border-0 bg-transparent px-3 py-3 font-mono text-sm shadow-none hover:border-transparent focus-visible:border-transparent focus-visible:ring-0"
-                  />
-                </LenisScrollArea>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setEditingStrategy(null)}>
-                Отмена
-              </Button>
-              <Button onClick={handleSaveEdit}>Сохранить</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Переименовать категорию</DialogTitle>
-            </DialogHeader>
-            <div className="py-4">
-              <div className="space-y-2">
-                <Label htmlFor="category-name">Название категории</Label>
-                <Input
-                  id="category-name"
-                  placeholder="Название категории"
-                  value={newCategoryName}
-                  onChange={e => setNewCategoryName(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleRenameCategory()}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>
-                Отмена
-              </Button>
-              <Button onClick={handleRenameCategory}>Сохранить</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </LenisScrollArea>
+      </LenisScrollArea>
+      {showScrollTopButton && (
+        <Button
+          type="button"
+          size="default"
+          variant="secondary"
+          className="absolute right-5 bottom-5 z-20 border border-border bg-background/60 text-foreground shadow-lg backdrop-blur-md hover:bg-background/72 hover:backdrop-blur-xl dark:bg-card/60 dark:hover:bg-card/72"
+          aria-label="Вернуться наверх"
+          onClick={scrollToTop}
+        >
+          <ArrowUp className="size-4" />
+          Наверх
+        </Button>
+      )}
+    </div>
   )
 }

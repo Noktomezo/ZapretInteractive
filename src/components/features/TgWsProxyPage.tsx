@@ -1,5 +1,6 @@
+import { Link } from '@tanstack/react-router'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { Copy, KeyRound, Link2, Loader2, Power, RefreshCw, Send, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Copy, KeyRound, Link2, Loader2, Power, RefreshCw, Send, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { MODULE_PAGE_CARD_CLASS, ModuleSectionHeader, ModuleSettingLabel } from '@/components/features/module-ui'
@@ -8,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { useTgWsProxyModule } from '@/hooks/use-tg-ws-proxy-module'
-import { buildTgWsProxyHttpLink, generateTgWsProxySecret, isValidTgWsProxySecret, normalizeTgWsProxySecret } from '@/lib/tg-ws-proxy'
+import { buildTgWsProxyHttpLink, generateTgWsProxySecret, normalizeTgWsProxySecret } from '@/lib/tg-ws-proxy'
 import { cn } from '@/lib/utils'
 
 const TG_WS_PROXY_PORT_RE = /^\d+$/
@@ -36,12 +37,17 @@ function TgWsProxyPageContent({
   const [draftSecret, setDraftSecret] = useState(secret)
   const tgHttpLink = buildTgWsProxyHttpLink(port, secret)
 
-  const normalizedDraftSecret = normalizeTgWsProxySecret(draftSecret)
-  const isDraftPortNumeric = TG_WS_PROXY_PORT_RE.test(draftPort)
-  const parsedDraftPort = isDraftPortNumeric ? Number.parseInt(draftPort, 10) : Number.NaN
-  const canApply = parsedDraftPort === port && normalizedDraftSecret === secret
-    ? false
-    : Number.isInteger(parsedDraftPort) && parsedDraftPort >= 1 && parsedDraftPort <= 65535 && isValidTgWsProxySecret(normalizedDraftSecret)
+  const applyDraftSettings = async (nextDraftPort = draftPort, nextDraftSecret = draftSecret) => {
+    const normalizedSecret = normalizeTgWsProxySecret(nextDraftSecret)
+    const isPortNumeric = TG_WS_PROXY_PORT_RE.test(nextDraftPort)
+    const parsedPort = isPortNumeric ? Number.parseInt(nextDraftPort, 10) : Number.NaN
+
+    if (parsedPort === port && normalizedSecret === secret) {
+      return
+    }
+
+    await applySettings(parsedPort, normalizedSecret)
+  }
 
   const handleCopyLink = async () => {
     try {
@@ -72,11 +78,16 @@ function TgWsProxyPageContent({
     <LenisScrollArea className="h-full min-h-0">
       <div className="space-y-6 p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-medium">TG WS Proxy</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Локальный MTProto-прокси для Telegram Desktop через WebSocket
-            </p>
+          <div className="flex items-center gap-4">
+            <Link to="/modules" className="cursor-pointer text-muted-foreground hover:text-foreground" aria-label="Назад к модулям">
+              <ArrowLeft className="size-5" />
+            </Link>
+            <div>
+              <h1 className="text-2xl font-medium">TG WS Proxy</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Локальный MTProto-прокси для Telegram Desktop через WebSocket
+              </p>
+            </div>
           </div>
           <Button
             type="button"
@@ -99,19 +110,6 @@ function TgWsProxyPageContent({
             icon={ShieldCheck}
             title="Параметры"
             description="Основные параметры локального Telegram-прокси на этом ПК"
-            action={(
-              <Button
-                type="button"
-                className="gap-2"
-                disabled={isBusy || !canApply}
-                onClick={() => void applySettings(parsedDraftPort, normalizedDraftSecret)}
-              >
-                {isBusy
-                  ? <Loader2 className="size-4 animate-spin" />
-                  : <KeyRound className="size-4" />}
-                Применить
-              </Button>
-            )}
           />
           <CardContent className="space-y-4 p-4!">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
@@ -129,6 +127,7 @@ function TgWsProxyPageContent({
                   value={draftPort}
                   disabled={isBusy}
                   onChange={event => setDraftPort(event.target.value)}
+                  onBlur={() => void applyDraftSettings()}
                 />
               </div>
             </div>
@@ -148,13 +147,19 @@ function TgWsProxyPageContent({
                   value={draftSecret}
                   disabled={isBusy}
                   onChange={event => setDraftSecret(event.target.value)}
+                  onBlur={() => void applyDraftSettings()}
                 />
                 <button
                   type="button"
                   className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 inline-flex size-4 -translate-y-1/2 cursor-pointer items-center justify-center transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={isBusy}
                   aria-label="Сгенерировать новый секрет"
-                  onClick={() => setDraftSecret(generateTgWsProxySecret())}
+                  onMouseDown={event => event.preventDefault()}
+                  onClick={() => {
+                    const nextSecret = generateTgWsProxySecret()
+                    setDraftSecret(nextSecret)
+                    void applyDraftSettings(draftPort, nextSecret)
+                  }}
                 >
                   <RefreshCw className="size-4" />
                 </button>

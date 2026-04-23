@@ -93,7 +93,7 @@ export function useDnsModuleSummary() {
 
       toast.success(
         connectionStatus === 'connected'
-          ? nextEnabled ? 'DNS модуль включён' : 'DNS модуль выключен'
+          ? nextEnabled ? 'DNS модуль включён и запущен' : 'DNS модуль выключен и остановлен'
           : nextEnabled ? 'DNS модуль включён и будет запущен при подключении' : 'DNS модуль выключен',
       )
     }
@@ -207,7 +207,7 @@ export function useTgWsProxyModuleSummary() {
 
       toast.success(
         connectionStatus === 'connected'
-          ? nextEnabled ? 'TG WS Proxy модуль включён' : 'TG WS Proxy модуль выключен'
+          ? nextEnabled ? 'TG WS Proxy модуль включён и запущен' : 'TG WS Proxy модуль выключен и остановлен'
           : nextEnabled ? 'TG WS Proxy модуль включён и будет запущен при подключении' : 'TG WS Proxy модуль выключен',
       )
     }

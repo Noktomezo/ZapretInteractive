@@ -97,9 +97,10 @@ export function LogsPage() {
         {hasUnreadLogs && (
           <Button
             type="button"
-            size="sm"
+            size="default"
             variant="secondary"
             className="absolute right-4 bottom-4 z-10 border border-border bg-background/60 text-foreground shadow-lg backdrop-blur-md hover:bg-background/72 hover:backdrop-blur-xl dark:bg-card/60 dark:hover:bg-card/72"
+            aria-label="Перейти к новым логам"
             onClick={() => {
               const viewport = getViewport()
               if (!viewport)

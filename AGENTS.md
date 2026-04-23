@@ -30,6 +30,7 @@
 - Dev packages: `bun add -d <pkg>`
 - Run scripts: `bunx <tool>` or `bun run <script>`
 - Do **not** commit `package-lock.json` or `pnpm-lock.yaml` — only `bun.lockb`
+- **Theme colors are mandatory:** any new or changed UI colors must come from the palette documented in `assets/THEME.md`. Do not introduce arbitrary hex/RGB/HSL values unless you are mapping an existing token back to that palette.
 - Treat window materials as modifiers, not standalone themes. `acrylic`, `mica`, and `tabbed` must stay modeled via `data-webview-material` on the root element together with the existing `light`/`dark` theme values in `data-theme`; never replace the theme key with a material value.
 - When changing theme or appearance code, preserve the invariant that theme selection (`light`/`dark`/`system`) and material selection (`none`/`acrylic`/`mica`/`tabbed`) are combined, not merged into one field.
 
@@ -47,7 +48,15 @@
 
 ## Post-Task Checks
 
-Run these after **every** completed task before considering it done. Do not skip even for "small" changes.
+Run checks by the scope of the change. Do **not** run unrelated frontend or backend checks when the edited files cannot affect that area.
+
+- Frontend changes (`src/**/*.ts`, `src/**/*.tsx`, `src/**/*.css`, routing, stores, UI components): run the frontend checks.
+- Backend/Tauri changes (`src-tauri/**/*.rs`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock`, Tauri config/capabilities): run the backend checks.
+- Shared contract changes (`src/lib/types.ts`, Tauri command signatures, generated IPC wrappers, config schema/defaults used by both sides): run both frontend and backend checks.
+- Dependency changes: run the checks for the side whose dependency changed. Use `bun add`/`bun add -d` for frontend and `cargo add` for backend.
+- Scripts and managed resource tooling (`scripts/**`, `thirdparty/**`, `assets/**` used by build/update pipelines): run the relevant script-specific verification plus any side affected by the script output.
+- Documentation-only changes (`README.md`, `AGENTS.md`, changelogs, comments-only docs) do not require typecheck/lint/build checks unless they include executable examples or change project rules that affect commands.
+- If scope is ambiguous, choose the smaller relevant check set first. Escalate to both frontend and backend checks only when the change crosses the boundary or the first check points to a cross-area issue.
 
 ### Frontend
 

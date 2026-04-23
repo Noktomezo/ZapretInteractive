@@ -3,7 +3,6 @@ import { useNavigate } from '@tanstack/react-router'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import {
   AlertCircle,
-  Loader2,
   Power,
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -166,7 +165,7 @@ export function MainPage() {
   const selectedListMode = config?.listMode ?? 'ipset'
   const [focusedListModeIndex, setFocusedListModeIndex] = useState<number | null>(null)
   const activeListModeIndex = focusedListModeIndex ?? (selectedListMode === 'exclude' ? 1 : 0)
-  const listModeDisabled = !config || status !== 'disconnected' || listModeUpdating
+  const listModeDisabled = !initialized || !config || status !== 'disconnected' || listModeUpdating
 
   const handleListModeChange = async (value: string) => {
     if (!value || !config || listModeUpdating || value === config.listMode) {
@@ -518,15 +517,7 @@ export function MainPage() {
     )
   }
 
-  if (!initialized) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin" />
-      </div>
-    )
-  }
-
-  if (!isElevated) {
+  if (initialized && !isElevated) {
     return (
       <div className="flex h-full items-center justify-center p-8">
         <Alert variant="destructive" className="max-w-lg">
@@ -581,7 +572,7 @@ export function MainPage() {
     )
   }
 
-  if (configMissing) {
+  if (initialized && configMissing) {
     return (
       <div className="flex h-full items-center justify-center p-8">
         <Card className="max-w-md space-y-4 p-6 text-center">
@@ -606,7 +597,7 @@ export function MainPage() {
     )
   }
 
-  if (binariesOk === false) {
+  if (initialized && binariesOk === false) {
     return (
       <div className="flex h-full items-center justify-center p-8">
         <Card className="max-w-md space-y-4 p-6 text-center">
@@ -646,7 +637,7 @@ export function MainPage() {
           <Button
             onClick={handleToggleConnection}
             disabled={
-              status === 'connecting' || status === 'disconnecting' || !config
+              !initialized || status === 'connecting' || status === 'disconnecting' || !config
             }
             variant="ghost"
             className={cn(
