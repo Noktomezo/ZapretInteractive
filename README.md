@@ -25,6 +25,7 @@
 
 <div align="center">
   <img width="900" height="700" alt="Zapret_Interactive_46veTmKOP7" src="https://github.com/user-attachments/assets/5394033e-d518-4fb4-891d-2726e2da71a3" />
+  <hr>
   <img width="900" height="700" alt="Zapret_Interactive_ESjR1JTyi2" src="https://github.com/user-attachments/assets/e5954b1f-6c58-47ae-ba95-5b4568c656d6" />
 </div>
 
