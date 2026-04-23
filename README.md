@@ -1,4 +1,4 @@
-<img width="2560" height="1392" alt="image" src="https://github.com/user-attachments/assets/90906e8a-4212-4454-9a2f-828fab56572a" /><div align="center">
+<div align="center">
   <img src="assets/app-thumbnail.png" alt="Zapret Interactive">
 
   <p>
