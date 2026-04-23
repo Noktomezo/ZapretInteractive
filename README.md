@@ -1,4 +1,4 @@
-<div align="center">
+<img width="2560" height="1392" alt="image" src="https://github.com/user-attachments/assets/90906e8a-4212-4454-9a2f-828fab56572a" /><div align="center">
   <img src="assets/app-thumbnail.png" alt="Zapret Interactive">
 
   <p>
@@ -66,6 +66,7 @@ just build
 
 - [bol-van/zapret](https://github.com/bol-van/zapret) — оригинальный запрет
 - [bol-van/zapret-win-bundle](https://github.com/bol-van/zapret-win-bundle) — бинарники для Windows
+- [StressOzz/Zapret-Manager](https://github.com/StressOzz/Zapret-Manager) — дефолтные стратегии и некоторые алгоритмы настройки
 - [DNSCrypt/dnscrypt-proxy](https://github.com/DNSCrypt/dnscrypt-proxy) — бэкенд DNS модуля
 - [valnesfjord/tg-ws-proxy-rs](https://github.com/valnesfjord/tg-ws-proxy-rs) — бэкенд TG WS Proxy модуля
 - [kepano/flexoki](https://github.com/kepano/flexoki) — цветовая палитра приложения
