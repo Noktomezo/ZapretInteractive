@@ -286,7 +286,7 @@ export function useDnsModule() {
 
       toast.success(
         connectionStatus === 'connected'
-          ? nextEnabled ? 'DNS модуль включён' : 'DNS модуль выключен'
+          ? nextEnabled ? 'DNS модуль включён и запущен' : 'DNS модуль выключен и остановлен'
           : nextEnabled ? 'DNS модуль включён и будет запущен при подключении' : 'DNS модуль выключен',
       )
     }

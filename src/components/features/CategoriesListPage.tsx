@@ -117,6 +117,7 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
   const activeStrategies = category.strategies.filter(strategy => strategy.active)
   const activeCount = activeStrategies.length
   const activeStrategiesLabel = formatActiveStrategiesLabel(activeStrategies)
+  const activeStrategiesSrId = `category-${category.id}-active-strategies`
   const builtinCategory = getBuiltinCategory(config.builtinConfig, category.id)
   const isSystem = isSystemCategory(category)
   const isModified = isSystemCategoryModified(category, config.config)
@@ -146,29 +147,27 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
     <div
       ref={setNodeRef}
       style={style}
-      className="group flex h-[4.5rem] items-center gap-3 rounded-lg border bg-card px-4 py-3"
+      className="group relative flex h-[4.5rem] items-center gap-3 rounded-lg border bg-card px-4 py-3"
     >
+      <button
+        type="button"
+        className="absolute inset-0 z-0 cursor-pointer rounded-lg"
+        aria-label={`Открыть категорию ${category.name}`}
+        aria-describedby={activeStrategiesSrId}
+        onClick={openCategory}
+      />
       <button
         type="button"
         {...attributes}
         {...listeners}
         aria-label={`Перетащить категорию ${category.name}`}
-        className="text-muted-foreground hover:text-foreground flex size-9 shrink-0 cursor-grab touch-none items-center justify-center rounded-md border border-border/70 bg-muted/25 transition-colors active:cursor-grabbing"
+        aria-describedby={activeStrategiesSrId}
+        className="text-muted-foreground hover:text-foreground relative z-20 flex size-9 shrink-0 cursor-grab touch-none items-center justify-center rounded-md border border-border/70 bg-muted/25 transition-colors active:cursor-grabbing"
       >
         <GripVertical className="w-4 h-4" />
       </button>
       <div
-        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 self-stretch"
-        role="link"
-        tabIndex={0}
-        aria-label={`Открыть категорию ${category.name}`}
-        onClick={openCategory}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
-            openCategory()
-          }
-        }}
+        className="pointer-events-none relative z-10 -my-3 flex min-w-0 flex-1 items-center gap-2 self-stretch py-3"
       >
         <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-1">
@@ -177,13 +176,13 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
               <div className="flex min-w-0 items-center gap-1 text-muted-foreground">
                 {isSystem
                   ? (
-                      <InlineMarker icon={Package} label="Системная категория" />
+                      <InlineMarker icon={Package} label="Системная категория" className="pointer-events-auto" />
                     )
                   : (
-                      <InlineMarker icon={UserRoundPlus} label="Пользовательская категория" className="text-primary/80" />
+                      <InlineMarker icon={UserRoundPlus} label="Пользовательская категория" className="pointer-events-auto text-primary/80" />
                     )}
                 {isModified && (
-                  <InlineMarker icon={FilePenLine} label="Системная категория изменена пользователем" className="text-warning" />
+                  <InlineMarker icon={FilePenLine} label="Системная категория изменена пользователем" className="pointer-events-auto text-warning" />
                 )}
                 {builtinCategory && isSystem && (isModified || updateAvailable) && (
                   <InlineMarker
@@ -191,7 +190,7 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
                     label={updateAvailable
                       ? 'Обновить категорию до актуального системного значения'
                       : 'Откатить категорию к системному значению'}
-                    className={updateAvailable ? 'text-primary' : 'text-destructive'}
+                    className={updateAvailable ? 'pointer-events-auto text-primary' : 'pointer-events-auto text-destructive'}
                     onClick={() => onRestoreSystem(category)}
                   />
                 )}
@@ -199,7 +198,7 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
                   <InlineMarker
                     icon={RotateCcw}
                     label="Системная категория из старой версии приложения"
-                    className="text-warning"
+                    className="pointer-events-auto text-warning"
                   />
                 )}
                 {activeCount > 0
@@ -207,7 +206,7 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
                       activeStrategiesLabel && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="max-w-[14rem] cursor-help truncate text-xs text-success animate-pulse">
+                            <span className="pointer-events-auto max-w-[14rem] cursor-help truncate text-xs text-success animate-pulse">
                               {activeStrategiesLabel}
                             </span>
                           </TooltipTrigger>
@@ -221,7 +220,7 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span
-                            className="inline-flex h-2 w-2 cursor-help rounded-full bg-destructive animate-pulse"
+                            className="pointer-events-auto inline-flex h-2 w-2 cursor-help rounded-full bg-destructive animate-pulse"
                             aria-hidden="true"
                           />
                         </TooltipTrigger>
@@ -235,14 +234,14 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
             </p>
           </div>
         </div>
-        <span className="sr-only">
+        <span id={activeStrategiesSrId} className="sr-only">
           {formatActiveStrategiesSrText(activeCount)}
         </span>
         <div className="-my-3 ml-auto flex shrink-0 self-stretch items-center rounded-md py-3 text-muted-foreground">
           <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
         </div>
       </div>
-      <div className="flex items-center gap-1">
+      <div className="relative z-20 flex items-center gap-1">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -264,7 +263,7 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
                 variant="outline"
                 size="icon"
                 onClick={e => onClearActive(category.id, e)}
-                className="cursor-pointer border-warning/35 bg-warning/14 text-warning hover:bg-warning/22"
+                className="cursor-pointer text-warning hover:text-warning"
                 aria-label="Очистить стратегию"
               >
                 <BrushCleaning className="w-4 h-4" />
@@ -280,7 +279,7 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
                 <Button
                   variant="outline"
                   size="icon"
-                  className="cursor-pointer border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
+                  className="cursor-pointer text-destructive hover:text-destructive"
                   aria-label={`Удалить категорию ${category.name}`}
                 >
                   <Trash2 className="w-4 h-4" />

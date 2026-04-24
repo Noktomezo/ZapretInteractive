@@ -2,7 +2,6 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import {
   Download,
   ExternalLink,
-  FolderOpen,
   Github,
   Loader2,
   Package,
@@ -14,19 +13,12 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useMountEffect } from '@/hooks/use-mount-effect'
-import { runWithPausedConnection } from '@/lib/connection-flow'
-import * as tauri from '@/lib/tauri'
-import { useAppStore } from '@/stores/app.store'
 import { useConfigStore } from '@/stores/config.store'
-import { useConnectionStore } from '@/stores/connection.store'
-import { useDownloadStore } from '@/stores/download.store'
 import { useUpdaterStore } from '@/stores/updater.store'
 
 const APP_NAME = 'Zapret Interactive'
 const APP_DEVELOPER = 'Noktomezo'
-const APP_LICENSE = 'MIT'
 const APP_REPOSITORY_URL = 'https://github.com/Noktomezo/ZapretInteractive'
 const APP_RELEASES_URL = 'https://github.com/Noktomezo/ZapretInteractive/releases'
 
@@ -140,12 +132,6 @@ function MetaItem({
 export function AboutPage() {
   const loading = useConfigStore(state => state.loading)
   const load = useConfigStore(state => state.load)
-  const binariesOk = useAppStore(state => state.binariesOk)
-  const availableUpdates = useAppStore(state => state.availableUpdates)
-  const addConfigLog = useConnectionStore(state => state.addConfigLog)
-  const isDownloading = useDownloadStore(state => state.isDownloading)
-  const progress = useDownloadStore(state => state.progress)
-  const resetDownload = useDownloadStore(state => state.reset)
   const initUpdater = useUpdaterStore(state => state.init)
   const currentAppVersion = useUpdaterStore(state => state.currentVersion)
   const appUpdate = useUpdaterStore(state => state.availableUpdate)
@@ -154,8 +140,6 @@ export function AboutPage() {
   const appUpdateInstalling = useUpdaterStore(state => state.installing)
   const checkForAppUpdates = useUpdaterStore(state => state.checkForUpdates)
   const installAvailableAppUpdate = useUpdaterStore(state => state.installAvailableUpdate)
-  const showBinaryStatusText = binariesOk === false || availableUpdates.length > 0
-  const showBinaryDetails = showBinaryStatusText || Boolean(isDownloading && progress)
 
   useMountEffect(() => {
     let isMounted = true
@@ -187,24 +171,6 @@ export function AboutPage() {
     }
   }
 
-  const handleDownloadBinaries = async () => {
-    const forceAll = binariesOk === true && availableUpdates.length === 0
-    try {
-      addConfigLog(forceAll
-        ? 'запущена переустановка файлов приложения'
-        : 'запущено обновление файлов приложения')
-
-      await runWithPausedConnection(async () => {
-        await tauri.downloadBinaries(forceAll)
-      })
-    }
-    catch (e) {
-      console.error(e)
-      resetDownload()
-      toast.error(`Ошибка загрузки файлов: ${e instanceof Error ? e.message : String(e)}`)
-    }
-  }
-
   const handleInstallAppUpdate = async () => {
     try {
       await installAvailableAppUpdate()
@@ -220,15 +186,6 @@ export function AboutPage() {
     }
     catch (e) {
       toast.error(`Не удалось открыть ссылку: ${e instanceof Error ? e.message : String(e)}`)
-    }
-  }
-
-  const handleOpenAppDirectory = async () => {
-    try {
-      await tauri.openAppDirectory()
-    }
-    catch (e) {
-      toast.error(`Ошибка открытия папки: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
@@ -256,11 +213,11 @@ export function AboutPage() {
             title={APP_NAME}
             description="Desktop GUI для zapret-win-bundle с управлением стратегиями, фильтрами, плейсхолдерами и обновлениями"
           />
-          <CardContent className="space-y-3 p-4!">
+          <CardContent className="grid grid-cols-1 gap-3 p-4! sm:grid-cols-2">
             <div className="flex h-full flex-col rounded-xl border border-border/60 bg-muted/25 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="mb-2 flex items-center gap-2 text-muted-foreground">
+                  <div className="mb-2 flex flex-wrap items-center gap-2 text-muted-foreground">
                     <Package className="size-4" />
                     <span className="text-xs uppercase tracking-[0.18em]">Версия</span>
                     <span
@@ -273,6 +230,15 @@ export function AboutPage() {
                     >
                       {appUpdate && !appUpdateChecking && !appUpdateDownloading && !appUpdateInstalling ? 'Есть новее' : 'Последняя'}
                     </span>
+                    <button
+                      type="button"
+                      className="inline-flex size-4 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-60"
+                      aria-label="Проверить обновления"
+                      onClick={() => { void handleManualAppUpdateCheck() }}
+                      disabled={appUpdateChecking || appUpdateDownloading || appUpdateInstalling}
+                    >
+                      <RefreshCw className={appUpdateChecking ? 'size-3.5 animate-spin' : 'size-3.5'} />
+                    </button>
                   </div>
                   <p className="font-mono text-sm font-medium break-all">{currentAppVersion ?? '...'}</p>
                 </div>
@@ -288,17 +254,6 @@ export function AboutPage() {
                       Обновить
                     </Button>
                   )}
-
-                  <div className="flex sm:justify-end">
-                    <Button
-                      variant="outline"
-                      onClick={() => { void handleManualAppUpdateCheck() }}
-                      disabled={appUpdateChecking || appUpdateDownloading || appUpdateInstalling}
-                    >
-                      <RefreshCw className={appUpdateChecking ? 'size-4 animate-spin' : 'size-4'} />
-                      Проверить обновления
-                    </Button>
-                  </div>
                 </div>
               </div>
 
@@ -317,115 +272,8 @@ export function AboutPage() {
               )}
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <MetaItem icon={UserRound} label="Разработчик" value={APP_DEVELOPER} />
-              <MetaItem icon={Shield} label="Лицензия" value={APP_LICENSE} />
-            </div>
+            <MetaItem icon={UserRound} label="Разработчик" value={APP_DEVELOPER} />
           </CardContent>
-        </Card>
-
-        <Card className={PAGE_CARD_CLASS}>
-          <AboutSectionHeader
-            icon={FolderOpen}
-            title={(
-              <div className="flex items-center gap-2">
-                <span>Файлы приложения</span>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span
-                      className={[
-                        'rounded-[4px] border px-2 py-0.5 text-[10px] leading-none font-medium',
-                        binariesOk === false
-                          ? 'border-destructive/30 bg-destructive/10 text-destructive'
-                          : availableUpdates.length > 0
-                            ? 'border-warning/30 bg-warning/12 text-warning'
-                            : 'border-success/30 bg-success/10 text-success',
-                      ].join(' ')}
-                    >
-                      {binariesOk === false ? 'Не найдены' : availableUpdates.length > 0 ? 'Есть обновления' : 'Актуально'}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent sideOffset={6}>
-                    {binariesOk === false
-                      ? 'Необходимые файлы отсутствуют или повреждены'
-                      : availableUpdates.length === 1
-                        ? `Доступно обновление: ${availableUpdates[0]}`
-                        : availableUpdates.length > 1
-                          ? `Доступно обновление для ${availableUpdates.length} файлов`
-                          : 'Все необходимые файлы найдены'}
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            )}
-            description="WinDivert, winws.exe, fake-файлы и списки"
-            action={(
-              <div className="flex shrink-0 flex-wrap items-center gap-2">
-                {!isDownloading && (
-                  <Button
-                    onClick={handleDownloadBinaries}
-                    disabled={isDownloading}
-                    variant={binariesOk === false ? 'default' : 'outline'}
-                  >
-                    <Download className="size-4" />
-                    {binariesOk === false
-                      ? 'Загрузить'
-                      : availableUpdates.length > 0
-                        ? 'Обновить'
-                        : 'Переустановить'}
-                  </Button>
-                )}
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      aria-label="Открыть папку приложения"
-                      onClick={() => { void handleOpenAppDirectory() }}
-                    >
-                      <FolderOpen className="size-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent sideOffset={6}>Открыть папку приложения</TooltipContent>
-                </Tooltip>
-              </div>
-            )}
-          />
-          {showBinaryDetails && (
-            <CardContent className="space-y-4 p-4!">
-              {showBinaryStatusText && (
-                <p className="text-sm text-muted-foreground">
-                  {binariesOk === false
-                    ? 'Необходимые файлы отсутствуют или повреждены'
-                    : availableUpdates.length === 1
-                      ? `Доступно обновление: ${availableUpdates[0]}`
-                      : `Доступно обновление для ${availableUpdates.length} файлов`}
-                </p>
-              )}
-
-              {isDownloading && progress
-                ? (
-                    <div className="space-y-2">
-                      <div className="h-2 overflow-hidden rounded-full bg-muted">
-                        <div
-                          className="h-full bg-primary transition-all duration-300"
-                          style={{
-                            width: `${Math.max(0, Math.min(100, progress.total > 0 ? (progress.current / progress.total) * 100 : 0))}%`,
-                          }}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {progress.current}
-                        /
-                        {progress.total}
-                        :
-                        {progress.filename}
-                      </p>
-                    </div>
-                  )
-                : null}
-            </CardContent>
-          )}
         </Card>
 
         <Card className={PAGE_CARD_CLASS}>

@@ -1,6 +1,7 @@
+import { Link } from '@tanstack/react-router'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { Copy, KeyRound, Link2, Loader2, Power, RefreshCw, Send, ShieldCheck } from 'lucide-react'
-import { useState } from 'react'
+import { ArrowLeft, Copy, KeyRound, Link2, Loader2, Power, RefreshCw, Send, ShieldCheck } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { MODULE_PAGE_CARD_CLASS, ModuleSectionHeader, ModuleSettingLabel } from '@/components/features/module-ui'
 import { Button } from '@/components/ui/button'
@@ -8,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { useTgWsProxyModule } from '@/hooks/use-tg-ws-proxy-module'
-import { buildTgWsProxyHttpLink, generateTgWsProxySecret, isValidTgWsProxySecret, normalizeTgWsProxySecret } from '@/lib/tg-ws-proxy'
+import { buildTgWsProxyHttpLink, buildTgWsProxyLink, generateTgWsProxySecret, normalizeTgWsProxySecret } from '@/lib/tg-ws-proxy'
 import { cn } from '@/lib/utils'
 
 const TG_WS_PROXY_PORT_RE = /^\d+$/
@@ -32,20 +33,101 @@ function TgWsProxyPageContent({
   applySettings: ReturnType<typeof useTgWsProxyModule>['applySettings']
   handleToggle: ReturnType<typeof useTgWsProxyModule>['handleToggle']
 }) {
+  interface DraftState { port: string, secret: string }
+
   const [draftPort, setDraftPort] = useState(String(port))
   const [draftSecret, setDraftSecret] = useState(secret)
-  const tgHttpLink = buildTgWsProxyHttpLink(port, secret)
+  const toggleButtonRef = useRef<HTMLButtonElement | null>(null)
+  const draftSavePromiseRef = useRef<Promise<boolean> | null>(null)
+  const pendingDraftRef = useRef<DraftState | null>(null)
 
-  const normalizedDraftSecret = normalizeTgWsProxySecret(draftSecret)
-  const isDraftPortNumeric = TG_WS_PROXY_PORT_RE.test(draftPort)
-  const parsedDraftPort = isDraftPortNumeric ? Number.parseInt(draftPort, 10) : Number.NaN
-  const canApply = parsedDraftPort === port && normalizedDraftSecret === secret
-    ? false
-    : Number.isInteger(parsedDraftPort) && parsedDraftPort >= 1 && parsedDraftPort <= 65535 && isValidTgWsProxySecret(normalizedDraftSecret)
+  const getDraftLinkState = (nextDraftPort = draftPort, nextDraftSecret = draftSecret) => {
+    const normalizedSecret = normalizeTgWsProxySecret(nextDraftSecret)
+    const isPortNumeric = TG_WS_PROXY_PORT_RE.test(nextDraftPort)
+    const parsedPort = isPortNumeric ? Number.parseInt(nextDraftPort, 10) : Number.NaN
+
+    return {
+      normalizedSecret,
+      parsedPort,
+      tgLink: buildTgWsProxyLink(parsedPort, normalizedSecret),
+      tgHttpLink: buildTgWsProxyHttpLink(parsedPort, normalizedSecret),
+    }
+  }
+
+  const applyDraftSettings = async (nextDraftPort = draftPort, nextDraftSecret = draftSecret) => {
+    const { normalizedSecret, parsedPort } = getDraftLinkState(nextDraftPort, nextDraftSecret)
+
+    return applySettings(parsedPort, normalizedSecret)
+  }
+
+  const syncDraftSettings = (nextDraftPort = draftPort, nextDraftSecret = draftSecret) => {
+    pendingDraftRef.current = { port: nextDraftPort, secret: nextDraftSecret }
+
+    if (draftSavePromiseRef.current) {
+      return draftSavePromiseRef.current
+    }
+
+    const savePromise = (async () => {
+      let lastResult = true
+      let reportedError = false
+
+      while (pendingDraftRef.current) {
+        const nextDraft = pendingDraftRef.current
+        pendingDraftRef.current = null
+        try {
+          lastResult = await applyDraftSettings(nextDraft.port, nextDraft.secret)
+        }
+        catch (error) {
+          lastResult = false
+          console.error('Failed to sync TG WS Proxy draft settings:', error)
+          if (!reportedError) {
+            reportedError = true
+            toast.error(`Ошибка сохранения параметров TG WS Proxy: ${error instanceof Error ? error.message : String(error)}`)
+          }
+        }
+      }
+
+      return lastResult
+    })()
+
+    draftSavePromiseRef.current = savePromise
+
+    void savePromise.finally(() => {
+      if (draftSavePromiseRef.current === savePromise) {
+        draftSavePromiseRef.current = null
+      }
+    })
+
+    return savePromise
+  }
+
+  const handleDraftBlur = async (event: React.FocusEvent<HTMLInputElement>) => {
+    if (toggleButtonRef.current?.contains(event.relatedTarget as Node | null)) {
+      return
+    }
+
+    await syncDraftSettings()
+  }
+
+  const handleToggleWithDraftSync = async () => {
+    const applied = await syncDraftSettings()
+    if (!enabled && !applied) {
+      return
+    }
+
+    await handleToggle()
+  }
 
   const handleCopyLink = async () => {
+    const applied = await syncDraftSettings()
+    if (!applied) {
+      return
+    }
+
+    const { tgLink: nextTgLink } = getDraftLinkState()
+
     try {
-      await navigator.clipboard.writeText(tgLink)
+      await navigator.clipboard.writeText(nextTgLink)
       toast.success('Ссылка TG WS Proxy скопирована')
     }
     catch (error) {
@@ -54,12 +136,19 @@ function TgWsProxyPageContent({
   }
 
   const handleOpenTelegram = async () => {
+    const applied = await syncDraftSettings()
+    if (!applied) {
+      return
+    }
+
+    const { tgLink: nextTgLink, tgHttpLink: nextTgHttpLink } = getDraftLinkState()
+
     try {
-      await openUrl(tgLink)
+      await openUrl(nextTgLink)
     }
     catch {
       try {
-        await openUrl(tgHttpLink)
+        await openUrl(nextTgHttpLink)
       }
       catch (fallbackError) {
         const reason = fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
@@ -72,18 +161,24 @@ function TgWsProxyPageContent({
     <LenisScrollArea className="h-full min-h-0">
       <div className="space-y-6 p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-medium">TG WS Proxy</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Локальный MTProto-прокси для Telegram Desktop через WebSocket
-            </p>
+          <div className="flex items-center gap-4">
+            <Link to="/modules" className="cursor-pointer text-muted-foreground hover:text-foreground" aria-label="Назад к модулям">
+              <ArrowLeft className="size-5" />
+            </Link>
+            <div>
+              <h1 className="text-2xl font-medium">TG WS Proxy</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Локальный MTProto-прокси для Telegram Desktop через WebSocket
+              </p>
+            </div>
           </div>
           <Button
+            ref={toggleButtonRef}
             type="button"
             variant={enabled ? 'destructive' : 'default'}
             className={cn('gap-2', enabled && 'shadow-none hover:shadow-none')}
             disabled={isBusy || status == null || (!enabled && status.moduleAvailable === false)}
-            onClick={() => void handleToggle()}
+            onClick={() => { void handleToggleWithDraftSync() }}
           >
             {isBusy
               ? <Loader2 className="size-4 animate-spin" />
@@ -99,19 +194,6 @@ function TgWsProxyPageContent({
             icon={ShieldCheck}
             title="Параметры"
             description="Основные параметры локального Telegram-прокси на этом ПК"
-            action={(
-              <Button
-                type="button"
-                className="gap-2"
-                disabled={isBusy || !canApply}
-                onClick={() => void applySettings(parsedDraftPort, normalizedDraftSecret)}
-              >
-                {isBusy
-                  ? <Loader2 className="size-4 animate-spin" />
-                  : <KeyRound className="size-4" />}
-                Применить
-              </Button>
-            )}
           />
           <CardContent className="space-y-4 p-4!">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
@@ -129,6 +211,7 @@ function TgWsProxyPageContent({
                   value={draftPort}
                   disabled={isBusy}
                   onChange={event => setDraftPort(event.target.value)}
+                  onBlur={(event) => { void handleDraftBlur(event) }}
                 />
               </div>
             </div>
@@ -148,13 +231,19 @@ function TgWsProxyPageContent({
                   value={draftSecret}
                   disabled={isBusy}
                   onChange={event => setDraftSecret(event.target.value)}
+                  onBlur={(event) => { void handleDraftBlur(event) }}
                 />
                 <button
                   type="button"
                   className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 inline-flex size-4 -translate-y-1/2 cursor-pointer items-center justify-center transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={isBusy}
                   aria-label="Сгенерировать новый секрет"
-                  onClick={() => setDraftSecret(generateTgWsProxySecret())}
+                  onMouseDown={event => event.preventDefault()}
+                  onClick={() => {
+                    const nextSecret = generateTgWsProxySecret()
+                    setDraftSecret(nextSecret)
+                    void syncDraftSettings(draftPort, nextSecret)
+                  }}
                 >
                   <RefreshCw className="size-4" />
                 </button>
@@ -170,7 +259,7 @@ function TgWsProxyPageContent({
             title="Подключение"
             description="Используйте ссылку ниже, чтобы быстро добавить прокси в Telegram Desktop"
             action={(
-              <Button type="button" className="gap-2" onClick={() => void handleOpenTelegram()}>
+              <Button type="button" className="gap-2 shadow-none hover:shadow-none" onClick={() => void handleOpenTelegram()}>
                 <Link2 className="size-4" />
                 Открыть в Telegram
               </Button>

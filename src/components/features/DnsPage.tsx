@@ -1,7 +1,10 @@
+import { Link } from '@tanstack/react-router'
 import {
+  ArrowLeft,
   Check,
   Globe,
   Loader2,
+  Network,
   Power,
   RefreshCw,
   Route,
@@ -55,11 +58,16 @@ export function DnsPage() {
     <LenisScrollArea className="h-full min-h-0">
       <div className="space-y-6 p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-medium">DNS</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Дополнительный обход геоблока иностранных сервисов: ИИ, игр, сайтов и других ресурсов
-            </p>
+          <div className="flex items-center gap-4">
+            <Link to="/modules" className="cursor-pointer text-muted-foreground hover:text-foreground" aria-label="Назад к модулям">
+              <ArrowLeft className="size-5" />
+            </Link>
+            <div>
+              <h1 className="text-2xl font-medium">DNS</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Дополнительный обход геоблока иностранных сервисов: ИИ, игр, сайтов и других ресурсов
+              </p>
+            </div>
           </div>
           <Button
             type="button"
@@ -90,7 +98,7 @@ export function DnsPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <ModuleSettingLabel
                 htmlFor="dns-bootstrap-resolvers"
-                icon={ShieldCheck}
+                icon={Network}
                 description="Нужен для первого подключения к DNS-серверу."
               >
                 Начальный резолвер
@@ -138,7 +146,6 @@ export function DnsPage() {
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
                 className="gap-2"
                 disabled={isBusy || isCheckingLatency}
                 onClick={() => void handleCheckLatency()}
@@ -176,7 +183,7 @@ export function DnsPage() {
                           <Badge
                             variant="outline"
                             className={cn(
-                              'rounded-full border px-1.5 py-0 text-[10px]',
+                              'animate-in fade-in-0 zoom-in-95 rounded-[4px] border px-1.5 py-0 text-[10px] duration-200',
                               getDnsLatencyBadgeClass(latency),
                             )}
                           >

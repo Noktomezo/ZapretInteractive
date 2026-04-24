@@ -380,6 +380,7 @@ textarea,
     position: relative;
     isolation: isolate;
     background-color: color-mix(in oklab, var(--background) 88%, transparent);
+    -webkit-backdrop-filter: blur(24px);
     backdrop-filter: blur(24px);
   }
 
@@ -405,13 +406,13 @@ textarea,
   [data-webview-material="mica"] .app-toast,
   [data-webview-material="tabbed"] .app-toast {
     background-color: color-mix(in oklab, var(--popover) 82%, transparent);
-    backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
   }
 
   [data-webview-material="none"] .app-toast {
-    backdrop-filter: none;
     -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 
   @keyframes pulse-glow {
