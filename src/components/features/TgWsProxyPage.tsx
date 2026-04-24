@@ -57,10 +57,6 @@ function TgWsProxyPageContent({
   const applyDraftSettings = async (nextDraftPort = draftPort, nextDraftSecret = draftSecret) => {
     const { normalizedSecret, parsedPort } = getDraftLinkState(nextDraftPort, nextDraftSecret)
 
-    if (parsedPort === port && normalizedSecret === secret) {
-      return true
-    }
-
     return applySettings(parsedPort, normalizedSecret)
   }
 

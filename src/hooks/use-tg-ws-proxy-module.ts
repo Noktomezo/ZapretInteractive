@@ -1,5 +1,5 @@
 import type { TgWsProxyStatus } from '@/lib/types'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useMountEffect } from '@/hooks/use-mount-effect'
 import * as tauri from '@/lib/tauri'
@@ -10,6 +10,8 @@ import { useConnectionStore } from '@/stores/connection.store'
 export function useTgWsProxyModule() {
   const [status, setStatus] = useState<TgWsProxyStatus | null>(null)
   const [isBusy, setIsBusy] = useState(false)
+  const persistedPortRef = useRef(DEFAULT_TG_WS_PROXY_PORT)
+  const persistedSecretRef = useRef('')
 
   const config = useConfigStore(state => state.config)
   const loading = useConfigStore(state => state.loading)
@@ -35,6 +37,11 @@ export function useTgWsProxyModule() {
 
   const resolveStatus = async () => status ?? refreshStatus()
 
+  const setPersistedSettings = (nextPort: number, nextSecret: string) => {
+    persistedPortRef.current = nextPort
+    persistedSecretRef.current = normalizeTgWsProxySecret(nextSecret)
+  }
+
   const applyConfigState = (nextPort: number, nextSecret: string, nextEnabled = enabled) => {
     setTgWsProxyPort(nextPort)
     setTgWsProxySecret(normalizeTgWsProxySecret(nextSecret))
@@ -59,6 +66,10 @@ export function useTgWsProxyModule() {
     const previousConfig = structuredClone(config)
     const normalizedSecret = normalizeTgWsProxySecret(nextSecret)
 
+    if (nextPort === persistedPortRef.current && normalizedSecret === persistedSecretRef.current) {
+      return true
+    }
+
     applyConfigState(nextPort, normalizedSecret, enabled)
 
     let currentStatus: TgWsProxyStatus
@@ -66,6 +77,7 @@ export function useTgWsProxyModule() {
       currentStatus = await resolveStatus()
       setIsBusy(true)
       await saveNow()
+      setPersistedSettings(nextPort, normalizedSecret)
     }
     catch (error) {
       revertTo(previousConfig)
@@ -169,6 +181,11 @@ export function useTgWsProxyModule() {
 
     const init = async () => {
       await load()
+      const loadedConfig = useConfigStore.getState().config
+      setPersistedSettings(
+        loadedConfig?.tgWsProxyPort ?? DEFAULT_TG_WS_PROXY_PORT,
+        loadedConfig?.tgWsProxySecret ?? '',
+      )
       const nextStatus = await tauri.getTgWsProxyStatus()
       if (isMounted) {
         setStatus(nextStatus)
