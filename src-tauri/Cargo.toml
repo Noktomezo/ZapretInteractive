@@ -1,6 +1,6 @@
 [package]
 name = "zapret-interactive"
-version = "1.4.0"
+version = "1.4.1"
 description = "📦 GUI-wrapper for zapret-win-bundle by bol-van"
 authors = ["Noktomezo <noktomezo@duck.com>"]
 edition = "2024"
