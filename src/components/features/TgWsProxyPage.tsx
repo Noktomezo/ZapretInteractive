@@ -110,11 +110,9 @@ function TgWsProxyPageContent({
   }
 
   const handleToggleWithDraftSync = async () => {
-    if (!enabled) {
-      const applied = await syncDraftSettings()
-      if (!applied) {
-        return
-      }
+    const applied = await syncDraftSettings()
+    if (!enabled && !applied) {
+      return
     }
 
     await handleToggle()

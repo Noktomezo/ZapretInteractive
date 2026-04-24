@@ -65,19 +65,25 @@ export function useTgWsProxyModule() {
 
     const previousConfig = structuredClone(config)
     const normalizedSecret = normalizeTgWsProxySecret(nextSecret)
+    let currentStatus: TgWsProxyStatus | undefined
 
     if (nextPort === persistedPortRef.current && normalizedSecret === persistedSecretRef.current) {
-      return true
+      if (!enabled || connectionStatus !== 'connected') {
+        return true
+      }
+
+      currentStatus = await resolveStatus()
+      if (currentStatus.running) {
+        return true
+      }
     }
 
     applyConfigState(nextPort, normalizedSecret, enabled)
 
-    let currentStatus: TgWsProxyStatus
     try {
-      currentStatus = await resolveStatus()
+      currentStatus ??= await resolveStatus()
       setIsBusy(true)
       await saveNow()
-      setPersistedSettings(nextPort, normalizedSecret)
     }
     catch (error) {
       revertTo(previousConfig)
@@ -88,6 +94,7 @@ export function useTgWsProxyModule() {
     }
 
     if (!enabled || connectionStatus !== 'connected') {
+      setPersistedSettings(nextPort, normalizedSecret)
       toast.success('Параметры TG WS Proxy сохранены')
       setIsBusy(false)
       return true
@@ -99,6 +106,7 @@ export function useTgWsProxyModule() {
       }
       const nextStatus = await tauri.startTgWsProxy(nextPort, normalizedSecret)
       setStatus(nextStatus)
+      setPersistedSettings(nextPort, normalizedSecret)
       addConfigLog(`TG WS Proxy перезапущен на порту ${nextPort}`)
       toast.success('Параметры TG WS Proxy применены')
       return true
