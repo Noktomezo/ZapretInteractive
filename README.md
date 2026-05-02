@@ -75,5 +75,5 @@ just build
 
 <div align="center">
   <img src="./assets/heartbeat.svg" alt="heartbeat" width="600px">
-  <p>Made with 💜. Published under <a href="LICENSE">MIT license</a>.</p>
+  <p>Made with 💜. Published under <a href="LICENSE">GPL-3.0 license</a>.</p>
 </div>
