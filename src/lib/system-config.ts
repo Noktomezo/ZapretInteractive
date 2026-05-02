@@ -137,28 +137,13 @@ export function isSystemFilter(filter: Filter) {
   return Boolean(filter.system)
 }
 
-export function getFilterBaseName(filter: Filter) {
-  return filter.systemBaseName ?? filter.name
-}
-
-export function getFilterBaseFilename(filter: Filter) {
-  return filter.systemBaseFilename ?? filter.filename
-}
-
 export function getFilterBaseContent(filter: Filter) {
   return filter.systemBaseContent ?? filter.content
 }
 
-export function getFilterBaseActive(filter: Filter) {
-  return filter.systemBaseActive ?? filter.active
-}
-
 export function isSystemFilterModified(filter: Filter) {
   return isSystemFilter(filter)
-    && (filter.name !== getFilterBaseName(filter)
-      || filter.filename !== getFilterBaseFilename(filter)
-      || filter.content !== getFilterBaseContent(filter)
-      || filter.active !== getFilterBaseActive(filter))
+    && filter.content !== getFilterBaseContent(filter)
 }
 
 export function isSystemFilterUpdateAvailable(filter: Filter, builtinFilter: Filter | null) {
@@ -166,10 +151,7 @@ export function isSystemFilterUpdateAvailable(filter: Filter, builtinFilter: Fil
     return false
   }
 
-  return getFilterBaseName(filter) !== builtinFilter.name
-    || getFilterBaseFilename(filter) !== builtinFilter.filename
-    || getFilterBaseContent(filter) !== builtinFilter.content
-    || getFilterBaseActive(filter) !== builtinFilter.active
+  return getFilterBaseContent(filter) !== builtinFilter.content
 }
 
 export function buildRestoredFilter(currentFilter: Filter, builtinFilter: Filter): Filter {
