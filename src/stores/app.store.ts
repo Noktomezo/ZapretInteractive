@@ -1,3 +1,4 @@
+import type { DownloadCompleteHandler } from './download.store'
 import type { AppHealthSnapshot } from '@/lib/types'
 import { List } from 'lucide-react'
 import { createElement } from 'react'
@@ -167,7 +168,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
       useConnectionStore.getState().addLog('Запускаю инициализацию приложения')
       useThemeStore.getState().initTheme()
       useConnectionStore.getState().initTrayListener()
-      await useDownloadStore.getState().initListeners()
+      const handleDownloadComplete: DownloadCompleteHandler = async () => {
+        await get().refreshLocalState()
+        void get().refreshRemoteState().catch((error) => {
+          useConnectionStore.getState().addLog(`Не удалось обновить удалённое состояние файлов после загрузки: ${error}`)
+        })
+      }
+
+      await useDownloadStore.getState().initListeners(handleDownloadComplete)
 
       const elevated = await tauri.isElevated()
       set({ isElevated: elevated })

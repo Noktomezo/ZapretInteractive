@@ -1,9 +1,5 @@
 import type { AppConfig, Category, Filter, Placeholder, Strategy } from './types'
 
-export function getSystemStrategyKey(categoryId: string, strategyId: string) {
-  return `${categoryId}::${strategyId}`
-}
-
 export function getBuiltinCategory(builtinConfig: AppConfig | null, categoryId: string) {
   return builtinConfig?.categories.find(category => category.id === categoryId) ?? null
 }
@@ -153,16 +149,11 @@ export function getFilterBaseContent(filter: Filter) {
   return filter.systemBaseContent ?? filter.content
 }
 
-export function getFilterBaseActive(filter: Filter) {
-  return filter.systemBaseActive ?? filter.active
-}
-
 export function isSystemFilterModified(filter: Filter) {
   return isSystemFilter(filter)
     && (filter.name !== getFilterBaseName(filter)
       || filter.filename !== getFilterBaseFilename(filter)
-      || filter.content !== getFilterBaseContent(filter)
-      || filter.active !== getFilterBaseActive(filter))
+      || filter.content !== getFilterBaseContent(filter))
 }
 
 export function isSystemFilterUpdateAvailable(filter: Filter, builtinFilter: Filter | null) {
@@ -173,7 +164,6 @@ export function isSystemFilterUpdateAvailable(filter: Filter, builtinFilter: Fil
   return getFilterBaseName(filter) !== builtinFilter.name
     || getFilterBaseFilename(filter) !== builtinFilter.filename
     || getFilterBaseContent(filter) !== builtinFilter.content
-    || getFilterBaseActive(filter) !== builtinFilter.active
 }
 
 export function buildRestoredFilter(currentFilter: Filter, builtinFilter: Filter): Filter {

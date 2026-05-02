@@ -1,0 +1,42 @@
+entry = [
+  "src/main.tsx",
+  "src/routes/**/*.tsx",
+  "src-tauri/**/*.rs",
+  "scripts/**/*.js",
+  "scripts/**/*.ts",
+  "vite.config.ts",
+  "eslint.config.js",
+]
+ignorePatterns = [
+  "**/*.d.ts",
+  "**/*.generated.*",
+  "dist/**",
+  "src-tauri/target/**",
+]
+ignoreDependencies = [
+  "@j178/prek",
+  "shadcn",
+]
+ignoreExportsUsedInFile = true
+production = false
+
+[rules]
+unused-files = "error"
+unused-exports = "warn"
+unused-types = "warn"
+private-type-leaks = "warn"
+unresolved-imports = "warn"
+
+[duplicates]
+mode = "mild"
+minTokens = 50
+minLines = 5
+threshold = 10
+
+[health]
+maxCyclomatic = 20
+maxCognitive = 15
+ignore = [ "**/*.generated.*", ]
+
+[audit]
+gate = "new-only"

@@ -160,7 +160,7 @@ function SidebarNav() {
   )
 }
 
-export function Sidebar() {
+export function AppNavigationSidebar() {
   return (
     <AppSidebar className="h-full bg-transparent">
       <SidebarContent>

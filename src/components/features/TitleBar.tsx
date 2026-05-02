@@ -1,6 +1,7 @@
 import { Link, useLocation } from '@tanstack/react-router'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { Fragment } from 'react'
+import { Copy, Minus, Square, X } from 'lucide-react'
+import { Fragment, useCallback, useEffect, useState } from 'react'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -16,6 +17,13 @@ import { useConfigStore } from '@/stores/config.store'
 interface BreadcrumbEntry {
   label: string
   to?: string
+}
+
+const WINDOW_CONTROL_LABELS = {
+  close: 'Закрыть',
+  maximize: 'Развернуть',
+  minimize: 'Свернуть',
+  restore: 'Восстановить',
 }
 
 function safeDecode(value: string) {
@@ -86,8 +94,15 @@ function getBreadcrumbItems(pathname: string, categoryName?: string): Breadcrumb
 
 export function TitleBar() {
   const location = useLocation()
-  const handleMinimize = () => getCurrentWindow().minimize()
-  const handleClose = () => getCurrentWindow().close()
+  const [isMaximized, setIsMaximized] = useState(false)
+  const syncMaximizedState = useCallback(() => {
+    void getCurrentWindow().isMaximized().then(setIsMaximized).catch(console.error)
+  }, [])
+  const handleMinimize = () => void getCurrentWindow().minimize().catch(console.error)
+  const handleToggleMaximize = () => {
+    void getCurrentWindow().toggleMaximize().then(syncMaximizedState).catch(console.error)
+  }
+  const handleClose = () => void getCurrentWindow().close().catch(console.error)
   const config = useConfigStore(state => state.config)
   const windowMaterial = config?.windowMaterial ?? 'none'
   const materialEnabled = windowMaterial !== 'none'
@@ -95,6 +110,51 @@ export function TitleBar() {
     ? config?.categories.find(category => category.id === safeDecode(location.pathname.slice('/strategies/'.length)))?.name
     : undefined
   const breadcrumbItems = getBreadcrumbItems(location.pathname, currentCategoryName)
+  const maximizeLabel = isMaximized ? WINDOW_CONTROL_LABELS.restore : WINDOW_CONTROL_LABELS.maximize
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined
+    let mounted = true
+    let syncAnimationFrame = 0
+    let syncScheduled = false
+    const appWindow = getCurrentWindow()
+
+    const scheduleMaximizedStateSync = () => {
+      if (syncScheduled) {
+        return
+      }
+
+      syncScheduled = true
+      syncAnimationFrame = window.requestAnimationFrame(() => {
+        syncScheduled = false
+        if (mounted) {
+          syncMaximizedState()
+        }
+      })
+    }
+
+    syncMaximizedState()
+    void appWindow.onResized(() => {
+      if (mounted) {
+        scheduleMaximizedStateSync()
+      }
+    }).then((cleanup) => {
+      if (mounted) {
+        unlisten = cleanup
+        return
+      }
+
+      cleanup()
+    }).catch(console.error)
+
+    return () => {
+      mounted = false
+      if (syncAnimationFrame) {
+        window.cancelAnimationFrame(syncAnimationFrame)
+      }
+      unlisten?.()
+    }
+  }, [syncMaximizedState])
 
   return (
     <header
@@ -145,25 +205,32 @@ export function TitleBar() {
       <div className="-mr-2.5 flex h-full items-stretch">
         <button
           type="button"
-          aria-label="Minimize"
+          aria-label={WINDOW_CONTROL_LABELS.minimize}
           onClick={handleMinimize}
-          className="flex h-full w-[46px] cursor-pointer items-center justify-center text-foreground/78 transition-colors hover:bg-black/6 hover:text-foreground dark:hover:bg-white/8"
-          title="Minimize"
+          className="flex h-full w-[46px] cursor-pointer items-center justify-center text-foreground/78 transition-colors hover:bg-accent/70 hover:text-foreground"
+          title={WINDOW_CONTROL_LABELS.minimize}
         >
-          <svg aria-hidden="true" className="size-3" viewBox="0 0 10 10" fill="none">
-            <path d="M1 5.5H9" stroke="currentColor" strokeWidth="1.1" strokeLinecap="square" />
-          </svg>
+          <Minus aria-hidden="true" className="size-3.5" strokeWidth={2} />
         </button>
         <button
           type="button"
-          aria-label="Close"
-          onClick={handleClose}
-          className="flex h-full w-[46px] cursor-pointer items-center justify-center text-foreground/78 transition-colors hover:bg-red-500/92 hover:text-white"
-          title="Close"
+          aria-label={maximizeLabel}
+          onClick={handleToggleMaximize}
+          className="flex h-full w-[46px] cursor-pointer items-center justify-center text-foreground/78 transition-colors hover:bg-accent/70 hover:text-foreground"
+          title={maximizeLabel}
         >
-          <svg aria-hidden="true" className="size-3" viewBox="0 0 10 10" fill="none">
-            <path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.1" strokeLinecap="square" />
-          </svg>
+          {isMaximized
+            ? <Copy aria-hidden="true" className="size-3.5" strokeWidth={2} />
+            : <Square aria-hidden="true" className="size-3.5" strokeWidth={2} />}
+        </button>
+        <button
+          type="button"
+          aria-label={WINDOW_CONTROL_LABELS.close}
+          onClick={handleClose}
+          className="flex h-full w-[46px] cursor-pointer items-center justify-center text-foreground/78 transition-colors hover:bg-destructive/88 hover:text-destructive-foreground dark:hover:bg-destructive/72"
+          title={WINDOW_CONTROL_LABELS.close}
+        >
+          <X aria-hidden="true" className="size-3.5" strokeWidth={2} />
         </button>
       </div>
     </header>

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './FaultyTerminal.css'
 
 const RGB_MATCHER = /[\d.]+/g
+const REFERENCE_CANVAS_HEIGHT = 700
 
 const vertexShader = `
 attribute vec2 position;
@@ -21,6 +22,7 @@ varying vec2 vUv;
 
 uniform float iTime;
 uniform vec3  iResolution;
+uniform vec2  uCanvasWorld;
 uniform float uScale;
 
 uniform vec2  uGridMul;
@@ -102,7 +104,7 @@ float digit(vec2 p){
     float intensity = pattern(s * 0.1, q, r) * 1.3 - 0.03;
 
     if(uUseMouse > 0.5){
-        vec2 mouseWorld = uMouse * uScale;
+        vec2 mouseWorld = uMouse * uCanvasWorld * uScale;
         float distToMouse = distance(s, mouseWorld);
         float mouseInfluence = exp(-distToMouse * 8.0) * uMouseStrength * 10.0;
         intensity += mouseInfluence;
@@ -190,7 +192,7 @@ void main() {
       uv = barrel(uv);
     }
 
-    vec2 p = uv * uScale;
+    vec2 p = uv * uCanvasWorld * uScale;
     vec3 signal = getColor(p);
 
     if(uChromaticAberration != 0.0){
@@ -461,6 +463,7 @@ export default function FaultyTerminal({
           iResolution: {
             value: new Color(gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height),
           },
+          uCanvasWorld: { value: new Float32Array([1, 1]) },
           uScale: { value: scale },
 
           uGridMul: { value: new Float32Array(gridMul) },
@@ -505,6 +508,10 @@ export default function FaultyTerminal({
         gl.canvas.height,
         gl.canvas.width / gl.canvas.height,
       )
+      program.uniforms.uCanvasWorld.value = new Float32Array([
+        width / REFERENCE_CANVAS_HEIGHT,
+        height / REFERENCE_CANVAS_HEIGHT,
+      ])
     }
 
     function renderCurrentFrame() {

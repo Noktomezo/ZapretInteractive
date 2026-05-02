@@ -2,7 +2,6 @@
   "$schema": "https://www.schemastore.org/tsconfig.json",
   "compilerOptions": {
     "composite": true,
-    "baseUrl": ".",
     "module": "ESNext",
     "moduleResolution": "bundler",
     "paths": {

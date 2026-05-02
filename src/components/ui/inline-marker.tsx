@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from './tooltip'
 
-interface InlineMarkerProps {
+export interface InlineMarkerProps {
   icon: LucideIcon
   label: string
   className?: string
@@ -27,9 +27,10 @@ export function InlineMarker({ icon: Icon, label, className, onClick }: InlineMa
       )
     : (
         <span
-          className={cn('inline-flex h-4 w-4 cursor-help items-center justify-center', className)}
+          className={cn('inline-flex h-4 w-4 cursor-help items-center justify-center rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50', className)}
           role="img"
           aria-label={label}
+          tabIndex={0}
         >
           <Icon className="h-3.5 w-3.5" />
         </span>

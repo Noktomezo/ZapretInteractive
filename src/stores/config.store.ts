@@ -1,32 +1,14 @@
 import type { AppConfig, Category, DiscordPresenceActivityType, Filter, GlobalPorts, ListMode, Placeholder, Strategy, WindowMaterial } from '../lib/types'
-import { toast } from 'sonner'
 import { create } from 'zustand'
 import * as tauri from '../lib/tauri'
-import { useConnectionStore } from './connection.store'
+import { reportAutosaveError, resetAutosaveErrorReporter } from './autosave-error-reporter'
 
 let saveTimeoutId: number | null = null
 let savePromise: Promise<void> | null = null
 let queuedSaveAfterCurrent = false
-let lastAutosaveErrorKey: string | null = null
 
 function cloneConfig(config: AppConfig): AppConfig {
   return structuredClone(config)
-}
-
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
-
-function reportAutosaveError(reason: string, error: unknown) {
-  const message = getErrorMessage(error)
-  const dedupeKey = `${reason}:${message}`
-  if (lastAutosaveErrorKey === dedupeKey) {
-    return
-  }
-
-  lastAutosaveErrorKey = dedupeKey
-  useConnectionStore.getState().addLog(`Автосохранение настроек завершилось ошибкой (${reason}): ${message}`)
-  toast.error('Изменения не удалось сохранить автоматически')
 }
 
 interface ConfigStore {
@@ -99,7 +81,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     set({ loading: true, error: null })
     try {
       const [config, builtinConfig] = await Promise.all([tauri.loadConfig(), tauri.getBuiltinConfig()])
-      lastAutosaveErrorKey = null
+      resetAutosaveErrorReporter()
       set({ config, builtinConfig, loading: false, dirty: false, isSaving: false })
     }
     catch (e) {
@@ -113,11 +95,11 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       saveTimeoutId = null
     }
 
-    lastAutosaveErrorKey = null
+    resetAutosaveErrorReporter()
     set({ error: null })
     try {
       const [config, builtinConfig] = await Promise.all([tauri.loadConfig(), tauri.getBuiltinConfig()])
-      lastAutosaveErrorKey = null
+      resetAutosaveErrorReporter()
       set({ config, builtinConfig, loading: false, dirty: false, isSaving: false, error: null })
     }
     catch (e) {
@@ -157,7 +139,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       set({ isSaving: true, error: null })
       try {
         await tauri.saveConfig(snapshot)
-        lastAutosaveErrorKey = null
+        resetAutosaveErrorReporter()
         set(state => ({
           error: null,
           isSaving: false,
@@ -220,7 +202,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
         tauri.resetConfig(),
         tauri.getBuiltinConfig(),
       ])
-      lastAutosaveErrorKey = null
+      resetAutosaveErrorReporter()
       set({ config, builtinConfig, loading: false, dirty: false, isSaving: false })
     }
     catch (e) {
