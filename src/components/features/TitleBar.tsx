@@ -19,6 +19,13 @@ interface BreadcrumbEntry {
   to?: string
 }
 
+const WINDOW_CONTROL_LABELS = {
+  close: 'Закрыть',
+  maximize: 'Развернуть',
+  minimize: 'Свернуть',
+  restore: 'Восстановить',
+}
+
 function safeDecode(value: string) {
   try {
     return decodeURIComponent(value)
@@ -103,6 +110,7 @@ export function TitleBar() {
     ? config?.categories.find(category => category.id === safeDecode(location.pathname.slice('/strategies/'.length)))?.name
     : undefined
   const breadcrumbItems = getBreadcrumbItems(location.pathname, currentCategoryName)
+  const maximizeLabel = isMaximized ? WINDOW_CONTROL_LABELS.restore : WINDOW_CONTROL_LABELS.maximize
 
   useEffect(() => {
     let unlisten: (() => void) | undefined
@@ -178,19 +186,19 @@ export function TitleBar() {
       <div className="-mr-2.5 flex h-full items-stretch">
         <button
           type="button"
-          aria-label="Minimize"
+          aria-label={WINDOW_CONTROL_LABELS.minimize}
           onClick={handleMinimize}
           className="flex h-full w-[46px] cursor-pointer items-center justify-center text-foreground/78 transition-colors hover:bg-accent/70 hover:text-foreground"
-          title="Minimize"
+          title={WINDOW_CONTROL_LABELS.minimize}
         >
           <Minus aria-hidden="true" className="size-3.5" strokeWidth={2} />
         </button>
         <button
           type="button"
-          aria-label={isMaximized ? 'Restore' : 'Maximize'}
+          aria-label={maximizeLabel}
           onClick={handleToggleMaximize}
           className="flex h-full w-[46px] cursor-pointer items-center justify-center text-foreground/78 transition-colors hover:bg-accent/70 hover:text-foreground"
-          title={isMaximized ? 'Restore' : 'Maximize'}
+          title={maximizeLabel}
         >
           {isMaximized
             ? <Copy aria-hidden="true" className="size-3.5" strokeWidth={2} />
@@ -198,10 +206,10 @@ export function TitleBar() {
         </button>
         <button
           type="button"
-          aria-label="Close"
+          aria-label={WINDOW_CONTROL_LABELS.close}
           onClick={handleClose}
           className="flex h-full w-[46px] cursor-pointer items-center justify-center text-foreground/78 transition-colors hover:bg-destructive/88 hover:text-destructive-foreground dark:hover:bg-destructive/72"
-          title="Close"
+          title={WINDOW_CONTROL_LABELS.close}
         >
           <X aria-hidden="true" className="size-3.5" strokeWidth={2} />
         </button>

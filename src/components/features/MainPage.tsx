@@ -92,7 +92,7 @@ export function MainPageTerminalBackdrop({ visible }: { visible: boolean }) {
   })
 
   return (
-    <div className="absolute inset-0 overflow-hidden">
+    <div className="pointer-events-none absolute top-0 right-0 bottom-0 w-screen overflow-hidden">
       <FaultyTerminal
         aria-hidden="true"
         scale={1.5}

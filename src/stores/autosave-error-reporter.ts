@@ -14,6 +14,7 @@ export function setAutosaveErrorLogger(logger: AutosaveErrorLogger | null) {
 }
 
 export function resetAutosaveErrorReporter() {
+  autosaveErrorLogger = null
   lastAutosaveErrorKey = null
 }
 

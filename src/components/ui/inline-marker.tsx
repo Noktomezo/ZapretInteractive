@@ -30,6 +30,7 @@ export function InlineMarker({ icon: Icon, label, className, onClick }: InlineMa
           className={cn('inline-flex h-4 w-4 cursor-help items-center justify-center', className)}
           role="img"
           aria-label={label}
+          tabIndex={0}
         >
           <Icon className="h-3.5 w-3.5" />
         </span>

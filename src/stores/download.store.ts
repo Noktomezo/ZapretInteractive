@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { create } from 'zustand'
 import { useConnectionStore } from './connection.store'
 
-type DownloadCompleteHandler = () => Promise<void>
+export type DownloadCompleteHandler = () => Promise<void>
 
 interface DownloadStore {
   isDownloading: boolean

@@ -2,7 +2,6 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import {
   Download,
   ExternalLink,
-  Github,
   Loader2,
   Package,
   RefreshCw,
@@ -23,7 +22,7 @@ const APP_REPOSITORY_URL = 'https://github.com/Noktomezo/ZapretInteractive'
 const APP_RELEASES_URL = 'https://github.com/Noktomezo/ZapretInteractive/releases'
 
 const APP_LINKS = [
-  { label: 'Исходники', value: 'Noktomezo/ZapretInteractive', href: APP_REPOSITORY_URL, icon: Github },
+  { label: 'Исходники', value: 'Noktomezo/ZapretInteractive', href: APP_REPOSITORY_URL, icon: ExternalLink },
   { label: 'Релизы', value: 'Последние сборки и changelog', href: APP_RELEASES_URL, icon: Download },
   { label: 'Лицензия', value: 'MIT License', href: `${APP_REPOSITORY_URL}/blob/main/LICENSE`, icon: Shield },
 ]
@@ -278,7 +277,7 @@ export function AboutPage() {
 
         <Card className={PAGE_CARD_CLASS}>
           <AboutSectionHeader
-            icon={Github}
+            icon={ExternalLink}
             title="Метаданные и ссылки"
             description="Базовая информация о проекте и полезные ссылки"
           />

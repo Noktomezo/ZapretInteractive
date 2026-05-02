@@ -46,8 +46,10 @@ function EditorTextarea({
         data-lenis-prevent
         ref={setTextareaRef}
         onWheel={(event) => {
-          forwardTextareaWheelToScrollArea(event)
           onWheel?.(event)
+          if (!event.defaultPrevented) {
+            forwardTextareaWheelToScrollArea(event)
+          }
         }}
         className={cn(
           'resize-none overflow-hidden rounded-none border-0 bg-transparent px-3 py-3 font-mono text-sm shadow-none hover:border-transparent focus-visible:border-transparent focus-visible:ring-0',
