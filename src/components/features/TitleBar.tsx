@@ -115,12 +115,28 @@ export function TitleBar() {
   useEffect(() => {
     let unlisten: (() => void) | undefined
     let mounted = true
+    let syncAnimationFrame = 0
+    let syncScheduled = false
     const appWindow = getCurrentWindow()
+
+    const scheduleMaximizedStateSync = () => {
+      if (syncScheduled) {
+        return
+      }
+
+      syncScheduled = true
+      syncAnimationFrame = window.requestAnimationFrame(() => {
+        syncScheduled = false
+        if (mounted) {
+          syncMaximizedState()
+        }
+      })
+    }
 
     syncMaximizedState()
     void appWindow.onResized(() => {
       if (mounted) {
-        syncMaximizedState()
+        scheduleMaximizedStateSync()
       }
     }).then((cleanup) => {
       if (mounted) {
@@ -133,6 +149,9 @@ export function TitleBar() {
 
     return () => {
       mounted = false
+      if (syncAnimationFrame) {
+        window.cancelAnimationFrame(syncAnimationFrame)
+      }
       unlisten?.()
     }
   }, [syncMaximizedState])
