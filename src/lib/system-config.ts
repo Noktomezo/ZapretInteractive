@@ -1,9 +1,5 @@
 import type { AppConfig, Category, Filter, Placeholder, Strategy } from './types'
 
-export function getSystemStrategyKey(categoryId: string, strategyId: string) {
-  return `${categoryId}::${strategyId}`
-}
-
 export function getBuiltinCategory(builtinConfig: AppConfig | null, categoryId: string) {
   return builtinConfig?.categories.find(category => category.id === categoryId) ?? null
 }

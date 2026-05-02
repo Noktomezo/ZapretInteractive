@@ -386,7 +386,7 @@ export function PlaceholdersPage() {
                           <FileCode className="h-4 w-4" />
                         </div>
                         <div className="min-w-0 w-0 flex-1 overflow-hidden space-y-1">
-                          <div className="flex items-center gap-2 truncate text-sm font-normal text-foreground">
+                          <div className="flex items-center gap-1 truncate text-sm font-normal text-foreground">
                             {'{{'}
                             {placeholder.name}
                             {'}}'}
@@ -426,7 +426,7 @@ export function PlaceholdersPage() {
                         <Button
                           variant="outline"
                           size="icon"
-                          className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
+                          className="bg-destructive/10 text-destructive hover:bg-destructive/18"
                           aria-label={`Удалить плейсхолдер ${placeholder.name}`}
                           onClick={() => handleDelete(index)}
                         >

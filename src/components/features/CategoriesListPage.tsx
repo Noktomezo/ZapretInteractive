@@ -171,7 +171,7 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
       >
         <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-1">
-            <div className="flex min-w-0 items-center gap-3">
+            <div className="flex min-w-0 items-center gap-1">
               <span className="block min-w-0 shrink-0 truncate text-sm font-normal">{category.name}</span>
               <div className="flex min-w-0 items-center gap-1 text-muted-foreground">
                 {isSystem

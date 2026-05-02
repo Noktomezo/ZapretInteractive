@@ -5,6 +5,7 @@ import { applyDnsAccelerator, DNS_PRESETS, normalizeDnsPresetId } from '../lib/d
 import { buildFiltersCommand, buildFiltersCommandArray, buildStrategyCommand } from '../lib/strategy'
 import * as tauri from '../lib/tauri'
 import { isValidTgWsProxySecret, normalizeTgWsProxySecret } from '../lib/tg-ws-proxy'
+import { setAutosaveErrorLogger } from './autosave-error-reporter'
 import { useConfigStore } from './config.store'
 
 const MAX_LOGS = 500
@@ -463,3 +464,5 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     }
   },
 }))
+
+setAutosaveErrorLogger(message => useConnectionStore.getState().addLog(message))

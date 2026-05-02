@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from './tooltip'
 
-interface InlineMarkerProps {
+export interface InlineMarkerProps {
   icon: LucideIcon
   label: string
   className?: string

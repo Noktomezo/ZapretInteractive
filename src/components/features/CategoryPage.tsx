@@ -21,14 +21,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { EditorTextarea } from '@/components/ui/editor-textarea'
 import { InlineMarker } from '@/components/ui/inline-marker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
-import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useMountEffect } from '@/hooks/use-mount-effect'
-import { autosizeTextarea, forwardTextareaWheelToScrollArea } from '@/lib/editor-scroll'
+import { autosizeTextarea } from '@/lib/editor-scroll'
 import { buildRestoredCategory, buildRestoredStrategy, getBuiltinCategory, getBuiltinStrategy, isSystemCategory, isSystemCategoryModified, isSystemCategoryUpdateAvailable, isSystemStrategy, isSystemStrategyModified, isSystemStrategyUpdateAvailable } from '@/lib/system-config'
 import { cn } from '@/lib/utils'
 import { useConfigStore } from '@/stores/config.store'
@@ -757,7 +757,7 @@ export function CategoryPage() {
                       )}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex items-center gap-1 min-w-0">
                           <span className="font-normal">{strategy.name}</span>
                           <div className="flex items-center gap-1 text-muted-foreground">
                             {isSystemStrategy(strategy)
@@ -926,31 +926,24 @@ export function CategoryPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="strategy-content">Содержимое</Label>
+                  <EditorTextarea
+                    textareaRef={newStrategyContentTextareaRef}
+                    id="strategy-content"
+                    placeholder="--dpi-desync=fake&#10;--dpi-desync-autottl=2"
+                    value={newStrategyContent}
+                    onChange={(e) => {
+                      setNewStrategyContent(e.target.value)
+                      autosizeTextarea(e.currentTarget)
+                    }}
+                    rows={10}
+                  />
                   <p className="text-xs text-muted-foreground">
-                    {'<LIST_MODE>'}
+                    <code className="rounded bg-muted px-1 py-0.5 font-mono text-[0.72rem] text-foreground">
+                      {'<LIST_MODE>'}
+                    </code>
                     {' '}
                     автоматически заменяется на текущий режим списков: список исключений или список заблокированных адресов.
                   </p>
-                  <LenisScrollArea
-                    className="max-h-[calc(100vh-22rem)] rounded-md border border-border/80 bg-background/92 shadow-xs transition-[border-color,box-shadow,background-color] hover:border-border focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30"
-                    contentClassName="cursor-text"
-                    onClick={() => newStrategyContentTextareaRef.current?.focus()}
-                  >
-                    <Textarea
-                      data-lenis-prevent
-                      ref={newStrategyContentTextareaRef}
-                      id="strategy-content"
-                      placeholder="--dpi-desync=fake&#10;--dpi-desync-autottl=2"
-                      value={newStrategyContent}
-                      onChange={(e) => {
-                        setNewStrategyContent(e.target.value)
-                        autosizeTextarea(e.currentTarget)
-                      }}
-                      onWheel={forwardTextareaWheelToScrollArea}
-                      rows={10}
-                      className="resize-none overflow-hidden rounded-none border-0 bg-transparent px-3 py-3 font-mono text-sm shadow-none hover:border-transparent focus-visible:border-transparent focus-visible:ring-0"
-                    />
-                  </LenisScrollArea>
                 </div>
               </div>
               <DialogFooter>
@@ -979,31 +972,24 @@ export function CategoryPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-strategy-content">Содержимое</Label>
+                  <EditorTextarea
+                    textareaRef={editStrategyContentTextareaRef}
+                    id="edit-strategy-content"
+                    placeholder="--dpi-desync=fake&#10;--dpi-desync-autottl=2"
+                    value={editingContent}
+                    onChange={(e) => {
+                      setEditingContent(e.target.value)
+                      autosizeTextarea(e.currentTarget)
+                    }}
+                    rows={10}
+                  />
                   <p className="text-xs text-muted-foreground">
-                    {'<LIST_MODE>'}
+                    <code className="rounded bg-muted px-1 py-0.5 font-mono text-[0.72rem] text-foreground">
+                      {'<LIST_MODE>'}
+                    </code>
                     {' '}
                     автоматически заменяется на текущий режим списков: список исключений или список заблокированных адресов.
                   </p>
-                  <LenisScrollArea
-                    className="max-h-[calc(100vh-22rem)] rounded-md border border-border/80 bg-background/92 shadow-xs transition-[border-color,box-shadow,background-color] hover:border-border focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30"
-                    contentClassName="cursor-text"
-                    onClick={() => editStrategyContentTextareaRef.current?.focus()}
-                  >
-                    <Textarea
-                      data-lenis-prevent
-                      ref={editStrategyContentTextareaRef}
-                      id="edit-strategy-content"
-                      placeholder="--dpi-desync=fake&#10;--dpi-desync-autottl=2"
-                      value={editingContent}
-                      onChange={(e) => {
-                        setEditingContent(e.target.value)
-                        autosizeTextarea(e.currentTarget)
-                      }}
-                      onWheel={forwardTextareaWheelToScrollArea}
-                      rows={10}
-                      className="resize-none overflow-hidden rounded-none border-0 bg-transparent px-3 py-3 font-mono text-sm shadow-none hover:border-transparent focus-visible:border-transparent focus-visible:ring-0"
-                    />
-                  </LenisScrollArea>
                 </div>
               </div>
               <DialogFooter>

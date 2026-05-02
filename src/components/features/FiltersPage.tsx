@@ -22,14 +22,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { EditorTextarea } from '@/components/ui/editor-textarea'
 import { InlineMarker } from '@/components/ui/inline-marker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
 import { useMountEffect } from '@/hooks/use-mount-effect'
-import { autosizeTextarea, forwardTextareaWheelToScrollArea } from '@/lib/editor-scroll'
+import { autosizeTextarea } from '@/lib/editor-scroll'
 import { buildRestoredFilter, getBuiltinFilter, isSystemFilter, isSystemFilterModified, isSystemFilterUpdateAvailable } from '@/lib/system-config'
 import * as tauri from '@/lib/tauri'
 import { useConfigStore } from '@/stores/config.store'
@@ -511,7 +511,7 @@ export function FiltersPage() {
                     <Filter className="h-4 w-4" />
                   </div>
                   <div className="min-w-0 w-0 flex-1 overflow-hidden space-y-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       <Label htmlFor={filter.id} className="block cursor-pointer truncate text-sm font-normal">
                         {filter.name}
                       </Label>
@@ -560,7 +560,7 @@ export function FiltersPage() {
                       <Button
                         variant="outline"
                         size="icon"
-                        className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/18"
+                        className="bg-destructive/10 text-destructive hover:bg-destructive/18"
                         aria-label={`Удалить фильтр ${filter.name}`}
                         title={`Удалить фильтр ${filter.name}`}
                         disabled={deleteInFlightId === filter.id || editInFlight}
@@ -656,26 +656,17 @@ export function FiltersPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="filter-content">Содержимое фильтра</Label>
-                <LenisScrollArea
-                  className="max-h-[calc(100vh-22rem)] rounded-md border border-border/80 bg-background/92 shadow-xs transition-[border-color,box-shadow,background-color] hover:border-border focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30"
-                  contentClassName="cursor-text"
-                  onClick={() => createContentTextareaRef.current?.focus()}
-                >
-                  <Textarea
-                    data-lenis-prevent
-                    ref={createContentTextareaRef}
-                    id="filter-content"
-                    value={draft.content}
-                    onChange={(e) => {
-                      updateDraft({ content: e.target.value })
-                      autosizeTextarea(e.currentTarget)
-                    }}
-                    onWheel={forwardTextareaWheelToScrollArea}
-                    placeholder="WinDivert фильтр..."
-                    rows={10}
-                    className="resize-none overflow-hidden rounded-none border-0 bg-transparent px-3 py-3 font-mono text-sm shadow-none hover:border-transparent focus-visible:border-transparent focus-visible:ring-0"
-                  />
-                </LenisScrollArea>
+                <EditorTextarea
+                  textareaRef={createContentTextareaRef}
+                  id="filter-content"
+                  value={draft.content}
+                  onChange={(e) => {
+                    updateDraft({ content: e.target.value })
+                    autosizeTextarea(e.currentTarget)
+                  }}
+                  placeholder="WinDivert фильтр..."
+                  rows={10}
+                />
               </div>
             </div>
             <DialogFooter>
@@ -729,27 +720,18 @@ export function FiltersPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-filter-content">Содержимое фильтра</Label>
-                <LenisScrollArea
-                  className="max-h-[calc(100vh-22rem)] rounded-md border border-border/80 bg-background/92 shadow-xs transition-[border-color,box-shadow,background-color] hover:border-border focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30"
-                  contentClassName="cursor-text"
-                  onClick={() => editContentTextareaRef.current?.focus()}
-                >
-                  <Textarea
-                    data-lenis-prevent
-                    ref={editContentTextareaRef}
-                    id="edit-filter-content"
-                    value={draft.content}
-                    onChange={(e) => {
-                      updateDraft({ content: e.target.value })
-                      autosizeTextarea(e.currentTarget)
-                    }}
-                    onWheel={forwardTextareaWheelToScrollArea}
-                    placeholder="WinDivert фильтр..."
-                    rows={16}
-                    className="resize-none overflow-hidden rounded-none border-0 bg-transparent px-3 py-3 font-mono text-sm shadow-none hover:border-transparent focus-visible:border-transparent focus-visible:ring-0"
-                    disabled={editLoading}
-                  />
-                </LenisScrollArea>
+                <EditorTextarea
+                  textareaRef={editContentTextareaRef}
+                  id="edit-filter-content"
+                  value={draft.content}
+                  onChange={(e) => {
+                    updateDraft({ content: e.target.value })
+                    autosizeTextarea(e.currentTarget)
+                  }}
+                  placeholder="WinDivert фильтр..."
+                  rows={16}
+                  disabled={editLoading}
+                />
                 {editLoading && currentLoadId && (
                   <p className="text-xs text-muted-foreground">Загружаю содержимое файла...</p>
                 )}

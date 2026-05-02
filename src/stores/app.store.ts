@@ -167,7 +167,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
       useConnectionStore.getState().addLog('Запускаю инициализацию приложения')
       useThemeStore.getState().initTheme()
       useConnectionStore.getState().initTrayListener()
-      await useDownloadStore.getState().initListeners()
+      await useDownloadStore.getState().initListeners(async () => {
+        await get().refreshLocalState()
+        void get().refreshRemoteState().catch((error) => {
+          useConnectionStore.getState().addLog(`Не удалось обновить удалённое состояние файлов после загрузки: ${error}`)
+        })
+      })
 
       const elevated = await tauri.isElevated()
       set({ isElevated: elevated })

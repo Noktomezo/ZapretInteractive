@@ -2,8 +2,9 @@ import type { DownloadProgress } from '@/lib/types'
 import { listen } from '@tauri-apps/api/event'
 import { toast } from 'sonner'
 import { create } from 'zustand'
-import { useAppStore } from './app.store'
 import { useConnectionStore } from './connection.store'
+
+type DownloadCompleteHandler = () => Promise<void>
 
 interface DownloadStore {
   isDownloading: boolean
@@ -13,7 +14,7 @@ interface DownloadStore {
   setDownloading: (downloading: boolean) => void
   setProgress: (progress: DownloadProgress | null) => void
   reset: () => void
-  initListeners: () => Promise<void>
+  initListeners: (onDownloadComplete?: DownloadCompleteHandler) => Promise<void>
   cleanup: () => void
 }
 
@@ -25,7 +26,7 @@ export const useDownloadStore = create<DownloadStore>(set => ({
   setDownloading: isDownloading => set({ isDownloading }),
   setProgress: progress => set({ progress }),
   reset: () => set({ isDownloading: false, progress: null }),
-  initListeners: async () => {
+  initListeners: async (onDownloadComplete) => {
     if (useDownloadStore.getState().listenersInitialized)
       return
     try {
@@ -39,10 +40,7 @@ export const useDownloadStore = create<DownloadStore>(set => ({
 
       const unlistenComplete = await listen('download-complete', async () => {
         try {
-          await useAppStore.getState().refreshLocalState()
-          void useAppStore.getState().refreshRemoteState().catch((error) => {
-            useConnectionStore.getState().addLog(`Не удалось обновить удалённое состояние файлов после загрузки: ${error}`)
-          })
+          await onDownloadComplete?.()
         }
         catch (e) {
           useConnectionStore.getState().addLog(`Не удалось обновить локальное состояние файлов после загрузки: ${e}`)
