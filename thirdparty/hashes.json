@@ -43,5 +43,5 @@
   "lists:zapret-hosts-user-exclude.txt": "c9bea84f7bfe116eec4a85019867ed67c9d2ec0c0d102010b913a87d57b69760",
   "lists:zapret-ip-user.txt": "a199d50dde915613df2c9a2a7f7910ca4806dfed8370966ab62c71638e8663f7",
   "modules:dnscrypt-proxy/dnscrypt-proxy.exe": "c9057b853c38cbc4fc2e3673350a56fe13ca034b0d6aff6d786506ca6af4a87f",
-  "modules:tg-ws-proxy-rs/tg-ws-proxy.exe": "96f0ce6adae738628600b6a608fe9ac6bcc1835cb71005ce62ebacc238d28b92"
+  "modules:tg-ws-proxy-rs/tg-ws-proxy.exe": "f7366c0266ae05fcb744248b89bae610dcbb7d552657075962a10e58483e0232"
 }
