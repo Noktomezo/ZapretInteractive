@@ -26,6 +26,7 @@ godville.net
 voidboost.cc
 moondroplab.tech
 rockstargames.com
+supporter-files.nexus-cdn.com
 #################################### VK
 vk.cc
 vk.me
@@ -435,4 +436,7 @@ kraftonde.com
 pubghelper.com
 pubg1.battleye.com
 playbattlegrounds.com
+#################################### Tumblr
+tmblr.com
+tumblr.com
 ####################################
