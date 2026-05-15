@@ -550,9 +550,9 @@ export function CategoriesListPage() {
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-medium">Категории</h1>
+            <h1 className="text-2xl font-medium">Стратегии</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Выберите категорию для управления стратегиями
+              Категоризированное управление стратегиями
             </p>
           </div>
           <Button onClick={() => setNewCategoryOpen(true)}>

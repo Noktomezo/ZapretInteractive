@@ -11,6 +11,7 @@ import FaultyTerminal from '@/components/FaultyTerminal'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import {
   Tooltip,
   TooltipContent,
@@ -27,6 +28,28 @@ import { useDownloadStore } from '@/stores/download.store'
 import { useUpdaterStore } from '@/stores/updater.store'
 
 const terminalGridMul: [number, number] = [2, 1]
+const LIST_MODE_OPTIONS: {
+  value: ListMode
+  label: string
+  tooltip: string
+  activeClassName: string
+  indicatorClassName: string
+}[] = [
+  {
+    value: 'ipset',
+    label: 'Только заблокированные',
+    tooltip: 'Обрабатываются только заблокированные в России IP-адреса. Достоверность 99.9%',
+    activeClassName: 'data-[state=on]:text-success data-[state=on]:[text-shadow:0_0_12px_color-mix(in_oklab,var(--success)_32%,transparent)]',
+    indicatorClassName: 'border-success/42 bg-success/20',
+  },
+  {
+    value: 'exclude',
+    label: 'Исключения',
+    tooltip: 'По умолчанию обрабатываются все адреса, кроме тех, которые стратегии ломают',
+    activeClassName: 'data-[state=on]:text-warning data-[state=on]:[text-shadow:0_0_12px_color-mix(in_oklab,var(--warning)_32%,transparent)]',
+    indicatorClassName: 'border-warning/42 bg-warning/22',
+  },
+]
 
 export function MainPageTerminalBackdrop({ visible }: { visible: boolean }) {
   const status = useConnectionStore(state => state.status)
@@ -132,7 +155,6 @@ export function MainPage() {
   const activeUpdateToastIdRef = useRef<string | number | null>(null)
   const appUpdatePromptKeyRef = useRef('')
   const activeAppUpdateToastIdRef = useRef<string | number | null>(null)
-  const listModeButtonRefs = useRef<Array<HTMLButtonElement | null>>([])
   const [initError, setInitError] = useState<string | null>(null)
   const [listModeUpdating, setListModeUpdating] = useState(false)
   const config = useConfigStore(state => state.config)
@@ -163,8 +185,7 @@ export function MainPage() {
   const installAvailableAppUpdate = useUpdaterStore(state => state.installAvailableUpdate)
   const dismissCurrentAppUpdate = useUpdaterStore(state => state.dismissCurrentVersionUntilRestart)
   const selectedListMode = config?.listMode ?? 'ipset'
-  const [focusedListModeIndex, setFocusedListModeIndex] = useState<number | null>(null)
-  const activeListModeIndex = focusedListModeIndex ?? (selectedListMode === 'exclude' ? 1 : 0)
+  const activeListModeIndex = Math.max(LIST_MODE_OPTIONS.findIndex(option => option.value === selectedListMode), 0)
   const listModeDisabled = !initialized || !config || status !== 'disconnected' || listModeUpdating
 
   const handleListModeChange = async (value: string) => {
@@ -194,39 +215,6 @@ export function MainPage() {
       setMainPageVisited(true)
     }
   })
-
-  const handleListModeKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
-    if (listModeDisabled) {
-      return
-    }
-
-    const modes: ListMode[] = ['ipset', 'exclude']
-    let nextIndex: number | null = null
-
-    switch (event.key) {
-      case 'ArrowLeft':
-      case 'ArrowUp':
-        nextIndex = (index + modes.length - 1) % modes.length
-        break
-      case 'ArrowRight':
-      case 'ArrowDown':
-        nextIndex = (index + 1) % modes.length
-        break
-      case 'Home':
-        nextIndex = 0
-        break
-      case 'End':
-        nextIndex = modes.length - 1
-        break
-      default:
-        return
-    }
-
-    event.preventDefault()
-    setFocusedListModeIndex(nextIndex)
-    listModeButtonRefs.current[nextIndex]?.focus()
-    void handleListModeChange(modes[nextIndex])
-  }
 
   useMountEffect(() => {
     initialize().catch((error) => {
@@ -671,132 +659,63 @@ export function MainPage() {
           </h2>
         </div>
 
-        <div
-          role="radiogroup"
+        <ToggleGroup
+          type="single"
+          value={selectedListMode}
+          onValueChange={(value) => {
+            if (value) {
+              void handleListModeChange(value)
+            }
+          }}
+          disabled={listModeDisabled}
+          className="relative mx-auto grid w-fit grid-cols-2 gap-0.5 rounded-lg border border-border/60 bg-background/76 p-0.5 shadow-lg shadow-black/10 backdrop-blur-md"
           aria-label="Режим списков"
-          className="relative mx-auto grid w-fit grid-cols-2 gap-1 rounded-xl border border-border/60 bg-background/76 p-1 shadow-lg shadow-black/10 backdrop-blur-md"
         >
           <div
             className={cn(
-              'pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-md border shadow-sm transition-all duration-300 ease-out',
-              selectedListMode === 'ipset'
-                ? 'translate-x-0 border-success/30 bg-success/10'
-                : 'translate-x-full border-warning/30 bg-warning/12',
+              'pointer-events-none absolute inset-y-0.5 left-0.5 w-[calc((100%-0.375rem)/2)] rounded-[calc(var(--radius)-0.125rem)] border shadow-sm transition-all duration-300 ease-out',
+              LIST_MODE_OPTIONS[activeListModeIndex].indicatorClassName,
             )}
+            style={{ transform: `translateX(calc(${activeListModeIndex} * (100% + 0.125rem)))` }}
           />
-          {status === 'disconnected'
-            ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      ref={(element) => {
-                        listModeButtonRefs.current[0] = element
-                      }}
-                      type="button"
-                      role="radio"
-                      aria-checked={selectedListMode === 'ipset'}
-                      disabled={listModeDisabled}
-                      tabIndex={activeListModeIndex === 0 ? 0 : -1}
-                      onFocus={() => setFocusedListModeIndex(0)}
-                      onKeyDown={event => handleListModeKeyDown(event, 0)}
-                      onClick={() => void handleListModeChange('ipset')}
-                      className={cn(
-                        'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
-                        selectedListMode === 'ipset'
-                          ? 'text-success'
-                          : 'text-foreground/80 hover:text-foreground',
-                        listModeDisabled && 'cursor-not-allowed opacity-50',
-                      )}
-                    >
-                      Только заблокированные
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs text-center">
-                    Обрабатываются только заблокированные в России IP-адреса. Достоверность 99.9%
-                  </TooltipContent>
-                </Tooltip>
-              )
-            : (
-                <button
-                  ref={(element) => {
-                    listModeButtonRefs.current[0] = element
-                  }}
-                  type="button"
-                  role="radio"
-                  aria-checked={selectedListMode === 'ipset'}
-                  disabled={listModeDisabled}
-                  tabIndex={activeListModeIndex === 0 ? 0 : -1}
-                  onFocus={() => setFocusedListModeIndex(0)}
-                  onKeyDown={event => handleListModeKeyDown(event, 0)}
-                  onClick={() => void handleListModeChange('ipset')}
-                  className={cn(
-                    'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
-                    selectedListMode === 'ipset'
-                      ? 'text-success'
-                      : 'text-foreground/80 hover:text-foreground',
-                    listModeDisabled && 'cursor-not-allowed opacity-50',
-                  )}
-                >
-                  Только заблокированные
-                </button>
-              )}
-          {status === 'disconnected'
-            ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      ref={(element) => {
-                        listModeButtonRefs.current[1] = element
-                      }}
-                      type="button"
-                      role="radio"
-                      aria-checked={selectedListMode === 'exclude'}
-                      disabled={listModeDisabled}
-                      tabIndex={activeListModeIndex === 1 ? 0 : -1}
-                      onFocus={() => setFocusedListModeIndex(1)}
-                      onKeyDown={event => handleListModeKeyDown(event, 1)}
-                      onClick={() => void handleListModeChange('exclude')}
-                      className={cn(
-                        'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
-                        selectedListMode === 'exclude'
-                          ? 'text-warning'
-                          : 'text-foreground/80 hover:text-foreground',
-                        listModeDisabled && 'cursor-not-allowed opacity-50',
-                      )}
-                    >
-                      Исключения
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs text-center">
-                    По умолчанию обрабатываются все адреса, кроме тех, которые стратегии ломают
-                  </TooltipContent>
-                </Tooltip>
-              )
-            : (
-                <button
-                  ref={(element) => {
-                    listModeButtonRefs.current[1] = element
-                  }}
-                  type="button"
-                  role="radio"
-                  aria-checked={selectedListMode === 'exclude'}
-                  disabled={listModeDisabled}
-                  tabIndex={activeListModeIndex === 1 ? 0 : -1}
-                  onFocus={() => setFocusedListModeIndex(1)}
-                  onKeyDown={event => handleListModeKeyDown(event, 1)}
-                  onClick={() => void handleListModeChange('exclude')}
-                  className={cn(
-                    'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
-                    selectedListMode === 'exclude'
-                      ? 'text-warning'
-                      : 'text-foreground/80 hover:text-foreground',
-                    listModeDisabled && 'cursor-not-allowed opacity-50',
-                  )}
-                >
-                  Исключения
-                </button>
-              )}
-        </div>
+          {LIST_MODE_OPTIONS.map(option => (
+            status === 'disconnected'
+              ? (
+                  <Tooltip key={option.value}>
+                    <TooltipTrigger asChild>
+                      <ToggleGroupItem
+                        value={option.value}
+                        className={cn(
+                          'relative z-10 h-7.5 min-w-0 cursor-pointer rounded-[calc(var(--radius)-0.125rem)] border-0 bg-transparent px-3 text-xs text-foreground/80 shadow-none transition-colors duration-300 hover:bg-transparent hover:text-foreground data-[state=on]:bg-transparent data-[state=on]:shadow-none',
+                          option.activeClassName,
+                          listModeDisabled && 'cursor-not-allowed opacity-50',
+                        )}
+                        aria-label={option.label}
+                      >
+                        {option.label}
+                      </ToggleGroupItem>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs text-center">
+                      {option.tooltip}
+                    </TooltipContent>
+                  </Tooltip>
+                )
+              : (
+                  <ToggleGroupItem
+                    key={option.value}
+                    value={option.value}
+                    className={cn(
+                      'relative z-10 h-7.5 min-w-0 cursor-pointer rounded-[calc(var(--radius)-0.125rem)] border-0 bg-transparent px-3 text-xs text-foreground/80 shadow-none transition-colors duration-300 hover:bg-transparent hover:text-foreground data-[state=on]:bg-transparent data-[state=on]:shadow-none',
+                      option.activeClassName,
+                      listModeDisabled && 'cursor-not-allowed opacity-50',
+                    )}
+                    aria-label={option.label}
+                  >
+                    {option.label}
+                  </ToggleGroupItem>
+                )
+          ))}
+        </ToggleGroup>
       </div>
     </div>
   )
