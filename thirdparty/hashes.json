@@ -40,8 +40,8 @@
   "fake:zero_256.bin": "5341e6b2646979a70e57653007a1f310169421ec9bdd9f1a5648f75ade005af1",
   "fake:zero_512.bin": "076a27c79e5ace2a3d47f9dd2e83e4ff6ea8872b3c2218f66c92b89b55f36560",
   "lists:zapret-hosts-google.txt": "f83a38144f7f65f51dc4996414ec8b6b6eef29524e6a8cfe0ec15078c9699dc1",
-  "lists:zapret-hosts-user-exclude.txt": "4cc9016893d60cd4c085c0aca76225881312f30014485b42431556afafaf81d4",
-  "lists:zapret-ip-user.txt": "f405e710984940db8e67ec73f1cf844232f981b13e6df7ecfa8cfec1ffab9381",
+  "lists:zapret-hosts-user-exclude.txt": "8eba8238225fb14c596093ea507fa50d200ee0e1db8ae6df55fe7dcf132fac54",
+  "lists:zapret-ip-user.txt": "7e17ff26d89dd28eb2828d9859ec43b233cbd472a998817c9e0d5561620c8cc8",
   "modules:dnscrypt-proxy/dnscrypt-proxy.exe": "c9057b853c38cbc4fc2e3673350a56fe13ca034b0d6aff6d786506ca6af4a87f",
   "modules:tg-ws-proxy-rs/tg-ws-proxy.exe": "f7366c0266ae05fcb744248b89bae610dcbb7d552657075962a10e58483e0232"
 }
