@@ -129,11 +129,11 @@
     "IBM Plex Sans", "Segoe UI Variable Text", "Segoe UI", ui-sans-serif,
     system-ui, -apple-system, "BlinkMacSystemFont", sans-serif;
   --font-display:
-    "Bahnschrift SemiCondensed", "Bahnschrift", "Segoe UI Variable Display",
-    "Segoe UI Variable Text", ui-sans-serif, sans-serif;
+    "IBM Plex Sans", "Segoe UI Variable Display", "Segoe UI Variable Text",
+    ui-sans-serif, system-ui, -apple-system, "BlinkMacSystemFont", sans-serif;
   --font-mono:
-    "Cascadia Code", "Cascadia Mono", "JetBrains Mono", ui-monospace,
-    "SFMono-Regular", monospace;
+    "IBM Plex Mono", "Cascadia Code", "Cascadia Mono", "JetBrains Mono",
+    ui-monospace, "SFMono-Regular", monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -237,7 +237,7 @@
   --sidebar-foreground: oklch(0.25 0.02 40);
   --sidebar-primary: oklch(0.65 0.2 55);
   --sidebar-primary-foreground: oklch(0.99 0.01 90);
-  --sidebar-accent: oklch(0.9 0.02 75);
+  --sidebar-accent: color-mix(in oklab, var(--sidebar-primary) 32%, var(--sidebar) 68%);
   --sidebar-accent-foreground: oklch(0.25 0.02 40);
   --sidebar-border: oklch(0.85 0.02 70);
   --sidebar-ring: oklch(0.65 0.2 55);
@@ -292,7 +292,7 @@ textarea,
   --sidebar-foreground: oklch(0.85 0.02 90);
   --sidebar-primary: oklch(0.77 0.17 85);
   --sidebar-primary-foreground: oklch(0.16 0.01 30);
-  --sidebar-accent: oklch(0.24 0.01 40);
+  --sidebar-accent: color-mix(in oklab, var(--sidebar-primary) 34%, var(--sidebar) 66%);
   --sidebar-accent-foreground: oklch(0.85 0.02 90);
   --sidebar-border: oklch(0.31 0.01 35);
   --sidebar-ring: oklch(0.77 0.17 85);
@@ -302,31 +302,75 @@ textarea,
   --terminal-background-tint: #151313;
 }
 
-[data-theme="light"][data-webview-material="acrylic"],
-[data-theme="light"][data-webview-material="mica"],
-[data-theme="light"][data-webview-material="tabbed"] {
-  --background: oklch(0.97 0.02 85 / 0.78);
+[data-theme="light"][data-webview-material="acrylic"] {
+  --background: oklch(0.97 0.02 85);
   --card: oklch(0.99 0.01 90 / 0.84);
   --popover: oklch(0.99 0.01 90 / 0.9);
   --secondary: oklch(0.92 0.02 80 / 0.78);
   --muted: oklch(0.9 0.015 75 / 0.74);
-  --sidebar: oklch(0.95 0.02 80 / 0.62);
-  --sidebar-border: oklch(0.85 0.02 70 / 0.62);
-  --sidebar-accent: oklch(0.9 0.02 75 / 0.88);
+  --sidebar: oklch(0.95 0.02 80 / 0.38);
+  --sidebar-border: oklch(0.85 0.02 70 / 0.42);
+  --sidebar-accent: color-mix(in oklab, var(--sidebar-primary) 32%, var(--sidebar) 68%);
   --terminal-background-tint: #efe8d8;
 }
 
-[data-theme="dark"][data-webview-material="acrylic"],
-[data-theme="dark"][data-webview-material="mica"],
-[data-theme="dark"][data-webview-material="tabbed"] {
-  --background: oklch(0.16 0.01 30 / 0.76);
+[data-theme="light"][data-webview-material="mica"] {
+  --background: oklch(0.97 0.02 85);
+  --card: oklch(0.99 0.01 90 / 0.86);
+  --popover: oklch(0.99 0.01 90 / 0.92);
+  --secondary: oklch(0.92 0.02 80 / 0.82);
+  --muted: oklch(0.9 0.015 75 / 0.78);
+  --sidebar: oklch(0.95 0.02 80 / 0.5);
+  --sidebar-border: oklch(0.85 0.02 70 / 0.5);
+  --sidebar-accent: color-mix(in oklab, var(--sidebar-primary) 32%, var(--sidebar) 68%);
+  --terminal-background-tint: #efe8d8;
+}
+
+[data-theme="light"][data-webview-material="tabbed"] {
+  --background: oklch(0.97 0.02 85);
+  --card: oklch(0.99 0.01 90 / 0.82);
+  --popover: oklch(0.99 0.01 90 / 0.88);
+  --secondary: oklch(0.92 0.02 80 / 0.74);
+  --muted: oklch(0.9 0.015 75 / 0.7);
+  --sidebar: oklch(0.95 0.02 80 / 0.32);
+  --sidebar-border: oklch(0.85 0.02 70 / 0.36);
+  --sidebar-accent: color-mix(in oklab, var(--sidebar-primary) 32%, var(--sidebar) 68%);
+  --terminal-background-tint: #efe8d8;
+}
+
+[data-theme="dark"][data-webview-material="acrylic"] {
+  --background: oklch(0.16 0.01 30);
   --card: oklch(0.19 0.01 40 / 0.82);
   --popover: oklch(0.24 0.01 40 / 0.9);
   --secondary: oklch(0.29 0.01 40 / 0.78);
   --muted: oklch(0.33 0.01 40 / 0.74);
-  --sidebar: oklch(0.16 0.01 30 / 0.64);
-  --sidebar-border: oklch(0.31 0.01 35 / 0.58);
-  --sidebar-accent: oklch(0.24 0.01 40 / 0.88);
+  --sidebar: oklch(0.16 0.01 30 / 0.44);
+  --sidebar-border: oklch(0.31 0.01 35 / 0.42);
+  --sidebar-accent: color-mix(in oklab, var(--sidebar-primary) 34%, var(--sidebar) 66%);
+  --terminal-background-tint: #171413;
+}
+
+[data-theme="dark"][data-webview-material="mica"] {
+  --background: oklch(0.16 0.01 30);
+  --card: oklch(0.19 0.01 40 / 0.86);
+  --popover: oklch(0.24 0.01 40 / 0.92);
+  --secondary: oklch(0.29 0.01 40 / 0.82);
+  --muted: oklch(0.33 0.01 40 / 0.78);
+  --sidebar: oklch(0.16 0.01 30 / 0.56);
+  --sidebar-border: oklch(0.31 0.01 35 / 0.5);
+  --sidebar-accent: color-mix(in oklab, var(--sidebar-primary) 34%, var(--sidebar) 66%);
+  --terminal-background-tint: #171413;
+}
+
+[data-theme="dark"][data-webview-material="tabbed"] {
+  --background: oklch(0.16 0.01 30);
+  --card: oklch(0.19 0.01 40 / 0.78);
+  --popover: oklch(0.24 0.01 40 / 0.88);
+  --secondary: oklch(0.29 0.01 40 / 0.74);
+  --muted: oklch(0.33 0.01 40 / 0.7);
+  --sidebar: oklch(0.16 0.01 30 / 0.36);
+  --sidebar-border: oklch(0.31 0.01 35 / 0.36);
+  --sidebar-accent: color-mix(in oklab, var(--sidebar-primary) 34%, var(--sidebar) 66%);
   --terminal-background-tint: #171413;
 }
 
@@ -353,6 +397,10 @@ textarea,
   h4 {
     font-family: var(--font-display);
     letter-spacing: -0.03em;
+  }
+
+  textarea {
+    font-family: var(--font-mono);
   }
 
   h1 {
@@ -413,6 +461,128 @@ textarea,
   [data-webview-material="none"] .app-toast {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
+  }
+
+  .connect-liquid-glass {
+    --connect-glass-tint: transparent;
+    --connect-glass-border: rgb(255 255 255 / 20%);
+    --connect-glass-edge: rgb(255 255 255 / 28%);
+    --connect-glass-shine: rgb(255 255 255 / 46%);
+    --connect-glass-orbit-angle: 0deg;
+
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-color: var(--connect-glass-border);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    box-shadow:
+      0 8px 32px rgb(0 0 0 / 10%),
+      inset 0 1px 0 rgb(255 255 255 / 50%),
+      inset 0 -1px 0 rgb(255 255 255 / 10%);
+  }
+
+  .connect-liquid-glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    background-color: color-mix(in oklab, rgb(255 255 255 / 8%) 72%, var(--connect-glass-tint));
+    box-shadow:
+      inset 2px 2px 0 -2px var(--connect-glass-edge),
+      inset 0 0 3px 1px color-mix(in oklab, var(--connect-glass-edge) 76%, transparent);
+    pointer-events: none;
+  }
+
+  [data-theme="dark"] .connect-liquid-glass::before {
+    background-color: color-mix(in oklab, rgb(0 0 0 / 8%) 72%, var(--connect-glass-tint));
+  }
+
+  .connect-liquid-glass-success {
+    --connect-glass-tint: color-mix(in oklab, var(--success) 22%, transparent);
+    --connect-glass-border: color-mix(in oklab, var(--success) 26%, rgb(255 255 255 / 20%));
+    --connect-glass-edge: color-mix(in oklab, var(--success) 46%, rgb(255 255 255 / 14%));
+    --connect-glass-shine: color-mix(in oklab, var(--success) 62%, rgb(255 255 255 / 18%));
+  }
+
+  .connect-liquid-glass-warning {
+    --connect-glass-tint: color-mix(in oklab, var(--warning) 22%, transparent);
+    --connect-glass-border: color-mix(in oklab, var(--warning) 26%, rgb(255 255 255 / 20%));
+    --connect-glass-edge: color-mix(in oklab, var(--warning) 46%, rgb(255 255 255 / 14%));
+    --connect-glass-shine: color-mix(in oklab, var(--warning) 62%, rgb(255 255 255 / 18%));
+  }
+
+  .connect-liquid-glass-error {
+    --connect-glass-tint: color-mix(in oklab, var(--destructive) 22%, transparent);
+    --connect-glass-border: color-mix(in oklab, var(--destructive) 26%, rgb(255 255 255 / 20%));
+    --connect-glass-edge: color-mix(in oklab, var(--destructive) 46%, rgb(255 255 255 / 14%));
+    --connect-glass-shine: color-mix(in oklab, var(--destructive) 62%, rgb(255 255 255 / 18%));
+  }
+
+  .connect-liquid-glass-neutral {
+    --connect-glass-tint: color-mix(in oklab, var(--foreground) 14%, transparent);
+    --connect-glass-border: color-mix(in oklab, var(--foreground) 18%, rgb(255 255 255 / 20%));
+    --connect-glass-edge: color-mix(in oklab, var(--foreground) 34%, rgb(255 255 255 / 12%));
+    --connect-glass-shine: color-mix(in oklab, var(--foreground) 48%, rgb(255 255 255 / 16%));
+  }
+
+  .connect-liquid-glass::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    z-index: 1;
+    padding: 2px;
+    overflow: hidden;
+    border-radius: inherit;
+    background: conic-gradient(
+      from var(--connect-glass-orbit-angle),
+      transparent 0deg,
+      transparent 222deg,
+      rgb(255 255 255 / 0%) 246deg,
+      var(--connect-glass-shine) 266deg,
+      color-mix(in oklab, var(--connect-glass-border) 86%, var(--connect-glass-shine)) 286deg,
+      transparent 318deg,
+      transparent 360deg
+    );
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    transition: opacity 180ms ease-out;
+    pointer-events: none;
+  }
+
+  .connect-liquid-glass:hover::after {
+    opacity: 0;
+  }
+
+  .connect-liquid-glass > svg {
+    position: relative;
+    z-index: 2;
+    opacity: 0.76;
+    filter:
+      url("#connect-icon-etched")
+      drop-shadow(0 1px 0 rgb(255 255 255 / 24%))
+      drop-shadow(0 -1px 0 rgb(0 0 0 / 18%));
+    mix-blend-mode: soft-light;
+    stroke-width: 1.8;
+    transition:
+      opacity 180ms ease-out,
+      filter 180ms ease-out;
+  }
+
+  .connect-liquid-glass:hover > svg {
+    opacity: 0.52;
+    filter:
+      url("#connect-icon-etched")
+      drop-shadow(0 1px 0 rgb(255 255 255 / 14%))
+      drop-shadow(0 -1px 0 rgb(0 0 0 / 30%));
   }
 
   @keyframes pulse-glow {
@@ -491,7 +661,8 @@ textarea,
     .animate-pulse-glow,
     .animate-pulse-glow-primary,
     .animate-pulse-glow-neutral,
-    .animate-pulse-glow-yellow {
+    .animate-pulse-glow-yellow,
+    .connect-liquid-glass-orbit {
       animation: none !important;
     }
   }

@@ -52,6 +52,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useMountEffect } from '@/hooks/use-mount-effect'
 import * as tauri from '@/lib/tauri'
 import { cn } from '@/lib/utils'
@@ -62,9 +63,9 @@ import { useThemeStore } from '@/stores/theme.store'
 const RANGE_RE = /^\d+-\d+$/
 const PORT_RE = /^\d+$/
 const THEME_OPTIONS: { value: Theme, label: string, icon: React.ComponentType<{ className?: string }> }[] = [
+  { value: 'system', label: 'Системная', icon: Laptop },
   { value: 'light', label: 'Светлая', icon: SunMedium },
   { value: 'dark', label: 'Тёмная', icon: MoonStar },
-  { value: 'system', label: 'Системная', icon: Laptop },
 ]
 const WINDOW_MATERIAL_OPTIONS: { value: WindowMaterial, label: string, icon: React.ComponentType<{ className?: string }> }[] = [
   { value: 'none', label: 'Нет', icon: CircleOff },
@@ -201,7 +202,7 @@ export function SettingsPage() {
   const addConfigLog = useConnectionStore(state => state.addConfigLog)
   const theme = useThemeStore(state => state.theme)
   const setTheme = useThemeStore(state => state.setTheme)
-  const selectedTheme = THEME_OPTIONS.find(option => option.value === theme) ?? THEME_OPTIONS[2]
+  const activeThemeIndex = Math.max(THEME_OPTIONS.findIndex(option => option.value === theme), 0)
   const selectedWindowMaterial = WINDOW_MATERIAL_OPTIONS.find(option => option.value === (config?.windowMaterial ?? 'none')) ?? WINDOW_MATERIAL_OPTIONS[0]
   const selectedDiscordPresenceValue = (config?.discordPresenceEnabled ?? false)
     ? (config?.discordPresenceActivityType ?? 'playing')
@@ -425,25 +426,36 @@ export function SettingsPage() {
               >
                 Режим
               </SettingLabel>
-              <div className="w-full sm:w-[11rem]">
-                <Select value={theme} onValueChange={value => setTheme(value as Theme)}>
-                  <SelectTrigger id="theme-select" className="w-full cursor-pointer">
-                    <span className="flex items-center gap-2">
-                      <selectedTheme.icon className="size-4 text-muted-foreground" />
-                      <SelectValue placeholder="Выберите режим">{selectedTheme.label}</SelectValue>
-                    </span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {THEME_OPTIONS.map(option => (
-                      <SelectItem key={option.value} value={option.value}>
-                        <span className="flex items-center gap-2">
-                          <option.icon className="size-4 text-muted-foreground" />
-                          <span>{option.label}</span>
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="w-full sm:w-auto">
+                <ToggleGroup
+                  id="theme-select"
+                  type="single"
+                  value={theme}
+                  onValueChange={(value) => {
+                    if (value) {
+                      setTheme(value as Theme)
+                    }
+                  }}
+                  className="relative grid w-full grid-cols-3 gap-0.5 rounded-lg border border-border/70 bg-background/76 p-0.5 shadow-xs sm:w-fit"
+                  aria-label="Режим темы"
+                >
+                  <span
+                    className="pointer-events-none absolute inset-y-0.5 left-0.5 w-[calc((100%-0.5rem)/3)] rounded-[calc(var(--radius)-0.125rem)] border border-primary/28 bg-primary/12 shadow-xs transition-transform duration-250 ease-out"
+                    style={{ transform: `translateX(calc(${activeThemeIndex} * (100% + 0.125rem)))` }}
+                    aria-hidden="true"
+                  />
+                  {THEME_OPTIONS.map(option => (
+                    <ToggleGroupItem
+                      key={option.value}
+                      value={option.value}
+                      className="relative z-10 h-8 min-w-0 cursor-pointer rounded-[calc(var(--radius)-0.125rem)] border-0 bg-transparent px-3 text-xs text-foreground/78 shadow-none hover:bg-transparent hover:text-foreground data-[state=on]:bg-transparent data-[state=on]:text-primary data-[state=on]:shadow-none data-[state=on]:[&_svg]:text-primary"
+                      aria-label={option.label}
+                    >
+                      <option.icon className="text-muted-foreground" />
+                      <span>{option.label}</span>
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
               </div>
             </div>
 

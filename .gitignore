@@ -42,3 +42,4 @@ src-tauri/updater.key.pub
 
 # Legacy runtime leftovers
 thirdparty/WinDivert64.sys
+.soulforge

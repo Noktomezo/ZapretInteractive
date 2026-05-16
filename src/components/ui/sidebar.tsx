@@ -215,7 +215,7 @@ function SidebarRail({ className, onClick, ...props }: React.ComponentProps<'but
 }
 
 function SidebarInset({ className, ...props }: React.ComponentProps<'main'>) {
-  return <main data-slot="sidebar-inset" className={cn('flex min-w-0 flex-1 flex-col overflow-hidden border-t border-border/70 bg-background/72 md:border-l', className)} {...props} />
+  return <main data-slot="sidebar-inset" className={cn('flex min-w-0 flex-1 flex-col overflow-hidden border-t border-border/70 bg-background md:border-l', className)} {...props} />
 }
 
 export {

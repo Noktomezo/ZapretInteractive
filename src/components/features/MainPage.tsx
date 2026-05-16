@@ -11,6 +11,7 @@ import FaultyTerminal from '@/components/FaultyTerminal'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import {
   Tooltip,
   TooltipContent,
@@ -27,6 +28,28 @@ import { useDownloadStore } from '@/stores/download.store'
 import { useUpdaterStore } from '@/stores/updater.store'
 
 const terminalGridMul: [number, number] = [2, 1]
+const LIST_MODE_OPTIONS: {
+  value: ListMode
+  label: string
+  tooltip: string
+  activeClassName: string
+  indicatorClassName: string
+}[] = [
+  {
+    value: 'ipset',
+    label: 'Только заблокированные',
+    tooltip: 'Обрабатываются только заблокированные в России IP-адреса. Достоверность 99.9%',
+    activeClassName: 'data-[state=on]:text-success data-[state=on]:[text-shadow:0_0_12px_color-mix(in_oklab,var(--success)_32%,transparent)]',
+    indicatorClassName: 'border-success/42 bg-success/20',
+  },
+  {
+    value: 'exclude',
+    label: 'Исключения',
+    tooltip: 'По умолчанию обрабатываются все адреса, кроме тех, которые стратегии ломают',
+    activeClassName: 'data-[state=on]:text-warning data-[state=on]:[text-shadow:0_0_12px_color-mix(in_oklab,var(--warning)_32%,transparent)]',
+    indicatorClassName: 'border-warning/42 bg-warning/22',
+  },
+]
 
 export function MainPageTerminalBackdrop({ visible }: { visible: boolean }) {
   const status = useConnectionStore(state => state.status)
@@ -132,7 +155,9 @@ export function MainPage() {
   const activeUpdateToastIdRef = useRef<string | number | null>(null)
   const appUpdatePromptKeyRef = useRef('')
   const activeAppUpdateToastIdRef = useRef<string | number | null>(null)
-  const listModeButtonRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const connectButtonRef = useRef<HTMLButtonElement | null>(null)
+  const connectGlassAngleRef = useRef(0)
+  const connectGlassSpeedRef = useRef(0.15)
   const [initError, setInitError] = useState<string | null>(null)
   const [listModeUpdating, setListModeUpdating] = useState(false)
   const config = useConfigStore(state => state.config)
@@ -163,9 +188,83 @@ export function MainPage() {
   const installAvailableAppUpdate = useUpdaterStore(state => state.installAvailableUpdate)
   const dismissCurrentAppUpdate = useUpdaterStore(state => state.dismissCurrentVersionUntilRestart)
   const selectedListMode = config?.listMode ?? 'ipset'
-  const [focusedListModeIndex, setFocusedListModeIndex] = useState<number | null>(null)
-  const activeListModeIndex = focusedListModeIndex ?? (selectedListMode === 'exclude' ? 1 : 0)
+  const activeListModeIndex = Math.max(LIST_MODE_OPTIONS.findIndex(option => option.value === selectedListMode), 0)
+  const listModeOptionCount = LIST_MODE_OPTIONS.length
+  const listModeIndicatorWidth = `calc((100% - 0.25rem - ${(listModeOptionCount - 1) * 0.125}rem) / ${listModeOptionCount})`
   const listModeDisabled = !initialized || !config || status !== 'disconnected' || listModeUpdating
+
+  useEffect(() => {
+    connectGlassSpeedRef.current = status === 'connecting' || status === 'disconnecting' ? 0.3 : 0.15
+  }, [status])
+
+  useEffect(() => {
+    const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+
+    let frameId: number | null = null
+    let previousTimestamp = performance.now()
+
+    const rotateConnectGlass = (timestamp: number) => {
+      const elapsed = timestamp - previousTimestamp
+      previousTimestamp = timestamp
+      connectGlassAngleRef.current = (connectGlassAngleRef.current + elapsed * connectGlassSpeedRef.current) % 360
+      connectButtonRef.current?.style.setProperty('--connect-glass-orbit-angle', `${connectGlassAngleRef.current}deg`)
+      frameId = window.requestAnimationFrame(rotateConnectGlass)
+    }
+
+    const startConnectGlassRotation = () => {
+      if (frameId !== null) {
+        return
+      }
+
+      previousTimestamp = performance.now()
+      frameId = window.requestAnimationFrame(rotateConnectGlass)
+    }
+
+    const stopConnectGlassRotation = () => {
+      if (frameId === null) {
+        return
+      }
+
+      window.cancelAnimationFrame(frameId)
+      frameId = null
+    }
+
+    const handleReducedMotionChange = (event: MediaQueryListEvent) => {
+      if (event.matches) {
+        stopConnectGlassRotation()
+        return
+      }
+
+      startConnectGlassRotation()
+    }
+
+    if (!reducedMotionQuery.matches) {
+      startConnectGlassRotation()
+    }
+
+    const legacyReducedMotionQuery = reducedMotionQuery as MediaQueryList & {
+      addListener?: (listener: (event: MediaQueryListEvent) => void) => void
+      removeListener?: (listener: (event: MediaQueryListEvent) => void) => void
+    }
+
+    if (typeof reducedMotionQuery.addEventListener === 'function') {
+      reducedMotionQuery.addEventListener('change', handleReducedMotionChange)
+    }
+    else {
+      legacyReducedMotionQuery.addListener?.(handleReducedMotionChange)
+    }
+
+    return () => {
+      stopConnectGlassRotation()
+
+      if (typeof reducedMotionQuery.removeEventListener === 'function') {
+        reducedMotionQuery.removeEventListener('change', handleReducedMotionChange)
+      }
+      else {
+        legacyReducedMotionQuery.removeListener?.(handleReducedMotionChange)
+      }
+    }
+  }, [])
 
   const handleListModeChange = async (value: string) => {
     if (!value || !config || listModeUpdating || value === config.listMode) {
@@ -189,44 +288,26 @@ export function MainPage() {
     }
   }
 
+  const renderListModeToggleItem = (option: typeof LIST_MODE_OPTIONS[number], key?: string) => (
+    <ToggleGroupItem
+      key={key}
+      value={option.value}
+      className={cn(
+        'relative z-10 h-7.5 min-w-max cursor-pointer rounded-[calc(var(--radius)-0.125rem)] border-0 bg-transparent px-3 text-xs text-foreground/80 shadow-none transition-colors duration-300 hover:bg-transparent hover:text-foreground data-[state=on]:bg-transparent data-[state=on]:shadow-none',
+        option.activeClassName,
+        listModeDisabled && 'cursor-not-allowed opacity-50',
+      )}
+      aria-label={option.label}
+    >
+      {option.label}
+    </ToggleGroupItem>
+  )
+
   useMountEffect(() => {
     if (!useAppStore.getState().mainPageVisited) {
       setMainPageVisited(true)
     }
   })
-
-  const handleListModeKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
-    if (listModeDisabled) {
-      return
-    }
-
-    const modes: ListMode[] = ['ipset', 'exclude']
-    let nextIndex: number | null = null
-
-    switch (event.key) {
-      case 'ArrowLeft':
-      case 'ArrowUp':
-        nextIndex = (index + modes.length - 1) % modes.length
-        break
-      case 'ArrowRight':
-      case 'ArrowDown':
-        nextIndex = (index + 1) % modes.length
-        break
-      case 'Home':
-        nextIndex = 0
-        break
-      case 'End':
-        nextIndex = modes.length - 1
-        break
-      default:
-        return
-    }
-
-    event.preventDefault()
-    setFocusedListModeIndex(nextIndex)
-    listModeButtonRefs.current[nextIndex]?.focus()
-    void handleListModeChange(modes[nextIndex])
-  }
 
   useMountEffect(() => {
     initialize().catch((error) => {
@@ -632,25 +713,64 @@ export function MainPage() {
 
   return (
     <div className="relative z-10 flex h-full flex-1 items-center justify-center p-8">
+      <svg className="pointer-events-none absolute size-0" aria-hidden="true" focusable="false">
+        <filter id="connect-button-glass" x="0%" y="0%" width="100%" height="100%">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.012 0.012"
+            numOctaves="2"
+            seed="92"
+            result="noise"
+          />
+          <feGaussianBlur in="noise" stdDeviation="0.35" result="blur" />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="blur"
+            scale="18"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
+        <filter id="connect-icon-etched" x="-20%" y="-20%" width="140%" height="140%">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.9"
+            numOctaves="2"
+            seed="31"
+            result="noise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="0.9"
+            xChannelSelector="R"
+            yChannelSelector="G"
+            result="etched"
+          />
+          <feGaussianBlur in="etched" stdDeviation="0.12" />
+        </filter>
+      </svg>
       <div className="space-y-6 text-center">
         <div className="relative">
           <Button
+            ref={connectButtonRef}
             onClick={handleToggleConnection}
             disabled={
               !initialized || status === 'connecting' || status === 'disconnecting' || !config
             }
             variant="ghost"
             className={cn(
-              'h-32 w-32 rounded-full border border-white/10 shadow-lg shadow-black/10 backdrop-blur-xl transition-[background-color,color,box-shadow,transform,backdrop-filter] duration-500 ease-out disabled:opacity-100',
+              'connect-liquid-glass h-32 w-32 rounded-full border border-white/10 bg-transparent shadow-lg shadow-black/10 backdrop-blur-xl transition-[background-color,color,box-shadow,transform,backdrop-filter] duration-500 ease-out hover:bg-transparent hover:text-current disabled:opacity-100 dark:hover:bg-transparent',
               status === 'connected'
-              && 'animate-pulse-glow bg-success/48 text-white hover:border-white/14 hover:bg-success/60 hover:backdrop-blur-xl dark:border-white/8 dark:text-background',
+              && 'connect-liquid-glass-success text-success-foreground dark:border-white/8 dark:text-success',
               status === 'connecting'
-              && 'animate-pulse-glow-yellow border-warning/30 bg-warning/48 text-white dark:border-white/8 dark:text-background',
+              && 'connect-liquid-glass-warning border-warning/22 text-warning-foreground dark:border-white/8 dark:text-warning',
               status === 'disconnecting'
-              && 'animate-pulse-glow-yellow border-warning/30 bg-warning/48 text-white dark:border-white/8 dark:text-background',
-              status === 'error' && 'bg-destructive/48 text-white hover:border-white/14 hover:bg-destructive/60 hover:backdrop-blur-xl dark:border-white/8 dark:text-background',
+              && 'connect-liquid-glass-warning border-warning/22 text-warning-foreground dark:border-white/8 dark:text-warning',
+              status === 'error'
+              && 'connect-liquid-glass-error text-destructive-foreground dark:border-white/8 dark:text-destructive',
               status === 'disconnected'
-              && 'animate-pulse-glow-neutral bg-foreground/48 text-background hover:border-white/14 hover:bg-foreground/60 hover:backdrop-blur-xl dark:border-white/8',
+              && 'connect-liquid-glass-neutral text-foreground dark:border-white/8',
             )}
           >
             <Power className="size-12" />
@@ -671,132 +791,46 @@ export function MainPage() {
           </h2>
         </div>
 
-        <div
-          role="radiogroup"
+        <ToggleGroup
+          type="single"
+          value={selectedListMode}
+          onValueChange={(value) => {
+            if (value) {
+              void handleListModeChange(value)
+            }
+          }}
+          disabled={listModeDisabled}
+          className="relative mx-auto grid w-fit gap-0.5 rounded-lg border border-border/60 bg-background/76 p-0.5 shadow-lg shadow-black/10 backdrop-blur-md"
+          style={{ gridTemplateColumns: `repeat(${listModeOptionCount}, minmax(max-content, 1fr))` }}
           aria-label="Режим списков"
-          className="relative mx-auto grid w-fit grid-cols-2 gap-1 rounded-xl border border-border/60 bg-background/76 p-1 shadow-lg shadow-black/10 backdrop-blur-md"
         >
           <div
             className={cn(
-              'pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-md border shadow-sm transition-all duration-300 ease-out',
-              selectedListMode === 'ipset'
-                ? 'translate-x-0 border-success/30 bg-success/10'
-                : 'translate-x-full border-warning/30 bg-warning/12',
+              'pointer-events-none absolute inset-y-0.5 left-0.5 rounded-[calc(var(--radius)-0.125rem)] border shadow-sm transition-all duration-300 ease-out',
+              LIST_MODE_OPTIONS[activeListModeIndex].indicatorClassName,
             )}
+            style={{
+              width: listModeIndicatorWidth,
+              transform: `translateX(calc(${activeListModeIndex} * (100% + 0.125rem)))`,
+            }}
           />
-          {status === 'disconnected'
-            ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      ref={(element) => {
-                        listModeButtonRefs.current[0] = element
-                      }}
-                      type="button"
-                      role="radio"
-                      aria-checked={selectedListMode === 'ipset'}
-                      disabled={listModeDisabled}
-                      tabIndex={activeListModeIndex === 0 ? 0 : -1}
-                      onFocus={() => setFocusedListModeIndex(0)}
-                      onKeyDown={event => handleListModeKeyDown(event, 0)}
-                      onClick={() => void handleListModeChange('ipset')}
-                      className={cn(
-                        'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
-                        selectedListMode === 'ipset'
-                          ? 'text-success'
-                          : 'text-foreground/80 hover:text-foreground',
-                        listModeDisabled && 'cursor-not-allowed opacity-50',
-                      )}
-                    >
-                      Только заблокированные
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs text-center">
-                    Обрабатываются только заблокированные в России IP-адреса. Достоверность 99.9%
-                  </TooltipContent>
-                </Tooltip>
-              )
-            : (
-                <button
-                  ref={(element) => {
-                    listModeButtonRefs.current[0] = element
-                  }}
-                  type="button"
-                  role="radio"
-                  aria-checked={selectedListMode === 'ipset'}
-                  disabled={listModeDisabled}
-                  tabIndex={activeListModeIndex === 0 ? 0 : -1}
-                  onFocus={() => setFocusedListModeIndex(0)}
-                  onKeyDown={event => handleListModeKeyDown(event, 0)}
-                  onClick={() => void handleListModeChange('ipset')}
-                  className={cn(
-                    'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
-                    selectedListMode === 'ipset'
-                      ? 'text-success'
-                      : 'text-foreground/80 hover:text-foreground',
-                    listModeDisabled && 'cursor-not-allowed opacity-50',
-                  )}
-                >
-                  Только заблокированные
-                </button>
-              )}
-          {status === 'disconnected'
-            ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      ref={(element) => {
-                        listModeButtonRefs.current[1] = element
-                      }}
-                      type="button"
-                      role="radio"
-                      aria-checked={selectedListMode === 'exclude'}
-                      disabled={listModeDisabled}
-                      tabIndex={activeListModeIndex === 1 ? 0 : -1}
-                      onFocus={() => setFocusedListModeIndex(1)}
-                      onKeyDown={event => handleListModeKeyDown(event, 1)}
-                      onClick={() => void handleListModeChange('exclude')}
-                      className={cn(
-                        'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
-                        selectedListMode === 'exclude'
-                          ? 'text-warning'
-                          : 'text-foreground/80 hover:text-foreground',
-                        listModeDisabled && 'cursor-not-allowed opacity-50',
-                      )}
-                    >
-                      Исключения
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs text-center">
-                    По умолчанию обрабатываются все адреса, кроме тех, которые стратегии ломают
-                  </TooltipContent>
-                </Tooltip>
-              )
-            : (
-                <button
-                  ref={(element) => {
-                    listModeButtonRefs.current[1] = element
-                  }}
-                  type="button"
-                  role="radio"
-                  aria-checked={selectedListMode === 'exclude'}
-                  disabled={listModeDisabled}
-                  tabIndex={activeListModeIndex === 1 ? 0 : -1}
-                  onFocus={() => setFocusedListModeIndex(1)}
-                  onKeyDown={event => handleListModeKeyDown(event, 1)}
-                  onClick={() => void handleListModeChange('exclude')}
-                  className={cn(
-                    'relative z-10 h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors duration-300',
-                    selectedListMode === 'exclude'
-                      ? 'text-warning'
-                      : 'text-foreground/80 hover:text-foreground',
-                    listModeDisabled && 'cursor-not-allowed opacity-50',
-                  )}
-                >
-                  Исключения
-                </button>
-              )}
-        </div>
+          {LIST_MODE_OPTIONS.map(option => (
+            status === 'disconnected'
+              ? (
+                  <Tooltip key={option.value}>
+                    <TooltipTrigger asChild>
+                      {renderListModeToggleItem(option)}
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs text-center">
+                      {option.tooltip}
+                    </TooltipContent>
+                  </Tooltip>
+                )
+              : (
+                  renderListModeToggleItem(option, option.value)
+                )
+          ))}
+        </ToggleGroup>
       </div>
     </div>
   )

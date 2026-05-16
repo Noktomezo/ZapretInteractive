@@ -16,6 +16,9 @@ import { Route as strategiesCategoryIdRoute } from './routes/strategies.$categor
 import { Route as tgWsProxyRoute } from './routes/tg-ws-proxy'
 import { useConfigStore } from './stores/config.store'
 import { useConnectionStore } from './stores/connection.store'
+import '@fontsource/ibm-plex-mono/400.css'
+import '@fontsource/ibm-plex-mono/500.css'
+import '@fontsource/ibm-plex-mono/600.css'
 import './index.css'
 
 const routeTree = rootRoute.addChildren([
