@@ -293,7 +293,7 @@ export function MainPage() {
       key={key}
       value={option.value}
       className={cn(
-        'relative z-10 h-7.5 min-w-0 cursor-pointer rounded-[calc(var(--radius)-0.125rem)] border-0 bg-transparent px-3 text-xs text-foreground/80 shadow-none transition-colors duration-300 hover:bg-transparent hover:text-foreground data-[state=on]:bg-transparent data-[state=on]:shadow-none',
+        'relative z-10 h-7.5 min-w-max cursor-pointer rounded-[calc(var(--radius)-0.125rem)] border-0 bg-transparent px-3 text-xs text-foreground/80 shadow-none transition-colors duration-300 hover:bg-transparent hover:text-foreground data-[state=on]:bg-transparent data-[state=on]:shadow-none',
         option.activeClassName,
         listModeDisabled && 'cursor-not-allowed opacity-50',
       )}
@@ -801,7 +801,7 @@ export function MainPage() {
           }}
           disabled={listModeDisabled}
           className="relative mx-auto grid w-fit gap-0.5 rounded-lg border border-border/60 bg-background/76 p-0.5 shadow-lg shadow-black/10 backdrop-blur-md"
-          style={{ gridTemplateColumns: `repeat(${listModeOptionCount}, minmax(0, auto))` }}
+          style={{ gridTemplateColumns: `repeat(${listModeOptionCount}, minmax(max-content, 1fr))` }}
           aria-label="Режим списков"
         >
           <div
