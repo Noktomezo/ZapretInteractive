@@ -21,6 +21,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@fontsource/ibm-plex-mono": "^5.2.7",
+    "@fontsource/ibm-plex-sans": "^5.2.8",
     "@radix-ui/react-label": "^2.1.8",
     "@tanstack/react-router": "^1.169.1",
     "@tauri-apps/api": "^2.11.0",
