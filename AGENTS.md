@@ -21,6 +21,18 @@
 | Window effects | `window-vibrancy` crate |
 | Notifications | Sonner (toast) |
 
+## Core Priorities
+
+1. Performance first.
+2. Reliability first.
+3. Keep behavior predictable under load and during failures (reconnects, failures, thirdparty module drops).
+
+If a tradeoff is required, choose correctness and robustness over short-term convenience.
+
+## Maintainability
+
+Long term maintainability is a core priority. If you add new functionality, first check if there is shared logic that can be extracted to a separate module. Duplicate logic across multiple files is a code smell and should be avoided. Don't be afraid to change existing code. Don't take shortcuts by just adding local logic to solve a problem.
+
 ## Dependency & Runtime Rules
 
 ### Frontend
@@ -90,3 +102,12 @@ cargo clippy --fix --allow-dirty --allow-staged
 # 3. Verify the build compiles cleanly
 cargo check
 ```
+
+## Reference Repos
+
+- All default zapret strategies are taken from here: https://github.com/StressOzz/Zapret-Manager
+- Documentation and binary sources of DNS module are taken from here: https://github.com/DNSCrypt/dnscrypt-proxy
+- Documentation and binary sources of TG WS Proxy module are taken from here: https://github.com/valnesfjord/tg-ws-proxy-rs
+- App theme and color palette is taken from here: https://github.com/kepano/flexoki
+
+Use these as implementation references when designing module handling, UI Design, and operational stuff.
