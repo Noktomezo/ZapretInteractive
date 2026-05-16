@@ -189,6 +189,8 @@ export function MainPage() {
   const dismissCurrentAppUpdate = useUpdaterStore(state => state.dismissCurrentVersionUntilRestart)
   const selectedListMode = config?.listMode ?? 'ipset'
   const activeListModeIndex = Math.max(LIST_MODE_OPTIONS.findIndex(option => option.value === selectedListMode), 0)
+  const listModeOptionCount = LIST_MODE_OPTIONS.length
+  const listModeIndicatorWidth = `calc((100% - 0.25rem - ${(listModeOptionCount - 1) * 0.125}rem) / ${listModeOptionCount})`
   const listModeDisabled = !initialized || !config || status !== 'disconnected' || listModeUpdating
 
   useEffect(() => {
@@ -196,11 +198,9 @@ export function MainPage() {
   }, [status])
 
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      return
-    }
+    const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
 
-    let frameId = 0
+    let frameId: number | null = null
     let previousTimestamp = performance.now()
 
     const rotateConnectGlass = (timestamp: number) => {
@@ -211,10 +211,58 @@ export function MainPage() {
       frameId = window.requestAnimationFrame(rotateConnectGlass)
     }
 
-    frameId = window.requestAnimationFrame(rotateConnectGlass)
+    const startConnectGlassRotation = () => {
+      if (frameId !== null) {
+        return
+      }
+
+      previousTimestamp = performance.now()
+      frameId = window.requestAnimationFrame(rotateConnectGlass)
+    }
+
+    const stopConnectGlassRotation = () => {
+      if (frameId === null) {
+        return
+      }
+
+      window.cancelAnimationFrame(frameId)
+      frameId = null
+    }
+
+    const handleReducedMotionChange = (event: MediaQueryListEvent) => {
+      if (event.matches) {
+        stopConnectGlassRotation()
+        return
+      }
+
+      startConnectGlassRotation()
+    }
+
+    if (!reducedMotionQuery.matches) {
+      startConnectGlassRotation()
+    }
+
+    const legacyReducedMotionQuery = reducedMotionQuery as MediaQueryList & {
+      addListener?: (listener: (event: MediaQueryListEvent) => void) => void
+      removeListener?: (listener: (event: MediaQueryListEvent) => void) => void
+    }
+
+    if (typeof reducedMotionQuery.addEventListener === 'function') {
+      reducedMotionQuery.addEventListener('change', handleReducedMotionChange)
+    }
+    else {
+      legacyReducedMotionQuery.addListener?.(handleReducedMotionChange)
+    }
 
     return () => {
-      window.cancelAnimationFrame(frameId)
+      stopConnectGlassRotation()
+
+      if (typeof reducedMotionQuery.removeEventListener === 'function') {
+        reducedMotionQuery.removeEventListener('change', handleReducedMotionChange)
+      }
+      else {
+        legacyReducedMotionQuery.removeListener?.(handleReducedMotionChange)
+      }
     }
   }, [])
 
@@ -239,6 +287,21 @@ export function MainPage() {
       setListModeUpdating(false)
     }
   }
+
+  const renderListModeToggleItem = (option: typeof LIST_MODE_OPTIONS[number], key?: string) => (
+    <ToggleGroupItem
+      key={key}
+      value={option.value}
+      className={cn(
+        'relative z-10 h-7.5 min-w-0 cursor-pointer rounded-[calc(var(--radius)-0.125rem)] border-0 bg-transparent px-3 text-xs text-foreground/80 shadow-none transition-colors duration-300 hover:bg-transparent hover:text-foreground data-[state=on]:bg-transparent data-[state=on]:shadow-none',
+        option.activeClassName,
+        listModeDisabled && 'cursor-not-allowed opacity-50',
+      )}
+      aria-label={option.label}
+    >
+      {option.label}
+    </ToggleGroupItem>
+  )
 
   useMountEffect(() => {
     if (!useAppStore.getState().mainPageVisited) {
@@ -737,32 +800,26 @@ export function MainPage() {
             }
           }}
           disabled={listModeDisabled}
-          className="relative mx-auto grid w-fit grid-cols-2 gap-0.5 rounded-lg border border-border/60 bg-background/76 p-0.5 shadow-lg shadow-black/10 backdrop-blur-md"
+          className="relative mx-auto grid w-fit gap-0.5 rounded-lg border border-border/60 bg-background/76 p-0.5 shadow-lg shadow-black/10 backdrop-blur-md"
+          style={{ gridTemplateColumns: `repeat(${listModeOptionCount}, minmax(0, auto))` }}
           aria-label="Режим списков"
         >
           <div
             className={cn(
-              'pointer-events-none absolute inset-y-0.5 left-0.5 w-[calc((100%-0.375rem)/2)] rounded-[calc(var(--radius)-0.125rem)] border shadow-sm transition-all duration-300 ease-out',
+              'pointer-events-none absolute inset-y-0.5 left-0.5 rounded-[calc(var(--radius)-0.125rem)] border shadow-sm transition-all duration-300 ease-out',
               LIST_MODE_OPTIONS[activeListModeIndex].indicatorClassName,
             )}
-            style={{ transform: `translateX(calc(${activeListModeIndex} * (100% + 0.125rem)))` }}
+            style={{
+              width: listModeIndicatorWidth,
+              transform: `translateX(calc(${activeListModeIndex} * (100% + 0.125rem)))`,
+            }}
           />
           {LIST_MODE_OPTIONS.map(option => (
             status === 'disconnected'
               ? (
                   <Tooltip key={option.value}>
                     <TooltipTrigger asChild>
-                      <ToggleGroupItem
-                        value={option.value}
-                        className={cn(
-                          'relative z-10 h-7.5 min-w-0 cursor-pointer rounded-[calc(var(--radius)-0.125rem)] border-0 bg-transparent px-3 text-xs text-foreground/80 shadow-none transition-colors duration-300 hover:bg-transparent hover:text-foreground data-[state=on]:bg-transparent data-[state=on]:shadow-none',
-                          option.activeClassName,
-                          listModeDisabled && 'cursor-not-allowed opacity-50',
-                        )}
-                        aria-label={option.label}
-                      >
-                        {option.label}
-                      </ToggleGroupItem>
+                      {renderListModeToggleItem(option)}
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs text-center">
                       {option.tooltip}
@@ -770,18 +827,7 @@ export function MainPage() {
                   </Tooltip>
                 )
               : (
-                  <ToggleGroupItem
-                    key={option.value}
-                    value={option.value}
-                    className={cn(
-                      'relative z-10 h-7.5 min-w-0 cursor-pointer rounded-[calc(var(--radius)-0.125rem)] border-0 bg-transparent px-3 text-xs text-foreground/80 shadow-none transition-colors duration-300 hover:bg-transparent hover:text-foreground data-[state=on]:bg-transparent data-[state=on]:shadow-none',
-                      option.activeClassName,
-                      listModeDisabled && 'cursor-not-allowed opacity-50',
-                    )}
-                    aria-label={option.label}
-                  >
-                    {option.label}
-                  </ToggleGroupItem>
+                  renderListModeToggleItem(option, option.value)
                 )
           ))}
         </ToggleGroup>
