@@ -463,6 +463,128 @@ textarea,
     backdrop-filter: none;
   }
 
+  .connect-liquid-glass {
+    --connect-glass-tint: transparent;
+    --connect-glass-border: rgb(255 255 255 / 20%);
+    --connect-glass-edge: rgb(255 255 255 / 28%);
+    --connect-glass-shine: rgb(255 255 255 / 46%);
+    --connect-glass-orbit-angle: 0deg;
+
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-color: var(--connect-glass-border);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    box-shadow:
+      0 8px 32px rgb(0 0 0 / 10%),
+      inset 0 1px 0 rgb(255 255 255 / 50%),
+      inset 0 -1px 0 rgb(255 255 255 / 10%);
+  }
+
+  .connect-liquid-glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    background-color: color-mix(in oklab, rgb(255 255 255 / 8%) 72%, var(--connect-glass-tint));
+    box-shadow:
+      inset 2px 2px 0 -2px var(--connect-glass-edge),
+      inset 0 0 3px 1px color-mix(in oklab, var(--connect-glass-edge) 76%, transparent);
+    pointer-events: none;
+  }
+
+  [data-theme="dark"] .connect-liquid-glass::before {
+    background-color: color-mix(in oklab, rgb(0 0 0 / 8%) 72%, var(--connect-glass-tint));
+  }
+
+  .connect-liquid-glass-success {
+    --connect-glass-tint: color-mix(in oklab, var(--success) 22%, transparent);
+    --connect-glass-border: color-mix(in oklab, var(--success) 26%, rgb(255 255 255 / 20%));
+    --connect-glass-edge: color-mix(in oklab, var(--success) 46%, rgb(255 255 255 / 14%));
+    --connect-glass-shine: color-mix(in oklab, var(--success) 62%, rgb(255 255 255 / 18%));
+  }
+
+  .connect-liquid-glass-warning {
+    --connect-glass-tint: color-mix(in oklab, var(--warning) 22%, transparent);
+    --connect-glass-border: color-mix(in oklab, var(--warning) 26%, rgb(255 255 255 / 20%));
+    --connect-glass-edge: color-mix(in oklab, var(--warning) 46%, rgb(255 255 255 / 14%));
+    --connect-glass-shine: color-mix(in oklab, var(--warning) 62%, rgb(255 255 255 / 18%));
+  }
+
+  .connect-liquid-glass-error {
+    --connect-glass-tint: color-mix(in oklab, var(--destructive) 22%, transparent);
+    --connect-glass-border: color-mix(in oklab, var(--destructive) 26%, rgb(255 255 255 / 20%));
+    --connect-glass-edge: color-mix(in oklab, var(--destructive) 46%, rgb(255 255 255 / 14%));
+    --connect-glass-shine: color-mix(in oklab, var(--destructive) 62%, rgb(255 255 255 / 18%));
+  }
+
+  .connect-liquid-glass-neutral {
+    --connect-glass-tint: color-mix(in oklab, var(--foreground) 14%, transparent);
+    --connect-glass-border: color-mix(in oklab, var(--foreground) 18%, rgb(255 255 255 / 20%));
+    --connect-glass-edge: color-mix(in oklab, var(--foreground) 34%, rgb(255 255 255 / 12%));
+    --connect-glass-shine: color-mix(in oklab, var(--foreground) 48%, rgb(255 255 255 / 16%));
+  }
+
+  .connect-liquid-glass::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    z-index: 1;
+    padding: 2px;
+    overflow: hidden;
+    border-radius: inherit;
+    background: conic-gradient(
+      from var(--connect-glass-orbit-angle),
+      transparent 0deg,
+      transparent 222deg,
+      rgb(255 255 255 / 0%) 246deg,
+      var(--connect-glass-shine) 266deg,
+      color-mix(in oklab, var(--connect-glass-border) 86%, var(--connect-glass-shine)) 286deg,
+      transparent 318deg,
+      transparent 360deg
+    );
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    transition: opacity 180ms ease-out;
+    pointer-events: none;
+  }
+
+  .connect-liquid-glass:hover::after {
+    opacity: 0;
+  }
+
+  .connect-liquid-glass > svg {
+    position: relative;
+    z-index: 2;
+    opacity: 0.76;
+    filter:
+      url("#connect-icon-etched")
+      drop-shadow(0 1px 0 rgb(255 255 255 / 24%))
+      drop-shadow(0 -1px 0 rgb(0 0 0 / 18%));
+    mix-blend-mode: soft-light;
+    stroke-width: 1.8;
+    transition:
+      opacity 180ms ease-out,
+      filter 180ms ease-out;
+  }
+
+  .connect-liquid-glass:hover > svg {
+    opacity: 0.52;
+    filter:
+      url("#connect-icon-etched")
+      drop-shadow(0 1px 0 rgb(255 255 255 / 14%))
+      drop-shadow(0 -1px 0 rgb(0 0 0 / 30%));
+  }
+
   @keyframes pulse-glow {
     0%,
     100% {
@@ -539,7 +661,8 @@ textarea,
     .animate-pulse-glow,
     .animate-pulse-glow-primary,
     .animate-pulse-glow-neutral,
-    .animate-pulse-glow-yellow {
+    .animate-pulse-glow-yellow,
+    .connect-liquid-glass-orbit {
       animation: none !important;
     }
   }

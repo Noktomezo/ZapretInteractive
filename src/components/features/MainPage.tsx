@@ -155,6 +155,9 @@ export function MainPage() {
   const activeUpdateToastIdRef = useRef<string | number | null>(null)
   const appUpdatePromptKeyRef = useRef('')
   const activeAppUpdateToastIdRef = useRef<string | number | null>(null)
+  const connectButtonRef = useRef<HTMLButtonElement | null>(null)
+  const connectGlassAngleRef = useRef(0)
+  const connectGlassSpeedRef = useRef(0.15)
   const [initError, setInitError] = useState<string | null>(null)
   const [listModeUpdating, setListModeUpdating] = useState(false)
   const config = useConfigStore(state => state.config)
@@ -187,6 +190,33 @@ export function MainPage() {
   const selectedListMode = config?.listMode ?? 'ipset'
   const activeListModeIndex = Math.max(LIST_MODE_OPTIONS.findIndex(option => option.value === selectedListMode), 0)
   const listModeDisabled = !initialized || !config || status !== 'disconnected' || listModeUpdating
+
+  useEffect(() => {
+    connectGlassSpeedRef.current = status === 'connecting' || status === 'disconnecting' ? 0.3 : 0.15
+  }, [status])
+
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return
+    }
+
+    let frameId = 0
+    let previousTimestamp = performance.now()
+
+    const rotateConnectGlass = (timestamp: number) => {
+      const elapsed = timestamp - previousTimestamp
+      previousTimestamp = timestamp
+      connectGlassAngleRef.current = (connectGlassAngleRef.current + elapsed * connectGlassSpeedRef.current) % 360
+      connectButtonRef.current?.style.setProperty('--connect-glass-orbit-angle', `${connectGlassAngleRef.current}deg`)
+      frameId = window.requestAnimationFrame(rotateConnectGlass)
+    }
+
+    frameId = window.requestAnimationFrame(rotateConnectGlass)
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+    }
+  }, [])
 
   const handleListModeChange = async (value: string) => {
     if (!value || !config || listModeUpdating || value === config.listMode) {
@@ -620,25 +650,64 @@ export function MainPage() {
 
   return (
     <div className="relative z-10 flex h-full flex-1 items-center justify-center p-8">
+      <svg className="pointer-events-none absolute size-0" aria-hidden="true" focusable="false">
+        <filter id="connect-button-glass" x="0%" y="0%" width="100%" height="100%">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.012 0.012"
+            numOctaves="2"
+            seed="92"
+            result="noise"
+          />
+          <feGaussianBlur in="noise" stdDeviation="0.35" result="blur" />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="blur"
+            scale="18"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
+        <filter id="connect-icon-etched" x="-20%" y="-20%" width="140%" height="140%">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.9"
+            numOctaves="2"
+            seed="31"
+            result="noise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="0.9"
+            xChannelSelector="R"
+            yChannelSelector="G"
+            result="etched"
+          />
+          <feGaussianBlur in="etched" stdDeviation="0.12" />
+        </filter>
+      </svg>
       <div className="space-y-6 text-center">
         <div className="relative">
           <Button
+            ref={connectButtonRef}
             onClick={handleToggleConnection}
             disabled={
               !initialized || status === 'connecting' || status === 'disconnecting' || !config
             }
             variant="ghost"
             className={cn(
-              'h-32 w-32 rounded-full border border-white/10 shadow-lg shadow-black/10 backdrop-blur-xl transition-[background-color,color,box-shadow,transform,backdrop-filter] duration-500 ease-out disabled:opacity-100',
+              'connect-liquid-glass h-32 w-32 rounded-full border border-white/10 bg-transparent shadow-lg shadow-black/10 backdrop-blur-xl transition-[background-color,color,box-shadow,transform,backdrop-filter] duration-500 ease-out hover:bg-transparent hover:text-current disabled:opacity-100 dark:hover:bg-transparent',
               status === 'connected'
-              && 'animate-pulse-glow bg-success/48 text-white hover:border-white/14 hover:bg-success/60 hover:backdrop-blur-xl dark:border-white/8 dark:text-background',
+              && 'connect-liquid-glass-success text-success-foreground dark:border-white/8 dark:text-success',
               status === 'connecting'
-              && 'animate-pulse-glow-yellow border-warning/30 bg-warning/48 text-white dark:border-white/8 dark:text-background',
+              && 'connect-liquid-glass-warning border-warning/22 text-warning-foreground dark:border-white/8 dark:text-warning',
               status === 'disconnecting'
-              && 'animate-pulse-glow-yellow border-warning/30 bg-warning/48 text-white dark:border-white/8 dark:text-background',
-              status === 'error' && 'bg-destructive/48 text-white hover:border-white/14 hover:bg-destructive/60 hover:backdrop-blur-xl dark:border-white/8 dark:text-background',
+              && 'connect-liquid-glass-warning border-warning/22 text-warning-foreground dark:border-white/8 dark:text-warning',
+              status === 'error'
+              && 'connect-liquid-glass-error text-destructive-foreground dark:border-white/8 dark:text-destructive',
               status === 'disconnected'
-              && 'animate-pulse-glow-neutral bg-foreground/48 text-background hover:border-white/14 hover:bg-foreground/60 hover:backdrop-blur-xl dark:border-white/8',
+              && 'connect-liquid-glass-neutral text-foreground dark:border-white/8',
             )}
           >
             <Power className="size-12" />
