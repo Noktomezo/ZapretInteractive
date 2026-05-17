@@ -24,9 +24,9 @@
 ## 📸 Скриншоты
 
 <div align="center">
-  <img width="900" height="700" alt="Zapret_Interactive_46veTmKOP7" src="https://github.com/user-attachments/assets/5394033e-d518-4fb4-891d-2726e2da71a3" />
+  <img width="900" height="700" alt="image" src="https://github.com/user-attachments/assets/43f855e2-9252-4313-9c95-7eebcfdb40b5" />
   <hr>
-  <img width="900" height="700" alt="Zapret_Interactive_ESjR1JTyi2" src="https://github.com/user-attachments/assets/e5954b1f-6c58-47ae-ba95-5b4568c656d6" />
+  <img width="900" height="700" alt="image" src="https://github.com/user-attachments/assets/cbbc5e71-cb3d-4da0-b497-d4151933068c" />
 </div>
 
 ## 🤔 Как начать
