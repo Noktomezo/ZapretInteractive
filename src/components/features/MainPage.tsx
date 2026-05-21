@@ -5,7 +5,7 @@ import {
   AlertCircle,
   Power,
 } from 'lucide-react'
-import { forwardRef, memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import FaultyTerminal from '@/components/FaultyTerminal'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -54,16 +54,15 @@ const LIST_MODE_OPTIONS: {
 interface ToggleItemProps extends Omit<React.ComponentPropsWithoutRef<typeof ToggleGroupItem>, 'value'> {
   option: typeof LIST_MODE_OPTIONS[number]
   disabled: boolean
+  ref?: React.Ref<React.ElementRef<typeof ToggleGroupItem>>
 }
 
-const ToggleItem = memo(forwardRef<
-  React.ElementRef<typeof ToggleGroupItem>,
-  ToggleItemProps
->(({
+const ToggleItem = memo(({
   option,
   disabled,
+  ref,
   ...props
-}, ref) => (
+}: ToggleItemProps) => (
   <ToggleGroupItem
     ref={ref}
     value={option.value}
@@ -77,7 +76,7 @@ const ToggleItem = memo(forwardRef<
   >
     {option.label}
   </ToggleGroupItem>
-)))
+))
 ToggleItem.displayName = 'ToggleItem'
 
 export function MainPageTerminalBackdrop({ visible }: { visible: boolean }) {

@@ -14,6 +14,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar'
 import { useConfigStore } from '@/stores/config.store'
 
 interface BreadcrumbEntry {
+  id: string
   label: string
   to?: string
 }
@@ -36,55 +37,55 @@ function safeDecode(value: string) {
 
 function getBreadcrumbItems(pathname: string, categoryName?: string): BreadcrumbEntry[] {
   if (pathname === '/') {
-    return [{ label: 'Главная' }]
+    return [{ id: 'home', label: 'Главная' }]
   }
 
   if (pathname === '/about') {
-    return [{ label: 'О программе' }]
+    return [{ id: 'about', label: 'О программе' }]
   }
 
   if (pathname === '/settings') {
-    return [{ label: 'Настройки' }]
+    return [{ id: 'settings', label: 'Настройки' }]
   }
 
   if (pathname === '/logs') {
-    return [{ label: 'Логи' }]
+    return [{ id: 'logs', label: 'Логи' }]
   }
 
   if (pathname === '/filters') {
-    return [{ label: 'Фильтры' }]
+    return [{ id: 'filters', label: 'Фильтры' }]
   }
 
   if (pathname === '/placeholders') {
-    return [{ label: 'Плейсхолдеры' }]
+    return [{ id: 'placeholders', label: 'Плейсхолдеры' }]
   }
 
   if (pathname === '/strategies') {
-    return [{ label: 'Стратегии' }]
+    return [{ id: 'strategies', label: 'Стратегии' }]
   }
 
   if (pathname.startsWith('/strategies/')) {
     return [
-      { label: 'Стратегии', to: '/strategies' },
-      { label: categoryName ?? 'Категория' },
+      { id: 'strategies-root', label: 'Стратегии', to: '/strategies' },
+      { id: `category-${pathname.split('/').pop() || 'category'}`, label: categoryName ?? 'Категория' },
     ]
   }
 
   if (pathname === '/modules') {
-    return [{ label: 'Модули' }]
+    return [{ id: 'modules', label: 'Модули' }]
   }
 
   if (pathname === '/modules/dns') {
     return [
-      { label: 'Модули', to: '/modules' },
-      { label: 'DNS' },
+      { id: 'modules-root', label: 'Модули', to: '/modules' },
+      { id: 'dns', label: 'DNS' },
     ]
   }
 
   if (pathname === '/modules/tg-ws-proxy') {
     return [
-      { label: 'Модули', to: '/modules' },
-      { label: 'TG WS Proxy' },
+      { id: 'modules-root', label: 'Модули', to: '/modules' },
+      { id: 'tg-ws-proxy', label: 'TG WS Proxy' },
     ]
   }
 
@@ -171,7 +172,7 @@ export function TitleBar() {
                 const isLast = index === breadcrumbItems.length - 1
 
                 return (
-                  <Fragment key={`${item.to ?? item.label}-${index}`}>
+                  <Fragment key={item.id}>
                     <BreadcrumbItem className="min-w-0 shrink truncate">
                       {isLast
                         ? (
