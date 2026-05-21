@@ -55,6 +55,15 @@ const APP_FOUNDATIONS = [
   },
 ]
 
+const ruDateTimeFormatter = new Intl.DateTimeFormat('ru-RU', {
+  day: '2-digit',
+  month: '2-digit',
+  year: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+})
+
 function formatAboutTimestamp(value?: string) {
   if (!value) {
     return ''
@@ -65,14 +74,7 @@ function formatAboutTimestamp(value?: string) {
     return value
   }
 
-  return new Intl.DateTimeFormat('ru-RU', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }).format(date)
+  return ruDateTimeFormatter.format(date)
 }
 
 const PAGE_CARD_CLASS = 'gap-0! rounded-lg! border! border-border/60! bg-card! py-0! shadow-none! backdrop-blur-none!'

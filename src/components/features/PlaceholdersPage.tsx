@@ -330,7 +330,7 @@ export function PlaceholdersPage() {
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin" />
+        <Loader2 className="size-6 animate-spin" />
       </div>
     )
   }
@@ -347,7 +347,7 @@ export function PlaceholdersPage() {
           </div>
           <div className="ml-4 flex shrink-0 items-center gap-1">
             <Button onClick={() => setAddOpen(true)}>
-              <Plus className="h-4 w-4" />
+              <Plus className="size-4" />
               Новый плейсхолдер
             </Button>
             <Button
@@ -357,7 +357,7 @@ export function PlaceholdersPage() {
               title="Открыть папку приложения"
               aria-label="Открыть папку приложения"
             >
-              <FolderOpen className="h-4 w-4" />
+              <FolderOpen className="size-4" />
             </Button>
           </div>
         </div>
@@ -378,12 +378,12 @@ export function PlaceholdersPage() {
 
                   return (
                     <div
-                      key={`${index}-${placeholder.name}`}
+                      key={placeholder.name}
                       className="bg-card flex min-h-[4.5rem] items-center justify-between gap-4 overflow-hidden rounded-lg border px-4 py-3"
                     >
                       <div className="flex min-w-0 w-0 flex-1 items-center gap-3 overflow-hidden">
                         <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
-                          <FileCode className="h-4 w-4" />
+                          <FileCode className="size-4" />
                         </div>
                         <div className="min-w-0 w-0 flex-1 overflow-hidden space-y-1">
                           <div className="flex items-center gap-1 truncate text-sm font-normal text-foreground">
@@ -421,7 +421,7 @@ export function PlaceholdersPage() {
                           aria-label={`Редактировать плейсхолдер ${placeholder.name}`}
                           onClick={() => handleEdit(index, placeholder)}
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="size-4" />
                         </Button>
                         <Button
                           variant="outline"
@@ -430,7 +430,7 @@ export function PlaceholdersPage() {
                           aria-label={`Удалить плейсхолдер ${placeholder.name}`}
                           onClick={() => handleDelete(index)}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="size-4" />
                         </Button>
                       </div>
                     </div>

@@ -11,7 +11,6 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { SidebarTrigger } from '@/components/ui/sidebar'
-import { cn } from '@/lib/utils'
 import { useConfigStore } from '@/stores/config.store'
 
 interface BreadcrumbEntry {
@@ -104,8 +103,6 @@ export function TitleBar() {
   }
   const handleClose = () => void getCurrentWindow().close().catch(console.error)
   const config = useConfigStore(state => state.config)
-  const windowMaterial = config?.windowMaterial ?? 'none'
-  const materialEnabled = windowMaterial !== 'none'
   const currentCategoryName = location.pathname.startsWith('/strategies/')
     ? config?.categories.find(category => category.id === safeDecode(location.pathname.slice('/strategies/'.length)))?.name
     : undefined
@@ -158,10 +155,7 @@ export function TitleBar() {
 
   return (
     <header
-      className={cn(
-        'fixed top-0 left-0 right-0 z-50 flex h-[var(--titlebar-height)] cursor-grab items-center px-2.5 select-none active:cursor-grabbing',
-        materialEnabled ? 'bg-transparent' : 'bg-background',
-      )}
+      className="fixed top-0 left-0 right-0 z-50 flex h-[var(--titlebar-height)] cursor-grab items-center px-2.5 select-none active:cursor-grabbing bg-background"
       data-tauri-drag-region
       data-no-select="true"
     >
@@ -177,7 +171,7 @@ export function TitleBar() {
                 const isLast = index === breadcrumbItems.length - 1
 
                 return (
-                  <Fragment key={`${item.label}-${index}`}>
+                  <Fragment key={item.to || item.label}>
                     <BreadcrumbItem className="min-w-0 shrink truncate">
                       {isLast
                         ? (

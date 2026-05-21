@@ -1,4 +1,4 @@
-import type { DiscordPresenceActivityType, WindowMaterial, WindowMaterialCapabilities } from '@/lib/types'
+import type { DiscordPresenceActivityType } from '@/lib/types'
 import type { Theme } from '@/stores/theme.store'
 import {
   AppWindow,
@@ -10,19 +10,16 @@ import {
   Gamepad2,
   Headphones,
   Laptop,
-  Layers3,
   Loader2,
   Minimize2,
   MoonStar,
   Palette,
-  PanelTop,
   PlugZap,
   Power,
   Radar,
   RefreshCw,
   RotateCcw,
   Router,
-  Sparkles,
   SunMedium,
   Trophy,
 } from 'lucide-react'
@@ -67,12 +64,7 @@ const THEME_OPTIONS: { value: Theme, label: string, icon: React.ComponentType<{ 
   { value: 'light', label: 'Светлая', icon: SunMedium },
   { value: 'dark', label: 'Тёмная', icon: MoonStar },
 ]
-const WINDOW_MATERIAL_OPTIONS: { value: WindowMaterial, label: string, icon: React.ComponentType<{ className?: string }> }[] = [
-  { value: 'none', label: 'Нет', icon: CircleOff },
-  { value: 'acrylic', label: 'Акрил', icon: Layers3 },
-  { value: 'mica', label: 'Mica', icon: Sparkles },
-  { value: 'tabbed', label: 'Tabbed', icon: PanelTop },
-]
+
 const DISCORD_PRESENCE_ACTIVITY_OPTIONS: { value: DiscordPresenceActivityType, label: string, icon: React.ComponentType<{ className?: string }> }[] = [
   { value: 'playing', label: 'Играет', icon: Gamepad2 },
   { value: 'listening', label: 'Слушает', icon: Headphones },
@@ -174,11 +166,6 @@ export function SettingsPage() {
   const [autostartLoading, setAutostartLoading] = useState(true)
   const [tcpDraft, setTcpDraft] = useState('')
   const [udpDraft, setUdpDraft] = useState('')
-  const [windowMaterialCapabilities, setWindowMaterialCapabilities] = useState<WindowMaterialCapabilities>({
-    acrylic: true,
-    mica: false,
-    tabbed: false,
-  })
   const prevGlobalPortsRef = useRef<string | undefined>(undefined)
   const tcpFocusedRef = useRef(false)
   const udpFocusedRef = useRef(false)
@@ -193,7 +180,6 @@ export function SettingsPage() {
   const setAppAutoUpdatesEnabled = useConfigStore(state => state.setAppAutoUpdatesEnabled)
   const setDiscordPresenceEnabled = useConfigStore(state => state.setDiscordPresenceEnabled)
   const setDiscordPresenceActivityType = useConfigStore(state => state.setDiscordPresenceActivityType)
-  const setWindowMaterial = useConfigStore(state => state.setWindowMaterial)
   const setMinimizeToTray = useConfigStore(state => state.setMinimizeToTray)
   const setLaunchToTray = useConfigStore(state => state.setLaunchToTray)
   const setConnectOnAutostart = useConfigStore(state => state.setConnectOnAutostart)
@@ -203,7 +189,6 @@ export function SettingsPage() {
   const theme = useThemeStore(state => state.theme)
   const setTheme = useThemeStore(state => state.setTheme)
   const activeThemeIndex = Math.max(THEME_OPTIONS.findIndex(option => option.value === theme), 0)
-  const selectedWindowMaterial = WINDOW_MATERIAL_OPTIONS.find(option => option.value === (config?.windowMaterial ?? 'none')) ?? WINDOW_MATERIAL_OPTIONS[0]
   const selectedDiscordPresenceValue = (config?.discordPresenceEnabled ?? false)
     ? (config?.discordPresenceActivityType ?? 'playing')
     : 'none'
@@ -231,11 +216,6 @@ export function SettingsPage() {
     const init = async () => {
       try {
         await load()
-        const materialCapabilities = await tauri.getWindowMaterialCapabilities()
-        if (isMounted) {
-          setWindowMaterialCapabilities(materialCapabilities)
-        }
-
         await refreshAutostartState(isMounted)
       }
       finally {
@@ -372,27 +352,6 @@ export function SettingsPage() {
     }
   }
 
-  const handleWindowMaterialChange = async (value: WindowMaterial) => {
-    const previous = config?.windowMaterial ?? 'none'
-    setWindowMaterial(value)
-
-    try {
-      await tauri.setWindowMaterial(value)
-      addConfigLog(`материал изменён: ${WINDOW_MATERIAL_OPTIONS.find(option => option.value === value)?.label ?? value}`)
-      toast.success(`Материал: ${WINDOW_MATERIAL_OPTIONS.find(option => option.value === value)?.label ?? value}`)
-    }
-    catch (e) {
-      setWindowMaterial(previous)
-      try {
-        await tauri.setWindowMaterial(previous)
-      }
-      catch (restoreError) {
-        console.error('Failed to restore window material state:', restoreError)
-      }
-      toast.error(`Ошибка настройки материала: ${e instanceof Error ? e.message : String(e)}`)
-    }
-  }
-
   if (loading || !config) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -459,43 +418,6 @@ export function SettingsPage() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-              <SettingLabel
-                htmlFor="window-material"
-                icon={Layers3}
-                description="Материал сайдбара и тайтлбара"
-              >
-                Материал
-              </SettingLabel>
-              <div className="w-full sm:w-[11rem]">
-                <Select value={config.windowMaterial ?? 'none'} onValueChange={value => void handleWindowMaterialChange(value as WindowMaterial)}>
-                  <SelectTrigger id="window-material" className="w-full cursor-pointer">
-                    <span className="flex items-center gap-2">
-                      <selectedWindowMaterial.icon className="size-4 text-muted-foreground" />
-                      <SelectValue placeholder="Выберите материал">{selectedWindowMaterial.label}</SelectValue>
-                    </span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {WINDOW_MATERIAL_OPTIONS.map(option => (
-                      <SelectItem
-                        key={option.value}
-                        value={option.value}
-                        disabled={option.value === 'mica'
-                          ? !windowMaterialCapabilities.mica
-                          : option.value === 'tabbed'
-                            ? !windowMaterialCapabilities.tabbed
-                            : false}
-                      >
-                        <span className="flex items-center gap-2">
-                          <option.icon className="size-4 text-muted-foreground" />
-                          <span>{option.label}</span>
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
           </CardContent>
         </Card>
 

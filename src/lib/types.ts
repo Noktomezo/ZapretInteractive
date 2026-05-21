@@ -84,7 +84,6 @@ export interface Filter {
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'disconnecting' | 'error'
 export type DiscordPresenceActivityType = 'playing' | 'listening' | 'watching' | 'competing'
 export type ListMode = 'exclude' | 'ipset'
-export type WindowMaterial = 'none' | 'acrylic' | 'mica' | 'tabbed'
 
 export interface AppConfig {
   global_ports: GlobalPorts
@@ -107,7 +106,6 @@ export interface AppConfig {
   connectOnAutostart?: boolean
   coreFileUpdatePromptsEnabled?: boolean
   appAutoUpdatesEnabled?: boolean
-  windowMaterial?: WindowMaterial
   systemRemovedCategoryIds?: string[]
   systemRemovedStrategyKeys?: string[]
   systemRemovedPlaceholderNames?: string[]
@@ -120,10 +118,4 @@ export interface EnsureManagedFilesResult {
   config_restored: boolean
   config_reloaded: boolean
   unrecoverable_filters: string[]
-}
-
-export interface WindowMaterialCapabilities {
-  acrylic: boolean
-  mica: boolean
-  tabbed: boolean
 }

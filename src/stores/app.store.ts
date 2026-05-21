@@ -86,11 +86,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
     set({ refreshVersion: version })
 
     const snapshot = await tauri.getAppHealthSnapshot(false)
-    if (get().refreshVersion !== version) {
-      return
+    if (get().refreshVersion === version) {
+      get().applyHealthSnapshot(snapshot)
     }
-
-    get().applyHealthSnapshot(snapshot)
   },
   refreshRemoteState: async () => {
     const version = get().refreshVersion + 1
@@ -112,7 +110,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         }
         for (const filename of updatedLists) {
           toast(formatUpdatedListToast(filename), {
-            icon: createElement(List, { className: 'h-4 w-4 text-success' }),
+            icon: createElement(List, { className: 'size-4 text-success' }),
           })
         }
       }
@@ -135,13 +133,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }
 
     const snapshot = await tauri.getAppHealthSnapshot(true)
-    if (get().refreshVersion !== version) {
-      return
-    }
-
-    get().applyHealthSnapshot(snapshot)
-    if (!snapshot.available_updates_checked) {
-      useConnectionStore.getState().addLog('Не удалось получить удалённые обновления файлов, использую локальное состояние')
+    if (get().refreshVersion === version) {
+      get().applyHealthSnapshot(snapshot)
+      if (!snapshot.available_updates_checked) {
+        useConnectionStore.getState().addLog('Не удалось получить удалённые обновления файлов, использую локальное состояние')
+      }
     }
   },
 

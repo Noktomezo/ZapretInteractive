@@ -3,10 +3,14 @@ import * as React from 'react'
 
 import { cn } from '@/lib/utils'
 
-const ScrollArea = React.forwardRef<
-  React.ElementRef<typeof ScrollAreaPrimitive.Root>,
-  React.ComponentProps<typeof ScrollAreaPrimitive.Root>
->(({ className, children, ...props }, ref) => {
+function ScrollArea({
+  className,
+  children,
+  ref,
+  ...props
+}: React.ComponentProps<typeof ScrollAreaPrimitive.Root> & {
+  ref?: React.Ref<React.ElementRef<typeof ScrollAreaPrimitive.Root>>
+}) {
   return (
     <ScrollAreaPrimitive.Root
       ref={ref}
@@ -25,7 +29,7 @@ const ScrollArea = React.forwardRef<
       <ScrollAreaPrimitive.Corner />
     </ScrollAreaPrimitive.Root>
   )
-})
+}
 
 ScrollArea.displayName = 'ScrollArea'
 

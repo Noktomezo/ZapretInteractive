@@ -20,7 +20,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { useNavigate } from '@tanstack/react-router'
 import { BrushCleaning, ChevronRight, FilePenLine, GripVertical, Loader2, Package, Pencil, Plus, RefreshCcw, RotateCcw, Trash2, UserRoundPlus } from 'lucide-react'
-import { useState } from 'react'
+import { memo, useCallback, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -52,16 +52,12 @@ import { useConnectionStore } from '@/stores/connection.store'
 
 interface SortableCategoryItemProps {
   category: Category
-  config: CategoryListConfigContext
+  config: AppConfig | null
+  builtinConfig: AppConfig | null
   onClearActive: (categoryId: string, e: React.MouseEvent) => void
   onRename: (category: Category) => void
   onDelete: (category: Category) => void
   onRestoreSystem: (category: Category) => void
-}
-
-interface CategoryListConfigContext {
-  config: AppConfig | null
-  builtinConfig: AppConfig | null
 }
 
 function formatStrategiesCount(count: number) {
@@ -112,15 +108,15 @@ function formatActiveStrategiesSrText(activeCount: number) {
   return `${activeCount} активных стратегий`
 }
 
-function SortableCategoryItem({ category, config, onClearActive, onRename, onDelete, onRestoreSystem }: SortableCategoryItemProps) {
+const SortableCategoryItem = memo(({ category, config, builtinConfig, onClearActive, onRename, onDelete, onRestoreSystem }: SortableCategoryItemProps) => {
   const navigate = useNavigate()
   const activeStrategies = category.strategies.filter(strategy => strategy.active)
   const activeCount = activeStrategies.length
   const activeStrategiesLabel = formatActiveStrategiesLabel(activeStrategies)
   const activeStrategiesSrId = `category-${category.id}-active-strategies`
-  const builtinCategory = getBuiltinCategory(config.builtinConfig, category.id)
+  const builtinCategory = getBuiltinCategory(builtinConfig, category.id)
   const isSystem = isSystemCategory(category)
-  const isModified = isSystemCategoryModified(category, config.config)
+  const isModified = isSystemCategoryModified(category, config)
   const updateAvailable = builtinCategory ? isSystemCategoryUpdateAvailable(category, builtinCategory) : false
   const isLegacySystemCategory = isSystem && !builtinCategory
 
@@ -164,7 +160,7 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
         aria-describedby={activeStrategiesSrId}
         className="text-muted-foreground hover:text-foreground relative z-20 flex size-9 shrink-0 cursor-grab touch-none items-center justify-center rounded-md border border-border/70 bg-muted/25 transition-colors active:cursor-grabbing"
       >
-        <GripVertical className="w-4 h-4" />
+        <GripVertical className="size-4" />
       </button>
       <div
         className="pointer-events-none relative z-10 -my-3 flex min-w-0 flex-1 items-center gap-2 self-stretch py-3"
@@ -220,7 +216,7 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span
-                            className="pointer-events-auto inline-flex h-2 w-2 cursor-help rounded-full bg-destructive animate-pulse"
+                            className="pointer-events-auto inline-flex size-2 cursor-help rounded-full bg-destructive animate-pulse"
                             aria-hidden="true"
                           />
                         </TooltipTrigger>
@@ -238,7 +234,7 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
           {formatActiveStrategiesSrText(activeCount)}
         </span>
         <div className="-my-3 ml-auto flex shrink-0 self-stretch items-center rounded-md py-3 text-muted-foreground">
-          <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          <ChevronRight className="size-4 group-hover:translate-x-1 transition-transform" />
         </div>
       </div>
       <div className="relative z-20 flex items-center gap-1">
@@ -251,7 +247,7 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
               className="cursor-pointer"
               aria-label={`Переименовать категорию ${category.name}`}
             >
-              <Pencil className="w-4 h-4" />
+              <Pencil className="size-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Переименовать</TooltipContent>
@@ -266,7 +262,7 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
                 className="cursor-pointer text-warning hover:text-warning"
                 aria-label="Очистить стратегию"
               >
-                <BrushCleaning className="w-4 h-4" />
+                <BrushCleaning className="size-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Деактивировать текущую стратегию</TooltipContent>
@@ -282,7 +278,7 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
                   className="cursor-pointer text-destructive hover:text-destructive"
                   aria-label={`Удалить категорию ${category.name}`}
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="size-4" />
                 </Button>
               </AlertDialogTrigger>
             </TooltipTrigger>
@@ -308,13 +304,13 @@ function SortableCategoryItem({ category, config, onClearActive, onRename, onDel
       </div>
     </div>
   )
-}
+})
 
 export function CategoriesListPage() {
   const [newCategoryOpen, setNewCategoryOpen] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [renameDialogOpen, setRenameDialogOpen] = useState(false)
-  const [categoryToRename, setCategoryToRename] = useState<Category | null>(null)
+  const categoryToRenameRef = useRef<Category | null>(null)
   const [newCategoryNameDraft, setNewCategoryNameDraft] = useState('')
   const [systemCategoryTarget, setSystemCategoryTarget] = useState<Category | null>(null)
   const config = useConfigStore(state => state.config)
@@ -348,7 +344,7 @@ export function CategoriesListPage() {
     void load()
   })
 
-  const handleAddCategory = async () => {
+  const handleAddCategory = useCallback(async () => {
     if (!newCategoryName.trim()) {
       return
     }
@@ -372,9 +368,9 @@ export function CategoriesListPage() {
       revertTo(previousConfig)
       toast.error(`Ошибка сохранения категории: ${e instanceof Error ? e.message : String(e)}`)
     }
-  }
+  }, [newCategoryName, addCategory, saveNow, addConfigLog, revertTo])
 
-  const handleClearActive = async (categoryId: string, e: React.MouseEvent) => {
+  const handleClearActive = useCallback(async (categoryId: string, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     const currentConfig = useConfigStore.getState().config
@@ -386,7 +382,7 @@ export function CategoriesListPage() {
     try {
       clearAllActiveStrategies(categoryId)
       await saveNow()
-      const category = config?.categories.find(item => item.id === categoryId)
+      const category = currentConfig.categories.find(item => item.id === categoryId)
       if (category) {
         addConfigLog(`активные стратегии отключены в категории "${category.name}"`)
       }
@@ -405,11 +401,12 @@ export function CategoriesListPage() {
       console.error('Failed to restart after deactivating strategy:', err)
       notifyConfigApplied('Стратегия деактивирована, но не удалось переподключиться')
     }
-  }
+  }, [clearAllActiveStrategies, saveNow, addConfigLog, revertTo, restartIfConnected, notifyConfigApplied])
 
-  const handleRestoreSystemCategory = async (category: Category) => {
+  const handleRestoreSystemCategory = useCallback(async (category: Category) => {
     const currentConfig = useConfigStore.getState().config
-    const builtinCategory = getBuiltinCategory(builtinConfig, category.id)
+    const currentBuiltinConfig = useConfigStore.getState().builtinConfig
+    const builtinCategory = getBuiltinCategory(currentBuiltinConfig, category.id)
     if (!currentConfig || !builtinCategory) {
       return
     }
@@ -436,9 +433,9 @@ export function CategoriesListPage() {
     finally {
       setSystemCategoryTarget(null)
     }
-  }
+  }, [restoreBuiltinCategory, saveNow, revertTo, addConfigLog, restartIfConnected, notifyConfigApplied])
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event
 
     if (over && active.id !== over.id) {
@@ -448,8 +445,8 @@ export function CategoriesListPage() {
       }
 
       const previousConfig = structuredClone(currentConfig)
-      const oldIndex = config?.categories.findIndex(c => c.id === active.id) ?? -1
-      const newIndex = config?.categories.findIndex(c => c.id === over.id) ?? -1
+      const oldIndex = currentConfig.categories.findIndex(c => c.id === active.id) ?? -1
+      const newIndex = currentConfig.categories.findIndex(c => c.id === over.id) ?? -1
       if (oldIndex !== -1 && newIndex !== -1) {
         reorderCategories(oldIndex, newIndex)
         try {
@@ -463,16 +460,16 @@ export function CategoriesListPage() {
         }
       }
     }
-  }
+  }, [reorderCategories, saveNow, addConfigLog, revertTo])
 
-  const handleOpenRenameDialog = (category: Category) => {
-    setCategoryToRename(category)
+  const handleOpenRenameDialog = useCallback((category: Category) => {
+    categoryToRenameRef.current = category
     setNewCategoryNameDraft(category.name)
     setRenameDialogOpen(true)
-  }
+  }, [])
 
-  const handleRenameCategory = async () => {
-    if (!categoryToRename || !newCategoryNameDraft.trim()) {
+  const handleRenameCategory = useCallback(async () => {
+    if (!categoryToRenameRef.current || !newCategoryNameDraft.trim()) {
       return
     }
 
@@ -483,12 +480,12 @@ export function CategoriesListPage() {
 
     const previousConfig = structuredClone(currentConfig)
     const nextName = newCategoryNameDraft.trim()
-    updateCategory(categoryToRename.id, nextName)
+    updateCategory(categoryToRenameRef.current.id, nextName)
     try {
       await saveNow()
-      addConfigLog(`категория "${categoryToRename.name}" переименована в "${nextName}"`)
+      addConfigLog(`категория "${categoryToRenameRef.current.name}" переименована в "${nextName}"`)
       setRenameDialogOpen(false)
-      setCategoryToRename(null)
+      categoryToRenameRef.current = null
       setNewCategoryNameDraft('')
       toast.success('Категория переименована')
     }
@@ -496,9 +493,9 @@ export function CategoriesListPage() {
       revertTo(previousConfig)
       toast.error(`Ошибка сохранения категории: ${e instanceof Error ? e.message : String(e)}`)
     }
-  }
+  }, [newCategoryNameDraft, updateCategory, saveNow, addConfigLog, revertTo])
 
-  const handleDeleteCategory = async (category: Category) => {
+  const handleDeleteCategory = useCallback(async (category: Category) => {
     const currentConfig = useConfigStore.getState().config
     if (!currentConfig) {
       return
@@ -530,7 +527,7 @@ export function CategoriesListPage() {
     }
     addConfigLog(`удалена категория "${category.name}"`)
     toast.success('Категория удалена')
-  }
+  }, [deleteCategory, saveNow, revertTo, restartIfConnected, addConfigLog])
 
   const systemCategoryBuiltin = systemCategoryTarget ? getBuiltinCategory(builtinConfig, systemCategoryTarget.id) : null
   const systemCategoryUpdateAvailable = systemCategoryTarget && systemCategoryBuiltin
@@ -540,7 +537,7 @@ export function CategoriesListPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-6 h-6 animate-spin" />
+        <Loader2 className="size-6 animate-spin" />
       </div>
     )
   }
@@ -556,7 +553,7 @@ export function CategoriesListPage() {
             </p>
           </div>
           <Button onClick={() => setNewCategoryOpen(true)}>
-            <Plus className="w-4 h-4" />
+            <Plus className="size-4" />
             Новая категория
           </Button>
         </div>
@@ -581,7 +578,8 @@ export function CategoriesListPage() {
                       <SortableCategoryItem
                         key={category.id}
                         category={category}
-                        config={{ config, builtinConfig }}
+                        config={config}
+                        builtinConfig={builtinConfig}
                         onClearActive={handleClearActive}
                         onRename={handleOpenRenameDialog}
                         onDelete={handleDeleteCategory}

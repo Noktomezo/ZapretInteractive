@@ -1,0 +1,8 @@
+{
+  "ignore": {
+    "rules": [
+      "react-doctor/no-giant-component",
+      "react-doctor/prefer-useReducer"
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { ArrowLeft, Copy, KeyRound, Link2, Loader2, Power, RefreshCw, Send, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Copy, KeyRound, Link2, Loader2, Power, RefreshCw, Send, ShieldCheck } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { MODULE_PAGE_CARD_CLASS, ModuleSectionHeader, ModuleSettingLabel } from '@/components/features/module-ui'
@@ -35,8 +35,9 @@ function TgWsProxyPageContent({
 }) {
   interface DraftState { port: string, secret: string }
 
-  const [draftPort, setDraftPort] = useState(String(port))
-  const [draftSecret, setDraftSecret] = useState(secret)
+  const [draftPort, setDraftPort] = useState(() => String(port))
+  const [draftSecret, setDraftSecret] = useState(() => secret)
+  const [isInfoExpanded, setIsInfoExpanded] = useState(false)
   const toggleButtonRef = useRef<HTMLButtonElement | null>(null)
   const draftSavePromiseRef = useRef<Promise<boolean> | null>(null)
   const pendingDraftRef = useRef<DraftState | null>(null)
@@ -71,7 +72,10 @@ function TgWsProxyPageContent({
       let lastResult = true
       let reportedError = false
 
-      while (pendingDraftRef.current) {
+      const runSync = async (): Promise<boolean> => {
+        if (!pendingDraftRef.current) {
+          return lastResult
+        }
         const nextDraft = pendingDraftRef.current
         pendingDraftRef.current = null
         try {
@@ -85,9 +89,10 @@ function TgWsProxyPageContent({
             toast.error(`Ошибка сохранения параметров TG WS Proxy: ${error instanceof Error ? error.message : String(error)}`)
           }
         }
+        return runSync()
       }
 
-      return lastResult
+      return runSync()
     })()
 
     draftSavePromiseRef.current = savePromise
@@ -259,87 +264,108 @@ function TgWsProxyPageContent({
             title="Подключение"
             description="Используйте ссылку ниже, чтобы быстро добавить прокси в Telegram Desktop"
             action={(
-              <Button type="button" className="gap-2 shadow-none hover:shadow-none" onClick={() => void handleOpenTelegram()}>
-                <Link2 className="size-4" />
-                Открыть в Telegram
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 cursor-pointer rounded-md hover:bg-muted/40"
+                  onClick={() => setIsInfoExpanded(!isInfoExpanded)}
+                  aria-label={isInfoExpanded ? 'Скрыть информацию' : 'Показать информацию'}
+                >
+                  <ChevronDown className={cn('size-4 transition-transform duration-200', isInfoExpanded ? 'rotate-180' : '')} />
+                </Button>
+                <Button type="button" className="gap-2 shadow-none hover:shadow-none" onClick={() => void handleOpenTelegram()}>
+                  <Link2 className="size-4" />
+                  Открыть в Telegram
+                </Button>
+              </div>
             )}
           />
-          <CardContent className="space-y-4 p-4!">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-xl border border-border/60 bg-muted/18 p-3">
-                <p className="text-xs text-muted-foreground">Хост</p>
-                <div className="-mx-3 mt-2 border-t border-border/60 px-3 pt-2">
-                  <div className="flex items-end justify-between gap-3">
-                    <p className="text-sm font-medium">127.0.0.1</p>
-                    <button
-                      type="button"
-                      className="text-muted-foreground hover:text-foreground inline-flex size-4 shrink-0 cursor-pointer items-center justify-center transition-colors"
-                      aria-label="Скопировать хост"
-                      onClick={() => void navigator.clipboard.writeText('127.0.0.1').then(() => toast.success('Хост скопирован')).catch((error) => {
-                        toast.error(`Не удалось скопировать хост: ${error instanceof Error ? error.message : String(error)}`)
-                      })}
-                    >
-                      <Copy className="size-4" />
-                    </button>
+          <div
+            className={cn(
+              'grid transition-[grid-template-rows] duration-300 ease-in-out',
+              isInfoExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+            )}
+          >
+            <div className={cn('overflow-hidden transition-[visibility] duration-300', isInfoExpanded ? 'visible' : 'invisible')}>
+              <CardContent className="space-y-4 p-4!">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-xl border border-border/60 bg-muted/18 p-3">
+                    <p className="text-xs text-muted-foreground">Хост</p>
+                    <div className="-mx-3 mt-2 border-t border-border/60 px-3 pt-2">
+                      <div className="flex items-end justify-between gap-3">
+                        <p className="text-sm font-medium">127.0.0.1</p>
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-foreground inline-flex size-4 shrink-0 cursor-pointer items-center justify-center transition-colors"
+                          aria-label="Скопировать хост"
+                          onClick={() => void navigator.clipboard.writeText('127.0.0.1').then(() => toast.success('Хост скопирован')).catch((error) => {
+                            toast.error(`Не удалось скопировать хост: ${error instanceof Error ? error.message : String(error)}`)
+                          })}
+                        >
+                          <Copy className="size-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-border/60 bg-muted/18 p-3">
+                    <p className="text-xs text-muted-foreground">Порт</p>
+                    <div className="-mx-3 mt-2 border-t border-border/60 px-3 pt-2">
+                      <div className="flex items-end justify-between gap-3">
+                        <p className="text-sm font-medium">{port}</p>
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-foreground inline-flex size-4 shrink-0 cursor-pointer items-center justify-center transition-colors"
+                          aria-label="Скопировать порт"
+                          onClick={() => void navigator.clipboard.writeText(String(port)).then(() => toast.success('Порт скопирован')).catch((error) => {
+                            toast.error(`Не удалось скопировать порт: ${error instanceof Error ? error.message : String(error)}`)
+                          })}
+                        >
+                          <Copy className="size-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-border/60 bg-muted/18 p-3">
+                    <p className="text-xs text-muted-foreground">PID</p>
+                    <div className="-mx-3 mt-2 border-t border-border/60 px-3 pt-2">
+                      <div className="flex items-end justify-between gap-3">
+                        <p className="text-sm font-medium">{status?.pid ?? 'не запущен'}</p>
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-foreground inline-flex size-4 shrink-0 cursor-pointer items-center justify-center transition-colors"
+                          aria-label="Скопировать PID"
+                          onClick={() => void navigator.clipboard.writeText(String(status?.pid ?? 'не запущен')).then(() => toast.success('PID скопирован')).catch((error) => {
+                            toast.error(`Не удалось скопировать PID: ${error instanceof Error ? error.message : String(error)}`)
+                          })}
+                        >
+                          <Copy className="size-4" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="rounded-xl border border-border/60 bg-muted/18 p-3">
-                <p className="text-xs text-muted-foreground">Порт</p>
-                <div className="-mx-3 mt-2 border-t border-border/60 px-3 pt-2">
-                  <div className="flex items-end justify-between gap-3">
-                    <p className="text-sm font-medium">{port}</p>
-                    <button
-                      type="button"
-                      className="text-muted-foreground hover:text-foreground inline-flex size-4 shrink-0 cursor-pointer items-center justify-center transition-colors"
-                      aria-label="Скопировать порт"
-                      onClick={() => void navigator.clipboard.writeText(String(port)).then(() => toast.success('Порт скопирован')).catch((error) => {
-                        toast.error(`Не удалось скопировать порт: ${error instanceof Error ? error.message : String(error)}`)
-                      })}
-                    >
-                      <Copy className="size-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="rounded-xl border border-border/60 bg-muted/18 p-3">
-                <p className="text-xs text-muted-foreground">PID</p>
-                <div className="-mx-3 mt-2 border-t border-border/60 px-3 pt-2">
-                  <div className="flex items-end justify-between gap-3">
-                    <p className="text-sm font-medium">{status?.pid ?? 'не запущен'}</p>
-                    <button
-                      type="button"
-                      className="text-muted-foreground hover:text-foreground inline-flex size-4 shrink-0 cursor-pointer items-center justify-center transition-colors"
-                      aria-label="Скопировать PID"
-                      onClick={() => void navigator.clipboard.writeText(String(status?.pid ?? 'не запущен')).then(() => toast.success('PID скопирован')).catch((error) => {
-                        toast.error(`Не удалось скопировать PID: ${error instanceof Error ? error.message : String(error)}`)
-                      })}
-                    >
-                      <Copy className="size-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
 
-            <div className="rounded-xl border border-border/60 bg-muted/18 p-3">
-              <p className="text-xs text-muted-foreground">Ссылка</p>
-              <div className="-mx-3 mt-2 border-t border-border/60 px-3 pt-2">
-                <div className="flex items-end justify-between gap-3">
-                  <p className="break-all text-sm">{tgLink}</p>
-                  <button
-                    type="button"
-                    className="text-muted-foreground hover:text-foreground inline-flex size-4 shrink-0 cursor-pointer items-center justify-center transition-colors"
-                    aria-label="Скопировать ссылку TG WS Proxy"
-                    onClick={() => void handleCopyLink()}
-                  >
-                    <Copy className="size-4" />
-                  </button>
+                <div className="rounded-xl border border-border/60 bg-muted/18 p-3">
+                  <p className="text-xs text-muted-foreground">Ссылка</p>
+                  <div className="-mx-3 mt-2 border-t border-border/60 px-3 pt-2">
+                    <div className="flex items-end justify-between gap-3">
+                      <p className="break-all text-sm">{tgLink}</p>
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-foreground inline-flex size-4 shrink-0 cursor-pointer items-center justify-center transition-colors"
+                        aria-label="Скопировать ссылку TG WS Proxy"
+                        onClick={() => void handleCopyLink()}
+                      >
+                        <Copy className="size-4" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </CardContent>
             </div>
-          </CardContent>
+          </div>
         </Card>
       </div>
     </LenisScrollArea>

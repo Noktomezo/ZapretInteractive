@@ -21,7 +21,7 @@ export function LogsPage() {
   const logs = useConnectionStore(state => state.logs)
   const clearLogs = useConnectionStore(state => state.clearLogs)
   const scrollAreaRef = useRef<HTMLDivElement | null>(null)
-  const [isPinnedToBottom, setIsPinnedToBottom] = useState(true)
+  const isPinnedToBottomRef = useRef(true)
   const [hasUnreadLogs, setHasUnreadLogs] = useState(false)
 
   const getViewport = () => {
@@ -40,13 +40,13 @@ export function LogsPage() {
 
     const handleScroll = () => {
       const nearBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 24
-      setIsPinnedToBottom(nearBottom)
+      isPinnedToBottomRef.current = nearBottom
       if (nearBottom)
         setHasUnreadLogs(false)
     }
 
     handleScroll()
-    viewport.addEventListener('scroll', handleScroll)
+    viewport.addEventListener('scroll', handleScroll, { passive: true })
     return () => {
       viewport.removeEventListener('scroll', handleScroll)
     }
@@ -57,19 +57,19 @@ export function LogsPage() {
     if (!viewport)
       return
 
-    if (logs.length === 0) {
-      setHasUnreadLogs(false)
-      return
+    let hasUnread = false
+    if (logs.length > 0) {
+      if (isPinnedToBottomRef.current) {
+        viewport.scrollTo({ top: viewport.scrollHeight })
+        hasUnread = false
+      }
+      else {
+        hasUnread = true
+      }
     }
 
-    if (isPinnedToBottom) {
-      viewport.scrollTo({ top: viewport.scrollHeight })
-      setHasUnreadLogs(false)
-    }
-    else if (logs.length > 0) {
-      setHasUnreadLogs(true)
-    }
-  }, [isPinnedToBottom, logs])
+    setHasUnreadLogs(hasUnread)
+  }, [logs])
 
   return (
     <div className="flex h-full min-h-0 flex-col p-6">
@@ -88,7 +88,7 @@ export function LogsPage() {
           disabled={logs.length === 0}
           className="gap-2"
         >
-          <BrushCleaning className="text-warning h-4 w-4" />
+          <BrushCleaning className="text-warning size-4" />
           Очистить
         </Button>
       </div>
@@ -115,11 +115,12 @@ export function LogsPage() {
               else {
                 viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' })
               }
-              setIsPinnedToBottom(true)
+              isPinnedToBottomRef.current = true
               setHasUnreadLogs(false)
             }}
           >
-            <ArrowDown className="h-4 w-4" />
+
+            <ArrowDown className="size-4" />
             Новые логи
           </Button>
         )}

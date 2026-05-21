@@ -1,7 +1,7 @@
 import type { Strategy } from '@/lib/types'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { ArrowLeft, ArrowUp, BrushCleaning, Check, FilePenLine, Loader2, Package, Pencil, Plus, RefreshCcw, RotateCcw, Trash2, UserRoundPlus } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -95,6 +95,145 @@ function getStrategyDuplicateError(
   return null
 }
 
+interface StrategyCardProps {
+  strategy: Strategy
+  isSystem: boolean
+  isModified: boolean
+  updateAvailable: boolean
+  handleSetActive: (id: string) => void
+  handleEditStrategy: (strategy: Strategy) => void
+  handleClearActive: (id: string) => void
+  handleDeleteStrategy: (id: string) => void
+  onSystemActionClick: (strategyId: string, name: string, updateAvailable: boolean) => void
+}
+
+const StrategyCard = memo(({
+  strategy,
+  isSystem,
+  isModified,
+  updateAvailable,
+  handleSetActive,
+  handleEditStrategy,
+  handleClearActive,
+  handleDeleteStrategy,
+  onSystemActionClick,
+}: StrategyCardProps) => {
+  const canRestore = isSystem && (isModified || updateAvailable)
+
+  return (
+    <div
+      data-strategy-id={strategy.id}
+      className={cn(
+        'space-y-3 rounded-lg border p-4 transition-colors',
+        strategy.active
+          ? 'border-success/50 bg-success/8'
+          : 'border-border bg-card',
+      )}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1 min-w-0">
+          <span className="font-normal">{strategy.name}</span>
+          <div className="flex items-center gap-1 text-muted-foreground">
+            {isSystem
+              ? (
+                  <InlineMarker icon={Package} label="Системная стратегия" />
+                )
+              : (
+                  <InlineMarker icon={UserRoundPlus} label="Пользовательская стратегия" className="text-primary/80" />
+                )}
+            {strategy.active && (
+              <InlineMarker icon={Check} label="Активная стратегия" className="text-success animate-pulse" />
+            )}
+            {isModified && (
+              <InlineMarker icon={FilePenLine} label="Системная стратегия изменена пользователем" className="text-warning" />
+            )}
+            {canRestore && (
+              <InlineMarker
+                icon={updateAvailable ? RefreshCcw : RotateCcw}
+                label={updateAvailable
+                  ? 'Обновить стратегию до актуального системного значения'
+                  : 'Откатить стратегию к системному значению'}
+                className={updateAvailable ? 'text-primary' : 'text-destructive'}
+                onClick={() => onSystemActionClick(strategy.id, strategy.name, updateAvailable)}
+              />
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          {!strategy.active && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => handleSetActive(strategy.id)}
+                  aria-label={`Активировать стратегию ${strategy.name}`}
+                >
+                  <Check className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Активировать</TooltipContent>
+            </Tooltip>
+          )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handleEditStrategy(strategy)}
+                aria-label={`Редактировать стратегию ${strategy.name}`}
+              >
+                <Pencil className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Редактировать</TooltipContent>
+          </Tooltip>
+          {strategy.active && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="text-warning hover:text-warning"
+                  onClick={() => handleClearActive(strategy.id)}
+                  aria-label={`Деактивировать стратегию ${strategy.name}`}
+                >
+                  <BrushCleaning className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Деактивировать</TooltipContent>
+            </Tooltip>
+          )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="text-destructive hover:text-destructive"
+                onClick={() => handleDeleteStrategy(strategy.id)}
+                aria-label={`Удалить стратегию ${strategy.name}`}
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Удалить</TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
+      <pre
+        className={cn(
+          'overflow-x-auto rounded-md border p-3 text-xs text-muted-foreground shadow-[inset_0_1px_0_color-mix(in_oklab,var(--background)_60%,transparent)]',
+          strategy.active
+            ? 'border-success/30 bg-[color-mix(in_oklab,var(--success)_10%,var(--background))]'
+            : 'border-border/80 bg-background/84',
+        )}
+      >
+        {strategy.content}
+      </pre>
+    </div>
+  )
+})
+
 type SystemActionTarget
   = | { type: 'category', title: string, description: string }
     | { type: 'strategy', strategyId: string, title: string, description: string }
@@ -115,7 +254,6 @@ export function CategoryPage() {
   const [systemActionTarget, setSystemActionTarget] = useState<SystemActionTarget | null>(null)
   const newStrategyContentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const editStrategyContentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
-  const strategyCardRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const scrollAreaRef = useRef<HTMLDivElement | null>(null)
   const [showScrollTopButton, setShowScrollTopButton] = useState(false)
   const config = useConfigStore(state => state.config)
@@ -180,10 +318,14 @@ export function CategoryPage() {
       return
     }
 
-    strategyCardRefs.current[firstActiveStrategyId]?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'center',
-    })
+    const viewport = getScrollViewport()
+    const card = viewport?.querySelector(`[data-strategy-id="${firstActiveStrategyId}"]`)
+    if (card) {
+      card.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      })
+    }
   }
 
   useEffect(() => {
@@ -198,13 +340,13 @@ export function CategoryPage() {
     }
 
     handleScroll()
-    viewport.addEventListener('scroll', handleScroll)
+    viewport.addEventListener('scroll', handleScroll, { passive: true })
     return () => {
       viewport.removeEventListener('scroll', handleScroll)
     }
   }, [categoryId, loading])
 
-  const handleAddStrategy = async () => {
+  const handleAddStrategy = useCallback(async () => {
     if (!newStrategyName.trim() || !newStrategyContent.trim() || !categoryId) {
       return
     }
@@ -215,7 +357,8 @@ export function CategoryPage() {
     }
 
     const nextName = newStrategyName.trim()
-    const duplicateError = getStrategyDuplicateError(category?.strategies ?? [], nextName, newStrategyContent)
+    const currentCategory = currentConfig.categories.find(c => c.id === categoryId)
+    const duplicateError = getStrategyDuplicateError(currentCategory?.strategies ?? [], nextName, newStrategyContent)
     if (duplicateError) {
       toast.error(duplicateError)
       return
@@ -225,8 +368,10 @@ export function CategoryPage() {
     addStrategy(categoryId, nextName, newStrategyContent.trim())
     try {
       await saveNow()
-      if (category) {
-        addConfigLog(`добавлена стратегия "${nextName}" в категории "${category.name}"`)
+      const latestConfig = useConfigStore.getState().config
+      const latestCategory = latestConfig?.categories.find(c => c.id === categoryId)
+      if (latestCategory) {
+        addConfigLog(`добавлена стратегия "${nextName}" в категории "${latestCategory.name}"`)
       }
       setNewStrategyName('')
       setNewStrategyContent('')
@@ -237,16 +382,16 @@ export function CategoryPage() {
       revertTo(previousConfig)
       toast.error(`Ошибка сохранения стратегии: ${e instanceof Error ? e.message : String(e)}`)
     }
-  }
+  }, [newStrategyName, newStrategyContent, categoryId, addStrategy, saveNow, addConfigLog, revertTo])
 
-  const handleEditStrategy = (strategy: Strategy) => {
+  const handleEditStrategy = useCallback((strategy: Strategy) => {
     setEditingStrategy(strategy)
     setEditingName(strategy.name)
     setEditingContent(strategy.content)
     requestAnimationFrame(() => autosizeTextarea(editStrategyContentTextareaRef.current))
-  }
+  }, [])
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = useCallback(async () => {
     if (!editingStrategy || !categoryId) {
       return
     }
@@ -259,7 +404,8 @@ export function CategoryPage() {
     const previousConfig = structuredClone(currentConfig)
     const previousName = editingStrategy.name
     const nextName = editingName.trim()
-    const duplicateError = getStrategyDuplicateError(category?.strategies ?? [], nextName, editingContent, editingStrategy.id)
+    const currentCategory = currentConfig.categories.find(c => c.id === categoryId)
+    const duplicateError = getStrategyDuplicateError(currentCategory?.strategies ?? [], nextName, editingContent, editingStrategy.id)
     if (duplicateError) {
       toast.error(duplicateError)
       return
@@ -270,11 +416,13 @@ export function CategoryPage() {
     })
     try {
       await saveNow()
-      if (category) {
+      const latestConfig = useConfigStore.getState().config
+      const latestCategory = latestConfig?.categories.find(c => c.id === categoryId)
+      if (latestCategory) {
         addConfigLog(
           previousName !== nextName
-            ? `стратегия "${previousName}" переименована в "${nextName}" в категории "${category.name}"`
-            : `обновлена стратегия "${previousName}" в категории "${category.name}"`,
+            ? `стратегия "${previousName}" переименована в "${nextName}" в категории "${latestCategory.name}"`
+            : `обновлена стратегия "${previousName}" в категории "${latestCategory.name}"`,
         )
       }
       setEditingStrategy(null)
@@ -284,19 +432,21 @@ export function CategoryPage() {
       revertTo(previousConfig)
       toast.error(`Ошибка сохранения стратегии: ${e instanceof Error ? e.message : String(e)}`)
     }
-  }
+  }, [editingStrategy, categoryId, editingName, editingContent, updateStrategy, saveNow, addConfigLog, revertTo])
 
-  const handleSetActive = async (strategyId: string) => {
+  const handleSetActive = useCallback(async (strategyId: string) => {
     if (!categoryId)
       return
 
     try {
       setActiveStrategy(categoryId, strategyId)
       await saveNow()
-      if (category) {
-        const strategy = category.strategies.find(item => item.id === strategyId)
+      const currentConfig = useConfigStore.getState().config
+      const currentCategory = currentConfig?.categories.find(c => c.id === categoryId)
+      if (currentCategory) {
+        const strategy = currentCategory.strategies.find(item => item.id === strategyId)
         if (strategy) {
-          addConfigLog(`стратегия "${strategy.name}" активирована в категории "${category.name}"`)
+          addConfigLog(`стратегия "${strategy.name}" активирована в категории "${currentCategory.name}"`)
         }
       }
       await restartIfConnected()
@@ -305,19 +455,21 @@ export function CategoryPage() {
     catch (e) {
       toast.error(`Ошибка активации стратегии: ${e instanceof Error ? e.message : String(e)}`)
     }
-  }
+  }, [categoryId, setActiveStrategy, saveNow, addConfigLog, restartIfConnected, notifyConfigApplied])
 
-  const handleClearActive = async (strategyId: string) => {
+  const handleClearActive = useCallback(async (strategyId: string) => {
     if (!categoryId)
       return
 
     try {
       clearActiveStrategy(categoryId, strategyId)
       await saveNow()
-      if (category) {
-        const strategy = category.strategies.find(item => item.id === strategyId)
+      const currentConfig = useConfigStore.getState().config
+      const currentCategory = currentConfig?.categories.find(c => c.id === categoryId)
+      if (currentCategory) {
+        const strategy = currentCategory.strategies.find(item => item.id === strategyId)
         if (strategy) {
-          addConfigLog(`стратегия "${strategy.name}" деактивирована в категории "${category.name}"`)
+          addConfigLog(`стратегия "${strategy.name}" деактивирована в категории "${currentCategory.name}"`)
         }
       }
       await restartIfConnected()
@@ -326,17 +478,19 @@ export function CategoryPage() {
     catch (e) {
       toast.error(`Ошибка деактивации стратегии: ${e instanceof Error ? e.message : String(e)}`)
     }
-  }
+  }, [categoryId, clearActiveStrategy, saveNow, addConfigLog, restartIfConnected, notifyConfigApplied])
 
-  const handleClearAllActive = async () => {
+  const handleClearAllActive = useCallback(async () => {
     if (!categoryId)
       return
 
     try {
       clearAllActiveStrategies(categoryId)
       await saveNow()
-      if (category) {
-        addConfigLog(`все активные стратегии отключены в категории "${category.name}"`)
+      const currentConfig = useConfigStore.getState().config
+      const currentCategory = currentConfig?.categories.find(c => c.id === categoryId)
+      if (currentCategory) {
+        addConfigLog(`все активные стратегии отключены в категории "${currentCategory.name}"`)
       }
       await restartIfConnected()
       notifyConfigApplied('Активные стратегии отключены')
@@ -344,19 +498,23 @@ export function CategoryPage() {
     catch (e) {
       toast.error(`Ошибка деактивации стратегий: ${e instanceof Error ? e.message : String(e)}`)
     }
-  }
+  }, [categoryId, clearAllActiveStrategies, saveNow, addConfigLog, restartIfConnected, notifyConfigApplied])
 
-  const handleDeleteStrategy = async (strategyId: string) => {
+  const handleDeleteStrategy = useCallback(async (strategyId: string) => {
     if (categoryId) {
-      const strategy = category?.strategies.find(s => s.id === strategyId)
+      const currentConfig = useConfigStore.getState().config
+      const currentCategory = currentConfig?.categories.find(c => c.id === categoryId)
+      const strategy = currentCategory?.strategies.find(s => s.id === strategyId)
       const wasActive = strategy?.active ?? false
 
       if (wasActive) {
         deleteStrategy(categoryId, strategyId)
         try {
           await saveNow()
-          if (category && strategy) {
-            addConfigLog(`удалена стратегия "${strategy.name}" из категории "${category.name}"`)
+          const latestConfig = useConfigStore.getState().config
+          const latestCategory = latestConfig?.categories.find(c => c.id === categoryId)
+          if (latestCategory && strategy) {
+            addConfigLog(`удалена стратегия "${strategy.name}" из категории "${latestCategory.name}"`)
           }
           toast.success('Стратегия удалена')
         }
@@ -378,7 +536,6 @@ export function CategoryPage() {
         }
       }
       else {
-        const currentConfig = useConfigStore.getState().config
         if (!currentConfig) {
           return
         }
@@ -387,8 +544,10 @@ export function CategoryPage() {
         deleteStrategy(categoryId, strategyId)
         try {
           await saveNow()
-          if (category && strategy) {
-            addConfigLog(`удалена стратегия "${strategy.name}" из категории "${category.name}"`)
+          const latestConfig = useConfigStore.getState().config
+          const latestCategory = latestConfig?.categories.find(c => c.id === categoryId)
+          if (latestCategory && strategy) {
+            addConfigLog(`удалена стратегия "${strategy.name}" из категории "${latestCategory.name}"`)
           }
           toast.success('Стратегия удалена')
         }
@@ -398,7 +557,20 @@ export function CategoryPage() {
         }
       }
     }
-  }
+  }, [categoryId, deleteStrategy, saveNow, addConfigLog, reload, restartIfConnected, revertTo])
+
+  const onSystemActionClick = useCallback((strategyId: string, name: string, updateAvailable: boolean) => {
+    setSystemActionTarget({
+      type: 'strategy',
+      strategyId,
+      title: updateAvailable
+        ? 'Обновить системную стратегию?'
+        : 'Откатить стратегию к системному значению?',
+      description: updateAvailable
+        ? `Стратегия «${name}» будет обновлена до актуальной системной версии.`
+        : `Стратегия «${name}» будет возвращена к системному значению.`,
+    })
+  }, [])
 
   const handleDeleteCategory = async () => {
     if (categoryId) {
@@ -543,7 +715,7 @@ export function CategoryPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-6 h-6 animate-spin" />
+        <Loader2 className="size-6 animate-spin" />
       </div>
     )
   }
@@ -553,7 +725,7 @@ export function CategoryPage() {
       <LenisScrollArea className="h-full min-h-0">
         <div className="p-6 space-y-6">
           <Link to="/strategies" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="size-4" />
             Назад к категориям
           </Link>
           <p className="text-muted-foreground">Категория не найдена</p>
@@ -569,7 +741,7 @@ export function CategoryPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link to="/strategies" className="text-muted-foreground hover:text-foreground cursor-pointer" aria-label="Назад к категориям">
-                <ArrowLeft className="w-5 h-5" />
+                <ArrowLeft className="size-5" />
               </Link>
               <div>
                 <div className="flex items-center gap-2">
@@ -633,7 +805,7 @@ export function CategoryPage() {
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <span
-                                className="inline-flex h-2 w-2 cursor-help rounded-full bg-destructive animate-pulse"
+                                className="inline-flex size-2 cursor-help rounded-full bg-destructive animate-pulse"
                                 aria-hidden="true"
                               />
                             </TooltipTrigger>
@@ -667,7 +839,7 @@ export function CategoryPage() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button size="icon" onClick={() => setNewStrategyOpen(true)} aria-label="Новая стратегия">
-                    <Plus className="w-4 h-4" />
+                    <Plus className="size-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Новая стратегия</TooltipContent>
@@ -675,7 +847,7 @@ export function CategoryPage() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="outline" size="icon" onClick={openRenameDialog} aria-label="Переименовать категорию">
-                    <Pencil className="w-4 h-4" />
+                    <Pencil className="size-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Переименовать категорию</TooltipContent>
@@ -690,7 +862,7 @@ export function CategoryPage() {
                       onClick={handleClearAllActive}
                       aria-label="Деактивировать все активные стратегии"
                     >
-                      <BrushCleaning className="w-4 h-4" />
+                      <BrushCleaning className="size-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>Деактивировать все активные стратегии</TooltipContent>
@@ -706,7 +878,7 @@ export function CategoryPage() {
                         className="text-destructive hover:text-destructive"
                         aria-label={`Удалить категорию ${category.name}`}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="size-4" />
                       </Button>
                     </AlertDialogTrigger>
                   </TooltipTrigger>
@@ -743,141 +915,27 @@ export function CategoryPage() {
                   <p className="text-sm text-muted-foreground">Нет стратегий</p>
                 )
               : (
-                  category.strategies.map((strategy: Strategy) => (
-                    <div
-                      key={strategy.id}
-                      ref={(node) => {
-                        strategyCardRefs.current[strategy.id] = node
-                      }}
-                      className={cn(
-                        'space-y-3 rounded-lg border p-4',
-                        strategy.active
-                          ? 'border-success/50 bg-success/8'
-                          : 'border-border bg-card',
-                      )}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1 min-w-0">
-                          <span className="font-normal">{strategy.name}</span>
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            {isSystemStrategy(strategy)
-                              ? (
-                                  <InlineMarker icon={Package} label="Системная стратегия" />
-                                )
-                              : (
-                                  <InlineMarker icon={UserRoundPlus} label="Пользовательская стратегия" className="text-primary/80" />
-                                )}
-                            {strategy.active && (
-                              <InlineMarker icon={Check} label="Активная стратегия" className="text-success animate-pulse" />
-                            )}
-                            {isSystemStrategyModified(strategy) && (
-                              <InlineMarker icon={FilePenLine} label="Системная стратегия изменена пользователем" className="text-warning" />
-                            )}
-                            {(() => {
-                              const builtinStrategy = getBuiltinStrategy(builtinCategory, strategy.id)
-                              const updateAvailable = isSystemStrategyUpdateAvailable(strategy, builtinStrategy)
-                              const canRestore = isSystemStrategy(strategy)
-                                && (isSystemStrategyModified(strategy) || updateAvailable)
+                  category.strategies.map((strategy: Strategy) => {
+                    const strategyBuiltin = getBuiltinStrategy(builtinCategory, strategy.id)
+                    const isSystem = isSystemStrategy(strategy)
+                    const isModified = isSystemStrategyModified(strategy)
+                    const updateAvailable = isSystemStrategyUpdateAvailable(strategy, strategyBuiltin)
 
-                              if (!canRestore) {
-                                return null
-                              }
-
-                              return (
-                                <InlineMarker
-                                  icon={updateAvailable ? RefreshCcw : RotateCcw}
-                                  label={updateAvailable
-                                    ? 'Обновить стратегию до актуального системного значения'
-                                    : 'Откатить стратегию к системному значению'}
-                                  className={updateAvailable ? 'text-primary' : 'text-destructive'}
-                                  onClick={() => setSystemActionTarget({
-                                    type: 'strategy',
-                                    strategyId: strategy.id,
-                                    title: updateAvailable
-                                      ? 'Обновить системную стратегию?'
-                                      : 'Откатить стратегию к системному значению?',
-                                    description: updateAvailable
-                                      ? `Стратегия «${strategy.name}» будет обновлена до актуальной системной версии.`
-                                      : `Стратегия «${strategy.name}» будет возвращена к системному значению.`,
-                                  })}
-                                />
-                              )
-                            })()}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {!strategy.active && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  onClick={() => handleSetActive(strategy.id)}
-                                  aria-label={`Активировать стратегию ${strategy.name}`}
-                                >
-                                  <Check className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Активировать</TooltipContent>
-                            </Tooltip>
-                          )}
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => handleEditStrategy(strategy)}
-                                aria-label={`Редактировать стратегию ${strategy.name}`}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Редактировать</TooltipContent>
-                          </Tooltip>
-                          {strategy.active && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="text-warning hover:text-warning"
-                                  onClick={() => handleClearActive(strategy.id)}
-                                  aria-label={`Деактивировать стратегию ${strategy.name}`}
-                                >
-                                  <BrushCleaning className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Деактивировать</TooltipContent>
-                            </Tooltip>
-                          )}
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => handleDeleteStrategy(strategy.id)}
-                                aria-label={`Удалить стратегию ${strategy.name}`}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Удалить</TooltipContent>
-                          </Tooltip>
-                        </div>
-                      </div>
-                      <pre
-                        className={cn(
-                          'overflow-x-auto rounded-md border p-3 text-xs text-muted-foreground shadow-[inset_0_1px_0_color-mix(in_oklab,var(--background)_60%,transparent)]',
-                          strategy.active
-                            ? 'border-success/30 bg-[color-mix(in_oklab,var(--success)_10%,var(--background))]'
-                            : 'border-border/80 bg-background/84',
-                        )}
-                      >
-                        {strategy.content}
-                      </pre>
-                    </div>
-                  ))
+                    return (
+                      <StrategyCard
+                        key={strategy.id}
+                        strategy={strategy}
+                        isSystem={isSystem}
+                        isModified={isModified}
+                        updateAvailable={updateAvailable}
+                        handleSetActive={handleSetActive}
+                        handleEditStrategy={handleEditStrategy}
+                        handleClearActive={handleClearActive}
+                        handleDeleteStrategy={handleDeleteStrategy}
+                        onSystemActionClick={onSystemActionClick}
+                      />
+                    )
+                  })
                 )}
           </div>
 
