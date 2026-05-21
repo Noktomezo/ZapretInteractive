@@ -1320,8 +1320,10 @@ mod tests {
 }
 
 #[tauri::command]
-pub fn restore_hashes_from_disk() -> Result<(), String> {
-    rebuild_hashes_from_disk()
+pub async fn restore_hashes_from_disk() -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(rebuild_hashes_from_disk)
+        .await
+        .map_err(|e| format!("Failed to join restore hashes task: {e}"))?
 }
 
 #[tauri::command]

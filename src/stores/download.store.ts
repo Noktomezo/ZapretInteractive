@@ -29,15 +29,20 @@ export const useDownloadStore = create<DownloadStore>(set => ({
   initListeners: async (onDownloadComplete) => {
     if (useDownloadStore.getState().listenersInitialized)
       return
+    const collected: (() => void)[] = []
     try {
-      const [unlistenStart, unlistenProgress, unlistenComplete, unlistenError] = await Promise.all([
-        listen('download-start', () => {
+      collected.push(
+        await listen('download-start', () => {
           useDownloadStore.getState().setDownloading(true)
         }),
-        listen<DownloadProgress>('download-progress', (event) => {
+      )
+      collected.push(
+        await listen<DownloadProgress>('download-progress', (event) => {
           useDownloadStore.getState().setProgress(event.payload)
         }),
-        listen('download-complete', async () => {
+      )
+      collected.push(
+        await listen('download-complete', async () => {
           try {
             await onDownloadComplete?.()
           }
@@ -49,19 +54,26 @@ export const useDownloadStore = create<DownloadStore>(set => ({
             useDownloadStore.getState().reset()
           }
         }),
-        listen<string>('download-error', (event) => {
+      )
+      collected.push(
+        await listen<string>('download-error', (event) => {
           console.error('Download error:', event.payload)
           useDownloadStore.getState().reset()
         }),
-      ])
+      )
 
       set({
         listenersInitialized: true,
-        unlistenFns: [unlistenStart, unlistenProgress, unlistenComplete, unlistenError],
+        unlistenFns: collected,
       })
     }
     catch (e) {
-      useDownloadStore.getState().cleanup()
+      for (const unlisten of collected) {
+        try {
+          unlisten()
+        }
+        catch {}
+      }
       throw e
     }
   },

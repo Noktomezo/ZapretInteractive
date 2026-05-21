@@ -30,13 +30,13 @@
 
 1. Performance first.
 2. Reliability first.
-3. Keep behavior predictable under load and during failures (reconnects, failures, thirdparty module drops).
+3. Keep behavior predictable under load and during failures (reconnects, failures, third-party module drops).
 
 If a tradeoff is required, choose correctness and robustness over short-term convenience.
 
 ## --- Maintainability ---------------------------------------------------------
 
-Long term maintainability is a core priority. If you add new functionality, first check if there is shared logic that can be extracted to a separate module. Duplicate logic across multiple files is a code smell and should be avoided. Don't be afraid to change existing code. Don't take shortcuts by just adding local logic to solve a problem.
+Long-term maintainability is a core priority. If you add new functionality, first check if there is shared logic that can be extracted to a separate module. Duplicate logic across multiple files is a code smell and should be avoided. Don't be afraid to change existing code. Don't take shortcuts by just adding local logic to solve a problem.
 
 ## --- Dependency & Runtime Rules ----------------------------------------------
 
@@ -48,8 +48,7 @@ Long term maintainability is a core priority. If you add new functionality, firs
 - Run scripts: `bunx <tool>` or `bun run <script>`
 - Do **not** commit `package-lock.json` or `pnpm-lock.yaml` — only `bun.lock`
 - **Theme colors are mandatory:** any new or changed UI colors must come from the palette documented in `assets/THEME.md`. Do not introduce arbitrary hex/RGB/HSL values unless you are mapping an existing token back to that palette.
-- Treat window materials as modifiers, not standalone themes. `acrylic`, `mica`, and `tabbed` must stay modeled via `data-webview-material` on the root element together with the existing `light`/`dark` theme values in `data-theme`; never replace the theme key with a material value.
-- When changing theme or appearance code, preserve the invariant that theme selection (`light`/`dark`/`system`) and material selection (`none`/`acrylic`/`mica`/`tabbed`) are combined, not merged into one field.
+- **Window materials & transparency:** Window material and transparency configuration has been completely removed. Agents should not enforce or reference `data-webview-material` or material names (acrylic/mica/tabbed). All styling and layout should only reference theme tokens from `assets/THEME.md` and standard `light`/`dark`/`system` theme selection.
 
 ### Backend (src-tauri)
 

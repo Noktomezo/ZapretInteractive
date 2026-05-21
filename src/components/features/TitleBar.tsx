@@ -171,7 +171,7 @@ export function TitleBar() {
                 const isLast = index === breadcrumbItems.length - 1
 
                 return (
-                  <Fragment key={item.to || item.label}>
+                  <Fragment key={`${item.to ?? item.label}-${index}`}>
                     <BreadcrumbItem className="min-w-0 shrink truncate">
                       {isLast
                         ? (

@@ -438,67 +438,88 @@ export function CategoryPage() {
     if (!categoryId)
       return
 
+    const currentConfig = useConfigStore.getState().config
+    if (!currentConfig)
+      return
+
+    const previousConfig = structuredClone(currentConfig)
+
     try {
       setActiveStrategy(categoryId, strategyId)
       await saveNow()
-      const currentConfig = useConfigStore.getState().config
-      const currentCategory = currentConfig?.categories.find(c => c.id === categoryId)
-      if (currentCategory) {
-        const strategy = currentCategory.strategies.find(item => item.id === strategyId)
+      const latestConfig = useConfigStore.getState().config
+      const latestCategory = latestConfig?.categories.find(c => c.id === categoryId)
+      if (latestCategory) {
+        const strategy = latestCategory.strategies.find(item => item.id === strategyId)
         if (strategy) {
-          addConfigLog(`стратегия "${strategy.name}" активирована в категории "${currentCategory.name}"`)
+          addConfigLog(`стратегия "${strategy.name}" активирована в категории "${latestCategory.name}"`)
         }
       }
       await restartIfConnected()
       notifyConfigApplied('Стратегия активирована')
     }
     catch (e) {
+      revertTo(previousConfig)
       toast.error(`Ошибка активации стратегии: ${e instanceof Error ? e.message : String(e)}`)
     }
-  }, [categoryId, setActiveStrategy, saveNow, addConfigLog, restartIfConnected, notifyConfigApplied])
+  }, [categoryId, setActiveStrategy, saveNow, addConfigLog, restartIfConnected, notifyConfigApplied, revertTo])
 
   const handleClearActive = useCallback(async (strategyId: string) => {
     if (!categoryId)
       return
 
+    const currentConfig = useConfigStore.getState().config
+    if (!currentConfig)
+      return
+
+    const previousConfig = structuredClone(currentConfig)
+
     try {
       clearActiveStrategy(categoryId, strategyId)
       await saveNow()
-      const currentConfig = useConfigStore.getState().config
-      const currentCategory = currentConfig?.categories.find(c => c.id === categoryId)
-      if (currentCategory) {
-        const strategy = currentCategory.strategies.find(item => item.id === strategyId)
+      const latestConfig = useConfigStore.getState().config
+      const latestCategory = latestConfig?.categories.find(c => c.id === categoryId)
+      if (latestCategory) {
+        const strategy = latestCategory.strategies.find(item => item.id === strategyId)
         if (strategy) {
-          addConfigLog(`стратегия "${strategy.name}" деактивирована в категории "${currentCategory.name}"`)
+          addConfigLog(`стратегия "${strategy.name}" деактивирована в категории "${latestCategory.name}"`)
         }
       }
       await restartIfConnected()
       notifyConfigApplied('Стратегия деактивирована')
     }
     catch (e) {
+      revertTo(previousConfig)
       toast.error(`Ошибка деактивации стратегии: ${e instanceof Error ? e.message : String(e)}`)
     }
-  }, [categoryId, clearActiveStrategy, saveNow, addConfigLog, restartIfConnected, notifyConfigApplied])
+  }, [categoryId, clearActiveStrategy, saveNow, addConfigLog, restartIfConnected, notifyConfigApplied, revertTo])
 
   const handleClearAllActive = useCallback(async () => {
     if (!categoryId)
       return
 
+    const currentConfig = useConfigStore.getState().config
+    if (!currentConfig)
+      return
+
+    const previousConfig = structuredClone(currentConfig)
+
     try {
       clearAllActiveStrategies(categoryId)
       await saveNow()
-      const currentConfig = useConfigStore.getState().config
-      const currentCategory = currentConfig?.categories.find(c => c.id === categoryId)
-      if (currentCategory) {
-        addConfigLog(`все активные стратегии отключены в категории "${currentCategory.name}"`)
+      const latestConfig = useConfigStore.getState().config
+      const latestCategory = latestConfig?.categories.find(c => c.id === categoryId)
+      if (latestCategory) {
+        addConfigLog(`все активные стратегии отключены в категории "${latestCategory.name}"`)
       }
       await restartIfConnected()
       notifyConfigApplied('Активные стратегии отключены')
     }
     catch (e) {
+      revertTo(previousConfig)
       toast.error(`Ошибка деактивации стратегий: ${e instanceof Error ? e.message : String(e)}`)
     }
-  }, [categoryId, clearAllActiveStrategies, saveNow, addConfigLog, restartIfConnected, notifyConfigApplied])
+  }, [categoryId, clearAllActiveStrategies, saveNow, addConfigLog, restartIfConnected, notifyConfigApplied, revertTo])
 
   const handleDeleteStrategy = useCallback(async (strategyId: string) => {
     if (categoryId) {
@@ -508,6 +529,11 @@ export function CategoryPage() {
       const wasActive = strategy?.active ?? false
 
       if (wasActive) {
+        if (!currentConfig) {
+          return
+        }
+
+        const previousConfig = structuredClone(currentConfig)
         deleteStrategy(categoryId, strategyId)
         try {
           await saveNow()
@@ -519,9 +545,9 @@ export function CategoryPage() {
           toast.success('Стратегия удалена')
         }
         catch (err) {
+          revertTo(previousConfig)
           console.error('Failed to save after deleting strategy:', err)
           toast.error('Ошибка сохранения после удаления стратегии')
-          await reload().catch(() => {})
           return
         }
         try {
@@ -557,7 +583,7 @@ export function CategoryPage() {
         }
       }
     }
-  }, [categoryId, deleteStrategy, saveNow, addConfigLog, reload, restartIfConnected, revertTo])
+  }, [categoryId, deleteStrategy, saveNow, addConfigLog, restartIfConnected, revertTo])
 
   const onSystemActionClick = useCallback((strategyId: string, name: string, updateAvailable: boolean) => {
     setSystemActionTarget({

@@ -288,8 +288,9 @@ export function FiltersPage() {
     if (!editingFilterIdRef.current || !draft.name.trim() || !draft.filename.trim() || !editLoadSucceeded)
       return
 
+    const editingFilterId = editingFilterIdRef.current
     const currentFilters = useConfigStore.getState().config?.filters || []
-    const targetFilter = currentFilters.find(filter => filter.id === editingFilterIdRef.current)
+    const targetFilter = currentFilters.find(filter => filter.id === editingFilterId)
     if (!targetFilter)
       return
 
@@ -316,7 +317,7 @@ export function FiltersPage() {
       }
 
       const updatedFilters = currentFilters.map(filter =>
-        filter.id === editingFilterIdRef.current
+        filter.id === editingFilterId
           ? {
               ...filter,
               name: draft.name.trim(),
