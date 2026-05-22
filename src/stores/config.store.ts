@@ -45,6 +45,9 @@ interface ConfigStore {
   setMinimizeToTray: (enabled: boolean) => void
   setLaunchToTray: (enabled: boolean) => void
   setConnectOnAutostart: (enabled: boolean) => void
+  setFirewallType: (type: string) => void
+  setWanInterfaces: (interfaces: string) => void
+  setLanInterfaces: (interfaces: string) => void
   addCategory: (name: string) => void
   updateCategory: (id: string, name: string) => void
   restoreBuiltinCategory: (categoryId: string, category: Category) => void
@@ -332,6 +335,24 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     const { config } = get()
     if (config)
       set({ config: { ...config, connectOnAutostart: enabled }, dirty: true })
+  },
+
+  setFirewallType: (type) => {
+    const { config } = get()
+    if (config)
+      set({ config: { ...config, firewallType: type }, dirty: true })
+  },
+
+  setWanInterfaces: (interfaces) => {
+    const { config } = get()
+    if (config)
+      set({ config: { ...config, wanInterfaces: interfaces }, dirty: true })
+  },
+
+  setLanInterfaces: (interfaces) => {
+    const { config } = get()
+    if (config)
+      set({ config: { ...config, lanInterfaces: interfaces }, dirty: true })
   },
 
   addCategory: (name) => {

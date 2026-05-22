@@ -220,6 +220,13 @@ pub struct AppConfig {
     )]
     pub app_auto_updates_enabled: bool,
 
+    #[serde(default = "default_firewall_type", rename = "firewallType")]
+    pub firewall_type: String,
+    #[serde(default = "default_wan_interfaces", rename = "wanInterfaces")]
+    pub wan_interfaces: String,
+    #[serde(default = "default_lan_interfaces", rename = "lanInterfaces")]
+    pub lan_interfaces: String,
+
     #[serde(default, rename = "systemRemovedCategoryIds")]
     pub system_removed_category_ids: Vec<String>,
     #[serde(default, rename = "systemRemovedStrategyKeys")]
@@ -295,6 +302,18 @@ fn default_core_file_update_prompts_enabled() -> bool {
 
 fn default_app_auto_updates_enabled() -> bool {
     true
+}
+
+fn default_firewall_type() -> String {
+    "auto".to_string()
+}
+
+fn default_wan_interfaces() -> String {
+    String::new()
+}
+
+fn default_lan_interfaces() -> String {
+    String::new()
 }
 
 fn default_dns_preset_id() -> String {

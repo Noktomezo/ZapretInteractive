@@ -85,13 +85,36 @@ const THIRD_PARTY_BASE_URL: &str =
     "https://raw.githubusercontent.com/Noktomezo/ZapretInteractive/main/thirdparty";
 const REMOTE_HASHES_URL: &str =
     "https://raw.githubusercontent.com/Noktomezo/ZapretInteractive/main/thirdparty/hashes.json";
+#[cfg(windows)]
 const BINARIES: &[&str] = &["WinDivert.dll", "Monkey64.sys", "winws.exe", "cygwin1.dll"];
+#[cfg(not(windows))]
+const BINARIES: &[&str] = &["nfqws"];
+
 const MODULES_BASE_URL: &str =
     "https://raw.githubusercontent.com/Noktomezo/ZapretInteractive/main/thirdparty/modules";
+
+#[cfg(windows)]
 const MODULE_FILES: &[&str] = &[
     "dnscrypt-proxy/dnscrypt-proxy.exe",
     "tg-ws-proxy-rs/tg-ws-proxy.exe",
 ];
+#[cfg(not(windows))]
+const MODULE_FILES: &[&str] = &[
+    "dnscrypt-proxy/dnscrypt-proxy",
+    "tg-ws-proxy-rs/tg-ws-proxy",
+];
+
+#[cfg(not(windows))]
+fn get_linux_arch_dir() -> &'static str {
+    match std::env::consts::ARCH {
+        "x86_64" => "x86_64",
+        "x86" => "x86",
+        "aarch64" => "arm64",
+        "arm" => "arm",
+        "riscv64" => "riscv64",
+        _ => "x86_64",
+    }
+}
 const FAKE_FILES_BASE_URL: &str =
     "https://raw.githubusercontent.com/Noktomezo/ZapretInteractive/main/thirdparty/fake";
 const FAKE_FILES: &[&str] = &[
@@ -267,7 +290,7 @@ fn rebuild_hashes_from_disk() -> Result<(), String> {
         .filter(|file| file.dest_path.exists())
         .map(|file| {
             let hash = calculate_sha256(&file.dest_path)?;
-            Ok((hash_key(file.group, file.name), hash))
+            Ok((tracked_key(file), hash))
         })
         .collect::<Result<HashMap<String, String>, String>>()?;
 
@@ -307,7 +330,17 @@ fn thirdparty_url(relative_path: &str) -> String {
 
 fn tracked_file_url(group: &str, name: &str) -> String {
     match group {
-        "binaries" => thirdparty_url(name),
+        "binaries" => {
+            #[cfg(windows)]
+            {
+                thirdparty_url(name)
+            }
+            #[cfg(not(windows))]
+            {
+                let arch = get_linux_arch_dir();
+                format!("{THIRD_PARTY_BASE_URL}/bins/{arch}/{name}")
+            }
+        }
         "fake" => format!("{FAKE_FILES_BASE_URL}/{name}"),
         "lists" => format!("{LISTS_BASE_URL}/{name}"),
         "modules" => format!("{MODULES_BASE_URL}/{name}"),
@@ -379,7 +412,19 @@ fn tracked_files() -> Vec<TrackedFile> {
 }
 
 fn tracked_key(file: &TrackedFile) -> String {
-    hash_key(file.group, file.name)
+    #[cfg(windows)]
+    {
+        hash_key(file.group, file.name)
+    }
+    #[cfg(not(windows))]
+    {
+        if file.group == "binaries" && file.name == "nfqws" {
+            let arch = get_linux_arch_dir();
+            format!("binaries:nfqws-{}", arch)
+        } else {
+            hash_key(file.group, file.name)
+        }
+    }
 }
 
 fn configured_filter_files(config: &AppConfig) -> Vec<ConfiguredFilterFile> {
@@ -450,7 +495,7 @@ fn tracked_file_is_healthy(
         return false;
     }
 
-    let Some(expected) = expected_hash(stored_hashes, file.group, file.name) else {
+    let Some(expected) = expected_hash(stored_hashes, file) else {
         return false;
     };
 
@@ -487,12 +532,12 @@ fn backfill_missing_core_hashes(
         if !inspection.exists || inspection.hash.is_none() {
             continue;
         }
-        if expected_hash(stored_hashes, file.group, file.name).is_some() {
+        if expected_hash(stored_hashes, file).is_some() {
             continue;
         }
 
         additions.push((
-            hash_key(file.group, file.name),
+            tracked_key(file),
             inspection.hash.clone().unwrap_or_default(),
         ));
     }
@@ -602,12 +647,12 @@ async fn collect_available_updates_with_context(
 
 fn expected_hash<'a>(
     hashes: &'a HashMap<String, String>,
-    group: &str,
-    name: &str,
+    file: &TrackedFile,
 ) -> Option<&'a String> {
-    hashes.get(&hash_key(group, name)).or_else(|| {
-        if group == "binaries" {
-            hashes.get(name)
+    let key = tracked_key(file);
+    hashes.get(&key).or_else(|| {
+        if file.group == "binaries" {
+            hashes.get(file.name)
         } else {
             None
         }
@@ -918,7 +963,7 @@ async fn build_download_plan(
             name: file.name.to_string(),
             url: file.url.clone(),
             dest_path: file.dest_path.clone(),
-            hash_key: Some(hash_key(file.group, file.name)),
+            hash_key: Some(tracked_key(file)),
             phase: file.group.to_string(),
             cached_bytes: None,
         })
@@ -1073,6 +1118,18 @@ async fn execute_download_plan(
         };
 
         write_bytes_atomic(&file.dest_path, &bytes, &file.name).await?;
+
+        #[cfg(unix)]
+        {
+            if file.phase == "binaries" || file.phase == "modules" {
+                use std::os::unix::fs::PermissionsExt;
+                if let Ok(metadata) = std::fs::metadata(&file.dest_path) {
+                    let mut perms = metadata.permissions();
+                    perms.set_mode(0o755);
+                    let _ = std::fs::set_permissions(&file.dest_path, perms);
+                }
+            }
+        }
 
         if let Some(hash_key) = &file.hash_key {
             let hash = calculate_sha256_async(file.dest_path.clone()).await?;
@@ -1381,10 +1438,20 @@ pub fn get_binary_path(filename: &str) -> Result<String, String> {
 }
 #[tauri::command]
 pub fn get_winws_path() -> String {
-    get_managed_resources_dir()
-        .join("winws.exe")
-        .to_string_lossy()
-        .to_string()
+    #[cfg(windows)]
+    {
+        get_managed_resources_dir()
+            .join("winws.exe")
+            .to_string_lossy()
+            .to_string()
+    }
+    #[cfg(not(windows))]
+    {
+        get_managed_resources_dir()
+            .join("nfqws")
+            .to_string_lossy()
+            .to_string()
+    }
 }
 #[tauri::command]
 pub fn get_filters_path() -> String {

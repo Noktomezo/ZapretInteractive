@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 import urllib.request
+import tarfile
 from urllib.parse import urlparse
 from pathlib import Path
 from zipfile import ZipFile
@@ -113,6 +114,21 @@ GITHUB_RELEASE_ZIP_UPSTREAMS = [
     },
 ]
 
+GITHUB_RELEASE_TAR_UPSTREAMS = [
+    {
+        "repo": "DNSCrypt/dnscrypt-proxy",
+        "asset_pattern": "dnscrypt-proxy-linux_x86_64-*.tar.gz",
+        "member_pattern": "*/dnscrypt-proxy",
+        "destination": THIRDPARTY_DIR / "modules" / "dnscrypt-proxy" / "dnscrypt-proxy",
+    },
+    {
+        "repo": "valnesfjord/tg-ws-proxy-rs",
+        "asset_pattern": "tg-ws-proxy-x86_64-unknown-linux-musl.tar.gz",
+        "member_pattern": "tg-ws-proxy",
+        "destination": THIRDPARTY_DIR / "modules" / "tg-ws-proxy-rs" / "tg-ws-proxy",
+    },
+]
+
 
 def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
@@ -206,6 +222,32 @@ def extract_zip_member(data: bytes, member_pattern: str) -> bytes:
             return handle.read()
 
 
+def extract_tar_member(data: bytes, member_pattern: str) -> bytes:
+    with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as archive:
+        matches = [
+            member_info
+            for member_info in archive.getmembers()
+            if member_info.isfile() and fnmatch.fnmatch(member_info.name.replace("\\", "/"), member_pattern)
+        ]
+
+        if not matches:
+            raise FileNotFoundError(f"Tar member matching {member_pattern!r} not found")
+
+        if len(matches) > 1:
+            normalized_matches = ", ".join(
+                sorted(member_info.name.replace("\\", "/") for member_info in matches)
+            )
+            raise ValueError(
+                f"Tar member lookup with pattern {member_pattern!r} is ambiguous: "
+                f"{normalized_matches}"
+            )
+
+        f = archive.extractfile(matches[0])
+        if f is None:
+            raise ValueError(f"Failed to extract file for {matches[0].name}")
+        return f.read()
+
+
 def normalize_download(destination: Path, data: bytes) -> bytes:
     if destination.name != "zapret-hosts-user-exclude.txt":
         return data
@@ -247,6 +289,14 @@ def build_hash_manifest() -> dict[str, str]:
             raise FileNotFoundError(f"Missing managed binary: {path}")
         manifest[f"binaries:{name}"] = sha256_file(path)
 
+    # Linux binaries per architecture
+    linux_archs = ["x86", "x86_64", "arm", "arm64", "riscv64"]
+    for arch in linux_archs:
+        path = THIRDPARTY_DIR / "bins" / arch / "nfqws"
+        if not path.is_file():
+            raise FileNotFoundError(f"Missing managed Linux binary for {arch}: {path}")
+        manifest[f"binaries:nfqws-{arch}"] = sha256_file(path)
+
     for name in FAKE_FILES:
         path = THIRDPARTY_DIR / "fake" / name
         if not path.is_file():
@@ -263,6 +313,17 @@ def build_hash_manifest() -> dict[str, str]:
         path = THIRDPARTY_DIR / "modules" / name
         if not path.is_file():
             raise FileNotFoundError(f"Missing managed module binary: {path}")
+        manifest[f"modules:{name}"] = sha256_file(path)
+
+    # Linux modules
+    linux_modules = [
+        "dnscrypt-proxy/dnscrypt-proxy",
+        "tg-ws-proxy-rs/tg-ws-proxy",
+    ]
+    for name in linux_modules:
+        path = THIRDPARTY_DIR / "modules" / name
+        if not path.is_file():
+            raise FileNotFoundError(f"Missing managed Linux module binary: {path}")
         manifest[f"modules:{name}"] = sha256_file(path)
 
     return manifest
@@ -282,6 +343,15 @@ def main() -> None:
             upstream["asset_pattern"],
         )
         extracted_bytes = extract_zip_member(archive_bytes, upstream["member_pattern"])
+        if write_if_changed(upstream["destination"], extracted_bytes):
+            changed_paths.append(upstream["destination"].relative_to(REPO_ROOT).as_posix())
+
+    for upstream in GITHUB_RELEASE_TAR_UPSTREAMS:
+        archive_bytes = fetch_latest_release_asset(
+            upstream["repo"],
+            upstream["asset_pattern"],
+        )
+        extracted_bytes = extract_tar_member(archive_bytes, upstream["member_pattern"])
         if write_if_changed(upstream["destination"], extracted_bytes):
             changed_paths.append(upstream["destination"].relative_to(REPO_ROOT).as_posix())
 

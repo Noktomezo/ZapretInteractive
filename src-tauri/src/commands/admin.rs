@@ -36,6 +36,10 @@ pub fn is_elevated() -> bool {
 
     #[cfg(not(windows))]
     {
-        true
+        std::process::Command::new("id")
+            .arg("-u")
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim() == "0")
+            .unwrap_or(false)
     }
 }

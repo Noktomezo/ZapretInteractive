@@ -491,5 +491,8 @@
   "connectOnAutostart": false,
   "coreFileUpdatePromptsEnabled": true,
   "appAutoUpdatesEnabled": true,
-  "windowMaterial": "none"
+  "windowMaterial": "none",
+  "firewallType": "auto",
+  "wanInterfaces": "",
+  "lanInterfaces": ""
 }

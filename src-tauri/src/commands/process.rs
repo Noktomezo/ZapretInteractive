@@ -1,4 +1,5 @@
-use super::config::{get_managed_resources_dir, get_runtime_data_dir};
+#[allow(unused_imports)]
+use super::config::{AppState, current_config, get_managed_resources_dir, get_runtime_data_dir};
 use duct::{Expression, Handle, cmd};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -53,7 +54,10 @@ const DRIVER_SERVICE_NAMES: &[&str] = &["WinDivert", "Monkey64", "Monkey"];
 const STILL_ACTIVE_EXIT_CODE: u32 = 259;
 #[cfg(windows)]
 const DELETE_ACCESS_MASK: u32 = 0x0001_0000;
+#[cfg(windows)]
 const WINWS_PROCESS_NAME: &str = "winws.exe";
+#[cfg(not(windows))]
+const WINWS_PROCESS_NAME: &str = "nfqws";
 
 static RUNNING_PID: AtomicU32 = AtomicU32::new(0);
 static RUNNING_HANDLE: Mutex<Option<Handle>> = Mutex::new(None);
@@ -338,6 +342,291 @@ fn find_expected_winws_pid() -> Option<u32> {
     find_process_pid_by_name(WINWS_PROCESS_NAME).filter(|pid| is_process_running_by_pid(*pid))
 }
 
+#[cfg(not(windows))]
+fn is_process_running_by_pid(pid: u32) -> bool {
+    std::process::Command::new("kill")
+        .args(["-0", &pid.to_string()])
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
+#[cfg(not(windows))]
+fn find_process_pid_by_name(process_name: &str) -> Option<u32> {
+    let output = std::process::Command::new("pgrep")
+        .arg(process_name)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    stdout.lines().next()?.trim().parse::<u32>().ok()
+}
+
+#[cfg(not(windows))]
+fn terminate_process_by_pid(pid: u32) -> Result<(), String> {
+    let _ = std::process::Command::new("kill")
+        .args(["-15", &pid.to_string()])
+        .output();
+
+    for _ in 0..20 {
+        std::thread::sleep(Duration::from_millis(100));
+        if !is_process_running_by_pid(pid) {
+            return Ok(());
+        }
+    }
+
+    std::process::Command::new("kill")
+        .args(["-9", &pid.to_string()])
+        .output()
+        .map_err(|e| format!("Failed to kill process {pid}: {e}"))?;
+
+    Ok(())
+}
+
+#[cfg(not(windows))]
+fn find_expected_winws_pid() -> Option<u32> {
+    find_process_pid_by_name(WINWS_PROCESS_NAME).filter(|pid| is_process_running_by_pid(*pid))
+}
+
+#[cfg(not(windows))]
+fn detect_firewall_type(configured: &str) -> String {
+    let configured_lower = configured.to_lowercase();
+    if configured_lower == "iptables" || configured_lower == "nftables" {
+        return configured_lower;
+    }
+    if std::process::Command::new("nft")
+        .arg("--version")
+        .output()
+        .is_ok_and(|o| o.status.success())
+    {
+        "nftables".to_string()
+    } else {
+        "iptables".to_string()
+    }
+}
+
+#[cfg(not(windows))]
+fn apply_iptables_rules(
+    tcp_ports: &str,
+    udp_ports: &str,
+    wan_interfaces: &str,
+) -> Result<(), String> {
+    let _ = std::process::Command::new("iptables")
+        .args(["-t", "mangle", "-F", "POSTROUTING"])
+        .output();
+    let _ = std::process::Command::new("ip6tables")
+        .args(["-t", "mangle", "-F", "POSTROUTING"])
+        .output();
+
+    let desync_mark = "0x40000000";
+    let wan_list: Vec<&str> = wan_interfaces.split_whitespace().collect();
+
+    let add_rules = |proto: &str, ports: &str| -> Result<(), String> {
+        if ports.is_empty() {
+            return Ok(());
+        }
+
+        let connbytes_args = [
+            "--connbytes-dir=original",
+            "--connbytes-mode=packets",
+            "--connbytes",
+            "1:12",
+        ];
+
+        if wan_list.is_empty() {
+            let mut ipt_args = vec![
+                "-t",
+                "mangle",
+                "-I",
+                "POSTROUTING",
+                "-p",
+                proto,
+                "-m",
+                "multiport",
+                "--dports",
+                ports,
+                "-m",
+                "mark",
+                "!",
+                "--mark",
+                &format!("{desync_mark}/{desync_mark}"),
+                "-m",
+                "connbytes",
+            ];
+            ipt_args.extend(connbytes_args);
+            ipt_args.extend(["-j", "NFQUEUE", "--queue-num", "200", "--queue-bypass"]);
+
+            std::process::Command::new("iptables")
+                .args(&ipt_args)
+                .status()
+                .map_err(|e| format!("Failed to apply iptables rule for {proto}: {e}"))?;
+
+            std::process::Command::new("ip6tables")
+                .args(&ipt_args)
+                .status()
+                .map_err(|e| format!("Failed to apply ip6tables rule for {proto}: {e}"))?;
+        } else {
+            for iface in &wan_list {
+                let mut ipt_args = vec![
+                    "-t",
+                    "mangle",
+                    "-I",
+                    "POSTROUTING",
+                    "-o",
+                    iface,
+                    "-p",
+                    proto,
+                    "-m",
+                    "multiport",
+                    "--dports",
+                    ports,
+                    "-m",
+                    "mark",
+                    "!",
+                    "--mark",
+                    &format!("{desync_mark}/{desync_mark}"),
+                    "-m",
+                    "connbytes",
+                ];
+                ipt_args.extend(connbytes_args);
+                ipt_args.extend(["-j", "NFQUEUE", "--queue-num", "200", "--queue-bypass"]);
+
+                std::process::Command::new("iptables")
+                    .args(&ipt_args)
+                    .status()
+                    .map_err(|e| {
+                        format!("Failed to apply iptables rule for {proto} on {iface}: {e}")
+                    })?;
+
+                std::process::Command::new("ip6tables")
+                    .args(&ipt_args)
+                    .status()
+                    .map_err(|e| {
+                        format!("Failed to apply ip6tables rule for {proto} on {iface}: {e}")
+                    })?;
+            }
+        }
+        Ok(())
+    };
+
+    add_rules("tcp", tcp_ports)?;
+    add_rules("udp", udp_ports)?;
+
+    Ok(())
+}
+
+#[cfg(not(windows))]
+fn apply_nftables_rules(
+    tcp_ports: &str,
+    udp_ports: &str,
+    wan_interfaces: &str,
+) -> Result<(), String> {
+    std::process::Command::new("nft")
+        .args(["add", "table", "inet", "zapret"])
+        .status()
+        .map_err(|e| format!("Failed to create nftables table: {e}"))?;
+
+    std::process::Command::new("nft")
+        .args(["flush", "table", "inet", "zapret"])
+        .status()
+        .map_err(|e| format!("Failed to flush nftables table: {e}"))?;
+
+    std::process::Command::new("nft")
+        .args([
+            "add",
+            "chain",
+            "inet",
+            "zapret",
+            "postrouting",
+            "{ type filter hook postrouting priority mangle ; }",
+        ])
+        .status()
+        .map_err(|e| format!("Failed to create nftables chain: {e}"))?;
+
+    let desync_mark = "0x40000000";
+    let wan_list: Vec<&str> = wan_interfaces.split_whitespace().collect();
+    let mut oifname_clause = Vec::new();
+    if !wan_list.is_empty() {
+        oifname_clause.push("oifname".to_string());
+        oifname_clause.push("{".to_string());
+        oifname_clause.push(wan_list.join(","));
+        oifname_clause.push("}".to_string());
+    }
+
+    let add_rules = |proto: &str, ports: &str| -> Result<(), String> {
+        if ports.is_empty() {
+            return Ok(());
+        }
+
+        let mut args = vec![
+            "add".to_string(),
+            "rule".to_string(),
+            "inet".to_string(),
+            "zapret".to_string(),
+            "postrouting".to_string(),
+        ];
+        args.extend(oifname_clause.clone());
+        args.extend([
+            proto.to_string(),
+            "dport".to_string(),
+            "{".to_string(),
+            ports.to_string(),
+            "}".to_string(),
+            "mark".to_string(),
+            "!=".to_string(),
+            desync_mark.to_string(),
+            "ct".to_string(),
+            "original".to_string(),
+            "packets".to_string(),
+            "1-12".to_string(),
+            "queue".to_string(),
+            "num".to_string(),
+            "200".to_string(),
+            "bypass".to_string(),
+        ]);
+
+        std::process::Command::new("nft")
+            .args(&args)
+            .status()
+            .map_err(|e| format!("Failed to add nftables rule for {proto}: {e}"))?;
+
+        Ok(())
+    };
+
+    add_rules("tcp", tcp_ports)?;
+    add_rules("udp", udp_ports)?;
+
+    Ok(())
+}
+
+#[cfg(not(windows))]
+fn cleanup_linux_firewall(
+    firewall_type: &str,
+    wan_interfaces: &str,
+    _lan_interfaces: &str,
+) -> Result<(), String> {
+    let fw = firewall_type.to_lowercase();
+    if fw == "auto" || fw == "iptables" {
+        let _ = std::process::Command::new("iptables")
+            .args(["-t", "mangle", "-F", "POSTROUTING"])
+            .output();
+        let _ = std::process::Command::new("ip6tables")
+            .args(["-t", "mangle", "-F", "POSTROUTING"])
+            .output();
+    }
+    if fw == "auto" || fw == "nftables" {
+        let _ = std::process::Command::new("nft")
+            .args(["flush", "table", "inet", "zapret"])
+            .output();
+        let _ = std::process::Command::new("nft")
+            .args(["delete", "table", "inet", "zapret"])
+            .output();
+    }
+    Ok(())
+}
+
 #[cfg(windows)]
 fn stop_and_delete_service(service_name: &str) -> Result<(), String> {
     unsafe {
@@ -479,6 +768,10 @@ pub fn set_running_pid(pid: u32) {
 pub(crate) fn cleanup_orphaned_winws_on_startup() -> Result<(), String> {
     let pid_path = winws_pid_path();
     let Some(pid) = read_pid_file(&pid_path) else {
+        #[cfg(not(windows))]
+        {
+            let _ = cleanup_linux_firewall("auto", "", "");
+        }
         return Ok(());
     };
 
@@ -488,46 +781,126 @@ pub(crate) fn cleanup_orphaned_winws_on_startup() -> Result<(), String> {
 
     RUNNING_PID.store(0, Ordering::SeqCst);
     clear_pid_file(&pid_path)?;
+
+    #[cfg(windows)]
     kill_windivert_service()?;
+
+    #[cfg(not(windows))]
+    cleanup_linux_firewall("auto", "", "")?;
+
     Ok(())
 }
 
 #[tauri::command]
-pub fn start_winws(args: Vec<String>, tcp_ports: String, udp_ports: String) -> Result<u32, String> {
-    let winws_path = winws_binary_path();
+pub fn start_winws(
+    _state: tauri::State<'_, AppState>,
+    args: Vec<String>,
+    tcp_ports: String,
+    udp_ports: String,
+) -> Result<u32, String> {
+    #[cfg(windows)]
+    {
+        let winws_path = winws_binary_path();
 
-    if !winws_path.exists() {
-        return Err("winws.exe not found. Please download binaries first.".to_string());
+        if !winws_path.exists() {
+            return Err("winws.exe not found. Please download binaries first.".to_string());
+        }
+
+        let mut full_args: Vec<String> = vec![
+            format!("--wf-tcp={}", tcp_ports),
+            format!("--wf-udp={}", udp_ports),
+        ];
+        full_args.extend(args);
+
+        let handle =
+            configure_expression(cmd(winws_path.to_string_lossy().into_owned(), full_args))
+                .start()
+                .map_err(|e| format!("Failed to start winws.exe: {e}"))?;
+        let pid = handle
+            .pids()
+            .into_iter()
+            .next()
+            .ok_or_else(|| "Failed to get winws.exe PID from duct handle".to_string())?;
+
+        let mut running_handle = RUNNING_HANDLE.lock().map_err(|e| e.to_string())?;
+        *running_handle = Some(handle);
+        set_running_pid(pid);
+
+        Ok(pid)
     }
 
-    let mut full_args: Vec<String> = vec![
-        format!("--wf-tcp={}", tcp_ports),
-        format!("--wf-udp={}", udp_ports),
-    ];
-    full_args.extend(args);
+    #[cfg(not(windows))]
+    {
+        let config = current_config(&_state)?;
+        let firewall_type = detect_firewall_type(&config.firewall_type);
 
-    let handle = configure_expression(cmd(winws_path.to_string_lossy().into_owned(), full_args))
-        .start()
-        .map_err(|e| format!("Failed to start winws.exe: {e}"))?;
-    let pid = handle
-        .pids()
-        .into_iter()
-        .next()
-        .ok_or_else(|| "Failed to get winws.exe PID from duct handle".to_string())?;
+        let _ = std::process::Command::new("sysctl")
+            .args(["-w", "net.netfilter.nf_conntrack_tcp_be_liberal=1"])
+            .status();
 
-    let mut running_handle = RUNNING_HANDLE.lock().map_err(|e| e.to_string())?;
-    *running_handle = Some(handle);
-    set_running_pid(pid);
+        if firewall_type == "nftables" {
+            let tcp_nft = tcp_ports.replace(':', "-");
+            let udp_nft = udp_ports.replace(':', "-");
+            apply_nftables_rules(&tcp_nft, &udp_nft, &config.wan_interfaces)?;
+        } else {
+            let tcp_ipt = tcp_ports.replace('-', ":");
+            let udp_ipt = udp_ports.replace('-', ":");
+            apply_iptables_rules(&tcp_ipt, &udp_ipt, &config.wan_interfaces)?;
+        }
 
-    Ok(pid)
+        let mut filtered_args = Vec::new();
+        for arg in args {
+            if !arg.starts_with("--wf-tcp=") && !arg.starts_with("--wf-udp=") {
+                filtered_args.push(arg);
+            }
+        }
+
+        let mut full_args = vec![
+            "--qnum=200".to_string(),
+            "--uid=0:0".to_string(),
+            "--dpi-desync-fwmark=0x40000000".to_string(),
+        ];
+        full_args.extend(filtered_args);
+
+        let winws_path = winws_binary_path();
+        if !winws_path.exists() {
+            return Err("nfqws not found. Please download binaries first.".to_string());
+        }
+
+        let handle =
+            configure_expression(cmd(winws_path.to_string_lossy().into_owned(), full_args))
+                .start()
+                .map_err(|e| format!("Failed to start nfqws: {e}"))?;
+        let pid = handle
+            .pids()
+            .into_iter()
+            .next()
+            .ok_or_else(|| "Failed to get nfqws PID from duct handle".to_string())?;
+
+        let mut running_handle = RUNNING_HANDLE.lock().map_err(|e| e.to_string())?;
+        *running_handle = Some(handle);
+        set_running_pid(pid);
+
+        Ok(pid)
+    }
 }
 
 #[tauri::command]
-pub fn stop_winws() -> Result<(), String> {
+pub fn stop_winws(_state: tauri::State<'_, AppState>) -> Result<(), String> {
     let pid = RUNNING_PID.load(Ordering::SeqCst);
     let handle = RUNNING_HANDLE.lock().map_err(|e| e.to_string())?.take();
 
     if pid == 0 && handle.is_none() {
+        #[cfg(not(windows))]
+        {
+            let config = current_config(&_state)?;
+            let firewall_type = detect_firewall_type(&config.firewall_type);
+            let _ = cleanup_linux_firewall(
+                &firewall_type,
+                &config.wan_interfaces,
+                &config.lan_interfaces,
+            );
+        }
         return Ok(());
     }
 
@@ -564,7 +937,7 @@ pub fn stop_winws() -> Result<(), String> {
                     if let Ok(mut running_handle) = RUNNING_HANDLE.lock() {
                         *running_handle = Some(handle);
                     }
-                    return Err(format!("Failed to kill winws.exe: {error}"));
+                    return Err(format!("Failed to kill nfqws: {error}"));
                 }
             }
             let _ = handle.wait_timeout(Duration::from_secs(2));
@@ -575,15 +948,28 @@ pub fn stop_winws() -> Result<(), String> {
 
         #[cfg(not(windows))]
         {
-            Command::new("kill")
+            std::process::Command::new("kill")
                 .args(["-9", &pid.to_string()])
                 .output()
-                .map_err(|e| format!("Failed to kill winws.exe: {}", e))?;
+                .map_err(|e| format!("Failed to kill nfqws: {}", e))?;
         }
     }
 
     set_running_pid(0);
+
+    #[cfg(windows)]
     kill_windivert_service()?;
+
+    #[cfg(not(windows))]
+    {
+        let config = current_config(&_state)?;
+        let firewall_type = detect_firewall_type(&config.firewall_type);
+        let _ = cleanup_linux_firewall(
+            &firewall_type,
+            &config.wan_interfaces,
+            &config.lan_interfaces,
+        );
+    }
 
     Ok(())
 }
@@ -675,7 +1061,10 @@ pub fn check_and_recover_orphan() -> Option<u32> {
 
     #[cfg(not(windows))]
     {
-        let output = Command::new("pgrep").arg("winws").output().ok()?;
+        let output = std::process::Command::new("pgrep")
+            .arg("nfqws")
+            .output()
+            .ok()?;
         let stdout = String::from_utf8_lossy(&output.stdout);
         if let Ok(pid) = stdout.trim().parse::<u32>() {
             set_running_pid(pid);
