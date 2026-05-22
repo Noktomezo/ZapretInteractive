@@ -24,8 +24,7 @@
         "maximizable": true,
         "decorations": false,
         "transparent": false,
-        "shadow": true,
-        "backgroundColor": "#151313"
+        "shadow": true
       }
     ],
     "security": {
