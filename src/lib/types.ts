@@ -106,7 +106,7 @@ export interface AppConfig {
   connectOnAutostart?: boolean
   coreFileUpdatePromptsEnabled?: boolean
   appAutoUpdatesEnabled?: boolean
-  firewallType?: string
+  firewallType?: 'auto' | 'iptables' | 'nftables'
   wanInterfaces?: string
   lanInterfaces?: string
   systemRemovedCategoryIds?: string[]

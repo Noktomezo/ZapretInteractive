@@ -5,6 +5,7 @@ import fnmatch
 import hashlib
 import io
 import json
+import os
 import urllib.request
 import tarfile
 from urllib.parse import urlparse
@@ -141,8 +142,6 @@ def sha256_file(path: Path) -> str:
             hasher.update(chunk)
     return hasher.hexdigest()
 
-
-import os
 
 def download(url: str) -> bytes:
     parsed = urlparse(url)

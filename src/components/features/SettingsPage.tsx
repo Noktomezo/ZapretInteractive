@@ -109,7 +109,7 @@ export function SettingsPage() {
   const tcpFocusedRef = useRef(false)
   const udpFocusedRef = useRef(false)
 
-  const [platform, setPlatform] = useState<'windows' | 'linux' | 'macos'>('windows')
+  const [platform, setPlatform] = useState<'windows' | 'linux' | 'macos' | 'unknown'>('windows')
   const [wanDraft, setWanDraft] = useState('')
   const [lanDraft, setLanDraft] = useState('')
   const wanFocusedRef = useRef(false)
@@ -646,15 +646,24 @@ export function SettingsPage() {
                   <Select
                     value={config.firewallType ?? 'auto'}
                     onValueChange={async (value) => {
-                      setFirewallType(value)
+                      setFirewallType(value as 'auto' | 'iptables' | 'nftables')
+                      let saved = false
                       try {
                         await saveNow()
                         addConfigLog(`тип брандмауэра изменён на ${value}`)
-                        await restartIfConnected()
                         toast.success(`Брандмауэр изменён на ${value}`)
+                        saved = true
                       }
                       catch {
                         toast.error('Не удалось сохранить тип брандмауэра')
+                      }
+                      if (saved) {
+                        try {
+                          await restartIfConnected()
+                        }
+                        catch {
+                          toast.error('Не удалось перезапустить службу')
+                        }
                       }
                     }}
                   >
@@ -691,14 +700,23 @@ export function SettingsPage() {
                         return
                       }
                       setWanInterfaces(wanDraft)
+                      let saved = false
                       try {
                         await saveNow()
                         addConfigLog(`WAN интерфейсы изменены с "${latestWan}" на "${wanDraft}"`)
-                        await restartIfConnected()
                         toast.success('Интерфейсы WAN обновлены')
+                        saved = true
                       }
                       catch {
                         toast.error('Не удалось сохранить интерфейсы WAN')
+                      }
+                      if (saved) {
+                        try {
+                          await restartIfConnected()
+                        }
+                        catch {
+                          toast.error('Не удалось перезапустить службу')
+                        }
                       }
                     }}
                     placeholder="eth0, wlan0"
@@ -727,14 +745,23 @@ export function SettingsPage() {
                         return
                       }
                       setLanInterfaces(lanDraft)
+                      let saved = false
                       try {
                         await saveNow()
                         addConfigLog(`LAN интерфейсы изменены с "${latestLan}" на "${lanDraft}"`)
-                        await restartIfConnected()
                         toast.success('Интерфейсы LAN обновлены')
+                        saved = true
                       }
                       catch {
                         toast.error('Не удалось сохранить интерфейсы LAN')
+                      }
+                      if (saved) {
+                        try {
+                          await restartIfConnected()
+                        }
+                        catch {
+                          toast.error('Не удалось перезапустить службу')
+                        }
                       }
                     }}
                     placeholder="eth1"

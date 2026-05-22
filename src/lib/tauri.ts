@@ -38,7 +38,7 @@ export const getReservedFilterFilenames = (): Promise<string[]> => invoke('get_r
 export const isAutostartEnabled = (): Promise<boolean> => invoke('is_autostart_enabled')
 export const setAutostartEnabled = (enabled: boolean): Promise<void> => invoke('set_autostart_enabled', { enabled })
 export const wasLaunchedFromAutostart = (): Promise<boolean> => invoke('was_launched_from_autostart')
-export const getPlatform = (): Promise<'windows' | 'linux' | 'macos'> => invoke('get_platform')
+export const getPlatform = (): Promise<'windows' | 'linux' | 'macos' | 'unknown'> => invoke('get_platform')
 export const getAppVersion = (): Promise<string> => getVersion()
 export const getDnsProxyStatus = (): Promise<DnsProxyStatus> => invoke('get_dns_proxy_status')
 export function startDnsProxy(dohUrls: string[], bootstrapResolvers: string[]): Promise<DnsProxyStatus> {

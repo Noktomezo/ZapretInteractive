@@ -45,7 +45,7 @@ interface ConfigStore {
   setMinimizeToTray: (enabled: boolean) => void
   setLaunchToTray: (enabled: boolean) => void
   setConnectOnAutostart: (enabled: boolean) => void
-  setFirewallType: (type: string) => void
+  setFirewallType: (type: 'auto' | 'iptables' | 'nftables') => void
   setWanInterfaces: (interfaces: string) => void
   setLanInterfaces: (interfaces: string) => void
   addCategory: (name: string) => void

@@ -1029,9 +1029,19 @@ pub async fn start_winws(
                 .args(["-w", "net.netfilter.nf_conntrack_tcp_be_liberal=1"])
                 .status();
 
-            if let Err(e) = sysctl_res {
-                let _ = handle.kill();
-                return Err(format!("Failed to set sysctl: {e}"));
+            match sysctl_res {
+                Ok(status) => {
+                    if !status.success() {
+                        let _ = handle.kill();
+                        return Err(format!(
+                            "sysctl net.netfilter.nf_conntrack_tcp_be_liberal=1 failed: {status}"
+                        ));
+                    }
+                }
+                Err(e) => {
+                    let _ = handle.kill();
+                    return Err(format!("Failed to set sysctl: {e}"));
+                }
             }
 
             // Apply firewall rules
@@ -1190,7 +1200,7 @@ pub fn is_winws_running() -> bool {
 
     #[cfg(not(windows))]
     {
-        Command::new("kill")
+        std::process::Command::new("kill")
             .args(["-0", &pid.to_string()])
             .status()
             .map(|s| s.success())

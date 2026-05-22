@@ -982,9 +982,18 @@ fn get_active_unix_interfaces() -> Result<Vec<String>, String> {
         if let Ok(paths) = std::fs::read_dir("/sys/class/net") {
             for entry in paths.flatten() {
                 let name = entry.file_name().to_string_lossy().into_owned();
-                if name != "lo" {
-                    interfaces.push(name);
+                if name == "lo"
+                    || name == "docker0"
+                    || name.starts_with("veth")
+                    || name.starts_with("virbr")
+                    || name.starts_with("br-")
+                    || name.starts_with("vmnet")
+                    || name.starts_with("tun")
+                    || name.starts_with("tap")
+                {
+                    continue;
                 }
+                interfaces.push(name);
             }
         }
     }
