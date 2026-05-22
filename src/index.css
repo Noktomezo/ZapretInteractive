@@ -205,6 +205,7 @@ textarea,
 
   body {
     @apply font-sans text-foreground antialiased;
+
     background-color: var(--background);
     letter-spacing: -0.011em;
     text-rendering: optimizeLegibility;

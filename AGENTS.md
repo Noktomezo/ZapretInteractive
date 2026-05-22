@@ -18,7 +18,6 @@
 | Routing | TanStack Router |
 | State management | Zustand |
 | Backend language | Rust (Tauri commands) |
-| Window effects | `window-vibrancy` crate |
 | Notifications | Sonner (toast) |
 
 ## --- Folder Structure --------------------------------------------------------

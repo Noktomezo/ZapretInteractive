@@ -372,14 +372,14 @@ export default function FaultyTerminal({
     const observer = new MutationObserver((mutations) => {
       if (mutations.some(mutation =>
         mutation.type === 'attributes'
-        && (mutation.attributeName === 'data-theme' || mutation.attributeName === 'data-webview-material'))) {
+        && mutation.attributeName === 'data-theme')) {
         refreshResolvedColors()
       }
     })
 
     observer.observe(themedRoot, {
       attributes: true,
-      attributeFilter: ['data-theme', 'data-webview-material'],
+      attributeFilter: ['data-theme'],
     })
 
     return () => {

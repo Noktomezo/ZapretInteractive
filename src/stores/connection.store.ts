@@ -332,7 +332,12 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       return restartPromise
     }
 
-    if (currentStatus === 'connecting' || currentStatus === 'disconnecting') {
+    if (currentStatus === 'connecting') {
+      set({ pendingRestart: true })
+      return Promise.resolve()
+    }
+
+    if (currentStatus === 'disconnecting') {
       if (restartPromise) {
         set({ pendingRestart: true })
       }
