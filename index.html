@@ -19,11 +19,14 @@
       })();
     </script>
     <style>
-      html, body {
-        background-color: oklch(0.97 0.02 85);
+      :root {
+        --background: oklch(0.97 0.02 85);
       }
-      html.dark, html[data-theme="dark"] {
-        background-color: oklch(0.16 0.01 30);
+      .dark, [data-theme="dark"] {
+        --background: oklch(0.16 0.01 30);
+      }
+      html, body {
+        background-color: var(--background);
       }
     </style>
   </head>
