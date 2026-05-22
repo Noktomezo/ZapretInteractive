@@ -142,15 +142,20 @@ def sha256_file(path: Path) -> str:
     return hasher.hexdigest()
 
 
+import os
+
 def download(url: str) -> bytes:
     parsed = urlparse(url)
     if parsed.scheme.lower() != "https":
         raise ValueError(f"Unsupported URL scheme for managed download: {url}")
 
-    request = urllib.request.Request(
-        url,
-        headers={"User-Agent": "ZapretInteractive-CI/1.0"},
-    )
+    headers = {"User-Agent": "ZapretInteractive-CI/1.0"}
+    if "api.github.com" in parsed.netloc:
+        token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+        if token:
+            headers["Authorization"] = f"token {token}"
+
+    request = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(request, timeout=120) as response:
         return response.read()
 

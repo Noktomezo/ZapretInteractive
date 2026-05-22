@@ -109,6 +109,12 @@ export function SettingsPage() {
   const tcpFocusedRef = useRef(false)
   const udpFocusedRef = useRef(false)
 
+  const [platform, setPlatform] = useState<'windows' | 'linux' | 'macos'>('windows')
+  const [wanDraft, setWanDraft] = useState('')
+  const [lanDraft, setLanDraft] = useState('')
+  const wanFocusedRef = useRef(false)
+  const lanFocusedRef = useRef(false)
+
   const config = useConfigStore(state => state.config)
   const loading = useConfigStore(state => state.loading)
   const load = useConfigStore(state => state.load)
@@ -122,6 +128,9 @@ export function SettingsPage() {
   const setMinimizeToTray = useConfigStore(state => state.setMinimizeToTray)
   const setLaunchToTray = useConfigStore(state => state.setLaunchToTray)
   const setConnectOnAutostart = useConfigStore(state => state.setConnectOnAutostart)
+  const setFirewallType = useConfigStore(state => state.setFirewallType)
+  const setWanInterfaces = useConfigStore(state => state.setWanInterfaces)
+  const setLanInterfaces = useConfigStore(state => state.setLanInterfaces)
   const reset = useConfigStore(state => state.reset)
   const restartIfConnected = useConnectionStore(state => state.restartIfConnected)
   const addConfigLog = useConnectionStore(state => state.addConfigLog)
@@ -156,6 +165,10 @@ export function SettingsPage() {
       try {
         await load()
         await refreshAutostartState(isMounted)
+        const currentPlatform = await tauri.getPlatform()
+        if (isMounted) {
+          setPlatform(currentPlatform)
+        }
       }
       finally {
         if (isMounted)
@@ -188,6 +201,17 @@ export function SettingsPage() {
       }
     }
   }, [config?.global_ports])
+
+  useEffect(() => {
+    if (config) {
+      if (!wanFocusedRef.current) {
+        setWanDraft(config.wanInterfaces ?? '')
+      }
+      if (!lanFocusedRef.current) {
+        setLanDraft(config.lanInterfaces ?? '')
+      }
+    }
+  }, [config?.wanInterfaces, config?.lanInterfaces])
 
   const handleReset = async () => {
     try {
@@ -601,6 +625,125 @@ export function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {platform === 'linux' && (
+          <Card className={MODULE_PAGE_CARD_CLASS}>
+            <ModuleSectionHeader
+              icon={Router}
+              title="Настройки Linux"
+              description="Параметры брандмауэра и сетевых интерфейсов"
+            />
+            <CardContent className="space-y-4 p-4!">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                <ModuleSettingLabel
+                  htmlFor="firewallTypeSelect"
+                  icon={Palette}
+                  description="Тип используемого брандмауэра для перенаправления трафика."
+                >
+                  Тип брандмауэра
+                </ModuleSettingLabel>
+                <div className="w-full sm:w-[11rem]">
+                  <Select
+                    value={config.firewallType ?? 'auto'}
+                    onValueChange={async (value) => {
+                      setFirewallType(value)
+                      try {
+                        await saveNow()
+                        addConfigLog(`тип брандмауэра изменён на ${value}`)
+                        await restartIfConnected()
+                        toast.success(`Брандмауэр изменён на ${value}`)
+                      }
+                      catch {
+                        toast.error('Не удалось сохранить тип брандмауэра')
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="firewallTypeSelect" className="w-full cursor-pointer">
+                      <SelectValue placeholder="Выберите тип" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">Автоматически</SelectItem>
+                      <SelectItem value="iptables">iptables</SelectItem>
+                      <SelectItem value="nftables">nftables</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                <ModuleSettingLabel
+                  htmlFor="wanInterfacesInput"
+                  icon={ArrowLeftRight}
+                  description="Интерфейсы внешней сети (через запятую или пустые для автоопределения)."
+                >
+                  WAN интерфейсы
+                </ModuleSettingLabel>
+                <div className="w-full sm:w-[11rem]">
+                  <Input
+                    id="wanInterfacesInput"
+                    value={wanDraft}
+                    onChange={e => setWanDraft(e.target.value)}
+                    onFocus={() => { wanFocusedRef.current = true }}
+                    onBlur={async () => {
+                      wanFocusedRef.current = false
+                      const latestWan = useConfigStore.getState().config?.wanInterfaces ?? config.wanInterfaces ?? ''
+                      if (latestWan === wanDraft) {
+                        return
+                      }
+                      setWanInterfaces(wanDraft)
+                      try {
+                        await saveNow()
+                        addConfigLog(`WAN интерфейсы изменены с "${latestWan}" на "${wanDraft}"`)
+                        await restartIfConnected()
+                        toast.success('Интерфейсы WAN обновлены')
+                      }
+                      catch {
+                        toast.error('Не удалось сохранить интерфейсы WAN')
+                      }
+                    }}
+                    placeholder="eth0, wlan0"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                <ModuleSettingLabel
+                  htmlFor="lanInterfacesInput"
+                  icon={Radar}
+                  description="Интерфейсы внутренней сети (через запятую, заполняются при раздаче интернета)."
+                >
+                  LAN интерфейсы
+                </ModuleSettingLabel>
+                <div className="w-full sm:w-[11rem]">
+                  <Input
+                    id="lanInterfacesInput"
+                    value={lanDraft}
+                    onChange={e => setLanDraft(e.target.value)}
+                    onFocus={() => { lanFocusedRef.current = true }}
+                    onBlur={async () => {
+                      lanFocusedRef.current = false
+                      const latestLan = useConfigStore.getState().config?.lanInterfaces ?? config.lanInterfaces ?? ''
+                      if (latestLan === lanDraft) {
+                        return
+                      }
+                      setLanInterfaces(lanDraft)
+                      try {
+                        await saveNow()
+                        addConfigLog(`LAN интерфейсы изменены с "${latestLan}" на "${lanDraft}"`)
+                        await restartIfConnected()
+                        toast.success('Интерфейсы LAN обновлены')
+                      }
+                      catch {
+                        toast.error('Не удалось сохранить интерфейсы LAN')
+                      }
+                    }}
+                    placeholder="eth1"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className={MODULE_PAGE_CARD_CLASS}>
           <ModuleSectionHeader

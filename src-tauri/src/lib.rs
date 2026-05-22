@@ -311,6 +311,7 @@ pub fn run() {
             is_autostart_enabled,
             set_autostart_enabled,
             was_launched_from_autostart,
+            get_platform,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -382,4 +383,24 @@ fn set_autostart_enabled(app: tauri::AppHandle, enabled: bool) -> Result<(), Str
 #[tauri::command]
 fn was_launched_from_autostart() -> bool {
     std::env::args().any(|arg| arg == "--autostart")
+}
+
+#[tauri::command]
+fn get_platform() -> &'static str {
+    #[cfg(target_os = "windows")]
+    {
+        "windows"
+    }
+    #[cfg(target_os = "linux")]
+    {
+        "linux"
+    }
+    #[cfg(target_os = "macos")]
+    {
+        "macos"
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+    {
+        "unknown"
+    }
 }

@@ -1123,11 +1123,24 @@ async fn execute_download_plan(
         {
             if file.phase == "binaries" || file.phase == "modules" {
                 use std::os::unix::fs::PermissionsExt;
-                if let Ok(metadata) = std::fs::metadata(&file.dest_path) {
-                    let mut perms = metadata.permissions();
-                    perms.set_mode(0o755);
-                    let _ = std::fs::set_permissions(&file.dest_path, perms);
-                }
+                let metadata = std::fs::metadata(&file.dest_path).map_err(|e| {
+                    format!(
+                        "Failed to read metadata for file {} (phase: {}): {}",
+                        file.dest_path.to_string_lossy(),
+                        file.phase,
+                        e
+                    )
+                })?;
+                let mut perms = metadata.permissions();
+                perms.set_mode(0o755);
+                std::fs::set_permissions(&file.dest_path, perms).map_err(|e| {
+                    format!(
+                        "Failed to set executable permissions (0755) for file {} (phase: {}): {}",
+                        file.dest_path.to_string_lossy(),
+                        file.phase,
+                        e
+                    )
+                })?;
             }
         }
 

@@ -7,9 +7,7 @@ use futures::future::join_all;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::net::IpAddr;
-#[cfg(windows)]
-use std::net::Ipv4Addr;
+use std::net::{IpAddr, Ipv4Addr};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use surge_ping::ping as icmp_ping;
@@ -118,7 +116,10 @@ fn dns_proxy_module_dir() -> PathBuf {
 }
 
 fn dns_proxy_binary_path() -> PathBuf {
-    dns_proxy_module_dir().join("dnscrypt-proxy.exe")
+    #[cfg(windows)]
+    return dns_proxy_module_dir().join("dnscrypt-proxy.exe");
+    #[cfg(not(windows))]
+    return dns_proxy_module_dir().join("dnscrypt-proxy");
 }
 
 fn dns_proxy_runtime_dir() -> PathBuf {
@@ -677,7 +678,14 @@ fn ensure_dns_proxy_binary_available() -> Result<(), String> {
     if dns_proxy_binary_path().is_file() {
         Ok(())
     } else {
-        Err("dnscrypt-proxy.exe не найден в resources/modules/dnscrypt-proxy".to_string())
+        #[cfg(windows)]
+        let name = "dnscrypt-proxy.exe";
+        #[cfg(not(windows))]
+        let name = "dnscrypt-proxy";
+        Err(format!(
+            "{} не найден в resources/modules/dnscrypt-proxy",
+            name
+        ))
     }
 }
 
@@ -896,12 +904,290 @@ fn cleanup_failed_dns_start(was_app_managed: bool) {
     }
 }
 
+#[cfg(not(windows))]
+fn get_unix_interface_index(iface: &str) -> Option<u32> {
+    fs::read_to_string(format!("/sys/class/net/{iface}/ifindex"))
+        .ok()
+        .and_then(|content| content.trim().parse::<u32>().ok())
+}
+
+#[cfg(not(windows))]
+fn get_unix_interface_name(index: u32) -> Option<String> {
+    if let Ok(entries) = fs::read_dir("/sys/class/net") {
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if get_unix_interface_index(&name) == Some(index) {
+                return Some(name);
+            }
+        }
+    }
+    None
+}
+
+#[cfg(not(windows))]
+fn run_resolved_command(args: Vec<String>) -> Result<String, String> {
+    if let Ok(out) = run_command_capture("resolvectl", args.clone(), None, "resolvectl") {
+        return Ok(out);
+    }
+    run_command_capture("systemd-resolve", args, None, "systemd-resolve")
+}
+
+#[cfg(not(windows))]
+fn is_resolved_active() -> bool {
+    run_resolved_command(vec!["status".to_string()]).is_ok()
+}
+
+#[cfg(not(windows))]
+fn get_resolvectl_dns(iface: &str) -> Option<Vec<String>> {
+    if let Ok(output) = run_resolved_command(vec!["dns".to_string(), iface.to_string()]) {
+        let mut servers = Vec::new();
+        if let Some(colon_pos) = output.find(':') {
+            let after_colon = &output[colon_pos + 1..];
+            for server in after_colon.split_whitespace() {
+                if server.parse::<IpAddr>().is_ok() {
+                    servers.push(server.to_string());
+                }
+            }
+        }
+        if !servers.is_empty() {
+            return Some(servers);
+        }
+    }
+    None
+}
+
+#[cfg(not(windows))]
+fn get_active_unix_interfaces() -> Result<Vec<String>, String> {
+    let mut interfaces = Vec::new();
+    if let Ok(output) = run_command_capture(
+        "ip",
+        vec![
+            "route".to_string(),
+            "show".to_string(),
+            "default".to_string(),
+        ],
+        None,
+        "ip route",
+    ) {
+        for line in output.lines() {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if let Some(pos) = parts.iter().position(|&x| x == "dev") {
+                if pos + 1 < parts.len() {
+                    interfaces.push(parts[pos + 1].to_string());
+                }
+            }
+        }
+    }
+    if interfaces.is_empty() {
+        if let Ok(paths) = std::fs::read_dir("/sys/class/net") {
+            for entry in paths.flatten() {
+                let name = entry.file_name().to_string_lossy().into_owned();
+                if name != "lo" {
+                    interfaces.push(name);
+                }
+            }
+        }
+    }
+    interfaces.sort();
+    interfaces.dedup();
+    Ok(interfaces)
+}
+
+#[cfg(not(windows))]
+fn read_resolv_conf_nameservers() -> Result<Vec<String>, String> {
+    if !Path::new("/etc/resolv.conf").is_file() {
+        return Ok(Vec::new());
+    }
+    let content = fs::read_to_string("/etc/resolv.conf").map_err(|e| e.to_string())?;
+    let mut servers = Vec::new();
+    for line in content.lines() {
+        let line = line.trim();
+        if line.starts_with('#') || line.starts_with(';') {
+            continue;
+        }
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() >= 2 && parts[0] == "nameserver" {
+            servers.push(parts[1].to_string());
+        }
+    }
+    Ok(servers)
+}
+
+#[cfg(not(windows))]
+fn backup_resolv_conf() -> Result<(), String> {
+    let src = Path::new("/etc/resolv.conf");
+    if src.is_file() {
+        let backup_path = dns_proxy_runtime_dir().join("resolv.conf.backup");
+        let content = fs::read_to_string(src).map_err(|e| e.to_string())?;
+        fs::write(backup_path, content).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[cfg(not(windows))]
+fn restore_resolv_conf_file() -> Result<(), String> {
+    let backup_path = dns_proxy_runtime_dir().join("resolv.conf.backup");
+    if backup_path.is_file() {
+        let content = fs::read_to_string(&backup_path).map_err(|e| e.to_string())?;
+        fs::write("/etc/resolv.conf", content).map_err(|e| e.to_string())?;
+        let _ = fs::remove_file(backup_path);
+    }
+    Ok(())
+}
+
+#[cfg(not(windows))]
+fn apply_resolv_conf_local() -> Result<(), String> {
+    let content = "# Generated by Zapret Interactive\nnameserver 127.0.0.1\nnameserver ::1\noptions edns0 single-request-reopen\n";
+    fs::write("/etc/resolv.conf", content)
+        .map_err(|e| format!("Не удалось записать в /etc/resolv.conf (требуются права root): {e}"))
+}
+
+#[cfg(not(windows))]
+fn capture_current_system_dns_unix() -> Result<DnsSystemBackup, String> {
+    let interfaces = get_active_unix_interfaces()?;
+    let mut adapters = Vec::new();
+
+    for iface in &interfaces {
+        let ifindex = get_unix_interface_index(iface).unwrap_or(0);
+        if ifindex == 0 {
+            continue;
+        }
+        let mut servers = Vec::new();
+        if let Some(resolved_servers) = get_resolvectl_dns(iface) {
+            servers = resolved_servers;
+        } else if let Ok(resolv_servers) = read_resolv_conf_nameservers() {
+            servers = resolv_servers;
+        }
+        adapters.push(DnsAdapterBackup::from_servers(ifindex, servers));
+    }
+
+    if let Ok(resolv_servers) = read_resolv_conf_nameservers() {
+        if !resolv_servers.is_empty() {
+            adapters.push(DnsAdapterBackup::from_servers(0, resolv_servers));
+        }
+    }
+
+    let _ = backup_resolv_conf();
+    Ok(DnsSystemBackup::new(adapters))
+}
+
+#[cfg(not(windows))]
+fn apply_local_system_dns_unix() -> Result<(), String> {
+    let mut resolved_applied = false;
+    if is_resolved_active() {
+        if let Ok(interfaces) = get_active_unix_interfaces() {
+            let mut success = true;
+            for iface in &interfaces {
+                let dns_res = run_resolved_command(vec![
+                    "dns".to_string(),
+                    iface.clone(),
+                    "127.0.0.1".to_string(),
+                    "::1".to_string(),
+                ]);
+                let dom_res = run_resolved_command(vec![
+                    "domain".to_string(),
+                    iface.clone(),
+                    "~.".to_string(),
+                ]);
+                if dns_res.is_err() || dom_res.is_err() {
+                    success = false;
+                }
+            }
+            if success && !interfaces.is_empty() {
+                resolved_applied = true;
+            }
+        }
+    }
+
+    if !resolved_applied {
+        backup_resolv_conf()?;
+        apply_resolv_conf_local()?;
+    }
+    Ok(())
+}
+
+#[cfg(not(windows))]
+fn restore_system_dns_from_backup_unix(backup: &DnsSystemBackup) -> Result<(), String> {
+    let mut errors = Vec::new();
+
+    if is_resolved_active() {
+        for adapter in &backup.adapters {
+            if adapter.interface_index == 0 {
+                continue;
+            }
+            if let Some(iface) = get_unix_interface_name(adapter.interface_index) {
+                let revert_res = run_resolved_command(vec!["revert".to_string(), iface.clone()]);
+                if revert_res.is_err() {
+                    let ips = adapter.effective_servers();
+                    if !ips.is_empty() {
+                        let mut args = vec!["dns".to_string(), iface.clone()];
+                        args.extend(ips);
+                        if let Err(e) = run_resolved_command(args) {
+                            errors.push(format!("{iface}: {e}"));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if let Err(e) = restore_resolv_conf_file() {
+        let mut fallback_success = false;
+        for adapter in &backup.adapters {
+            if adapter.interface_index == 0 {
+                let ips = adapter.effective_servers();
+                if !ips.is_empty() {
+                    let mut content = "# Restored by Zapret Interactive\n".to_string();
+                    for ip in ips {
+                        content.push_str(&format!("nameserver {ip}\n"));
+                    }
+                    if fs::write("/etc/resolv.conf", content).is_ok() {
+                        fallback_success = true;
+                    }
+                }
+            }
+        }
+        if !fallback_success {
+            errors.push(format!("resolv.conf restore failed: {e}"));
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.join("; "))
+    }
+}
+
+#[cfg(not(windows))]
+fn reset_system_dns_for_active_adapters_unix() -> Result<(), String> {
+    let mut errors = Vec::new();
+    if is_resolved_active() {
+        if let Ok(interfaces) = get_active_unix_interfaces() {
+            for iface in interfaces {
+                if let Err(e) = run_resolved_command(vec!["revert".to_string(), iface.clone()]) {
+                    errors.push(format!("{iface}: {e}"));
+                }
+            }
+        }
+    }
+    let _ = restore_resolv_conf_file();
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.join("; "))
+    }
+}
+
 fn capture_current_system_dns() -> Result<DnsSystemBackup, String> {
     #[cfg(windows)]
     if supports_native_interface_dns_api() {
         return capture_current_system_dns_native();
     }
+    #[cfg(not(windows))]
+    return capture_current_system_dns_unix();
 
+    #[cfg(windows)]
     Err("Нативное управление DNS требует Windows 10/11 build 19041 или новее".to_string())
 }
 
@@ -910,7 +1196,10 @@ fn apply_local_system_dns() -> Result<(), String> {
     if supports_native_interface_dns_api() {
         return apply_local_system_dns_native();
     }
+    #[cfg(not(windows))]
+    return apply_local_system_dns_unix();
 
+    #[cfg(windows)]
     Err("Нативное управление DNS требует Windows 10/11 build 19041 или новее".to_string())
 }
 
@@ -919,7 +1208,10 @@ fn restore_system_dns_from_backup(backup: &DnsSystemBackup) -> Result<(), String
     if supports_native_interface_dns_api() {
         return restore_system_dns_from_backup_native(backup);
     }
+    #[cfg(not(windows))]
+    return restore_system_dns_from_backup_unix(backup);
 
+    #[cfg(windows)]
     Err("Нативное управление DNS требует Windows 10/11 build 19041 или новее".to_string())
 }
 
@@ -940,7 +1232,10 @@ fn reset_system_dns_for_active_adapters() -> Result<(), String> {
         };
         return restore_system_dns_from_backup_native(&empty_backup);
     }
+    #[cfg(not(windows))]
+    return reset_system_dns_for_active_adapters_unix();
 
+    #[cfg(windows)]
     Err("Нативное управление DNS требует Windows 10/11 build 19041 или новее".to_string())
 }
 
