@@ -9,8 +9,9 @@ import {
   UserRound,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { MODULE_PAGE_CARD_CLASS, ModuleSectionHeader } from '@/components/features/module-ui'
 import { Button } from '@/components/ui/button'
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { useMountEffect } from '@/hooks/use-mount-effect'
 import { useConfigStore } from '@/stores/config.store'
@@ -75,39 +76,6 @@ function formatAboutTimestamp(value?: string) {
   }
 
   return ruDateTimeFormatter.format(date)
-}
-
-const PAGE_CARD_CLASS = 'gap-0! rounded-lg! border! border-border/60! bg-card! py-0! shadow-none! backdrop-blur-none!'
-
-function AboutSectionHeader({
-  icon: Icon,
-  title,
-  description,
-  action,
-  withDivider = true,
-}: {
-  icon: typeof Package
-  title: React.ReactNode
-  description: React.ReactNode
-  action?: React.ReactNode
-  withDivider?: boolean
-}) {
-  return (
-    <CardHeader className={[
-      'flex! flex-row! items-center! gap-3! p-4!',
-      withDivider ? 'border-b border-border/60' : '',
-    ].join(' ').trim()}
-    >
-      <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
-        <Icon className="size-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <CardTitle className="font-sans text-sm leading-5 font-normal tracking-normal">{title}</CardTitle>
-        <CardDescription className="mt-1 text-xs leading-4">{description}</CardDescription>
-      </div>
-      {action ? <CardAction className="self-center">{action}</CardAction> : null}
-    </CardHeader>
-  )
 }
 
 function MetaItem({
@@ -208,8 +176,8 @@ export function AboutPage() {
           </p>
         </div>
 
-        <Card className={PAGE_CARD_CLASS}>
-          <AboutSectionHeader
+        <Card className={MODULE_PAGE_CARD_CLASS}>
+          <ModuleSectionHeader
             icon={Package}
             title={APP_NAME}
             description="Desktop GUI для zapret-win-bundle с управлением стратегиями, фильтрами, плейсхолдерами и обновлениями"
@@ -277,8 +245,8 @@ export function AboutPage() {
           </CardContent>
         </Card>
 
-        <Card className={PAGE_CARD_CLASS}>
-          <AboutSectionHeader
+        <Card className={MODULE_PAGE_CARD_CLASS}>
+          <ModuleSectionHeader
             icon={ExternalLink}
             title="Метаданные и ссылки"
             description="Базовая информация о проекте и полезные ссылки"

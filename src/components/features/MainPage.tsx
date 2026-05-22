@@ -5,7 +5,7 @@ import {
   AlertCircle,
   Power,
 } from 'lucide-react'
-import { forwardRef, memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import FaultyTerminal from '@/components/FaultyTerminal'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -54,34 +54,31 @@ const LIST_MODE_OPTIONS: {
 interface ToggleItemProps extends Omit<React.ComponentPropsWithoutRef<typeof ToggleGroupItem>, 'value'> {
   option: typeof LIST_MODE_OPTIONS[number]
   disabled: boolean
+  ref?: React.Ref<React.ElementRef<typeof ToggleGroupItem>>
 }
 
-const ToggleItem = memo(
-  forwardRef<
-    React.ElementRef<typeof ToggleGroupItem>,
-    ToggleItemProps
-  >(({
-    option,
-    disabled,
-    ...props
-  }, ref) => {
-    return (
-      <ToggleGroupItem
-        ref={ref}
-        value={option.value}
-        className={cn(
-          'relative z-10 h-7.5 min-w-max cursor-pointer rounded-[calc(var(--radius)-0.125rem)] border-0 bg-transparent px-3 text-xs text-foreground/80 shadow-none transition-colors duration-300 hover:bg-transparent hover:text-foreground data-[state=on]:bg-transparent data-[state=on]:shadow-none',
-          option.activeClassName,
-          disabled && 'cursor-not-allowed opacity-50',
-        )}
-        aria-label={option.label}
-        {...props}
-      >
-        {option.label}
-      </ToggleGroupItem>
-    )
-  }),
-)
+const ToggleItem = memo(({
+  option,
+  disabled,
+  ref,
+  ...props
+}: ToggleItemProps) => {
+  return (
+    <ToggleGroupItem
+      ref={ref}
+      value={option.value}
+      className={cn(
+        'relative z-10 h-7.5 min-w-max cursor-pointer rounded-[calc(var(--radius)-0.125rem)] border-0 bg-transparent px-3 text-xs text-foreground/80 shadow-none transition-colors duration-300 hover:bg-transparent hover:text-foreground data-[state=on]:bg-transparent data-[state=on]:shadow-none',
+        option.activeClassName,
+        disabled && 'cursor-not-allowed opacity-50',
+      )}
+      aria-label={option.label}
+      {...props}
+    >
+      {option.label}
+    </ToggleGroupItem>
+  )
+})
 ToggleItem.displayName = 'ToggleItem'
 
 export function MainPageTerminalBackdrop({ visible }: { visible: boolean }) {

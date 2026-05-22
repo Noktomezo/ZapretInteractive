@@ -37,6 +37,8 @@ If a tradeoff is required, choose correctness and robustness over short-term con
 
 Long-term maintainability is a core priority. If you add new functionality, first check if there is shared logic that can be extracted to a separate module. Duplicate logic across multiple files is a code smell and should be avoided. Don't be afraid to change existing code. Don't take shortcuts by just adding local logic to solve a problem.
 
+A healthy duplication threshold for this codebase is under 10.0%. Attempting to force exactly 0% duplication is an over-abstraction hazard, as standard React hooks and backend module state tracking naturally share similar lifecycles. Balance reuse with clean, readable, and independent code.
+
 ## --- Dependency & Runtime Rules ----------------------------------------------
 
 ### Frontend (src)
@@ -124,8 +126,8 @@ bun run typecheck
 # fallback:
 bunx tsc --noEmit
 
-# 3. Dead-code check (fallow) — must pass with zero issues
-bunx fallow --only dead-code
+# 3. Code health & duplication check (fallow) — must pass with zero issues
+bunx fallow --only dead-code,dupes
 
 # 4. React Doctor audit (ensure UI health)
 bunx react-doctor --full --json-compact
