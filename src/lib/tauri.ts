@@ -1,4 +1,4 @@
-import type { AppConfig, AppHealthSnapshot, DiscordPresenceActivityType, DnsLatencyResult, DnsProxyStatus, EnsureManagedFilesResult, ListMode, TgWsProxyStatus, WindowMaterial, WindowMaterialCapabilities } from './types'
+import type { AppConfig, AppHealthSnapshot, DiscordPresenceActivityType, DnsLatencyResult, DnsProxyStatus, EnsureManagedFilesResult, ListMode, TgWsProxyStatus } from './types'
 import { getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
@@ -39,8 +39,6 @@ export const isAutostartEnabled = (): Promise<boolean> => invoke('is_autostart_e
 export const setAutostartEnabled = (enabled: boolean): Promise<void> => invoke('set_autostart_enabled', { enabled })
 export const wasLaunchedFromAutostart = (): Promise<boolean> => invoke('was_launched_from_autostart')
 export const getAppVersion = (): Promise<string> => getVersion()
-export const setWindowMaterial = (material: WindowMaterial): Promise<void> => invoke('set_window_material', { material })
-export const getWindowMaterialCapabilities = (): Promise<WindowMaterialCapabilities> => invoke('get_window_material_capabilities')
 export const getDnsProxyStatus = (): Promise<DnsProxyStatus> => invoke('get_dns_proxy_status')
 export function startDnsProxy(dohUrls: string[], bootstrapResolvers: string[]): Promise<DnsProxyStatus> {
   return invoke('start_dns_proxy', { dohUrls, bootstrapResolvers })

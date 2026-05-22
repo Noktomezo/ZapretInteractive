@@ -53,13 +53,17 @@ function ToggleGroupItem({
   children,
   variant,
   size,
+  ref,
   ...props
-}: React.ComponentProps<typeof ToggleGroupPrimitive.Item>
-  & VariantProps<typeof toggleVariants>) {
-  const context = React.useContext(ToggleGroupContext)
+}: React.ComponentPropsWithoutRef<typeof ToggleGroupPrimitive.Item>
+  & VariantProps<typeof toggleVariants> & {
+    ref?: React.Ref<React.ElementRef<typeof ToggleGroupPrimitive.Item>>
+  }) {
+  const context = React.use(ToggleGroupContext)
 
   return (
     <ToggleGroupPrimitive.Item
+      ref={ref}
       data-slot="toggle-group-item"
       data-variant={context.variant || variant}
       data-size={context.size || size}

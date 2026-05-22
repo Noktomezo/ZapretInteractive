@@ -5,7 +5,7 @@ import {
   AlertCircle,
   Power,
 } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import FaultyTerminal from '@/components/FaultyTerminal'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -50,6 +50,36 @@ const LIST_MODE_OPTIONS: {
     indicatorClassName: 'border-warning/42 bg-warning/22',
   },
 ]
+
+interface ToggleItemProps extends Omit<React.ComponentPropsWithoutRef<typeof ToggleGroupItem>, 'value'> {
+  option: typeof LIST_MODE_OPTIONS[number]
+  disabled: boolean
+  ref?: React.Ref<React.ElementRef<typeof ToggleGroupItem>>
+}
+
+const ToggleItem = memo(({
+  option,
+  disabled,
+  ref,
+  ...props
+}: ToggleItemProps) => {
+  return (
+    <ToggleGroupItem
+      ref={ref}
+      value={option.value}
+      className={cn(
+        'relative z-10 h-7.5 min-w-max cursor-pointer rounded-[calc(var(--radius)-0.125rem)] border-0 bg-transparent px-3 text-xs text-foreground/80 shadow-none transition-colors duration-300 hover:bg-transparent hover:text-foreground data-[state=on]:bg-transparent data-[state=on]:shadow-none',
+        option.activeClassName,
+        disabled && 'cursor-not-allowed opacity-50',
+      )}
+      aria-label={option.label}
+      {...props}
+    >
+      {option.label}
+    </ToggleGroupItem>
+  )
+})
+ToggleItem.displayName = 'ToggleItem'
 
 export function MainPageTerminalBackdrop({ visible }: { visible: boolean }) {
   const status = useConnectionStore(state => state.status)
@@ -287,21 +317,6 @@ export function MainPage() {
       setListModeUpdating(false)
     }
   }
-
-  const renderListModeToggleItem = (option: typeof LIST_MODE_OPTIONS[number], key?: string) => (
-    <ToggleGroupItem
-      key={key}
-      value={option.value}
-      className={cn(
-        'relative z-10 h-7.5 min-w-max cursor-pointer rounded-[calc(var(--radius)-0.125rem)] border-0 bg-transparent px-3 text-xs text-foreground/80 shadow-none transition-colors duration-300 hover:bg-transparent hover:text-foreground data-[state=on]:bg-transparent data-[state=on]:shadow-none',
-        option.activeClassName,
-        listModeDisabled && 'cursor-not-allowed opacity-50',
-      )}
-      aria-label={option.label}
-    >
-      {option.label}
-    </ToggleGroupItem>
-  )
 
   useMountEffect(() => {
     if (!useAppStore.getState().mainPageVisited) {
@@ -590,7 +605,7 @@ export function MainPage() {
     return (
       <div className="flex h-full items-center justify-center p-8">
         <Alert variant="destructive" className="max-w-lg">
-          <AlertCircle className="h-4 w-4" />
+          <AlertCircle className="size-4" />
           <AlertTitle>Ошибка инициализации</AlertTitle>
           <AlertDescription>{initError}</AlertDescription>
         </Alert>
@@ -602,7 +617,7 @@ export function MainPage() {
     return (
       <div className="flex h-full items-center justify-center p-8">
         <Alert variant="destructive" className="max-w-lg">
-          <AlertCircle className="h-4 w-4" />
+          <AlertCircle className="size-4" />
           <AlertTitle>Требуются права администратора</AlertTitle>
           <AlertDescription>
             Для работы WinDivert необходимы права администратора. Запустите
@@ -657,8 +672,8 @@ export function MainPage() {
     return (
       <div className="flex h-full items-center justify-center p-8">
         <Card className="max-w-md space-y-4 p-6 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent">
-            <AlertCircle className="h-8 w-8 text-muted-foreground" />
+          <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-accent">
+            <AlertCircle className="size-8 text-muted-foreground" />
           </div>
           <div>
             <h2 className="text-lg font-medium">Не удалось автоматически восстановить конфигурацию</h2>
@@ -682,8 +697,8 @@ export function MainPage() {
     return (
       <div className="flex h-full items-center justify-center p-8">
         <Card className="max-w-md space-y-4 p-6 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent">
-            <AlertCircle className="h-8 w-8 text-muted-foreground" />
+          <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-accent">
+            <AlertCircle className="size-8 text-muted-foreground" />
           </div>
           <div>
             <h2 className="text-lg font-medium">Требуется обновление файлов</h2>
@@ -819,7 +834,7 @@ export function MainPage() {
               ? (
                   <Tooltip key={option.value}>
                     <TooltipTrigger asChild>
-                      {renderListModeToggleItem(option)}
+                      <ToggleItem option={option} disabled={listModeDisabled} />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs text-center">
                       {option.tooltip}
@@ -827,7 +842,7 @@ export function MainPage() {
                   </Tooltip>
                 )
               : (
-                  renderListModeToggleItem(option, option.value)
+                  <ToggleItem key={option.value} option={option} disabled={listModeDisabled} />
                 )
           ))}
         </ToggleGroup>

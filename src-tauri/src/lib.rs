@@ -2,6 +2,7 @@ mod commands;
 
 use commands::{admin, binaries, config, discord_presence, dns, process, tg_proxy};
 use std::sync::atomic::{AtomicBool, Ordering};
+
 use tauri::{
     Emitter, Manager,
     image::Image,
@@ -11,23 +12,12 @@ use tauri::{
 #[cfg(desktop)]
 use tauri_plugin_autostart::ManagerExt;
 #[cfg(target_os = "windows")]
-use window_vibrancy::{
-    apply_acrylic, apply_mica, apply_tabbed, clear_acrylic, clear_mica, clear_tabbed,
-};
-#[cfg(target_os = "windows")]
 use windows::{
     Win32::System::Registry::{HKEY_LOCAL_MACHINE, RRF_RT_REG_SZ, RegGetValueW},
     core::w,
 };
 
 static CONNECTED: AtomicBool = AtomicBool::new(false);
-
-#[derive(Clone, Copy, serde::Serialize)]
-struct WindowMaterialCapabilities {
-    acrylic: bool,
-    mica: bool,
-    tabbed: bool,
-}
 
 pub(crate) fn sync_list_mode_ui(
     app: &tauri::AppHandle,
@@ -96,68 +86,6 @@ pub(crate) fn get_windows_build_number() -> Option<u32> {
 #[cfg(not(target_os = "windows"))]
 pub(crate) fn get_windows_build_number() -> Option<u32> {
     None
-}
-
-fn get_window_material_capabilities_inner() -> WindowMaterialCapabilities {
-    let build_number = get_windows_build_number();
-
-    WindowMaterialCapabilities {
-        acrylic: true,
-        mica: build_number.is_none_or(|build| build >= 22000),
-        tabbed: build_number.is_none_or(|build| build >= 22621),
-    }
-}
-
-fn is_window_material_supported(material: config::WindowMaterial) -> bool {
-    let capabilities = get_window_material_capabilities_inner();
-
-    match material {
-        config::WindowMaterial::None | config::WindowMaterial::Acrylic => true,
-        config::WindowMaterial::Mica => capabilities.mica,
-        config::WindowMaterial::Tabbed => capabilities.tabbed,
-    }
-}
-
-#[cfg(target_os = "windows")]
-fn apply_window_material(
-    window: &tauri::WebviewWindow,
-    material: config::WindowMaterial,
-) -> Result<(), String> {
-    if !is_window_material_supported(material) {
-        return Err(match material {
-            config::WindowMaterial::Mica => {
-                "Mica поддерживается только на Windows 11 (build 22000+)".to_string()
-            }
-            config::WindowMaterial::Tabbed => {
-                "Tabbed поддерживается только на Windows 11 22H2+ (build 22621+)".to_string()
-            }
-            _ => "Материал окна не поддерживается на этой системе".to_string(),
-        });
-    }
-
-    let _ = clear_acrylic(window);
-    let _ = clear_mica(window);
-    let _ = clear_tabbed(window);
-
-    match material {
-        config::WindowMaterial::None => Ok(()),
-        config::WindowMaterial::Acrylic => apply_acrylic(window, None).map_err(|e| e.to_string()),
-        config::WindowMaterial::Mica => apply_mica(window, None).map_err(|e| e.to_string()),
-        config::WindowMaterial::Tabbed => apply_tabbed(window, None).map_err(|e| e.to_string()),
-    }
-}
-
-#[cfg(not(target_os = "windows"))]
-fn apply_window_material(
-    _window: &tauri::WebviewWindow,
-    _material: config::WindowMaterial,
-) -> Result<(), String> {
-    Ok(())
-}
-
-fn report_window_material_error(app: &tauri::AppHandle, window_label: &str, error: &str) {
-    eprintln!("Failed to apply window material for '{window_label}': {error}");
-    let _ = app.emit("window-material-error", format!("{window_label}: {error}"));
 }
 
 fn show_main_window(app: &tauri::AppHandle) {
@@ -301,36 +229,6 @@ pub fn run() {
 
             if let Some(window) = app.get_webview_window("main") {
                 let state = app.state::<config::AppState>();
-                let window_material = state
-                    .config
-                    .lock()
-                    .map(|cfg| cfg.window_material)
-                    .unwrap_or_else(|poisoned| poisoned.into_inner().window_material);
-                if let Err(error) = apply_window_material(&window, window_material) {
-                    report_window_material_error(app.handle(), "main", &error);
-
-                    if window_material != config::WindowMaterial::None {
-                        let mut fallback_config = match state.config.lock() {
-                            Ok(cfg) => cfg.clone(),
-                            Err(poisoned) => poisoned.into_inner().clone(),
-                        };
-                        fallback_config.window_material = config::WindowMaterial::None;
-
-                        if let Err(save_error) = config::save_config_to_disk(&fallback_config) {
-                            eprintln!(
-                                "Failed to persist disabled window material after startup error: {save_error}"
-                            );
-                        }
-
-                        match state.config.lock() {
-                            Ok(mut cfg) => *cfg = fallback_config,
-                            Err(poisoned) => {
-                                let mut cfg = poisoned.into_inner();
-                                *cfg = fallback_config;
-                            }
-                        }
-                    }
-                }
 
                 let window_clone = window.clone();
                 let app_handle = app.handle().clone();
@@ -412,8 +310,6 @@ pub fn run() {
             set_connected_state,
             is_autostart_enabled,
             set_autostart_enabled,
-            set_window_material,
-            get_window_material_capabilities,
             was_launched_from_autostart,
         ])
         .run(tauri::generate_context!())
@@ -486,61 +382,4 @@ fn set_autostart_enabled(app: tauri::AppHandle, enabled: bool) -> Result<(), Str
 #[tauri::command]
 fn was_launched_from_autostart() -> bool {
     std::env::args().any(|arg| arg == "--autostart")
-}
-
-#[tauri::command]
-fn get_window_material_capabilities() -> WindowMaterialCapabilities {
-    get_window_material_capabilities_inner()
-}
-
-#[tauri::command]
-fn set_window_material(
-    app: tauri::AppHandle,
-    state: tauri::State<'_, config::AppState>,
-    material: config::WindowMaterial,
-) -> Result<(), String> {
-    let current_config = state
-        .config
-        .lock()
-        .map(|cfg| cfg.clone())
-        .unwrap_or_else(|poisoned| poisoned.into_inner().clone());
-
-    let mut next_config = current_config.clone();
-    next_config.window_material = material;
-
-    config::save_config_to_disk(&next_config)?;
-
-    {
-        let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
-        *cfg = next_config.clone();
-    }
-
-    if let Some(window) = app.get_webview_window("main")
-        && let Err(error) = apply_window_material(&window, material)
-    {
-        let rollback_result = (|| -> Result<(), String> {
-            config::save_config_to_disk(&current_config)?;
-            let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
-            *cfg = current_config.clone();
-            Ok(())
-        })();
-
-        if let Err(rollback_error) = rollback_result {
-            report_window_material_error(
-                &app,
-                "main",
-                &format!(
-                    "{error}; also failed to rollback window material config: {rollback_error}"
-                ),
-            );
-            return Err(format!(
-                "{error}; также не удалось откатить настройку: {rollback_error}"
-            ));
-        }
-
-        report_window_material_error(&app, "main", &error);
-        return Err(error);
-    }
-
-    Ok(())
 }

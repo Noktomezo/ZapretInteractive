@@ -323,7 +323,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     }
   },
 
-  restartIfConnected: async () => {
+  restartIfConnected: () => {
     const currentStatus = get().status
     if (restartPromise) {
       if (currentStatus === 'connected' || currentStatus === 'connecting' || currentStatus === 'disconnecting') {
@@ -332,37 +332,47 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       return restartPromise
     }
 
-    if (currentStatus === 'connecting' || currentStatus === 'disconnecting') {
+    if (currentStatus === 'connecting') {
       set({ pendingRestart: true })
-      return
+      return Promise.resolve()
+    }
+
+    if (currentStatus === 'disconnecting') {
+      if (restartPromise) {
+        set({ pendingRestart: true })
+      }
+      return Promise.resolve()
     }
 
     if (currentStatus !== 'connected') {
-      return
+      return Promise.resolve()
     }
 
     restartPromise = (async () => {
       const toastId = toast.loading('Применяю изменения подключения...')
-      try {
-        while (true) {
-          set({ pendingRestart: false })
-          get().addLog('Конфигурация подключения изменена, перезапускаю winws.exe')
+      const runCycle = async (): Promise<void> => {
+        set({ pendingRestart: false })
+        get().addLog('Конфигурация подключения изменена, перезапускаю winws.exe')
 
-          await get().disconnect()
-          if (get().status !== 'disconnected') {
-            throw new Error('Не удалось остановить текущее подключение')
-          }
-
-          await get().connect()
-          if (get().status !== 'connected') {
-            throw new Error('Подключение не восстановилось после перезапуска')
-          }
-
-          if (!get().pendingRestart) {
-            break
-          }
+        // react-doctor-disable-next-line react-doctor/async-defer-await
+        await get().disconnect()
+        if (get().status !== 'disconnected') {
+          throw new Error('Не удалось остановить текущее подключение')
         }
 
+        // react-doctor-disable-next-line react-doctor/async-defer-await
+        await get().connect()
+        if (get().status !== 'connected') {
+          throw new Error('Подключение не восстановилось после перезапуска')
+        }
+
+        if (get().pendingRestart) {
+          await runCycle()
+        }
+      }
+
+      try {
+        await runCycle()
         toast.success('Изменения применены', { id: toastId })
       }
       catch (e) {

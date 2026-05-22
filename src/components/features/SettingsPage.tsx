@@ -1,4 +1,4 @@
-import type { DiscordPresenceActivityType, WindowMaterial, WindowMaterialCapabilities } from '@/lib/types'
+import type { DiscordPresenceActivityType } from '@/lib/types'
 import type { Theme } from '@/stores/theme.store'
 import {
   AppWindow,
@@ -10,24 +10,22 @@ import {
   Gamepad2,
   Headphones,
   Laptop,
-  Layers3,
   Loader2,
   Minimize2,
   MoonStar,
   Palette,
-  PanelTop,
   PlugZap,
   Power,
   Radar,
   RefreshCw,
   RotateCcw,
   Router,
-  Sparkles,
   SunMedium,
   Trophy,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { MODULE_PAGE_CARD_CLASS, ModuleSectionHeader, ModuleSettingLabel } from '@/components/features/module-ui'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,9 +38,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import {
   Select,
@@ -67,12 +64,7 @@ const THEME_OPTIONS: { value: Theme, label: string, icon: React.ComponentType<{ 
   { value: 'light', label: 'Светлая', icon: SunMedium },
   { value: 'dark', label: 'Тёмная', icon: MoonStar },
 ]
-const WINDOW_MATERIAL_OPTIONS: { value: WindowMaterial, label: string, icon: React.ComponentType<{ className?: string }> }[] = [
-  { value: 'none', label: 'Нет', icon: CircleOff },
-  { value: 'acrylic', label: 'Акрил', icon: Layers3 },
-  { value: 'mica', label: 'Mica', icon: Sparkles },
-  { value: 'tabbed', label: 'Tabbed', icon: PanelTop },
-]
+
 const DISCORD_PRESENCE_ACTIVITY_OPTIONS: { value: DiscordPresenceActivityType, label: string, icon: React.ComponentType<{ className?: string }> }[] = [
   { value: 'playing', label: 'Играет', icon: Gamepad2 },
   { value: 'listening', label: 'Слушает', icon: Headphones },
@@ -83,67 +75,6 @@ const DISCORD_PRESENCE_SELECT_OPTIONS: { value: 'none' | DiscordPresenceActivity
   { value: 'none', label: 'Нет', icon: CircleOff },
   ...DISCORD_PRESENCE_ACTIVITY_OPTIONS,
 ]
-
-const PAGE_CARD_CLASS = 'gap-0! rounded-lg! border! border-border/60! bg-card! py-0! shadow-none! backdrop-blur-none!'
-
-function SettingsSectionHeader({
-  icon: Icon,
-  title,
-  description,
-  action,
-  withDivider = true,
-}: {
-  icon: React.ComponentType<{ className?: string }>
-  title: React.ReactNode
-  description: React.ReactNode
-  action?: React.ReactNode
-  withDivider?: boolean
-}) {
-  return (
-    <CardHeader className={cn(
-      'flex! flex-row! items-center! gap-3! p-4!',
-      withDivider && 'border-b border-border/60',
-    )}
-    >
-      <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
-        <Icon className="size-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <CardTitle className="font-sans text-sm leading-5 font-normal tracking-normal">{title}</CardTitle>
-        <CardDescription className="mt-1 text-xs leading-4">{description}</CardDescription>
-      </div>
-      {action ? <CardAction className="self-center">{action}</CardAction> : null}
-    </CardHeader>
-  )
-}
-
-function SettingLabel({
-  htmlFor,
-  icon: Icon,
-  description,
-  children,
-}: {
-  htmlFor: string
-  icon: React.ComponentType<{ className?: string }>
-  description?: React.ReactNode
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex items-center gap-3">
-      <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
-        <Icon className="size-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <Label htmlFor={htmlFor} className="text-sm leading-5 font-normal">
-          {children}
-        </Label>
-        {description
-          ? <p className="mt-1 text-xs leading-4 text-muted-foreground">{description}</p>
-          : null}
-      </div>
-    </div>
-  )
-}
 
 function isValidPortRange(value: string): boolean {
   if (!value.trim())
@@ -174,11 +105,6 @@ export function SettingsPage() {
   const [autostartLoading, setAutostartLoading] = useState(true)
   const [tcpDraft, setTcpDraft] = useState('')
   const [udpDraft, setUdpDraft] = useState('')
-  const [windowMaterialCapabilities, setWindowMaterialCapabilities] = useState<WindowMaterialCapabilities>({
-    acrylic: true,
-    mica: false,
-    tabbed: false,
-  })
   const prevGlobalPortsRef = useRef<string | undefined>(undefined)
   const tcpFocusedRef = useRef(false)
   const udpFocusedRef = useRef(false)
@@ -193,7 +119,6 @@ export function SettingsPage() {
   const setAppAutoUpdatesEnabled = useConfigStore(state => state.setAppAutoUpdatesEnabled)
   const setDiscordPresenceEnabled = useConfigStore(state => state.setDiscordPresenceEnabled)
   const setDiscordPresenceActivityType = useConfigStore(state => state.setDiscordPresenceActivityType)
-  const setWindowMaterial = useConfigStore(state => state.setWindowMaterial)
   const setMinimizeToTray = useConfigStore(state => state.setMinimizeToTray)
   const setLaunchToTray = useConfigStore(state => state.setLaunchToTray)
   const setConnectOnAutostart = useConfigStore(state => state.setConnectOnAutostart)
@@ -203,7 +128,6 @@ export function SettingsPage() {
   const theme = useThemeStore(state => state.theme)
   const setTheme = useThemeStore(state => state.setTheme)
   const activeThemeIndex = Math.max(THEME_OPTIONS.findIndex(option => option.value === theme), 0)
-  const selectedWindowMaterial = WINDOW_MATERIAL_OPTIONS.find(option => option.value === (config?.windowMaterial ?? 'none')) ?? WINDOW_MATERIAL_OPTIONS[0]
   const selectedDiscordPresenceValue = (config?.discordPresenceEnabled ?? false)
     ? (config?.discordPresenceActivityType ?? 'playing')
     : 'none'
@@ -231,11 +155,6 @@ export function SettingsPage() {
     const init = async () => {
       try {
         await load()
-        const materialCapabilities = await tauri.getWindowMaterialCapabilities()
-        if (isMounted) {
-          setWindowMaterialCapabilities(materialCapabilities)
-        }
-
         await refreshAutostartState(isMounted)
       }
       finally {
@@ -372,27 +291,6 @@ export function SettingsPage() {
     }
   }
 
-  const handleWindowMaterialChange = async (value: WindowMaterial) => {
-    const previous = config?.windowMaterial ?? 'none'
-    setWindowMaterial(value)
-
-    try {
-      await tauri.setWindowMaterial(value)
-      addConfigLog(`материал изменён: ${WINDOW_MATERIAL_OPTIONS.find(option => option.value === value)?.label ?? value}`)
-      toast.success(`Материал: ${WINDOW_MATERIAL_OPTIONS.find(option => option.value === value)?.label ?? value}`)
-    }
-    catch (e) {
-      setWindowMaterial(previous)
-      try {
-        await tauri.setWindowMaterial(previous)
-      }
-      catch (restoreError) {
-        console.error('Failed to restore window material state:', restoreError)
-      }
-      toast.error(`Ошибка настройки материала: ${e instanceof Error ? e.message : String(e)}`)
-    }
-  }
-
   if (loading || !config) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -411,109 +309,61 @@ export function SettingsPage() {
           </p>
         </div>
 
-        <Card className={PAGE_CARD_CLASS}>
-          <SettingsSectionHeader
+        <Card className={MODULE_PAGE_CARD_CLASS}>
+          <ModuleSectionHeader
             icon={Palette}
             title="Тема"
-            description="Внешний вид приложения"
+            description="Режим отображения интерфейса приложения"
+            withDivider={false}
+            action={(
+              <ToggleGroup
+                id="theme-select"
+                type="single"
+                value={theme}
+                onValueChange={(value) => {
+                  if (value) {
+                    setTheme(value as Theme)
+                  }
+                }}
+                className="relative grid grid-cols-3 gap-0.5 rounded-lg border border-border/70 bg-background/76 p-0.5 shadow-xs w-[16rem] sm:w-[18rem]"
+                aria-label="Режим темы"
+              >
+                <span
+                  className="pointer-events-none absolute inset-y-0.5 left-0.5 w-[calc((100%-0.5rem)/3)] rounded-[calc(var(--radius)-0.125rem)] border border-primary/28 bg-primary/12 shadow-xs transition-transform duration-250 ease-out"
+                  style={{ transform: `translateX(calc(${activeThemeIndex} * (100% + 0.125rem)))` }}
+                  aria-hidden="true"
+                />
+                {THEME_OPTIONS.map(option => (
+                  <ToggleGroupItem
+                    key={option.value}
+                    value={option.value}
+                    className="relative z-10 h-8 min-w-0 cursor-pointer rounded-[calc(var(--radius)-0.125rem)] border-0 bg-transparent px-3 text-xs text-foreground/78 shadow-none hover:bg-transparent hover:text-foreground data-[state=on]:bg-transparent data-[state=on]:text-primary data-[state=on]:shadow-none data-[state=on]:[&_svg]:text-primary"
+                    aria-label={option.label}
+                  >
+                    <option.icon className="text-muted-foreground" />
+                    <span>{option.label}</span>
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            )}
           />
-          <CardContent className="space-y-4 p-4!">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-              <SettingLabel
-                htmlFor="theme-select"
-                icon={SunMedium}
-                description="Режим отображения интерфейса приложения"
-              >
-                Режим
-              </SettingLabel>
-              <div className="w-full sm:w-auto">
-                <ToggleGroup
-                  id="theme-select"
-                  type="single"
-                  value={theme}
-                  onValueChange={(value) => {
-                    if (value) {
-                      setTheme(value as Theme)
-                    }
-                  }}
-                  className="relative grid w-full grid-cols-3 gap-0.5 rounded-lg border border-border/70 bg-background/76 p-0.5 shadow-xs sm:w-fit"
-                  aria-label="Режим темы"
-                >
-                  <span
-                    className="pointer-events-none absolute inset-y-0.5 left-0.5 w-[calc((100%-0.5rem)/3)] rounded-[calc(var(--radius)-0.125rem)] border border-primary/28 bg-primary/12 shadow-xs transition-transform duration-250 ease-out"
-                    style={{ transform: `translateX(calc(${activeThemeIndex} * (100% + 0.125rem)))` }}
-                    aria-hidden="true"
-                  />
-                  {THEME_OPTIONS.map(option => (
-                    <ToggleGroupItem
-                      key={option.value}
-                      value={option.value}
-                      className="relative z-10 h-8 min-w-0 cursor-pointer rounded-[calc(var(--radius)-0.125rem)] border-0 bg-transparent px-3 text-xs text-foreground/78 shadow-none hover:bg-transparent hover:text-foreground data-[state=on]:bg-transparent data-[state=on]:text-primary data-[state=on]:shadow-none data-[state=on]:[&_svg]:text-primary"
-                      aria-label={option.label}
-                    >
-                      <option.icon className="text-muted-foreground" />
-                      <span>{option.label}</span>
-                    </ToggleGroupItem>
-                  ))}
-                </ToggleGroup>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-              <SettingLabel
-                htmlFor="window-material"
-                icon={Layers3}
-                description="Материал сайдбара и тайтлбара"
-              >
-                Материал
-              </SettingLabel>
-              <div className="w-full sm:w-[11rem]">
-                <Select value={config.windowMaterial ?? 'none'} onValueChange={value => void handleWindowMaterialChange(value as WindowMaterial)}>
-                  <SelectTrigger id="window-material" className="w-full cursor-pointer">
-                    <span className="flex items-center gap-2">
-                      <selectedWindowMaterial.icon className="size-4 text-muted-foreground" />
-                      <SelectValue placeholder="Выберите материал">{selectedWindowMaterial.label}</SelectValue>
-                    </span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {WINDOW_MATERIAL_OPTIONS.map(option => (
-                      <SelectItem
-                        key={option.value}
-                        value={option.value}
-                        disabled={option.value === 'mica'
-                          ? !windowMaterialCapabilities.mica
-                          : option.value === 'tabbed'
-                            ? !windowMaterialCapabilities.tabbed
-                            : false}
-                      >
-                        <span className="flex items-center gap-2">
-                          <option.icon className="size-4 text-muted-foreground" />
-                          <span>{option.label}</span>
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
         </Card>
 
-        <Card className={PAGE_CARD_CLASS}>
-          <SettingsSectionHeader
+        <Card className={MODULE_PAGE_CARD_CLASS}>
+          <ModuleSectionHeader
             icon={Download}
             title="Обновления"
             description="Настройки фоновых проверок и автоматических предложений"
           />
           <CardContent className="space-y-4 p-4!">
             <div className="flex items-center justify-between gap-4">
-              <SettingLabel
+              <ModuleSettingLabel
                 htmlFor="app-auto-updates"
                 icon={RefreshCw}
                 description="При запуске и каждые 30 секунд приложение будет проверять наличие новой версии"
               >
                 Автоматически проверять обновления приложения
-              </SettingLabel>
+              </ModuleSettingLabel>
               <Switch
                 id="app-auto-updates"
                 checked={config.appAutoUpdatesEnabled ?? true}
@@ -522,13 +372,13 @@ export function SettingsPage() {
             </div>
 
             <div className="flex items-center justify-between gap-4">
-              <SettingLabel
+              <ModuleSettingLabel
                 htmlFor="core-file-update-prompts"
                 icon={BellRing}
                 description="Отключает только предложения обновить файлы, не саму проверку"
               >
                 Уведомлять об обновлениях критических файлов
-              </SettingLabel>
+              </ModuleSettingLabel>
               <Switch
                 id="core-file-update-prompts"
                 checked={config.coreFileUpdatePromptsEnabled ?? true}
@@ -538,8 +388,8 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card className={PAGE_CARD_CLASS}>
-          <SettingsSectionHeader
+        <Card className={MODULE_PAGE_CARD_CLASS}>
+          <ModuleSectionHeader
             icon={AppWindow}
             title="Поведение"
             description="Настройки запуска и закрытия приложения"
@@ -547,13 +397,13 @@ export function SettingsPage() {
           <CardContent className="space-y-4 p-4!">
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-4">
-                <SettingLabel
+                <ModuleSettingLabel
                   htmlFor="autostart"
                   icon={Power}
                   description="Приложение будет запускаться автоматически при входе в систему"
                 >
                   Автозапуск с Windows
-                </SettingLabel>
+                </ModuleSettingLabel>
                 <Switch
                   id="autostart"
                   checked={autostartEnabled}
@@ -577,13 +427,13 @@ export function SettingsPage() {
               >
                 <div className="overflow-hidden">
                   <div className="flex items-center justify-between gap-4 border-l border-border/60 pl-4">
-                    <SettingLabel
+                    <ModuleSettingLabel
                       htmlFor="connect-on-autostart"
                       icon={PlugZap}
                       description="При запуске из автозагрузки приложение будет сразу запускать подключение"
                     >
                       Подключаться автоматически
-                    </SettingLabel>
+                    </ModuleSettingLabel>
                     <Switch
                       id="connect-on-autostart"
                       checked={config.connectOnAutostart ?? false}
@@ -592,13 +442,13 @@ export function SettingsPage() {
                     />
                   </div>
                   <div className="mt-3 flex items-center justify-between gap-4 border-l border-border/60 pl-4">
-                    <SettingLabel
+                    <ModuleSettingLabel
                       htmlFor="launch-to-tray"
                       icon={AppWindow}
                       description="При старте приложения основное окно будет скрыто, а доступ останется через иконку в трее"
                     >
                       Запускать свернутым в трей
-                    </SettingLabel>
+                    </ModuleSettingLabel>
                     <Switch
                       id="launch-to-tray"
                       checked={config.launchToTray ?? false}
@@ -611,13 +461,13 @@ export function SettingsPage() {
             </div>
 
             <div className="flex items-center justify-between gap-4">
-              <SettingLabel
+              <ModuleSettingLabel
                 htmlFor="minimize-to-tray"
                 icon={Minimize2}
                 description="При закрытии окно будет скрыто в системный трей вместо завершения работы"
               >
                 Сворачивать в трей при закрытии
-              </SettingLabel>
+              </ModuleSettingLabel>
               <Switch
                 id="minimize-to-tray"
                 checked={config.minimizeToTray ?? true}
@@ -626,13 +476,13 @@ export function SettingsPage() {
             </div>
 
             <div className="flex items-center justify-between gap-4">
-              <SettingLabel
+              <ModuleSettingLabel
                 htmlFor="discord-presence"
                 icon={Gamepad2}
                 description="Показывает текущую страницу и статус подключения в Discord"
               >
                 Discord Rich Presence
-              </SettingLabel>
+              </ModuleSettingLabel>
               <div className="w-[10.5rem]">
                 <Select
                   value={selectedDiscordPresenceValue}
@@ -662,21 +512,21 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card className={PAGE_CARD_CLASS}>
-          <SettingsSectionHeader
+        <Card className={MODULE_PAGE_CARD_CLASS}>
+          <ModuleSectionHeader
             icon={Router}
             title="Порты"
             description="Глобальные порты для фильтрации трафика"
           />
           <CardContent className="space-y-4 p-4!">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-              <SettingLabel
+              <ModuleSettingLabel
                 htmlFor="tcpPortsInput"
                 icon={ArrowLeftRight}
                 description="Порты TCP-трафика, на которые применяются стратегии фильтрации."
               >
                 TCP порты
-              </SettingLabel>
+              </ModuleSettingLabel>
               <div className="w-full sm:w-[11rem]">
                 <Input
                   id="tcpPortsInput"
@@ -710,13 +560,13 @@ export function SettingsPage() {
               </div>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-              <SettingLabel
+              <ModuleSettingLabel
                 htmlFor="udpPortsInput"
                 icon={Radar}
                 description="Порты UDP-трафика, на которые применяются стратегии фильтрации."
               >
                 UDP порты
-              </SettingLabel>
+              </ModuleSettingLabel>
               <div className="w-full sm:w-[11rem]">
                 <Input
                   id="udpPortsInput"
@@ -752,8 +602,8 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card className={PAGE_CARD_CLASS}>
-          <SettingsSectionHeader
+        <Card className={MODULE_PAGE_CARD_CLASS}>
+          <ModuleSectionHeader
             icon={RotateCcw}
             title="Сброс"
             description="Возврат к настройкам по умолчанию"

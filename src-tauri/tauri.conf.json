@@ -23,8 +23,10 @@
         "minimizable": true,
         "maximizable": true,
         "decorations": false,
-        "transparent": true,
-        "shadow": true
+        "transparent": false,
+        "shadow": true,
+        "theme": "Dark",
+        "backgroundColor": "#151313"
       }
     ],
     "security": {

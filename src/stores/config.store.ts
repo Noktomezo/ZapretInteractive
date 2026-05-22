@@ -1,4 +1,4 @@
-import type { AppConfig, Category, DiscordPresenceActivityType, Filter, GlobalPorts, ListMode, Placeholder, Strategy, WindowMaterial } from '../lib/types'
+import type { AppConfig, Category, DiscordPresenceActivityType, Filter, GlobalPorts, ListMode, Placeholder, Strategy } from '../lib/types'
 import { create } from 'zustand'
 import * as tauri from '../lib/tauri'
 import { reportAutosaveError, resetAutosaveErrorReporter } from './autosave-error-reporter'
@@ -42,7 +42,6 @@ interface ConfigStore {
   setDiscordPresenceActivityType: (activityType: DiscordPresenceActivityType) => void
   setCoreFileUpdatePromptsEnabled: (enabled: boolean) => void
   setAppAutoUpdatesEnabled: (enabled: boolean) => void
-  setWindowMaterial: (material: WindowMaterial) => void
   setMinimizeToTray: (enabled: boolean) => void
   setLaunchToTray: (enabled: boolean) => void
   setConnectOnAutostart: (enabled: boolean) => void
@@ -118,51 +117,54 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
       saveTimeoutId = null
     }
 
-    if (savePromise) {
-      queuedSaveAfterCurrent = true
-      await savePromise
-      if (get().dirty) {
-        return get().saveNow()
-      }
-      return
-    }
-
     const { config } = get()
     if (!config) {
       return
     }
 
-    const currentConfig = config
-    const snapshot = cloneConfig(currentConfig)
-
-    savePromise = (async () => {
-      set({ isSaving: true, error: null })
-      try {
-        await tauri.saveConfig(snapshot)
-        resetAutosaveErrorReporter()
-        set(state => ({
-          error: null,
-          isSaving: false,
-          dirty: state.config === currentConfig ? false : state.dirty,
-        }))
+    if (savePromise) {
+      if (!get().dirty) {
+        return
       }
-      catch (e) {
-        set({ error: String(e), isSaving: false })
-        throw e
+      queuedSaveAfterCurrent = true
+      await savePromise
+      if (get().dirty) {
+        await get().saveNow()
+      }
+    }
+    else {
+      const currentConfig = config
+      const snapshot = cloneConfig(currentConfig)
+
+      savePromise = (async () => {
+        set({ isSaving: true, error: null })
+        try {
+          await tauri.saveConfig(snapshot)
+          resetAutosaveErrorReporter()
+          set(state => ({
+            error: null,
+            isSaving: false,
+            dirty: state.config === currentConfig ? false : state.dirty,
+          }))
+        }
+        catch (e) {
+          set({ error: String(e), isSaving: false })
+          throw e
+        }
+        finally {
+          savePromise = null
+        }
+      })()
+
+      try {
+        await savePromise
       }
       finally {
-        savePromise = null
-      }
-    })()
-
-    try {
-      await savePromise
-    }
-    finally {
-      if (queuedSaveAfterCurrent) {
-        queuedSaveAfterCurrent = false
-        if (get().dirty) {
-          await get().saveNow()
+        if (queuedSaveAfterCurrent) {
+          queuedSaveAfterCurrent = false
+          if (get().dirty) {
+            await get().saveNow()
+          }
         }
       }
     }
@@ -312,12 +314,6 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     const { config } = get()
     if (config)
       set({ config: { ...config, appAutoUpdatesEnabled: enabled }, dirty: true })
-  },
-
-  setWindowMaterial: (material) => {
-    const { config } = get()
-    if (config)
-      set({ config: { ...config, windowMaterial: material }, dirty: true })
   },
 
   setMinimizeToTray: (enabled) => {

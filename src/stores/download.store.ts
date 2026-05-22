@@ -29,40 +29,51 @@ export const useDownloadStore = create<DownloadStore>(set => ({
   initListeners: async (onDownloadComplete) => {
     if (useDownloadStore.getState().listenersInitialized)
       return
+    const collected: (() => void)[] = []
     try {
-      const unlistenStart = await listen('download-start', () => {
-        useDownloadStore.getState().setDownloading(true)
-      })
-
-      const unlistenProgress = await listen<DownloadProgress>('download-progress', (event) => {
-        useDownloadStore.getState().setProgress(event.payload)
-      })
-
-      const unlistenComplete = await listen('download-complete', async () => {
-        try {
-          await onDownloadComplete?.()
-        }
-        catch (e) {
-          useConnectionStore.getState().addLog(`Не удалось обновить локальное состояние файлов после загрузки: ${e}`)
-          toast.error(`Ошибка проверки файлов: ${e}`)
-        }
-        finally {
+      collected.push(
+        await listen('download-start', () => {
+          useDownloadStore.getState().setDownloading(true)
+        }),
+      )
+      collected.push(
+        await listen<DownloadProgress>('download-progress', (event) => {
+          useDownloadStore.getState().setProgress(event.payload)
+        }),
+      )
+      collected.push(
+        await listen('download-complete', async () => {
+          try {
+            await onDownloadComplete?.()
+          }
+          catch (e) {
+            useConnectionStore.getState().addLog(`Не удалось обновить локальное состояние файлов после загрузки: ${e}`)
+            toast.error(`Ошибка проверки файлов: ${e}`)
+          }
+          finally {
+            useDownloadStore.getState().reset()
+          }
+        }),
+      )
+      collected.push(
+        await listen<string>('download-error', (event) => {
+          console.error('Download error:', event.payload)
           useDownloadStore.getState().reset()
-        }
-      })
-
-      const unlistenError = await listen<string>('download-error', (event) => {
-        console.error('Download error:', event.payload)
-        useDownloadStore.getState().reset()
-      })
+        }),
+      )
 
       set({
         listenersInitialized: true,
-        unlistenFns: [unlistenStart, unlistenProgress, unlistenComplete, unlistenError],
+        unlistenFns: collected,
       })
     }
     catch (e) {
-      useDownloadStore.getState().cleanup()
+      for (const unlisten of collected) {
+        try {
+          unlisten()
+        }
+        catch {}
+      }
       throw e
     }
   },

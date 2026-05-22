@@ -11,7 +11,7 @@ interface SidebarContextValue {
 const SidebarContext = React.createContext<SidebarContextValue | null>(null)
 
 function useSidebar() {
-  const context = React.useContext(SidebarContext)
+  const context = React.use(SidebarContext)
 
   if (!context)
     throw new Error('useSidebar must be used within a SidebarProvider.')
@@ -42,7 +42,7 @@ function SidebarProvider({
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }) {
-  const [openState, setOpenState] = React.useState(defaultOpen)
+  const [openState, setOpenState] = React.useState(() => defaultOpen)
 
   const open = openProp ?? openState
   const setOpen = React.useCallback((value: boolean) => {
@@ -61,7 +61,7 @@ function SidebarProvider({
       <div
         data-slot="sidebar-provider"
         style={{
-          '--sidebar-width': '14.25rem',
+          '--sidebar-width': '11.4rem',
           '--sidebar-width-icon': '3.25rem',
           ...style,
         } as React.CSSProperties}
@@ -121,18 +121,20 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<'li'>) {
   return <li data-slot="sidebar-menu-item" className={cn('group/menu-item relative', className)} {...props} />
 }
 
-const SidebarMenuButton = React.forwardRef<React.ElementRef<'button'>, React.ComponentProps<'button'> & {
-  isActive?: boolean
-  asChild?: boolean
-}>(({
+function SidebarMenuButton({
   className,
   isActive = false,
   asChild = false,
   children,
   type = 'button',
   onClick,
+  ref,
   ...props
-}, ref) => {
+}: React.ComponentProps<'button'> & {
+  isActive?: boolean
+  asChild?: boolean
+  ref?: React.Ref<HTMLButtonElement>
+}) {
   const classes = cn(
     'flex h-9 w-full items-center overflow-hidden rounded-md border border-transparent text-left text-[13px] font-medium tracking-[-0.015em] outline-none transition-[background-color,border-color,color,transform] duration-200 ease-out',
     'px-1.5',
@@ -170,7 +172,7 @@ const SidebarMenuButton = React.forwardRef<React.ElementRef<'button'>, React.Com
       {children}
     </button>
   )
-})
+}
 SidebarMenuButton.displayName = 'SidebarMenuButton'
 
 function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<'button'>) {

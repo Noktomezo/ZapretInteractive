@@ -157,46 +157,6 @@ pub enum DiscordPresenceActivityType {
     Competing,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Default, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum WindowMaterial {
-    #[default]
-    None,
-    Acrylic,
-    Mica,
-    Tabbed,
-}
-
-impl<'de> Deserialize<'de> for WindowMaterial {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        #[serde(untagged)]
-        enum WindowMaterialRepr {
-            String(String),
-            Bool(bool),
-        }
-
-        match WindowMaterialRepr::deserialize(deserializer)? {
-            WindowMaterialRepr::String(value) => match value.as_str() {
-                "none" => Ok(Self::None),
-                "acrylic" => Ok(Self::Acrylic),
-                "mica" => Ok(Self::Mica),
-                "tabbed" => Ok(Self::Tabbed),
-                other => Err(serde::de::Error::unknown_variant(
-                    other,
-                    &["none", "acrylic", "mica", "tabbed"],
-                )),
-            },
-            WindowMaterialRepr::Bool(enabled) => {
-                Ok(if enabled { Self::Acrylic } else { Self::None })
-            }
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     pub global_ports: GlobalPorts,
@@ -259,12 +219,7 @@ pub struct AppConfig {
         rename = "appAutoUpdatesEnabled"
     )]
     pub app_auto_updates_enabled: bool,
-    #[serde(
-        default = "default_window_material",
-        rename = "windowMaterial",
-        alias = "windowAcrylicEnabled"
-    )]
-    pub window_material: WindowMaterial,
+
     #[serde(default, rename = "systemRemovedCategoryIds")]
     pub system_removed_category_ids: Vec<String>,
     #[serde(default, rename = "systemRemovedStrategyKeys")]
@@ -401,10 +356,6 @@ fn is_valid_tg_ws_proxy_secret(secret: &str) -> bool {
 
 fn generate_tg_ws_proxy_secret() -> String {
     Uuid::new_v4().simple().to_string()
-}
-
-fn default_window_material() -> WindowMaterial {
-    WindowMaterial::None
 }
 
 fn system_strategy_key(category_id: &str, strategy_id: &str) -> String {

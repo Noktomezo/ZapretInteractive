@@ -1,6 +1,7 @@
 import type { ComponentType, ReactNode } from 'react'
 import { CardAction, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
 
 export const MODULE_PAGE_CARD_CLASS = 'gap-0! rounded-lg! border! border-border/60! bg-card! py-0! shadow-none! backdrop-blur-none!'
 
@@ -9,14 +10,20 @@ export function ModuleSectionHeader({
   title,
   description,
   action,
+  withDivider = true,
 }: {
   icon: ComponentType<{ className?: string }>
   title: ReactNode
   description: ReactNode
   action?: ReactNode
+  withDivider?: boolean
 }) {
   return (
-    <CardHeader className="flex! flex-row! items-center! gap-3! border-b border-border/60 p-4!">
+    <CardHeader className={cn(
+      'flex! flex-row! items-center! gap-3! p-4!',
+      withDivider && 'border-b border-border/60',
+    )}
+    >
       <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
         <Icon className="size-4" />
       </div>

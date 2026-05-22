@@ -16,11 +16,8 @@ import 'sonner/dist/styles.css'
 function RootLayout() {
   const { collapsed, setCollapsed } = useSidebarStore()
   const location = useLocation()
-  const config = useConfigStore(state => state.config)
   const loadConfig = useConfigStore(state => state.load)
   const resolvedTheme = useThemeStore(state => state.resolvedTheme)
-  const windowMaterial = config?.windowMaterial ?? 'none'
-  const materialEnabled = windowMaterial !== 'none'
 
   useMountEffect(() => {
     void loadConfig()
@@ -31,8 +28,7 @@ function RootLayout() {
       <>
         <div
           data-theme={resolvedTheme}
-          data-webview-material={windowMaterial}
-          className={cn('min-h-full', materialEnabled ? 'app-glass-surface bg-transparent' : 'app-opaque-surface bg-background')}
+          className="min-h-full app-opaque-surface bg-background"
         >
           <SidebarProvider className="flex-col" open={!collapsed} onOpenChange={open => setCollapsed(!open)}>
             <TitleBar />
@@ -55,7 +51,7 @@ function RootLayout() {
             </div>
           </SidebarProvider>
         </div>
-        <div data-theme={resolvedTheme} data-webview-material={windowMaterial}>
+        <div data-theme={resolvedTheme}>
           <Toaster
             position="bottom-right"
             icons={{ loading: <LoaderCircle className="size-6 animate-spin stroke-[2.6]" /> }}

@@ -10,7 +10,8 @@ export function autosizeTextarea(textarea: HTMLTextAreaElement | null) {
   }
 
   textarea.style.height = '0px'
-  textarea.style.height = `${textarea.scrollHeight}px`
+  const scrollHeight = textarea.scrollHeight
+  textarea.style.height = `${scrollHeight}px`
 }
 
 export function forwardTextareaWheelToScrollArea(event: React.WheelEvent<HTMLTextAreaElement>) {

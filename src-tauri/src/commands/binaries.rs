@@ -7,6 +7,7 @@ use crate::config::{
 };
 use futures::stream::{self, StreamExt};
 use notify::{Config as NotifyConfig, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use rayon::prelude::*;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::fs;
@@ -259,35 +260,16 @@ fn rebuild_hashes_from_disk() -> Result<(), String> {
     let _guard = HASHES_LOCK
         .lock()
         .map_err(|e| format!("Failed to lock hashes.json: {e}"))?;
-    let mut hashes = HashMap::new();
 
-    for name in binary_names() {
-        let path = get_managed_resources_dir().join(name);
-        if path.exists() {
-            hashes.insert(hash_key("binaries", name), calculate_sha256(&path)?);
-        }
-    }
-
-    for name in FAKE_FILES {
-        let path = get_fake_dir().join(name);
-        if path.exists() {
-            hashes.insert(hash_key("fake", name), calculate_sha256(&path)?);
-        }
-    }
-
-    for name in LISTS {
-        let path = get_lists_dir().join(name);
-        if path.exists() {
-            hashes.insert(hash_key("lists", name), calculate_sha256(&path)?);
-        }
-    }
-
-    for name in MODULE_FILES {
-        let path = get_modules_dir().join(name);
-        if path.exists() {
-            hashes.insert(hash_key("modules", name), calculate_sha256(&path)?);
-        }
-    }
+    let files = tracked_files();
+    let hashes = files
+        .par_iter()
+        .filter(|file| file.dest_path.exists())
+        .map(|file| {
+            let hash = calculate_sha256(&file.dest_path)?;
+            Ok((hash_key(file.group, file.name), hash))
+        })
+        .collect::<Result<HashMap<String, String>, String>>()?;
 
     save_stored_hashes(&hashes)
 }
@@ -428,24 +410,23 @@ fn configured_filter_is_healthy(file: &ConfiguredFilterFile) -> Result<bool, Str
 fn inspect_local_files(
     files: &[TrackedFile],
 ) -> Result<HashMap<String, LocalFileInspection>, String> {
-    let mut inspections = HashMap::new();
-
-    for file in files {
-        let inspection = if file.dest_path.exists() {
-            LocalFileInspection {
-                exists: true,
-                hash: Some(calculate_sha256(&file.dest_path)?),
-            }
-        } else {
-            LocalFileInspection {
-                exists: false,
-                hash: None,
-            }
-        };
-        inspections.insert(tracked_key(file), inspection);
-    }
-
-    Ok(inspections)
+    files
+        .par_iter()
+        .map(|file| {
+            let inspection = if file.dest_path.exists() {
+                LocalFileInspection {
+                    exists: true,
+                    hash: Some(calculate_sha256(&file.dest_path)?),
+                }
+            } else {
+                LocalFileInspection {
+                    exists: false,
+                    hash: None,
+                }
+            };
+            Ok((tracked_key(file), inspection))
+        })
+        .collect::<Result<HashMap<String, LocalFileInspection>, String>>()
 }
 
 async fn inspect_local_files_async(
@@ -660,10 +641,6 @@ fn ensure_helper_files() -> Result<(), String> {
         }
     }
     Ok(())
-}
-
-fn binary_names() -> Vec<&'static str> {
-    BINARIES.to_vec()
 }
 
 fn critical_files_ok(state: &AppState) -> Result<bool, String> {
@@ -1343,8 +1320,10 @@ mod tests {
 }
 
 #[tauri::command]
-pub fn restore_hashes_from_disk() -> Result<(), String> {
-    rebuild_hashes_from_disk()
+pub async fn restore_hashes_from_disk() -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(rebuild_hashes_from_disk)
+        .await
+        .map_err(|e| format!("Failed to join restore hashes task: {e}"))?
 }
 
 #[tauri::command]

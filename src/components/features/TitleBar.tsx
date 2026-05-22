@@ -11,10 +11,10 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { SidebarTrigger } from '@/components/ui/sidebar'
-import { cn } from '@/lib/utils'
 import { useConfigStore } from '@/stores/config.store'
 
 interface BreadcrumbEntry {
+  id: string
   label: string
   to?: string
 }
@@ -37,55 +37,55 @@ function safeDecode(value: string) {
 
 function getBreadcrumbItems(pathname: string, categoryName?: string): BreadcrumbEntry[] {
   if (pathname === '/') {
-    return [{ label: 'Главная' }]
+    return [{ id: 'home', label: 'Главная' }]
   }
 
   if (pathname === '/about') {
-    return [{ label: 'О программе' }]
+    return [{ id: 'about', label: 'О программе' }]
   }
 
   if (pathname === '/settings') {
-    return [{ label: 'Настройки' }]
+    return [{ id: 'settings', label: 'Настройки' }]
   }
 
   if (pathname === '/logs') {
-    return [{ label: 'Логи' }]
+    return [{ id: 'logs', label: 'Логи' }]
   }
 
   if (pathname === '/filters') {
-    return [{ label: 'Фильтры' }]
+    return [{ id: 'filters', label: 'Фильтры' }]
   }
 
   if (pathname === '/placeholders') {
-    return [{ label: 'Плейсхолдеры' }]
+    return [{ id: 'placeholders', label: 'Плейсхолдеры' }]
   }
 
   if (pathname === '/strategies') {
-    return [{ label: 'Стратегии' }]
+    return [{ id: 'strategies', label: 'Стратегии' }]
   }
 
   if (pathname.startsWith('/strategies/')) {
     return [
-      { label: 'Стратегии', to: '/strategies' },
-      { label: categoryName ?? 'Категория' },
+      { id: 'strategies-root', label: 'Стратегии', to: '/strategies' },
+      { id: `category-${pathname.split('/').pop() || 'category'}`, label: categoryName ?? 'Категория' },
     ]
   }
 
   if (pathname === '/modules') {
-    return [{ label: 'Модули' }]
+    return [{ id: 'modules', label: 'Модули' }]
   }
 
   if (pathname === '/modules/dns') {
     return [
-      { label: 'Модули', to: '/modules' },
-      { label: 'DNS' },
+      { id: 'modules-root', label: 'Модули', to: '/modules' },
+      { id: 'dns', label: 'DNS' },
     ]
   }
 
   if (pathname === '/modules/tg-ws-proxy') {
     return [
-      { label: 'Модули', to: '/modules' },
-      { label: 'TG WS Proxy' },
+      { id: 'modules-root', label: 'Модули', to: '/modules' },
+      { id: 'tg-ws-proxy', label: 'TG WS Proxy' },
     ]
   }
 
@@ -104,8 +104,6 @@ export function TitleBar() {
   }
   const handleClose = () => void getCurrentWindow().close().catch(console.error)
   const config = useConfigStore(state => state.config)
-  const windowMaterial = config?.windowMaterial ?? 'none'
-  const materialEnabled = windowMaterial !== 'none'
   const currentCategoryName = location.pathname.startsWith('/strategies/')
     ? config?.categories.find(category => category.id === safeDecode(location.pathname.slice('/strategies/'.length)))?.name
     : undefined
@@ -158,10 +156,7 @@ export function TitleBar() {
 
   return (
     <header
-      className={cn(
-        'fixed top-0 left-0 right-0 z-50 flex h-[var(--titlebar-height)] cursor-grab items-center px-2.5 select-none active:cursor-grabbing',
-        materialEnabled ? 'bg-transparent' : 'bg-background',
-      )}
+      className="fixed top-0 left-0 right-0 z-50 flex h-[var(--titlebar-height)] cursor-grab items-center px-2.5 select-none active:cursor-grabbing bg-background"
       data-tauri-drag-region
       data-no-select="true"
     >
@@ -177,7 +172,7 @@ export function TitleBar() {
                 const isLast = index === breadcrumbItems.length - 1
 
                 return (
-                  <Fragment key={`${item.label}-${index}`}>
+                  <Fragment key={item.id}>
                     <BreadcrumbItem className="min-w-0 shrink truncate">
                       {isLast
                         ? (

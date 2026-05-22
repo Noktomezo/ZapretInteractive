@@ -78,7 +78,7 @@ export function FiltersPage() {
   const addConfigLog = useConnectionStore(state => state.addConfigLog)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [editingFilterId, setEditingFilterId] = useState<string | null>(null)
+  const editingFilterIdRef = useRef<string | null>(null)
   const [draft, setDraft] = useState<FilterDraft>(emptyDraft)
   const [editLoading, setEditLoading] = useState(false)
   const [editLoadSucceeded, setEditLoadSucceeded] = useState(false)
@@ -87,7 +87,7 @@ export function FiltersPage() {
   const [createInFlight, setCreateInFlight] = useState(false)
   const [editInFlight, setEditInFlight] = useState(false)
   const [deleteInFlightId, setDeleteInFlightId] = useState<string | null>(null)
-  const [reservedBundledFilenames, setReservedBundledFilenames] = useState<Set<string>>(new Set())
+  const reservedBundledFilenamesRef = useRef<Set<string>>(new Set())
   const [systemFilterTarget, setSystemFilterTarget] = useState<FilterType | null>(null)
   const latestMutationIdRef = useRef(0)
   const createContentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
@@ -97,14 +97,14 @@ export function FiltersPage() {
     Promise.all([
       load(),
       tauri.getReservedFilterFilenames().then((names) => {
-        setReservedBundledFilenames(new Set(names.map(name => name.trim().toLowerCase())))
+        reservedBundledFilenamesRef.current = new Set(names.map(name => name.trim().toLowerCase()))
       }),
     ]).catch(console.error)
   })
 
   const resetDraft = () => {
     setDraft(emptyDraft)
-    setEditingFilterId(null)
+    editingFilterIdRef.current = null
     setEditLoading(false)
     setEditLoadSucceeded(false)
     setCurrentLoadId(null)
@@ -139,7 +139,7 @@ export function FiltersPage() {
       return false
     }
 
-    if (reservedBundledFilenames.has(normalizedLower) && normalizedLower !== currentFilenameLower) {
+    if (reservedBundledFilenamesRef.current.has(normalizedLower) && normalizedLower !== currentFilenameLower) {
       toast.error('Это имя файла зарезервировано встроенным фильтром')
       return false
     }
@@ -247,7 +247,7 @@ export function FiltersPage() {
     const loadId = crypto.randomUUID()
     currentLoadIdRef.current = loadId
     setCurrentLoadId(loadId)
-    setEditingFilterId(filter.id)
+    editingFilterIdRef.current = filter.id
     setEditDialogOpen(true)
     setEditLoading(true)
     setEditLoadSucceeded(false)
@@ -259,17 +259,15 @@ export function FiltersPage() {
 
     try {
       const content = await tauri.loadFilterFile(normalizeFilterFilename(filter.filename))
-      if (currentLoadIdRef.current !== loadId) {
-        return
+      if (currentLoadIdRef.current === loadId) {
+        setDraft({
+          name: filter.name,
+          filename: normalizeFilterFilename(filter.filename),
+          content,
+        })
+        requestAnimationFrame(() => autosizeTextarea(editContentTextareaRef.current))
+        setEditLoadSucceeded(true)
       }
-
-      setDraft({
-        name: filter.name,
-        filename: normalizeFilterFilename(filter.filename),
-        content,
-      })
-      requestAnimationFrame(() => autosizeTextarea(editContentTextareaRef.current))
-      setEditLoadSucceeded(true)
     }
     catch (e) {
       if (currentLoadIdRef.current === loadId) {
@@ -287,9 +285,10 @@ export function FiltersPage() {
   const handleSaveEdit = async () => {
     if (editInFlight)
       return
-    if (!editingFilterId || !draft.name.trim() || !draft.filename.trim() || !editLoadSucceeded)
+    if (!editingFilterIdRef.current || !draft.name.trim() || !draft.filename.trim() || !editLoadSucceeded)
       return
 
+    const editingFilterId = editingFilterIdRef.current
     const currentFilters = useConfigStore.getState().config?.filters || []
     const targetFilter = currentFilters.find(filter => filter.id === editingFilterId)
     if (!targetFilter)
@@ -378,7 +377,7 @@ export function FiltersPage() {
         replaceFiltersState(currentFilters, config?.systemRemovedFilterIds ?? [])
         throw e
       }
-      if (editingFilterId === filter.id) {
+      if (editingFilterIdRef.current === filter.id) {
         resetDraft()
         setEditDialogOpen(false)
       }
@@ -457,7 +456,7 @@ export function FiltersPage() {
   if (loading || !config) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin" />
+        <Loader2 className="size-6 animate-spin" />
       </div>
     )
   }
@@ -474,7 +473,7 @@ export function FiltersPage() {
           </div>
           <div className="flex items-center gap-1">
             <Button onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4" />
+              <Plus className="size-4" />
               Новый фильтр
             </Button>
             <Button
@@ -491,7 +490,7 @@ export function FiltersPage() {
                 }
               }}
             >
-              <FolderOpen className="h-4 w-4" />
+              <FolderOpen className="size-4" />
             </Button>
           </div>
         </div>
@@ -508,7 +507,7 @@ export function FiltersPage() {
               >
                 <div className="flex min-w-0 w-0 flex-1 items-center gap-3 overflow-hidden">
                   <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
-                    <Filter className="h-4 w-4" />
+                    <Filter className="size-4" />
                   </div>
                   <div className="min-w-0 w-0 flex-1 overflow-hidden space-y-1">
                     <div className="flex items-center gap-1">
@@ -553,7 +552,7 @@ export function FiltersPage() {
                     disabled={editInFlight || deleteInFlightId === filter.id}
                     onClick={() => openEditDialog(filter)}
                   >
-                    <Pencil className="h-4 w-4" />
+                    <Pencil className="size-4" />
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -565,7 +564,7 @@ export function FiltersPage() {
                         title={`Удалить фильтр ${filter.name}`}
                         disabled={deleteInFlightId === filter.id || editInFlight}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="size-4" />
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>

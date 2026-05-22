@@ -1,6 +1,7 @@
+import type { OGLRenderingContext } from 'ogl'
+import type { CSSProperties, HTMLAttributes } from 'react'
 import { Color, Mesh, Program, Renderer, Triangle } from 'ogl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import './FaultyTerminal.css'
 
 const RGB_MATCHER = /[\d.]+/g
 const REFERENCE_CANVAS_HEIGHT = 700
@@ -213,9 +214,9 @@ void main() {
 }
 `
 
-function resolveColorValue(color, element) {
+function resolveColorValue(color: string, element: HTMLElement | null): string {
   const source = element ?? (typeof document !== 'undefined' ? document.documentElement : null)
-  if (typeof color === 'string' && color.trim().startsWith('var(') && source) {
+  if (color.trim().startsWith('var(') && source) {
     const start = color.indexOf('--')
     const end = color.lastIndexOf(')')
     if (start !== -1 && end !== -1 && end > start) {
@@ -230,13 +231,13 @@ function resolveColorValue(color, element) {
   return color
 }
 
-function colorToRgb(color, element) {
+function colorToRgb(color: string, element: HTMLElement | null): [number, number, number] {
   const resolved = resolveColorValue(color, element)
 
   if (resolved.startsWith('rgb')) {
     const matches = resolved.match(RGB_MATCHER)
-    if (matches?.length >= 3) {
-      return matches.slice(0, 3).map(value => Number(value) / 255)
+    if (matches && matches.length >= 3) {
+      return matches.slice(0, 3).map(value => Number(value) / 255) as [number, number, number]
     }
   }
 
@@ -249,6 +250,31 @@ function colorToRgb(color, element) {
   }
   const num = Number.parseInt(h, 16)
   return [((num >> 16) & 255) / 255, ((num >> 8) & 255) / 255, (num & 255) / 255]
+}
+
+export interface FaultyTerminalProps extends HTMLAttributes<HTMLDivElement> {
+  scale?: number
+  gridMul?: [number, number]
+  digitSize?: number
+  timeScale?: number
+  pause?: boolean
+  scanlineIntensity?: number
+  glitchAmount?: number
+  flickerAmount?: number
+  noiseAmp?: number
+  chromaticAberration?: number
+  dither?: number | boolean
+  curvature?: number
+  tint?: string
+  backgroundTint?: string
+  mouseReact?: boolean
+  mouseStrength?: number
+  dpr?: number
+  timeOffset?: number
+  pageLoadAnimation?: boolean
+  brightness?: number
+  className?: string
+  style?: CSSProperties
 }
 
 export default function FaultyTerminal({
@@ -275,16 +301,16 @@ export default function FaultyTerminal({
   className,
   style,
   ...rest
-}) {
-  const containerRef = useRef(null)
-  const programRef = useRef(null)
-  const rendererRef = useRef(null)
-  const meshRef = useRef(null)
+}: FaultyTerminalProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const programRef = useRef<Program | null>(null)
+  const rendererRef = useRef<Renderer | null>(null)
+  const meshRef = useRef<Mesh | null>(null)
   const mouseRef = useRef({ x: 0.5, y: 0.5 })
   const smoothMouseRef = useRef({ x: 0.5, y: 0.5 })
   const frozenTimeRef = useRef(0)
   const rafRef = useRef(0)
-  const resizeObserverRef = useRef(null)
+  const resizeObserverRef = useRef<ResizeObserver | null>(null)
   const targetSizeRef = useRef({ width: 0, height: 0 })
   const appliedSizeRef = useRef({ width: 0, height: 0 })
   const loadAnimationStartRef = useRef(0)
@@ -294,10 +320,10 @@ export default function FaultyTerminal({
   const mouseReactRef = useRef(mouseReact)
   const pageLoadAnimationRef = useRef(pageLoadAnimation)
   const previousPageLoadAnimationRef = useRef(pageLoadAnimation)
-  const currentTintRef = useRef([1, 1, 1])
-  const targetTintRef = useRef([1, 1, 1])
-  const currentBackgroundRef = useRef([0, 0, 0])
-  const targetBackgroundRef = useRef([0, 0, 0])
+  const currentTintRef = useRef<[number, number, number]>([1, 1, 1])
+  const targetTintRef = useRef<[number, number, number]>([1, 1, 1])
+  const currentBackgroundRef = useRef<[number, number, number]>([0, 0, 0])
+  const targetBackgroundRef = useRef<[number, number, number]>([0, 0, 0])
   const currentCurvatureRef = useRef(curvature)
   const targetCurvatureRef = useRef(curvature)
   const currentScanlineRef = useRef(scanlineIntensity)
@@ -311,9 +337,9 @@ export default function FaultyTerminal({
     [style, backgroundTint],
   )
 
-  const ditherValue = useMemo(() => (typeof dither === 'boolean' ? (dither ? 1 : 0) : dither), [dither])
+  const ditherValue = typeof dither === 'boolean' ? (dither ? 1 : 0) : dither
 
-  const handlePointerMove = useCallback((e) => {
+  const handlePointerMove = useCallback((e: PointerEvent) => {
     const ctn = containerRef.current
     if (!ctn)
       return
@@ -328,6 +354,11 @@ export default function FaultyTerminal({
     }
   }, [])
 
+  const handlePointerMoveRef = useRef(handlePointerMove)
+  useEffect(() => {
+    handlePointerMoveRef.current = handlePointerMove
+  }, [handlePointerMove])
+
   useEffect(() => {
     const container = containerRef.current
     if (!container)
@@ -341,14 +372,14 @@ export default function FaultyTerminal({
     const observer = new MutationObserver((mutations) => {
       if (mutations.some(mutation =>
         mutation.type === 'attributes'
-        && (mutation.attributeName === 'data-theme' || mutation.attributeName === 'data-webview-material'))) {
+        && mutation.attributeName === 'data-theme')) {
         refreshResolvedColors()
       }
     })
 
     observer.observe(themedRoot, {
       attributes: true,
-      attributeFilter: ['data-theme', 'data-webview-material'],
+      attributeFilter: ['data-theme'],
     })
 
     return () => {
@@ -422,16 +453,15 @@ export default function FaultyTerminal({
     if (!ctn)
       return
 
-    let renderer = null
-    let program = null
-    let mesh = null
-    let gl = null
+    let renderer: Renderer | null = null
+    let program: Program | null = null
+    let mesh: Mesh | null = null
+    let gl: OGLRenderingContext | null = null
     const cleanupWebgl = () => {
       cancelAnimationFrame(rafRef.current)
       resizeObserverRef.current?.disconnect()
       resizeObserverRef.current = null
-      window.removeEventListener('pointermove', handlePointerMove)
-      if (gl?.canvas?.parentElement === ctn)
+      if (gl && gl.canvas.parentElement === ctn)
         ctn.removeChild(gl.canvas)
       meshRef.current = null
       programRef.current = null
@@ -452,6 +482,9 @@ export default function FaultyTerminal({
         currentBackgroundRef.current[2],
         1,
       )
+
+      // Apply style directly to canvas to eliminate the CSS file
+      gl.canvas.style.cssText = 'display: block; width: 100%; height: 100%;'
 
       const geometry = new Triangle(gl)
 
@@ -498,20 +531,22 @@ export default function FaultyTerminal({
       return
     }
 
-    function applySize(width, height) {
-      if (!renderer || !width || !height)
+    function applySize(width: number, height: number) {
+      if (!renderer || !width || !height || !gl)
         return
       renderer.setSize(width, height)
       appliedSizeRef.current = { width, height }
-      program.uniforms.iResolution.value = new Color(
-        gl.canvas.width,
-        gl.canvas.height,
-        gl.canvas.width / gl.canvas.height,
-      )
-      program.uniforms.uCanvasWorld.value = new Float32Array([
-        width / REFERENCE_CANVAS_HEIGHT,
-        height / REFERENCE_CANVAS_HEIGHT,
-      ])
+      if (program) {
+        program.uniforms.iResolution.value = new Color(
+          gl.canvas.width,
+          gl.canvas.height,
+          gl.canvas.width / gl.canvas.height,
+        )
+        program.uniforms.uCanvasWorld.value = new Float32Array([
+          width / REFERENCE_CANVAS_HEIGHT,
+          height / REFERENCE_CANVAS_HEIGHT,
+        ])
+      }
     }
 
     function renderCurrentFrame() {
@@ -550,7 +585,7 @@ export default function FaultyTerminal({
     })
     resizeObserverRef.current.observe(ctn)
 
-    const update = (t) => {
+    const update = (t: number) => {
       rafRef.current = requestAnimationFrame(update)
 
       const currentProgram = programRef.current
@@ -615,12 +650,18 @@ export default function FaultyTerminal({
       currentRenderer.render({ scene: currentMesh })
     }
     rafRef.current = requestAnimationFrame(update)
-    ctn.appendChild(gl.canvas)
+    if (gl) {
+      ctn.appendChild(gl.canvas)
+    }
 
-    window.addEventListener('pointermove', handlePointerMove, { passive: true })
+    const onPointerMove = (e: PointerEvent) => handlePointerMoveRef.current(e)
+    window.addEventListener('pointermove', onPointerMove, { passive: true })
 
-    return cleanupWebgl
-  }, [dpr, handlePointerMove])
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove)
+      cleanupWebgl()
+    }
+  }, [dpr])
 
   useEffect(() => {
     const program = programRef.current
@@ -662,5 +703,13 @@ export default function FaultyTerminal({
     tintVec,
   ])
 
-  return <div ref={containerRef} className={`faulty-terminal-container ${className}`} style={mergedStyle} {...rest} />
+  return (
+    <div
+      ref={containerRef}
+      data-theme-version={resolvedThemeVersion}
+      className={`w-full h-full relative overflow-hidden ${className ?? ''}`}
+      style={mergedStyle}
+      {...rest}
+    />
+  )
 }

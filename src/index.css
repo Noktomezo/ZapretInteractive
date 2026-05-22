@@ -190,77 +190,6 @@ textarea,
   --terminal-background-tint: #151313;
 }
 
-[data-theme="light"][data-webview-material="acrylic"] {
-  --background: oklch(0.97 0.02 85);
-  --card: oklch(0.99 0.01 90 / 0.84);
-  --popover: oklch(0.99 0.01 90 / 0.9);
-  --secondary: oklch(0.92 0.02 80 / 0.78);
-  --muted: oklch(0.9 0.015 75 / 0.74);
-  --sidebar: oklch(0.95 0.02 80 / 0.38);
-  --sidebar-border: oklch(0.85 0.02 70 / 0.42);
-  --sidebar-accent: color-mix(in oklab, var(--sidebar-primary) 32%, var(--sidebar) 68%);
-  --terminal-background-tint: #efe8d8;
-}
-
-[data-theme="light"][data-webview-material="mica"] {
-  --background: oklch(0.97 0.02 85);
-  --card: oklch(0.99 0.01 90 / 0.86);
-  --popover: oklch(0.99 0.01 90 / 0.92);
-  --secondary: oklch(0.92 0.02 80 / 0.82);
-  --muted: oklch(0.9 0.015 75 / 0.78);
-  --sidebar: oklch(0.95 0.02 80 / 0.5);
-  --sidebar-border: oklch(0.85 0.02 70 / 0.5);
-  --sidebar-accent: color-mix(in oklab, var(--sidebar-primary) 32%, var(--sidebar) 68%);
-  --terminal-background-tint: #efe8d8;
-}
-
-[data-theme="light"][data-webview-material="tabbed"] {
-  --background: oklch(0.97 0.02 85);
-  --card: oklch(0.99 0.01 90 / 0.82);
-  --popover: oklch(0.99 0.01 90 / 0.88);
-  --secondary: oklch(0.92 0.02 80 / 0.74);
-  --muted: oklch(0.9 0.015 75 / 0.7);
-  --sidebar: oklch(0.95 0.02 80 / 0.32);
-  --sidebar-border: oklch(0.85 0.02 70 / 0.36);
-  --sidebar-accent: color-mix(in oklab, var(--sidebar-primary) 32%, var(--sidebar) 68%);
-  --terminal-background-tint: #efe8d8;
-}
-
-[data-theme="dark"][data-webview-material="acrylic"] {
-  --background: oklch(0.16 0.01 30);
-  --card: oklch(0.19 0.01 40 / 0.82);
-  --popover: oklch(0.24 0.01 40 / 0.9);
-  --secondary: oklch(0.29 0.01 40 / 0.78);
-  --muted: oklch(0.33 0.01 40 / 0.74);
-  --sidebar: oklch(0.16 0.01 30 / 0.44);
-  --sidebar-border: oklch(0.31 0.01 35 / 0.42);
-  --sidebar-accent: color-mix(in oklab, var(--sidebar-primary) 34%, var(--sidebar) 66%);
-  --terminal-background-tint: #171413;
-}
-
-[data-theme="dark"][data-webview-material="mica"] {
-  --background: oklch(0.16 0.01 30);
-  --card: oklch(0.19 0.01 40 / 0.86);
-  --popover: oklch(0.24 0.01 40 / 0.92);
-  --secondary: oklch(0.29 0.01 40 / 0.82);
-  --muted: oklch(0.33 0.01 40 / 0.78);
-  --sidebar: oklch(0.16 0.01 30 / 0.56);
-  --sidebar-border: oklch(0.31 0.01 35 / 0.5);
-  --sidebar-accent: color-mix(in oklab, var(--sidebar-primary) 34%, var(--sidebar) 66%);
-  --terminal-background-tint: #171413;
-}
-
-[data-theme="dark"][data-webview-material="tabbed"] {
-  --background: oklch(0.16 0.01 30);
-  --card: oklch(0.19 0.01 40 / 0.78);
-  --popover: oklch(0.24 0.01 40 / 0.88);
-  --secondary: oklch(0.29 0.01 40 / 0.74);
-  --muted: oklch(0.33 0.01 40 / 0.7);
-  --sidebar: oklch(0.16 0.01 30 / 0.36);
-  --sidebar-border: oklch(0.31 0.01 35 / 0.36);
-  --sidebar-accent: color-mix(in oklab, var(--sidebar-primary) 34%, var(--sidebar) 66%);
-  --terminal-background-tint: #171413;
-}
 
 @layer base {
   * {
@@ -271,10 +200,13 @@ textarea,
   body,
   #root {
     height: 100%;
+    background-color: var(--background);
   }
 
   body {
-    @apply bg-transparent font-sans text-foreground antialiased;
+    @apply font-sans text-foreground antialiased;
+
+    background-color: var(--background);
     letter-spacing: -0.011em;
     text-rendering: optimizeLegibility;
   }
@@ -312,12 +244,12 @@ textarea,
     background-color: var(--background);
   }
 
-  .app-glass-surface {
+  .app-sidebar-surface {
     position: relative;
     isolation: isolate;
-    background-color: color-mix(in oklab, var(--background) 88%, transparent);
-    -webkit-backdrop-filter: blur(24px);
-    backdrop-filter: blur(24px);
+    background-color: var(--sidebar) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
   }
 
   .app-opaque-surface {
@@ -338,17 +270,10 @@ textarea,
     @apply border-b border-border/70 bg-background/52 backdrop-blur-xl;
   }
 
-  [data-webview-material="acrylic"] .app-toast,
-  [data-webview-material="mica"] .app-toast,
-  [data-webview-material="tabbed"] .app-toast {
+  .app-toast {
     background-color: color-mix(in oklab, var(--popover) 82%, transparent);
     -webkit-backdrop-filter: blur(20px);
     backdrop-filter: blur(20px);
-  }
-
-  [data-webview-material="none"] .app-toast {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
   }
 
   .connect-liquid-glass {

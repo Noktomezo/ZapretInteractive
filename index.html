@@ -4,7 +4,31 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri + React + Typescript</title>
+    <title>Zapret Interactive</title>
+    <script>
+      (function() {
+        try {
+          var stored = localStorage.getItem('theme') || 'system';
+          var resolved = stored;
+          if (stored === 'system') {
+            resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          document.documentElement.classList.remove('light', 'dark');
+          document.documentElement.classList.add(resolved);
+        } catch (e) {}
+      })();
+    </script>
+    <style>
+      :root {
+        --background: oklch(0.97 0.02 85);
+      }
+      html.dark {
+        --background: oklch(0.16 0.01 30);
+      }
+      html, body {
+        background-color: var(--background);
+      }
+    </style>
   </head>
 
   <body>
