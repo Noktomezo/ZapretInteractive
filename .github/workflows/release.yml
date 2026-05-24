@@ -103,6 +103,9 @@ jobs:
       - name: Prepare Windows Artifacts
         shell: bash
         run: |
+          echo "=== Diagnostic: Listing all generated bundle files ==="
+          find src-tauri/target/release/bundle -type f || ls -R src-tauri/target/release/bundle || echo "Diagnostic list failed"
+
           mkdir -p dist-windows
           cp src-tauri/target/release/bundle/nsis/*.exe dist-windows/Zapret-Interactive-Setup-Win-x64.exe
           cp src-tauri/target/release/bundle/updater/*.zip dist-windows/Zapret-Interactive-Setup-Win-x64.nsis.zip
