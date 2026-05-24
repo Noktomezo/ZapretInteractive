@@ -1169,6 +1169,9 @@ async fn ensure_managed_files_internal(
 
     #[cfg(not(windows))]
     {
+        use std::os::unix::fs::PermissionsExt;
+
+        // 1. Ensure nfqws is extracted and has executable permissions
         let dest = get_managed_resources_dir().join("nfqws");
         if !dest.exists() {
             let arch = get_linux_arch_dir();
@@ -1179,9 +1182,21 @@ async fn ensure_managed_files_internal(
             if source.exists() {
                 std::fs::copy(&source, &dest)
                     .map_err(|e| format!("Failed to copy bundled nfqws binary: {e}"))?;
-                use std::os::unix::fs::PermissionsExt;
                 std::fs::set_permissions(&dest, std::fs::Permissions::from_mode(0o755))
                     .map_err(|e| format!("Failed to set permissions on nfqws binary: {e}"))?;
+            }
+        } else {
+            let _ = std::fs::set_permissions(&dest, std::fs::Permissions::from_mode(0o755));
+        }
+
+        // 2. Ensure dnscrypt-proxy and tg-ws-proxy have executable permissions
+        for module_path in [
+            get_modules_dir().join("dnscrypt-proxy/dnscrypt-proxy"),
+            get_modules_dir().join("tg-ws-proxy-rs/tg-ws-proxy"),
+        ] {
+            if module_path.exists() {
+                let _ =
+                    std::fs::set_permissions(&module_path, std::fs::Permissions::from_mode(0o755));
             }
         }
     }
