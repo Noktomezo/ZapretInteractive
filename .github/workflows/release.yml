@@ -88,7 +88,14 @@ jobs:
             cp -r resources/* ZapretInteractive/resources/
             zip -r ../../../../Zapret-Interactive-Portable-Win-x64.zip ZapretInteractive
             cd ../../../..
+
+            cp src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe Zapret-Interactive-Setup-Win-x64.exe
+
             gh release upload ${{ github.ref_name }} Zapret-Interactive-Portable-Win-x64.zip --clobber
+            gh release upload ${{ github.ref_name }} Zapret-Interactive-Setup-Win-x64.exe --clobber
+
+            ORIG_NAME=$(basename src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe)
+            gh release delete-asset ${{ github.ref_name }} "$ORIG_NAME" -y || true
           else
             cd src-tauri/target/release
             mkdir -p ZapretInteractive/resources
@@ -96,7 +103,18 @@ jobs:
             cp -r resources/* ZapretInteractive/resources/
             tar -czf ../../../Zapret-Interactive-Portable-Linux-x64.tar.gz ZapretInteractive
             cd ../../..
+
+            cp src-tauri/target/release/bundle/deb/*.deb Zapret-Interactive-Setup-Linux-x64.deb
+            cp src-tauri/target/release/bundle/appimage/*.AppImage Zapret-Interactive-Portable-Linux-x64.AppImage
+
             gh release upload ${{ github.ref_name }} Zapret-Interactive-Portable-Linux-x64.tar.gz --clobber
+            gh release upload ${{ github.ref_name }} Zapret-Interactive-Setup-Linux-x64.deb --clobber
+            gh release upload ${{ github.ref_name }} Zapret-Interactive-Portable-Linux-x64.AppImage --clobber
+
+            ORIG_DEB=$(basename src-tauri/target/release/bundle/deb/*.deb)
+            ORIG_APPIMAGE=$(basename src-tauri/target/release/bundle/appimage/*.AppImage)
+            gh release delete-asset ${{ github.ref_name }} "$ORIG_DEB" -y || true
+            gh release delete-asset ${{ github.ref_name }} "$ORIG_APPIMAGE" -y || true
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
