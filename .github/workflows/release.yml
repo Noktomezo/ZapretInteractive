@@ -52,7 +52,7 @@ jobs:
           mkdir -p dist-linux
           cp src-tauri/target/release/bundle/deb/*.deb dist-linux/Zapret-Interactive-Setup-Linux-x64.deb
           cp src-tauri/target/release/bundle/appimage/*.AppImage dist-linux/Zapret-Interactive-Portable-Linux-x64.AppImage
-          cp src-tauri/target/release/bundle/appimage/*.AppImage.sig dist-linux/Zapret-Interactive-Portable-Linux-x64.AppImage.sig
+          cp src-tauri/target/release/bundle/updater/*.AppImage.sig dist-linux/Zapret-Interactive-Portable-Linux-x64.AppImage.sig
 
           cd src-tauri/target/release
           mkdir -p ZapretInteractive/resources
@@ -105,8 +105,8 @@ jobs:
         run: |
           mkdir -p dist-windows
           cp src-tauri/target/release/bundle/nsis/*.exe dist-windows/Zapret-Interactive-Setup-Win-x64.exe
-          cp src-tauri/target/release/bundle/nsis/*.nsis.zip dist-windows/Zapret-Interactive-Setup-Win-x64.nsis.zip
-          cp src-tauri/target/release/bundle/nsis/*.nsis.zip.sig dist-windows/Zapret-Interactive-Setup-Win-x64.nsis.zip.sig
+          cp src-tauri/target/release/bundle/updater/*.zip dist-windows/Zapret-Interactive-Setup-Win-x64.nsis.zip
+          cp src-tauri/target/release/bundle/updater/*.zip.sig dist-windows/Zapret-Interactive-Setup-Win-x64.nsis.zip.sig
 
           cd src-tauri/target/release
           mkdir -p ZapretInteractive/resources
