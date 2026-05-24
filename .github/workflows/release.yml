@@ -77,3 +77,26 @@ jobs:
           uploadUpdaterJson: true
           updaterJsonPreferNsis: true
           args: ${{ matrix.args }} --verbose
+
+      - name: Create Portable Archive
+        shell: bash
+        run: |
+          if [ "${{ matrix.xwin }}" = "true" ]; then
+            cd src-tauri/target/x86_64-pc-windows-msvc/release
+            mkdir -p ZapretInteractive/resources
+            cp "Zapret Interactive.exe" ZapretInteractive/
+            cp -r resources/* ZapretInteractive/resources/
+            zip -r ../../../../Zapret-Interactive_Portable_x64.zip ZapretInteractive
+            cd ../../../..
+            gh release upload ${{ github.ref_name }} Zapret-Interactive_Portable_x64.zip --clobber
+          else
+            cd src-tauri/target/release
+            mkdir -p ZapretInteractive/resources
+            cp "Zapret Interactive" ZapretInteractive/
+            cp -r resources/* ZapretInteractive/resources/
+            tar -czf ../../../Zapret-Interactive_Portable_Linux.tar.gz ZapretInteractive
+            cd ../../..
+            gh release upload ${{ github.ref_name }} Zapret-Interactive_Portable_Linux.tar.gz --clobber
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
