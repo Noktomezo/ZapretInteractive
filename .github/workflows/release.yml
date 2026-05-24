@@ -6,21 +6,8 @@ on:
       - 'v*'
 
 jobs:
-  publish:
-    permissions:
-      contents: write
+  build-linux:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: linux
-            args: ''
-            xwin: false
-          - name: windows
-            args: --runner cargo-xwin --target x86_64-pc-windows-msvc
-            xwin: true
-
     steps:
       - uses: actions/checkout@v6
 
@@ -31,33 +18,16 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.xwin && 'x86_64-pc-windows-msvc' || '' }}
 
       - name: Rust Cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
 
-      - name: Install system dependencies
+      - name: Install system dependencies (Linux)
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev build-essential curl wget file libssl-dev libayatana-appindicator3-dev librsvg2-dev nsis
-
-      - name: Install cargo-xwin & LLVM
-        if: matrix.xwin
-        run: |
-          sudo apt-get install -y clang lld
-          pip install cargo-xwin
-
-      - name: Cache xwin MSVC SDK
-        if: matrix.xwin
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/xwin
-          key: ${{ runner.os }}-xwin-${{ hashFiles('src-tauri/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-xwin-
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev build-essential curl wget file libssl-dev libayatana-appindicator3-dev librsvg2-dev
 
       - name: Install dependencies
         run: bun install
@@ -71,61 +41,153 @@ jobs:
       - name: Generate icons
         run: just gen-icons
 
-      - name: Build and Publish
-        uses: tauri-apps/tauri-action@v0
+      - name: Build Linux app
+        run: bun tauri build --verbose
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          XWIN_ARCH: x86_64
-          XWIN_HTTP_RETRIES: '10'
-        with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Zapret Interactive ${{ github.ref_name }}'
-          releaseBody: GUI-обёртка для zapret-win-bundle от bol-van. Смотри ассеты ниже.
-          releaseDraft: true
-          prerelease: false
-          uploadUpdaterJson: true
-          updaterJsonPreferNsis: true
-          args: ${{ matrix.args }} --verbose
 
-      - name: Create Portable Archive
+      - name: Prepare Linux Artifacts
+        run: |
+          mkdir -p dist-linux
+          cp src-tauri/target/release/bundle/deb/*.deb dist-linux/Zapret-Interactive-Setup-Linux-x64.deb
+          cp src-tauri/target/release/bundle/appimage/*.AppImage dist-linux/Zapret-Interactive-Portable-Linux-x64.AppImage
+          cp src-tauri/target/release/bundle/appimage/*.AppImage.sig dist-linux/Zapret-Interactive-Portable-Linux-x64.AppImage.sig
+
+          cd src-tauri/target/release
+          mkdir -p ZapretInteractive/resources
+          cp "Zapret Interactive" ZapretInteractive/
+          cp -r resources/* ZapretInteractive/resources/
+          tar -czf ../../../dist-linux/Zapret-Interactive-Portable-Linux-x64.tar.gz ZapretInteractive
+
+      - name: Upload Linux Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-artifacts
+          path: dist-linux/
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Install Just
+        uses: taiki-e/install-action@just
+
+      - name: Generate icons
+        run: just gen-icons
+
+      - name: Build Windows app
+        run: bun tauri build --verbose
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Prepare Windows Artifacts
         shell: bash
         run: |
-          if [ "${{ matrix.xwin }}" = "true" ]; then
-            cd src-tauri/target/x86_64-pc-windows-msvc/release
-            mkdir -p ZapretInteractive/resources
-            cp "Zapret Interactive.exe" ZapretInteractive/
-            cp -r resources/* ZapretInteractive/resources/
-            zip -r ../../../../Zapret-Interactive-Portable-Win-x64.zip ZapretInteractive
-            cd ../../../..
+          mkdir -p dist-windows
+          cp src-tauri/target/release/bundle/nsis/*.exe dist-windows/Zapret-Interactive-Setup-Win-x64.exe
+          cp src-tauri/target/release/bundle/nsis/*.nsis.zip dist-windows/Zapret-Interactive-Setup-Win-x64.nsis.zip
+          cp src-tauri/target/release/bundle/nsis/*.nsis.zip.sig dist-windows/Zapret-Interactive-Setup-Win-x64.nsis.zip.sig
 
-            cp src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe Zapret-Interactive-Setup-Win-x64.exe
+          cd src-tauri/target/release
+          mkdir -p ZapretInteractive/resources
+          cp "Zapret Interactive.exe" ZapretInteractive/
+          cp -r resources/* ZapretInteractive/resources/
+          7z a ../../../dist-windows/Zapret-Interactive-Portable-Win-x64.zip ZapretInteractive
 
-            gh release upload ${{ github.ref_name }} Zapret-Interactive-Portable-Win-x64.zip --clobber
-            gh release upload ${{ github.ref_name }} Zapret-Interactive-Setup-Win-x64.exe --clobber
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: dist-windows/
 
-            ORIG_NAME=$(basename src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe)
-            gh release delete-asset ${{ github.ref_name }} "$ORIG_NAME" -y || true
-          else
-            cd src-tauri/target/release
-            mkdir -p ZapretInteractive/resources
-            cp "Zapret Interactive" ZapretInteractive/
-            cp -r resources/* ZapretInteractive/resources/
-            tar -czf ../../../Zapret-Interactive-Portable-Linux-x64.tar.gz ZapretInteractive
-            cd ../../..
+  publish-release:
+    runs-on: ubuntu-latest
+    needs: [build-linux, build-windows]
+    permissions:
+      contents: write
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
 
-            cp src-tauri/target/release/bundle/deb/*.deb Zapret-Interactive-Setup-Linux-x64.deb
-            cp src-tauri/target/release/bundle/appimage/*.AppImage Zapret-Interactive-Portable-Linux-x64.AppImage
+      - name: Generate Unified latest.json
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          node -e "
+          const fs = require('fs');
+          const linuxSigPath = 'Zapret-Interactive-Portable-Linux-x64.AppImage.sig';
+          const winSigPath = 'Zapret-Interactive-Setup-Win-x64.nsis.zip.sig';
 
-            gh release upload ${{ github.ref_name }} Zapret-Interactive-Portable-Linux-x64.tar.gz --clobber
-            gh release upload ${{ github.ref_name }} Zapret-Interactive-Setup-Linux-x64.deb --clobber
-            gh release upload ${{ github.ref_name }} Zapret-Interactive-Portable-Linux-x64.AppImage --clobber
+          if (!fs.existsSync(linuxSigPath)) {
+            console.error('Error: Linux AppImage signature file not found!');
+            process.exit(1);
+          }
+          if (!fs.existsSync(winSigPath)) {
+            console.error('Error: Windows NSIS zip signature file not found!');
+            process.exit(1);
+          }
 
-            ORIG_DEB=$(basename src-tauri/target/release/bundle/deb/*.deb)
-            ORIG_APPIMAGE=$(basename src-tauri/target/release/bundle/appimage/*.AppImage)
-            gh release delete-asset ${{ github.ref_name }} "$ORIG_DEB" -y || true
-            gh release delete-asset ${{ github.ref_name }} "$ORIG_APPIMAGE" -y || true
-          fi
+          const linuxSig = fs.readFileSync(linuxSigPath, 'utf-8').trim();
+          const winSig = fs.readFileSync(winSigPath, 'utf-8').trim();
+          const tagName = process.env.TAG_NAME;
+
+          const latest = {
+            version: tagName.replace(/^v/, ''),
+            notes: 'GUI-обёртка для zapret-win-bundle от bol-van. Смотри ассеты ниже.',
+            pub_date: new Date().toISOString(),
+            platforms: {
+              'linux-x86_64': {
+                signature: linuxSig,
+                url: \`https://github.com/Noktomezo/ZapretInteractive/releases/download/\${tagName}/Zapret-Interactive-Portable-Linux-x64.AppImage\`
+              },
+              'linux-x86_64-appimage': {
+                signature: linuxSig,
+                url: \`https://github.com/Noktomezo/ZapretInteractive/releases/download/\${tagName}/Zapret-Interactive-Portable-Linux-x64.AppImage\`
+              },
+              'linux-x86_64-deb': {
+                signature: linuxSig,
+                url: \`https://github.com/Noktomezo/ZapretInteractive/releases/download/\${tagName}/Zapret-Interactive-Setup-Linux-x64.deb\`
+              },
+              'windows-x86_64': {
+                signature: winSig,
+                url: \`https://github.com/Noktomezo/ZapretInteractive/releases/download/\${tagName}/Zapret-Interactive-Setup-Win-x64.nsis.zip\`
+              },
+              'windows-x86_64-nsis': {
+                signature: winSig,
+                url: \`https://github.com/Noktomezo/ZapretInteractive/releases/download/\${tagName}/Zapret-Interactive-Setup-Win-x64.nsis.zip\`
+              }
+            }
+          };
+
+          fs.writeFileSync('latest.json', JSON.stringify(latest, null, 2));
+          console.log('Successfully generated unified latest.json:', JSON.stringify(latest, null, 2));
+          "
+
+      - name: Publish Draft Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ github.ref_name }} --draft --title "Zapret Interactive ${{ github.ref_name }}" --notes "GUI-обёртка для zapret-win-bundle от bol-van. Смотри ассеты ниже." || true
+          gh release upload ${{ github.ref_name }} Zapret-Interactive-* latest.json --clobber
