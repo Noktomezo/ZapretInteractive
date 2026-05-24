@@ -86,17 +86,17 @@ jobs:
             mkdir -p ZapretInteractive/resources
             cp "Zapret Interactive.exe" ZapretInteractive/
             cp -r resources/* ZapretInteractive/resources/
-            zip -r ../../../../Zapret-Interactive_Portable_x64.zip ZapretInteractive
+            zip -r ../../../../Zapret-Interactive-Portable-x64.zip ZapretInteractive
             cd ../../../..
-            gh release upload ${{ github.ref_name }} Zapret-Interactive_Portable_x64.zip --clobber
+            gh release upload ${{ github.ref_name }} Zapret-Interactive-Portable-x64.zip --clobber
           else
             cd src-tauri/target/release
             mkdir -p ZapretInteractive/resources
             cp "Zapret Interactive" ZapretInteractive/
             cp -r resources/* ZapretInteractive/resources/
-            tar -czf ../../../Zapret-Interactive_Portable_Linux.tar.gz ZapretInteractive
+            tar -czf ../../../Zapret-Interactive-Portable-Linux.tar.gz ZapretInteractive
             cd ../../..
-            gh release upload ${{ github.ref_name }} Zapret-Interactive_Portable_Linux.tar.gz --clobber
+            gh release upload ${{ github.ref_name }} Zapret-Interactive-Portable-Linux.tar.gz --clobber
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
