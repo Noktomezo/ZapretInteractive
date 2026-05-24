@@ -1,3 +1,4 @@
+#[cfg(windows)]
 use crate::commands::process::kill_windivert_service;
 use crate::config::{
     AppConfig, AppState, current_config, ensure_config_exists_and_loaded,
@@ -20,6 +21,7 @@ use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
+#[cfg(windows)]
 use tokio::time::sleep;
 
 #[derive(Clone, serde::Serialize)]

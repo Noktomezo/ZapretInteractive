@@ -1,12 +1,17 @@
 use super::config::{get_managed_resources_dir, get_runtime_data_dir};
 use duct::{Expression, Handle, cmd};
 use serde::Serialize;
+#[cfg(windows)]
 use std::collections::HashSet;
+#[cfg(windows)]
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
 use sysinfo::{Pid, ProcessesToUpdate, System};
+
+#[cfg(not(windows))]
+use super::process::{is_process_running_by_pid, terminate_process_by_pid};
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;

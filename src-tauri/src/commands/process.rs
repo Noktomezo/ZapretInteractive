@@ -343,7 +343,7 @@ fn find_expected_winws_pid() -> Option<u32> {
 }
 
 #[cfg(not(windows))]
-fn is_process_running_by_pid(pid: u32) -> bool {
+pub(crate) fn is_process_running_by_pid(pid: u32) -> bool {
     std::process::Command::new("kill")
         .args(["-0", &pid.to_string()])
         .status()
@@ -390,7 +390,7 @@ fn find_process_pid_by_name(process_name: &str) -> Option<u32> {
 }
 
 #[cfg(not(windows))]
-fn terminate_process_by_pid(pid: u32) -> Result<(), String> {
+pub(crate) fn terminate_process_by_pid(pid: u32) -> Result<(), String> {
     let _ = std::process::Command::new("kill")
         .args(["-15", &pid.to_string()])
         .output();
@@ -538,6 +538,8 @@ fn apply_iptables_rules(
             "1:12",
         ];
 
+        let desync_mark_arg = format!("{desync_mark}/{desync_mark}");
+
         if wan_list.is_empty() {
             let mut ipt_args = vec![
                 "-t",
@@ -554,7 +556,7 @@ fn apply_iptables_rules(
                 "mark",
                 "!",
                 "--mark",
-                &format!("{desync_mark}/{desync_mark}"),
+                &desync_mark_arg,
                 "-m",
                 "connbytes",
             ];
@@ -589,7 +591,7 @@ fn apply_iptables_rules(
                     "mark",
                     "!",
                     "--mark",
-                    &format!("{desync_mark}/{desync_mark}"),
+                    &desync_mark_arg,
                     "-m",
                     "connbytes",
                 ];
@@ -707,7 +709,7 @@ fn apply_nftables_rules(
 #[cfg(not(windows))]
 fn cleanup_linux_firewall(
     firewall_type: &str,
-    wan_interfaces: &str,
+    _wan_interfaces: &str,
     _lan_interfaces: &str,
 ) -> Result<(), String> {
     let fw = firewall_type.to_lowercase();
