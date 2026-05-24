@@ -50,6 +50,15 @@ jobs:
           sudo apt-get install -y clang lld
           pip install cargo-xwin
 
+      - name: Cache xwin MSVC SDK
+        if: matrix.xwin
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/xwin
+          key: ${{ runner.os }}-xwin-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-xwin-
+
       - name: Install dependencies
         run: bun install
 
