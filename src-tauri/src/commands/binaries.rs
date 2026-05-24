@@ -1167,6 +1167,25 @@ async fn ensure_managed_files_internal(
 ) -> Result<EnsureManagedFilesResult, String> {
     ensure_base_directories()?;
 
+    #[cfg(not(windows))]
+    {
+        let dest = get_managed_resources_dir().join("nfqws");
+        if !dest.exists() {
+            let arch = get_linux_arch_dir();
+            let source = get_managed_resources_dir()
+                .join("bins")
+                .join(arch)
+                .join("nfqws");
+            if source.exists() {
+                std::fs::copy(&source, &dest)
+                    .map_err(|e| format!("Failed to copy bundled nfqws binary: {e}"))?;
+                use std::os::unix::fs::PermissionsExt;
+                std::fs::set_permissions(&dest, std::fs::Permissions::from_mode(0o755))
+                    .map_err(|e| format!("Failed to set permissions on nfqws binary: {e}"))?;
+            }
+        }
+    }
+
     let previous_config = current_config(state)?;
     let ensured_config = ensure_config_exists_and_loaded(state)?;
     let config = ensured_config.config.clone();

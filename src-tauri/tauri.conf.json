@@ -50,6 +50,7 @@
       "../thirdparty/Monkey64.sys": "resources/Monkey64.sys",
       "../thirdparty/winws.exe": "resources/winws.exe",
       "../thirdparty/cygwin1.dll": "resources/cygwin1.dll",
+      "../thirdparty/bins/": "resources/bins/",
       "../thirdparty/hashes.json": "resources/hashes.json",
       "../thirdparty/modules/": "resources/modules/",
       "../thirdparty/fake/": "resources/fake/",
