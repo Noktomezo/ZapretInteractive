@@ -52,7 +52,7 @@ jobs:
           mkdir -p dist-linux
           cp src-tauri/target/release/bundle/deb/*.deb dist-linux/Zapret-Interactive-Setup-Linux-x64.deb
           cp src-tauri/target/release/bundle/appimage/*.AppImage dist-linux/Zapret-Interactive-Portable-Linux-x64.AppImage
-          cp src-tauri/target/release/bundle/updater/*.AppImage.sig dist-linux/Zapret-Interactive-Portable-Linux-x64.AppImage.sig
+          cp src-tauri/target/release/bundle/appimage/*.AppImage.sig dist-linux/Zapret-Interactive-Portable-Linux-x64.AppImage.sig
 
           cd src-tauri/target/release
           mkdir -p ZapretInteractive/resources
