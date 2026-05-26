@@ -188,6 +188,10 @@ pub async fn sync_discord_presence(
 
     let next_key = format!("{activity_type:?}\u{0}{details}\u{0}{state}");
 
+    if presence_state.last_key.as_ref() == Some(&next_key) {
+        return Ok(true);
+    }
+
     if presence_state.client.is_none()
         && let Err(error) = reconnect_client(&mut presence_state).await
     {
