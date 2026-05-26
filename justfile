@@ -13,7 +13,7 @@ dev:
   bun run tauri dev
 
 # Install developer hooks
-bootstrap:
+boot:
   bun install
   cargo check --manifest-path "src-tauri/Cargo.toml"
 
@@ -46,5 +46,6 @@ format-front:
 # Format both backend and frontend
 format: format-back format-front
 
+# Cache and generated files clean-up
 clean:
   bunx poof dist src-tauri/target
