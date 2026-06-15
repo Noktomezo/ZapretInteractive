@@ -78,20 +78,19 @@ A healthy duplication threshold for this codebase is under 10.0%. Attempting to 
 `codegraph` parses the entire codebase (both Rust & TypeScript) to build a semantic graph of functions, components, types, and files. This allows instantly finding usages, definitions, and dependencies across language boundaries without flooding the context window with raw text.
 
 ### Usage & Commands
-Always bypass the unsafe Node version guard since the codebase uses modern runtimes:
 
 ```bash
 # 1. Re-index codebase (run after modifying code/files)
-$env:CODEGRAPH_ALLOW_UNSAFE_NODE=1; bunx @colbymchenry/codegraph@0.8.0 index
+bunx --bun @colbymchenry/codegraph@0.8.0 index
 
 # 2. Query specific symbol (find where functions, types, components are defined/used)
-$env:CODEGRAPH_ALLOW_UNSAFE_NODE=1; bunx @colbymchenry/codegraph@0.8.0 query <symbol_name>
+bunx --bun @colbymchenry/codegraph@0.8.0 query <symbol_name>
 
 # 3. Generate structured Markdown context for specific task or feature
-$env:CODEGRAPH_ALLOW_UNSAFE_NODE=1; bunx @colbymchenry/codegraph@0.8.0 context "<feature or task description>"
+bunx --bun @colbymchenry/codegraph@0.8.0 context "<feature or task description>"
 
 # 4. View indexing stats and verify graph health
-$env:CODEGRAPH_ALLOW_UNSAFE_NODE=1; bunx @colbymchenry/codegraph@0.8.0 status
+bunx --bun @colbymchenry/codegraph@0.8.0 status
 ```
 
 ### Workflow Rules for AI Agents:
