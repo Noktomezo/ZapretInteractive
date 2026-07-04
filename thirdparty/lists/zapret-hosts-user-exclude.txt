@@ -1,32 +1,56 @@
 ru
+by
 рф
 su
 xn--p1ai
+xn--p1acf
+xn--80aswg
+xn--d1acj3b
+xn--80adxhks
 xn--80asehdb
 #################################### Разное
 hf.co
+box.ca
+2ip.io
+msi.com
 qwen.ai
 iiko.it
 okko.tv
+ktalk.ru
 avito.st
 habr.com
 nexon.com
+tenor.com
 boosty.to
 ottai.com
 ufanet.tv
+apple.com
+whatbox.ca
 trovo.live
 beeline.tv
 ubuntu.com
 xsolla.com
 ip-api.com
+yandex.com
 gstatic.com
 lichess.org
 premier.one
+teclast.com
+gravatar.com
+battleye.com
+opencity.pro
 ipstream.one
 godville.net
 voidboost.cc
+hcaptcha.com
+canonical.com
+mediafire.com
+vivoglobal.com
+feralhosting.com
 moondroplab.tech
 rockstargames.com
+docs.altlinux.org
+battleye.b-cdn.net
 supporter-files.nexus-cdn.com
 #################################### VK
 vk.cc
@@ -168,7 +192,6 @@ twitch.a2z.com
 twitch-shadow.net
 twitchcdn-shadow.net
 #################################### Valorant
-qq.com
 pvp.net
 vivox.com
 sd-rtn.com
@@ -222,6 +245,7 @@ xiaomi.cn
 mipay.com
 youpin.cn
 zmifi.com
+70mai.com
 mi-idc.com
 mi-img.com
 mijia.tech
@@ -295,21 +319,34 @@ huaweicloud-dns.cn
 huaweicloud-dns.com
 huaweicloud-dns.org
 #################################### Delta Force
+gtimg.com
 volces.com
 wetest.net
+tencent.com
+vasdgame.co
+onezapp.com
 intlgame.com
+vasdgame.com
+gcloudcs.com
 fleetlogd.com
 dgameglobal.com
 tdatamaster.com
+tencent-cloud.com
+singaporepaya.com
 playdeltaforce.com
 quovadisglobal.com
 jupiterlauncher.com
 anticheatexpert.com
 #################################### Microsoft
+sfx.ms
+msn.com
+1drv.ms
 live.com
 lync.com
+live.net
 skype.com
 microsoft
+fabric.io
 msauth.net
 office.net
 office.com
@@ -318,11 +355,12 @@ mojang.com
 windows.net
 msftauth.net
 xboxlive.com
+onedrive.com
 microsoft.com
 office365.com
-azureedge.net
 skypeassets.com
 windowsupdate.com
+microsoft-tst.com
 microsoftonline.com
 microsoftonline-p.com
 minecraftservices.com
@@ -365,16 +403,17 @@ tclhome.com
 tclclouds.com
 #################################### Call Of Duty
 azure.com
+azureedge.net
 demonware.net
 callofduty.com
 activision.com
 cloudfront.net
 #################################### Amazon
-amazon.dev
-amazon.com
-amazonaws.com
-amazontrust.com
-media-amazon.com
+#amazon.dev
+#amazon.com
+#amazonaws.com
+#amazontrust.com
+#media-amazon.com
 #################################### Akamai
 akamai.net
 akamaihd.net
@@ -400,6 +439,7 @@ cursorapi.com
 todesktop.com
 cursor-cdn.com
 #################################### Warface
+qq.com
 qcloud.com
 #################################### EA Games
 ea.com
@@ -433,4 +473,24 @@ playbattlegrounds.com
 #################################### Tumblr
 tmblr.com
 tumblr.com
-####################################
+#################################### Postman
+postman.com
+getpostman.com
+postmanapp.com
+#################################### Radmin
+radmin.com
+famatech.com
+radmin-vpn.com
+#################################### DNS
+quad9.net
+joindns4.eu
+controld.com
+dns.comss.one
+dns.adguard-dns.com
+#################################### Black Desert Online
+wellbia.com
+bdocodex.com
+pearl-bdo.com
+pearlabyss.com
+playblackdesert.com
+#################################### 
