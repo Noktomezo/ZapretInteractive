@@ -77,7 +77,7 @@ UPSTREAMS = [
         THIRDPARTY_DIR / "lists" / "zapret-hosts-user-exclude.txt",
     ),
     (
-        "https://raw.githubusercontent.com/Noktomezo/RussiaFancyLists/refs/heads/main/lists/plain/ipsets/full-and-cdn.lst",
+        "https://raw.githubusercontent.com/Noktomezo/RussiaFancyLists/refs/heads/main/lists/blacklist/ipsets/full-and-cdn.lst",
         THIRDPARTY_DIR / "lists" / "zapret-ip-user.txt",
     ),
     (
