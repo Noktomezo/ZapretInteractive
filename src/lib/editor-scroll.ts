@@ -1,6 +1,6 @@
 import type * as React from 'react'
 
-interface LenisLike {
+export interface LenisLike {
   scrollTo: (target: number, options?: { duration?: number, easing?: (value: number) => number }) => void
 }
 
