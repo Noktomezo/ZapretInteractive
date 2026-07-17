@@ -16,9 +16,11 @@ msi.com
 qwen.ai
 iiko.it
 okko.tv
+ripe.net
 ktalk.ru
 avito.st
 habr.com
+vibio.tv
 nexon.com
 tenor.com
 boosty.to
@@ -36,6 +38,8 @@ gstatic.com
 lichess.org
 premier.one
 teclast.com
+wws-gs2.com
+dropbox.com
 gravatar.com
 battleye.com
 opencity.pro
@@ -51,6 +55,7 @@ moondroplab.tech
 rockstargames.com
 docs.altlinux.org
 battleye.b-cdn.net
+download.nvidia.com
 supporter-files.nexus-cdn.com
 #################################### VK
 vk.cc
@@ -63,6 +68,7 @@ vk.team
 vkgo.app
 skbx.pro
 youla.io
+nyphy.io
 mycdn.me
 mradx.net
 vk-cdn.me
@@ -344,6 +350,7 @@ msn.com
 live.com
 lync.com
 live.net
+xbox.com
 skype.com
 microsoft
 fabric.io
@@ -358,7 +365,9 @@ xboxlive.com
 onedrive.com
 microsoft.com
 office365.com
+sharepoint.com
 skypeassets.com
+xboxservices.com
 windowsupdate.com
 microsoft-tst.com
 microsoftonline.com
@@ -455,6 +464,14 @@ icloseli.com
 ucloudcam.com
 #################################### The Finals
 codefusion.technology
+ac-upd.codefusion.technology
+ac-trg.codefusion.technology
+ac-rep.codefusion.technology
+ac-knock.codefusion.technology
+ac-prp-ap.codefusion.technology
+ac-survey.codefusion.technology
+ac-fallback.codefusion.technology
+ac-fileshare.codefusion.technology
 #################################### Wordpress
 wp.com
 9to5mac.com
