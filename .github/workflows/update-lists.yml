@@ -27,6 +27,8 @@ jobs:
           enable-cache: true
 
       - name: Sync managed thirdparty files and hashes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: uv run scripts/update-thirdparty.py
 
       - name: Verify thirdparty hashes
