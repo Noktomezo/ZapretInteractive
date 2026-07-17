@@ -62,7 +62,7 @@ function SidebarProvider({
         data-slot="sidebar-provider"
         style={{
           '--sidebar-width': '11.4rem',
-          '--sidebar-width-icon': '3.25rem',
+          '--sidebar-width-icon': '2.5rem',
           ...style,
         } as React.CSSProperties}
         className={cn('group/sidebar-wrapper flex h-full min-h-0 w-full', className)}
@@ -98,11 +98,11 @@ function SidebarHeader({ className, ...props }: React.ComponentProps<'div'>) {
 }
 
 function SidebarContent({ className, ...props }: React.ComponentProps<'div'>) {
-  return <div data-slot="sidebar-content" className={cn('flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-2', className)} {...props} />
+  return <div data-slot="sidebar-content" className={cn('flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-[5px]', className)} {...props} />
 }
 
 function SidebarFooter({ className, ...props }: React.ComponentProps<'div'>) {
-  return <div data-slot="sidebar-footer" className={cn('mt-auto border-t border-sidebar-border/80 p-2', className)} {...props} />
+  return <div data-slot="sidebar-footer" className={cn('mt-auto border-t border-sidebar-border/80 p-[5px]', className)} {...props} />
 }
 
 function SidebarGroup({ className, ...props }: React.ComponentProps<'div'>) {
@@ -136,10 +136,10 @@ function SidebarMenuButton({
   ref?: React.Ref<HTMLButtonElement>
 }) {
   const classes = cn(
-    'flex h-9 w-full items-center overflow-hidden rounded-md border border-transparent text-left text-[13px] font-medium tracking-[-0.015em] outline-none transition-[background-color,border-color,color,transform] duration-200 ease-out',
-    'px-1.5',
+    'flex h-[30px] w-full items-center overflow-hidden rounded-md text-left text-[13px] font-medium tracking-[-0.015em] outline-none transition-[background-color,color,box-shadow,transform] duration-200 ease-out',
+    'px-[3px]',
     'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-    'data-[active=true]:border-white/8 data-[active=true]:bg-sidebar-primary data-[active=true]:text-sidebar-primary-foreground',
+    'data-[active=true]:inset-ring data-[active=true]:inset-ring-white/8 data-[active=true]:bg-sidebar-primary data-[active=true]:text-sidebar-primary-foreground',
     className,
   )
 

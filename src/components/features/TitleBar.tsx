@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { Copy, Minus, Square, X } from 'lucide-react'
@@ -92,6 +93,28 @@ function getBreadcrumbItems(pathname: string, categoryName?: string): Breadcrumb
   return []
 }
 
+function WindowControlButton({
+  label,
+  onClick,
+  children,
+}: {
+  label: string
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      className="inline-flex size-[30px] cursor-pointer items-center justify-center rounded-md bg-transparent text-foreground/82 transition-colors hover:bg-accent/70 hover:text-foreground"
+      title={label}
+    >
+      {children}
+    </button>
+  )
+}
+
 export function TitleBar() {
   const location = useLocation()
   const [isMaximized, setIsMaximized] = useState(false)
@@ -156,11 +179,11 @@ export function TitleBar() {
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-50 flex h-[var(--titlebar-height)] cursor-grab items-center px-2.5 select-none active:cursor-grabbing bg-background"
+      className="fixed top-0 left-0 right-0 z-50 flex h-[var(--titlebar-height)] cursor-grab items-center px-[5px] select-none active:cursor-grabbing bg-background"
       data-tauri-drag-region
       data-no-select="true"
     >
-      <SidebarTrigger className="ml-[3px] mr-1 size-[30px]" />
+      <SidebarTrigger className="mr-1 size-[30px]" />
       <div
         className="pointer-events-none absolute inset-0 flex items-center justify-center px-16"
         data-tauri-drag-region
@@ -197,36 +220,18 @@ export function TitleBar() {
         )}
       </div>
       <div className="flex-1" data-tauri-drag-region />
-      <div className="-mr-2.5 flex h-full items-stretch">
-        <button
-          type="button"
-          aria-label={WINDOW_CONTROL_LABELS.minimize}
-          onClick={handleMinimize}
-          className="flex h-full w-[46px] cursor-pointer items-center justify-center text-foreground/78 transition-colors hover:bg-accent/70 hover:text-foreground"
-          title={WINDOW_CONTROL_LABELS.minimize}
-        >
+      <div className="flex items-center gap-1" data-tauri-drag-region>
+        <WindowControlButton label={WINDOW_CONTROL_LABELS.minimize} onClick={handleMinimize}>
           <Minus aria-hidden="true" className="size-3.5" strokeWidth={2} />
-        </button>
-        <button
-          type="button"
-          aria-label={maximizeLabel}
-          onClick={handleToggleMaximize}
-          className="flex h-full w-[46px] cursor-pointer items-center justify-center text-foreground/78 transition-colors hover:bg-accent/70 hover:text-foreground"
-          title={maximizeLabel}
-        >
+        </WindowControlButton>
+        <WindowControlButton label={maximizeLabel} onClick={handleToggleMaximize}>
           {isMaximized
             ? <Copy aria-hidden="true" className="size-3.5" strokeWidth={2} />
             : <Square aria-hidden="true" className="size-3.5" strokeWidth={2} />}
-        </button>
-        <button
-          type="button"
-          aria-label={WINDOW_CONTROL_LABELS.close}
-          onClick={handleClose}
-          className="flex h-full w-[46px] cursor-pointer items-center justify-center text-foreground/78 transition-colors hover:bg-destructive/88 hover:text-destructive-foreground dark:hover:bg-destructive/72"
-          title={WINDOW_CONTROL_LABELS.close}
-        >
+        </WindowControlButton>
+        <WindowControlButton label={WINDOW_CONTROL_LABELS.close} onClick={handleClose}>
           <X aria-hidden="true" className="size-3.5" strokeWidth={2} />
-        </button>
+        </WindowControlButton>
       </div>
     </header>
   )
