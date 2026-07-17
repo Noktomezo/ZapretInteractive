@@ -1,7 +1,7 @@
 import type { Strategy } from '@/lib/types'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
-import { ArrowLeft, ArrowUp, BrushCleaning, Check, FilePenLine, Loader2, Package, Pencil, Plus, RefreshCcw, RotateCcw, Trash2, UserRoundPlus } from 'lucide-react'
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { ArrowLeft, BrushCleaning, Check, FilePenLine, Loader2, Package, Pencil, Plus, RefreshCcw, RotateCcw, Trash2, UserRoundPlus } from 'lucide-react'
+import { memo, useCallback, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -26,6 +26,7 @@ import { InlineMarker } from '@/components/ui/inline-marker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
+import { ScrollTopButton } from '@/components/ui/scroll-top-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useMountEffect } from '@/hooks/use-mount-effect'
 import { autosizeTextarea } from '@/lib/editor-scroll'
@@ -255,7 +256,6 @@ export function CategoryPage() {
   const newStrategyContentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const editStrategyContentTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const scrollAreaRef = useRef<HTMLDivElement | null>(null)
-  const [showScrollTopButton, setShowScrollTopButton] = useState(false)
   const config = useConfigStore(state => state.config)
   const builtinConfig = useConfigStore(state => state.builtinConfig)
   const loading = useConfigStore(state => state.loading)
@@ -295,24 +295,6 @@ export function CategoryPage() {
     return scrollAreaRef.current?.querySelector('[data-slot="lenis-scroll-area-viewport"], [data-slot="scroll-area-viewport"]') as HTMLDivElement | null
   }
 
-  const scrollToTop = () => {
-    const viewport = getScrollViewport()
-    if (!viewport) {
-      return
-    }
-
-    const lenis = (viewport as HTMLDivElement & { __lenis?: { scrollTo: (target: number, options?: { duration?: number, easing?: (value: number) => number }) => void } }).__lenis
-    if (lenis) {
-      lenis.scrollTo(0, {
-        duration: 0.45,
-        easing: value => 1 - (1 - value) ** 3,
-      })
-      return
-    }
-
-    viewport.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
   const scrollToActiveStrategy = () => {
     if (!firstActiveStrategyId) {
       return
@@ -327,24 +309,6 @@ export function CategoryPage() {
       })
     }
   }
-
-  useEffect(() => {
-    const viewport = getScrollViewport()
-    if (!viewport) {
-      setShowScrollTopButton(false)
-      return
-    }
-
-    const handleScroll = () => {
-      setShowScrollTopButton(viewport.scrollTop > 320)
-    }
-
-    handleScroll()
-    viewport.addEventListener('scroll', handleScroll, { passive: true })
-    return () => {
-      viewport.removeEventListener('scroll', handleScroll)
-    }
-  }, [categoryId, loading])
 
   const handleAddStrategy = useCallback(async () => {
     if (!newStrategyName.trim() || !newStrategyContent.trim() || !categoryId) {
@@ -1112,19 +1076,7 @@ export function CategoryPage() {
           </Dialog>
         </div>
       </LenisScrollArea>
-      {showScrollTopButton && (
-        <Button
-          type="button"
-          size="default"
-          variant="secondary"
-          className="absolute right-5 bottom-5 z-20 border border-border bg-background/60 text-foreground shadow-lg backdrop-blur-md hover:bg-background/72 hover:backdrop-blur-xl dark:bg-card/60 dark:hover:bg-card/72"
-          aria-label="Вернуться наверх"
-          onClick={scrollToTop}
-        >
-          <ArrowUp className="size-4" />
-          Наверх
-        </Button>
-      )}
+      <ScrollTopButton scrollAreaRef={scrollAreaRef} resetKeys={[categoryId, loading]} />
     </div>
   )
 }

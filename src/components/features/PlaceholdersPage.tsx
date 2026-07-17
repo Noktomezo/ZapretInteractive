@@ -24,6 +24,7 @@ import { InlineMarker } from '@/components/ui/inline-marker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
+import { ScrollTopButton } from '@/components/ui/scroll-top-button'
 import { useMountEffect } from '@/hooks/use-mount-effect'
 import { buildRestoredPlaceholder, getBuiltinPlaceholder, isSystemPlaceholder, isSystemPlaceholderModified, isSystemPlaceholderUpdateAvailable } from '@/lib/system-config'
 import * as tauri from '@/lib/tauri'
@@ -55,6 +56,7 @@ export function PlaceholdersPage() {
   const [resourcesDir, setResourcesDir] = useState('')
   const [systemPlaceholderTarget, setSystemPlaceholderTarget] = useState<Placeholder | null>(null)
   const isSavingRef = useRef(false)
+  const scrollAreaRef = useRef<HTMLDivElement | null>(null)
 
   const config = useConfigStore(state => state.config)
   const builtinConfig = useConfigStore(state => state.builtinConfig)
@@ -336,204 +338,207 @@ export function PlaceholdersPage() {
   }
 
   return (
-    <LenisScrollArea className="h-full min-h-0 min-w-0">
-      <div className="w-full min-w-0 max-w-full space-y-6 overflow-x-hidden p-6">
-        <div className="flex min-w-0 items-center justify-between">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-medium">Плейсхолдеры</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Замена плейсхолдеров на пути к бинарным файлам
-            </p>
+    <div className="relative h-full min-h-0">
+      <LenisScrollArea ref={scrollAreaRef} className="h-full min-h-0 min-w-0">
+        <div className="w-full min-w-0 max-w-full space-y-6 overflow-x-hidden p-6">
+          <div className="flex min-w-0 items-center justify-between">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl font-medium">Плейсхолдеры</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Замена плейсхолдеров на пути к бинарным файлам
+              </p>
+            </div>
+            <div className="ml-4 flex shrink-0 items-center gap-1">
+              <Button onClick={() => setAddOpen(true)}>
+                <Plus className="size-4" />
+                Новый плейсхолдер
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => void handleOpenAppDirectory()}
+                title="Открыть папку приложения"
+                aria-label="Открыть папку приложения"
+              >
+                <FolderOpen className="size-4" />
+              </Button>
+            </div>
           </div>
-          <div className="ml-4 flex shrink-0 items-center gap-1">
-            <Button onClick={() => setAddOpen(true)}>
-              <Plus className="size-4" />
-              Новый плейсхолдер
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => void handleOpenAppDirectory()}
-              title="Открыть папку приложения"
-              aria-label="Открыть папку приложения"
-            >
-              <FolderOpen className="size-4" />
-            </Button>
-          </div>
-        </div>
 
-        <div className="min-w-0 space-y-3">
-          {!config || config.placeholders.length === 0
-            ? (
-                <div className="text-muted-foreground flex min-h-32 items-center justify-center rounded-lg border border-dashed">
-                  Нет плейсхолдеров
-                </div>
-              )
-            : (
-                config.placeholders.map((placeholder: Placeholder, index: number) => {
-                  const builtin = getBuiltinPlaceholder(builtinConfig, placeholder.name, placeholder.systemBaseName)
-                  const isSystem = isSystemPlaceholder(placeholder)
-                  const isModified = isSystemPlaceholderModified(placeholder)
-                  const hasUpdate = isSystemPlaceholderUpdateAvailable(placeholder, builtin)
+          <div className="min-w-0 space-y-3">
+            {!config || config.placeholders.length === 0
+              ? (
+                  <div className="text-muted-foreground flex min-h-32 items-center justify-center rounded-lg border border-dashed">
+                    Нет плейсхолдеров
+                  </div>
+                )
+              : (
+                  config.placeholders.map((placeholder: Placeholder, index: number) => {
+                    const builtin = getBuiltinPlaceholder(builtinConfig, placeholder.name, placeholder.systemBaseName)
+                    const isSystem = isSystemPlaceholder(placeholder)
+                    const isModified = isSystemPlaceholderModified(placeholder)
+                    const hasUpdate = isSystemPlaceholderUpdateAvailable(placeholder, builtin)
 
-                  return (
-                    <div
-                      key={placeholder.name}
-                      className="bg-card flex min-h-[4.5rem] items-center justify-between gap-4 overflow-hidden rounded-lg border px-4 py-3"
-                    >
-                      <div className="flex min-w-0 w-0 flex-1 items-center gap-3 overflow-hidden">
-                        <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
-                          <FileCode className="size-4" />
-                        </div>
-                        <div className="min-w-0 w-0 flex-1 overflow-hidden space-y-1">
-                          <div className="flex items-center gap-1 truncate text-sm font-normal text-foreground">
-                            {'{{'}
-                            {placeholder.name}
-                            {'}}'}
-                            <div className="flex items-center gap-1 text-muted-foreground">
-                              {isSystem
-                                ? <InlineMarker icon={Package} label="Системный плейсхолдер" />
-                                : <InlineMarker icon={UserRoundPlus} label="Пользовательский плейсхолдер" className="text-primary/80" />}
-                              {isModified && (
-                                <InlineMarker icon={FilePenLine} label="Системный плейсхолдер изменён пользователем" className="text-warning" />
-                              )}
-                              {isSystem && (isModified || hasUpdate) && (
-                                <InlineMarker
-                                  icon={hasUpdate ? RefreshCcw : RotateCcw}
-                                  label={hasUpdate
-                                    ? 'Обновить плейсхолдер до актуального системного значения'
-                                    : 'Откатить плейсхолдер к системному значению'}
-                                  className={hasUpdate ? 'text-primary' : 'text-destructive'}
-                                  onClick={() => setSystemPlaceholderTarget(placeholder)}
-                                />
-                              )}
+                    return (
+                      <div
+                        key={placeholder.name}
+                        className="bg-card flex min-h-[4.5rem] items-center justify-between gap-4 overflow-hidden rounded-lg border px-4 py-3"
+                      >
+                        <div className="flex min-w-0 w-0 flex-1 items-center gap-3 overflow-hidden">
+                          <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
+                            <FileCode className="size-4" />
+                          </div>
+                          <div className="min-w-0 w-0 flex-1 overflow-hidden space-y-1">
+                            <div className="flex items-center gap-1 truncate text-sm font-normal text-foreground">
+                              {'{{'}
+                              {placeholder.name}
+                              {'}}'}
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                {isSystem
+                                  ? <InlineMarker icon={Package} label="Системный плейсхолдер" />
+                                  : <InlineMarker icon={UserRoundPlus} label="Пользовательский плейсхолдер" className="text-primary/80" />}
+                                {isModified && (
+                                  <InlineMarker icon={FilePenLine} label="Системный плейсхолдер изменён пользователем" className="text-warning" />
+                                )}
+                                {isSystem && (isModified || hasUpdate) && (
+                                  <InlineMarker
+                                    icon={hasUpdate ? RefreshCcw : RotateCcw}
+                                    label={hasUpdate
+                                      ? 'Обновить плейсхолдер до актуального системного значения'
+                                      : 'Откатить плейсхолдер к системному значению'}
+                                    className={hasUpdate ? 'text-primary' : 'text-destructive'}
+                                    onClick={() => setSystemPlaceholderTarget(placeholder)}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                            <div className="truncate overflow-hidden text-xs text-muted-foreground/90" title={resolvePlaceholderPath(placeholder.path)}>
+                              {resolvePlaceholderPath(placeholder.path)}
                             </div>
                           </div>
-                          <div className="truncate overflow-hidden text-xs text-muted-foreground/90" title={resolvePlaceholderPath(placeholder.path)}>
-                            {resolvePlaceholderPath(placeholder.path)}
-                          </div>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            aria-label={`Редактировать плейсхолдер ${placeholder.name}`}
+                            onClick={() => handleEdit(index, placeholder)}
+                          >
+                            <Pencil className="size-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="bg-destructive/10 text-destructive hover:bg-destructive/18"
+                            aria-label={`Удалить плейсхолдер ${placeholder.name}`}
+                            onClick={() => handleDelete(index)}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex shrink-0 items-center gap-1">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          aria-label={`Редактировать плейсхолдер ${placeholder.name}`}
-                          onClick={() => handleEdit(index, placeholder)}
-                        >
-                          <Pencil className="size-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="bg-destructive/10 text-destructive hover:bg-destructive/18"
-                          aria-label={`Удалить плейсхолдер ${placeholder.name}`}
-                          onClick={() => handleDelete(index)}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  )
-                })
-              )}
-        </div>
+                    )
+                  })
+                )}
+          </div>
 
-        <Dialog open={addOpen} onOpenChange={setAddOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Новый плейсхолдер</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <Input
-                aria-label="Название плейсхолдера"
-                placeholder="Название"
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-              />
-              <Input
-                aria-label="Путь плейсхолдера"
-                placeholder="Путь к файлу"
-                value={newPath}
-                onChange={e => setNewPath(e.target.value)}
-              />
-              {newPath.trim() && (
-                <p className="text-xs text-muted-foreground break-all">
-                  {resolvePlaceholderPath(toStoredPlaceholderPath(newPath))}
-                </p>
-              )}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setAddOpen(false)}>
-                Отмена
-              </Button>
-              <Button onClick={handleAdd}>Добавить</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={editingIndex !== null} onOpenChange={open => !open && setEditingIndex(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Редактировать плейсхолдер</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-placeholder-name">Название</Label>
+          <Dialog open={addOpen} onOpenChange={setAddOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Новый плейсхолдер</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
                 <Input
-                  id="edit-placeholder-name"
                   aria-label="Название плейсхолдера"
                   placeholder="Название"
-                  value={editName}
-                  onChange={e => setEditName(e.target.value)}
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-placeholder-path">Путь</Label>
                 <Input
-                  id="edit-placeholder-path"
                   aria-label="Путь плейсхолдера"
                   placeholder="Путь к файлу"
-                  value={editPath}
-                  onChange={e => setEditPath(e.target.value)}
+                  value={newPath}
+                  onChange={e => setNewPath(e.target.value)}
                 />
+                {newPath.trim() && (
+                  <p className="text-xs text-muted-foreground break-all">
+                    {resolvePlaceholderPath(toStoredPlaceholderPath(newPath))}
+                  </p>
+                )}
               </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setEditingIndex(null)}>
-                Отмена
-              </Button>
-              <Button onClick={handleSaveEdit}>Сохранить</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAddOpen(false)}>
+                  Отмена
+                </Button>
+                <Button onClick={handleAdd}>Добавить</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
-        <AlertDialog open={!!systemPlaceholderTarget} onOpenChange={open => !open && setSystemPlaceholderTarget(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {systemPlaceholderTarget && isSystemPlaceholderUpdateAvailable(
-                  systemPlaceholderTarget,
-                  getBuiltinPlaceholder(builtinConfig, systemPlaceholderTarget.name, systemPlaceholderTarget.systemBaseName),
-                )
-                  ? 'Обновить системный плейсхолдер?'
-                  : 'Откатить плейсхолдер к системному значению?'}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {systemPlaceholderTarget
-                  ? `Плейсхолдер "{{${systemPlaceholderTarget.name}}}" будет возвращён к актуальному системному значению.`
-                  : ''}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Отмена</AlertDialogCancel>
-              <AlertDialogAction onClick={() => void handleRestorePlaceholder()}>
-                Обновить
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-    </LenisScrollArea>
+          <Dialog open={editingIndex !== null} onOpenChange={open => !open && setEditingIndex(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Редактировать плейсхолдер</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-placeholder-name">Название</Label>
+                  <Input
+                    id="edit-placeholder-name"
+                    aria-label="Название плейсхолдера"
+                    placeholder="Название"
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-placeholder-path">Путь</Label>
+                  <Input
+                    id="edit-placeholder-path"
+                    aria-label="Путь плейсхолдера"
+                    placeholder="Путь к файлу"
+                    value={editPath}
+                    onChange={e => setEditPath(e.target.value)}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditingIndex(null)}>
+                  Отмена
+                </Button>
+                <Button onClick={handleSaveEdit}>Сохранить</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <AlertDialog open={!!systemPlaceholderTarget} onOpenChange={open => !open && setSystemPlaceholderTarget(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {systemPlaceholderTarget && isSystemPlaceholderUpdateAvailable(
+                    systemPlaceholderTarget,
+                    getBuiltinPlaceholder(builtinConfig, systemPlaceholderTarget.name, systemPlaceholderTarget.systemBaseName),
+                  )
+                    ? 'Обновить системный плейсхолдер?'
+                    : 'Откатить плейсхолдер к системному значению?'}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {systemPlaceholderTarget
+                    ? `Плейсхолдер "{{${systemPlaceholderTarget.name}}}" будет возвращён к актуальному системному значению.`
+                    : ''}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Отмена</AlertDialogCancel>
+                <AlertDialogAction onClick={() => void handleRestorePlaceholder()}>
+                  Обновить
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </LenisScrollArea>
+      <ScrollTopButton scrollAreaRef={scrollAreaRef} />
+    </div>
   )
 }

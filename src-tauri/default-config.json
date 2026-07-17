@@ -165,6 +165,48 @@
           "name": "v21",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--ip-id=zero\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=ts\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}",
           "active": false
+        },
+        {
+          "id": "youtube-v22",
+          "name": "v22",
+          "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=split2\n--dpi-desync-split-pos=1\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-seqovl-pattern={{STUN}}",
+          "active": false
+        },
+        {
+          "id": "youtube-v23",
+          "name": "v23",
+          "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=fake,fakeddisorder\n--dpi-desync-split-pos=1\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-fake-tls-mod=none\n--dpi-desync-fakedsplit-pattern={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-badseq-increment=0",
+          "active": false
+        },
+        {
+          "id": "youtube-v24",
+          "name": "v24",
+          "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=654\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-split-seqovl-pattern={{STUN}}\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-badseq-increment=0",
+          "active": false
+        },
+        {
+          "id": "youtube-v25",
+          "name": "v25",
+          "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=hostfakesplit\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-hostfakesplit-mod=host=mapgl.2gis.com\n--dpi-desync-badseq-increment=0",
+          "active": false
+        },
+        {
+          "id": "youtube-v26",
+          "name": "v26",
+          "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=multidisorder\n--dpi-desync-split-pos=1,sniext+1,host+1,midsld-2,midsld,midsld+2,endhost-1",
+          "active": false
+        },
+        {
+          "id": "youtube-v27",
+          "name": "v27",
+          "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=multidisorder\n--dpi-desync-split-pos=1,2,3,5,105,host+5,sld-1,endsld-5,endsld\n--dpi-desync-fooling=badsum",
+          "active": false
+        },
+        {
+          "id": "youtube-v28",
+          "name": "v28",
+          "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=fake,multisplit\n--dpi-desync-fake-tls=0x00000000\n--dpi-desync-fake-tls=!\n--dpi-desync-split-pos=1,sniext+1,host+1,midsld-2,midsld,midsld+2,endhost-1\n--dpi-desync-repeats=2\n--dpi-desync-fooling=badseq\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com",
+          "active": false
         }
       ]
     },
@@ -211,7 +253,7 @@
         {
           "id": "tcp-v7",
           "name": "v7",
-          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=654\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{STUN}}\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-badseq-increment=0",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=654\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-repeats=6\n--dpi-desync-split-seqovl-pattern={{STUN}}\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-badseq-increment=0",
           "active": true
         },
         {
@@ -223,7 +265,19 @@
         {
           "id": "tcp-v9",
           "name": "v9",
-          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=hostfakesplit\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-hostfakesplit-mod=host=mapgl.2gis.com\n--dpi-desync-badseq-increment=0",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=hostfakesplit\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-hostfakesplit-mod=host=ozon.ru\n--dpi-desync-badseq-increment=0",
+          "active": false
+        },
+        {
+          "id": "tcp-v10",
+          "name": "v10",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=ts\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{STUN}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com",
+          "active": false
+        },
+        {
+          "id": "tcp-v11",
+          "name": "v11",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=hostfakesplit\n--dpi-desync-hostfakesplit-mod=host=ozon.ru\n--dpi-desync-repeats=4\n--dpi-desync-fooling=ts,md5sig\n--dpi-desync-badseq-increment=0",
           "active": false
         }
       ]
