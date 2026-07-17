@@ -5,7 +5,10 @@ import fnmatch
 import hashlib
 import io
 import json
+import os
+import urllib.error
 import urllib.request
+from typing import Any
 from urllib.parse import urlparse
 from pathlib import Path
 from zipfile import ZipFile
@@ -126,25 +129,57 @@ def sha256_file(path: Path) -> str:
     return hasher.hexdigest()
 
 
+class HttpDownloadError(Exception):
+    def __init__(self, url: str, status: int, body: str) -> None:
+        super().__init__(f"GET {url} failed with HTTP {status}: {body}")
+        self.status = status
+
+
 def download(url: str) -> bytes:
     parsed = urlparse(url)
     if parsed.scheme.lower() != "https":
         raise ValueError(f"Unsupported URL scheme for managed download: {url}")
 
-    request = urllib.request.Request(
-        url,
-        headers={"User-Agent": "ZapretInteractive-CI/1.0"},
-    )
-    with urllib.request.urlopen(request, timeout=120) as response:
-        return response.read()
+    headers = {"User-Agent": "ZapretInteractive-CI/1.0"}
+    github_token = os.environ.get("GITHUB_TOKEN")
+    if github_token and parsed.netloc.lower() == "api.github.com":
+        headers["Authorization"] = f"Bearer {github_token}"
+        headers["X-GitHub-Api-Version"] = "2022-11-28"
+
+    request = urllib.request.Request(url, headers=headers)
+    try:
+        with urllib.request.urlopen(request, timeout=120) as response:
+            return response.read()
+    except urllib.error.HTTPError as err:
+        body = err.read().decode("utf-8", "replace")[:1000].strip()
+        raise HttpDownloadError(url, err.code, body) from err
+    except urllib.error.URLError as err:
+        raise RuntimeError(f"GET {url} failed: {err.reason}") from err
 
 
-def download_json(url: str) -> dict:
+def download_json(url: str) -> Any:
     return json.loads(download(url).decode("utf-8"))
 
 
+def fetch_latest_release(repo: str) -> dict:
+    try:
+        return download_json(f"https://api.github.com/repos/{repo}/releases/latest")
+    except HttpDownloadError as err:
+        if err.status != 404:
+            raise
+        # /releases/latest 404s when a repo has only prereleases or drafts;
+        # fall back to the newest non-draft release from the full list.
+        print(f"[update-thirdparty] {repo}: /releases/latest returned 404, falling back to release list", flush=True)
+        releases = download_json(f"https://api.github.com/repos/{repo}/releases?per_page=10")
+        candidates = [release for release in releases if not release.get("draft", False)]
+        if not candidates:
+            raise FileNotFoundError(f"No published releases found for {repo}") from err
+        return candidates[0]
+
+
 def fetch_latest_release_asset(repo: str, asset_pattern: str) -> bytes:
-    release = download_json(f"https://api.github.com/repos/{repo}/releases/latest")
+    release = fetch_latest_release(repo)
+    print(f"[update-thirdparty] {repo}: using release {release.get('tag_name', '<untagged>')}", flush=True)
     assets = release.get("assets", [])
     matches = [
         asset for asset in assets
@@ -272,11 +307,17 @@ def main() -> None:
     changed_paths: list[str] = []
 
     for url, destination in UPSTREAMS:
+        print(f"[update-thirdparty] fetching {url}", flush=True)
         data = normalize_download(destination, download(url))
         if write_if_changed(destination, data):
             changed_paths.append(destination.relative_to(REPO_ROOT).as_posix())
 
     for upstream in GITHUB_RELEASE_ZIP_UPSTREAMS:
+        print(
+            f"[update-thirdparty] fetching asset {upstream['asset_pattern']} "
+            f"from {upstream['repo']} latest release",
+            flush=True,
+        )
         archive_bytes = fetch_latest_release_asset(
             upstream["repo"],
             upstream["asset_pattern"],
