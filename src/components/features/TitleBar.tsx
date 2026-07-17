@@ -12,6 +12,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { SidebarTrigger } from '@/components/ui/sidebar'
+import { cn } from '@/lib/utils'
 import { useConfigStore } from '@/stores/config.store'
 
 interface BreadcrumbEntry {
@@ -96,10 +97,12 @@ function getBreadcrumbItems(pathname: string, categoryName?: string): Breadcrumb
 function WindowControlButton({
   label,
   onClick,
+  destructive = false,
   children,
 }: {
   label: string
   onClick: () => void
+  destructive?: boolean
   children: ReactNode
 }) {
   return (
@@ -107,7 +110,10 @@ function WindowControlButton({
       type="button"
       aria-label={label}
       onClick={onClick}
-      className="inline-flex size-[30px] cursor-pointer items-center justify-center rounded-md bg-transparent text-foreground/82 transition-colors hover:bg-accent/70 hover:text-foreground"
+      className={cn(
+        'inline-flex size-[30px] cursor-pointer items-center justify-center rounded-md bg-transparent text-foreground/82 transition-colors hover:bg-accent/70 hover:text-foreground',
+        destructive && 'hover:bg-destructive/15 hover:text-destructive',
+      )}
       title={label}
     >
       {children}
@@ -229,7 +235,7 @@ export function TitleBar() {
             ? <Copy aria-hidden="true" className="size-3.5" strokeWidth={2} />
             : <Square aria-hidden="true" className="size-3.5" strokeWidth={2} />}
         </WindowControlButton>
-        <WindowControlButton label={WINDOW_CONTROL_LABELS.close} onClick={handleClose}>
+        <WindowControlButton label={WINDOW_CONTROL_LABELS.close} onClick={handleClose} destructive>
           <X aria-hidden="true" className="size-3.5" strokeWidth={2} />
         </WindowControlButton>
       </div>
