@@ -41,7 +41,7 @@
   "fake:zero_512.bin": "076a27c79e5ace2a3d47f9dd2e83e4ff6ea8872b3c2218f66c92b89b55f36560",
   "lists:zapret-hosts-google.txt": "f83a38144f7f65f51dc4996414ec8b6b6eef29524e6a8cfe0ec15078c9699dc1",
   "lists:zapret-hosts-user-exclude.txt": "7e0986e5a05aebc4f9966569541398d664a46208331181c1e529a15b6f60bac7",
-  "lists:zapret-ip-user.txt": "dcb38af8e55351e3571d4bc736c9d26d385561941c37dc68d61d3b585d73b4c9",
+  "lists:zapret-ip-user.txt": "e8197d50a6a00fceadafa9d34768127247e9c92e937ed4c82a58076028b34068",
   "modules:dnscrypt-proxy/dnscrypt-proxy.exe": "d847f834aef02f8705a649dc1060f520cdb7931d7361035728770dce2c16eeb6",
   "modules:tg-ws-proxy-rs/tg-ws-proxy.exe": "55d254e05326402b046e5f1f8c8563bdebbbd934dfeeb2cf8c0bbcf2abc4bd1f"
 }
