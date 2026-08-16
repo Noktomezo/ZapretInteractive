@@ -27,7 +27,7 @@
   "fake:t2.bin": "d4a111b9a9497f185283d1ff480a92db08372c2c2a3af8bd868ff798e64c2da7",
   "fake:tls_clienthello_gosuslugi_ru.bin": "ec581c9877ebc4b69e6cdab48f46e0f7b0eeb67c5fefe849f21525faa1ff4f74",
   "fake:tls_clienthello_iana_org.bin": "9db8772636bb332f1970e8767bc7d628bfa640714bd0b7e699fbe92d559e666e",
-  "fake:tls_clienthello_max_ru.bin": "e4a94cec50b3c048eb988a513ee28191e4d7544dd5f98a9bf94f37ee02d2568e",
+  "fake:tls_clienthello_max_ru.bin": "4ee0870abe0a0128600b0095189987ba1d210dae8bf963bc725aff49cf922624",
   "fake:tls_clienthello_rutracker_org_kyber.bin": "0fe5b4118d698536bb845450e3314e22969c59f69f72d90dcb4ef477327ce81d",
   "fake:tls_clienthello_sberbank_ru.bin": "d10110e695ec16cdbed292cfbba3e779b8f08acb92bfa1023ad56a8cccd3aae6",
   "fake:tls_clienthello_vk_com.bin": "d6d63c53bc0e1d97e913a43fc4db34f6558bb807228bf6100e3b6863f0720404",
