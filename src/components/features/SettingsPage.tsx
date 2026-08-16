@@ -42,7 +42,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useMountEffect } from '@/hooks/use-mount-effect'
 import * as tauri from '@/lib/tauri'
 import { cn } from '@/lib/utils'
@@ -120,7 +119,7 @@ export function SettingsPage() {
   const addConfigLog = useConnectionStore(state => state.addConfigLog)
   const theme = useThemeStore(state => state.theme)
   const setTheme = useThemeStore(state => state.setTheme)
-  const activeThemeIndex = Math.max(THEME_OPTIONS.findIndex(option => option.value === theme), 0)
+  const selectedThemeOption = THEME_OPTIONS.find(option => option.value === theme) ?? THEME_OPTIONS[0]
   const selectedDiscordPresenceValue = (config?.discordPresenceEnabled ?? false)
     ? (config?.discordPresenceActivityType ?? 'playing')
     : 'none'
@@ -310,35 +309,31 @@ export function SettingsPage() {
             description="Режим отображения интерфейса приложения"
             withDivider={false}
             action={(
-              <ToggleGroup
-                id="theme-select"
-                type="single"
-                value={theme}
-                onValueChange={(value) => {
-                  if (value) {
-                    setTheme(value as Theme)
-                  }
-                }}
-                className="relative grid grid-cols-3 gap-0.5 rounded-lg border border-border/70 bg-background/76 p-0.5 shadow-xs w-[16rem] sm:w-[18rem]"
-                aria-label="Режим темы"
-              >
-                <span
-                  className="pointer-events-none absolute inset-y-0.5 left-0.5 w-[calc((100%-0.5rem)/3)] rounded-[calc(var(--radius)-0.125rem)] border border-primary/28 bg-primary/12 shadow-xs transition-transform duration-250 ease-out"
-                  style={{ transform: `translateX(calc(${activeThemeIndex} * (100% + 0.125rem)))` }}
-                  aria-hidden="true"
-                />
-                {THEME_OPTIONS.map(option => (
-                  <ToggleGroupItem
-                    key={option.value}
-                    value={option.value}
-                    className="relative z-10 h-8 min-w-0 cursor-pointer rounded-[calc(var(--radius)-0.125rem)] border-0 bg-transparent px-3 text-xs text-foreground/78 shadow-none hover:bg-transparent hover:text-foreground data-[state=on]:bg-transparent data-[state=on]:text-primary data-[state=on]:shadow-none data-[state=on]:[&_svg]:text-primary"
-                    aria-label={option.label}
-                  >
-                    <option.icon className="text-muted-foreground" />
-                    <span>{option.label}</span>
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
+              <div className="w-[10.5rem]">
+                <Select
+                  value={theme}
+                  onValueChange={value => setTheme(value as Theme)}
+                >
+                  <SelectTrigger id="theme-select" className="w-full cursor-pointer">
+                    <span className="flex items-center gap-2">
+                      <selectedThemeOption.icon className="size-4 text-muted-foreground" />
+                      <SelectValue placeholder="Выберите тему">
+                        {selectedThemeOption.label}
+                      </SelectValue>
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {THEME_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        <span className="flex items-center gap-2">
+                          <option.icon className="size-4 text-muted-foreground" />
+                          <span>{option.label}</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
           />
         </Card>
