@@ -268,18 +268,18 @@ export function SettingsPage() {
     try {
       await saveNow()
       if (!nextEnabled) {
-        addConfigLog('Discord Rich Presence отключён')
-        toast.success('Discord Rich Presence отключён')
+        addConfigLog('Статус в Discord отключён')
+        toast.success('Статус в Discord отключён')
       }
       else {
-        addConfigLog(`тип активности Discord Rich Presence изменён: ${value}`)
-        toast.success(`Discord статус: ${DISCORD_PRESENCE_ACTIVITY_OPTIONS.find(option => option.value === value)?.label ?? value}`)
+        addConfigLog(`Тип активности в Discord изменён на: ${value}`)
+        toast.success(`Статус в Discord: ${DISCORD_PRESENCE_ACTIVITY_OPTIONS.find(option => option.value === value)?.label ?? value}`)
       }
     }
     catch (e) {
       setDiscordPresenceEnabled(previousEnabled)
       setDiscordPresenceActivityType(previous)
-      toast.error(`Ошибка настройки Discord Rich Presence: ${e instanceof Error ? e.message : String(e)}`)
+      toast.error(`Ошибка настройки статуса в Discord: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
@@ -465,7 +465,7 @@ export function SettingsPage() {
                 htmlFor="discord-presence"
                 description="Показывает текущую страницу и статус подключения в Discord"
               >
-                Discord Rich Presence
+                Статус в Discord
               </ModuleSettingLabel>
               <div className="w-[10.5rem]">
                 <Select
