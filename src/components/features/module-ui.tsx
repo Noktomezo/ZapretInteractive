@@ -7,12 +7,14 @@ export const MODULE_PAGE_CARD_CLASS = 'gap-0! rounded-lg! border! border-border/
 
 export function ModuleSectionHeader({
   icon: Icon,
+  iconClassName,
   title,
   description,
   action,
   withDivider = true,
 }: {
   icon: ComponentType<{ className?: string }>
+  iconClassName?: string
   title: ReactNode
   description: ReactNode
   action?: ReactNode
@@ -24,8 +26,8 @@ export function ModuleSectionHeader({
       withDivider && 'border-b border-border/60',
     )}
     >
-      <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
-        <Icon className="size-4" />
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25 text-muted-foreground">
+        <Icon className={cn('size-4', iconClassName)} />
       </div>
       <div className="min-w-0 flex-1">
         <CardTitle className="font-sans text-sm leading-5 font-normal tracking-normal">{title}</CardTitle>

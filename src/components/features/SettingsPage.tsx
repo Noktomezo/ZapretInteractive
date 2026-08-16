@@ -305,6 +305,7 @@ export function SettingsPage() {
         <Card className={MODULE_PAGE_CARD_CLASS}>
           <ModuleSectionHeader
             icon={Palette}
+            iconClassName="text-[#8B7EC8] dark:text-[#8B7EC8]"
             title="Тема"
             description="Режим отображения интерфейса приложения"
             withDivider={false}
@@ -345,6 +346,7 @@ export function SettingsPage() {
         <Card className={MODULE_PAGE_CARD_CLASS}>
           <ModuleSectionHeader
             icon={Download}
+            iconClassName="text-[#3AA99F] dark:text-[#3AA99F]"
             title="Обновления"
             description="Настройки фоновых проверок и автоматических предложений"
           />
@@ -382,6 +384,7 @@ export function SettingsPage() {
         <Card className={MODULE_PAGE_CARD_CLASS}>
           <ModuleSectionHeader
             icon={AppWindow}
+            iconClassName="text-[#879A39] dark:text-[#879A39]"
             title="Поведение"
             description="Настройки запуска и закрытия приложения"
           />
@@ -501,6 +504,7 @@ export function SettingsPage() {
         <Card className={MODULE_PAGE_CARD_CLASS}>
           <ModuleSectionHeader
             icon={Router}
+            iconClassName="text-[#DA702C] dark:text-[#DA702C]"
             title="Порты"
             description="Глобальные порты для фильтрации трафика"
           />
@@ -589,6 +593,7 @@ export function SettingsPage() {
         <Card className={MODULE_PAGE_CARD_CLASS}>
           <ModuleSectionHeader
             icon={RotateCcw}
+            iconClassName="text-[#D14D41] dark:text-[#D14D41]"
             title="Сброс"
             description="Возврат к настройкам по умолчанию"
             withDivider={false}
