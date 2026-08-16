@@ -1,0 +1,4 @@
+--filter-l7=quic
+--dpi-desync=fake
+--dpi-desync-repeats=4
+--dpi-desync-fake-quic={{QUIC_INITIAL_GOOGLE}}

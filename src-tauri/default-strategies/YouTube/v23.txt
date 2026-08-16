@@ -1,0 +1,9 @@
+--filter-l7=tls
+--hostlist={{HOSTS_GOOGLE}}
+--dpi-desync=fake,fakeddisorder
+--dpi-desync-split-pos=1
+--dpi-desync-fake-tls={{STUN}}
+--dpi-desync-fake-tls-mod=none
+--dpi-desync-fakedsplit-pattern={{TLS_CLIENTHELLO_GOOGLE}}
+--dpi-desync-fooling=badseq,badsum
+--dpi-desync-badseq-increment=0

@@ -1,0 +1,8 @@
+--filter-tcp=1024-65535
+--filter-l7=unknown
+--dpi-desync=hostfakesplit
+--dpi-desync-repeats=4
+--dpi-desync-any-protocol=1
+--dpi-desync-cutoff=n3
+--dpi-desync-fooling=ts
+--dpi-desync-hostfakesplit-mod=host=ozon.ru

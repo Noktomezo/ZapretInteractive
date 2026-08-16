@@ -1,6 +1,6 @@
 import type { Strategy } from '@/lib/types'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
-import { ArrowLeft, BrushCleaning, Check, FilePenLine, Loader2, Package, Pencil, Plus, RefreshCcw, RotateCcw, Trash2, UserRoundPlus } from 'lucide-react'
+import { ArrowLeft, BrushCleaning, Check, FilePenLine, FolderOpen, Loader2, Package, Pencil, Plus, RefreshCcw, RotateCcw, Trash2, UserRoundPlus } from 'lucide-react'
 import { memo, useCallback, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
@@ -31,6 +31,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useMountEffect } from '@/hooks/use-mount-effect'
 import { autosizeTextarea } from '@/lib/editor-scroll'
 import { buildRestoredCategory, buildRestoredStrategy, getBuiltinCategory, getBuiltinStrategy, isSystemCategory, isSystemCategoryModified, isSystemCategoryUpdateAvailable, isSystemStrategy, isSystemStrategyModified, isSystemStrategyUpdateAvailable } from '@/lib/system-config'
+import { openStrategiesDirectory } from '@/lib/tauri'
 import { cn } from '@/lib/utils'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
@@ -826,6 +827,25 @@ export function CategoryPage() {
               </div>
             </div>
             <div className="flex items-center gap-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      void openStrategiesDirectory().catch((err: unknown) => {
+                        toast.error('Не удалось открыть папку', {
+                          description: err instanceof Error ? err.message : String(err),
+                        })
+                      })
+                    }}
+                    aria-label="Папка со стратегиями"
+                  >
+                    <FolderOpen className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Папка со стратегиями</TooltipContent>
+              </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button size="icon" onClick={() => setNewStrategyOpen(true)} aria-label="Новая стратегия">

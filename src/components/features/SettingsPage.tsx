@@ -2,8 +2,6 @@ import type { DiscordPresenceActivityType } from '@/lib/types'
 import type { Theme } from '@/stores/theme.store'
 import {
   AppWindow,
-  ArrowLeftRight,
-  BellRing,
   CircleOff,
   Clapperboard,
   Download,
@@ -11,13 +9,8 @@ import {
   Headphones,
   Laptop,
   Loader2,
-  Minimize2,
   MoonStar,
   Palette,
-  PlugZap,
-  Power,
-  Radar,
-  RefreshCw,
   RotateCcw,
   Router,
   SunMedium,
@@ -359,7 +352,6 @@ export function SettingsPage() {
             <div className="flex items-center justify-between gap-4">
               <ModuleSettingLabel
                 htmlFor="app-auto-updates"
-                icon={RefreshCw}
                 description="При запуске и каждые 30 секунд приложение будет проверять наличие новой версии"
               >
                 Автоматически проверять обновления приложения
@@ -374,7 +366,6 @@ export function SettingsPage() {
             <div className="flex items-center justify-between gap-4">
               <ModuleSettingLabel
                 htmlFor="core-file-update-prompts"
-                icon={BellRing}
                 description="Отключает только предложения обновить файлы, не саму проверку"
               >
                 Уведомлять об обновлениях критических файлов
@@ -399,7 +390,6 @@ export function SettingsPage() {
               <div className="flex items-center justify-between gap-4">
                 <ModuleSettingLabel
                   htmlFor="autostart"
-                  icon={Power}
                   description="Приложение будет запускаться автоматически при входе в систему"
                 >
                   Автозапуск с Windows
@@ -429,7 +419,6 @@ export function SettingsPage() {
                   <div className="flex items-center justify-between gap-4 border-l border-border/60 pl-4">
                     <ModuleSettingLabel
                       htmlFor="connect-on-autostart"
-                      icon={PlugZap}
                       description="При запуске из автозагрузки приложение будет сразу запускать подключение"
                     >
                       Подключаться автоматически
@@ -444,7 +433,6 @@ export function SettingsPage() {
                   <div className="mt-3 flex items-center justify-between gap-4 border-l border-border/60 pl-4">
                     <ModuleSettingLabel
                       htmlFor="launch-to-tray"
-                      icon={AppWindow}
                       description="При старте приложения основное окно будет скрыто, а доступ останется через иконку в трее"
                     >
                       Запускать свернутым в трей
@@ -463,7 +451,6 @@ export function SettingsPage() {
             <div className="flex items-center justify-between gap-4">
               <ModuleSettingLabel
                 htmlFor="minimize-to-tray"
-                icon={Minimize2}
                 description="При закрытии окно будет скрыто в системный трей вместо завершения работы"
               >
                 Сворачивать в трей при закрытии
@@ -478,7 +465,6 @@ export function SettingsPage() {
             <div className="flex items-center justify-between gap-4">
               <ModuleSettingLabel
                 htmlFor="discord-presence"
-                icon={Gamepad2}
                 description="Показывает текущую страницу и статус подключения в Discord"
               >
                 Discord Rich Presence
@@ -519,10 +505,9 @@ export function SettingsPage() {
             description="Глобальные порты для фильтрации трафика"
           />
           <CardContent className="space-y-4 p-4!">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <ModuleSettingLabel
                 htmlFor="tcpPortsInput"
-                icon={ArrowLeftRight}
                 description="Порты TCP-трафика, на которые применяются стратегии фильтрации."
               >
                 TCP порты
@@ -559,10 +544,9 @@ export function SettingsPage() {
                 />
               </div>
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <ModuleSettingLabel
                 htmlFor="udpPortsInput"
-                icon={Radar}
                 description="Порты UDP-трафика, на которые применяются стратегии фильтрации."
               >
                 UDP порты

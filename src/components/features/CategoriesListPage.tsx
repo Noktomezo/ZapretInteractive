@@ -19,7 +19,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useNavigate } from '@tanstack/react-router'
-import { BrushCleaning, ChevronRight, FilePenLine, GripVertical, Loader2, Package, Pencil, Plus, RefreshCcw, RotateCcw, Trash2, UserRoundPlus } from 'lucide-react'
+import { BrushCleaning, ChevronRight, FilePenLine, FolderOpen, GripVertical, Loader2, Package, Pencil, Plus, RefreshCcw, RotateCcw, Trash2, UserRoundPlus } from 'lucide-react'
 import { memo, useCallback, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
@@ -47,6 +47,7 @@ import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useMountEffect } from '@/hooks/use-mount-effect'
 import { buildRestoredCategory, getBuiltinCategory, isSystemCategory, isSystemCategoryModified, isSystemCategoryUpdateAvailable } from '@/lib/system-config'
+import { openStrategiesDirectory } from '@/lib/tauri'
 import { useConfigStore } from '@/stores/config.store'
 import { useConnectionStore } from '@/stores/connection.store'
 
@@ -552,10 +553,25 @@ export function CategoriesListPage() {
               Категоризированное управление стратегиями
             </p>
           </div>
-          <Button onClick={() => setNewCategoryOpen(true)}>
-            <Plus className="size-4" />
-            Новая категория
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                void openStrategiesDirectory().catch((err: unknown) => {
+                  toast.error('Не удалось открыть папку', {
+                    description: err instanceof Error ? err.message : String(err),
+                  })
+                })
+              }}
+            >
+              <FolderOpen className="size-4" />
+              Папка со стратегиями
+            </Button>
+            <Button onClick={() => setNewCategoryOpen(true)}>
+              <Plus className="size-4" />
+              Новая категория
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-3">

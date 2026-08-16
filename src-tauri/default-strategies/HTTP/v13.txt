@@ -1,0 +1,3 @@
+--filter-l7=http
+<LIST_MODE>
+--dpi-desync=syndata

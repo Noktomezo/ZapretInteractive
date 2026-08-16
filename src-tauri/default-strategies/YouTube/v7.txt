@@ -1,0 +1,7 @@
+--filter-l7=tls
+--hostlist={{HOSTS_GOOGLE}}
+--dpi-desync=multidisorder
+--dpi-desync-split-pos=1,midsld,endhost-1
+--dpi-desync-repeats=2
+--dpi-desync-fooling=md5sig
+--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com

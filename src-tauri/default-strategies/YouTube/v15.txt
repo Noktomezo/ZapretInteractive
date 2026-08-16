@@ -1,0 +1,10 @@
+--filter-l7=tls
+--hostlist={{HOSTS_GOOGLE}}
+--dpi-desync=fake,multisplit
+--dpi-desync-split-pos=2,sld
+--dpi-desync-fake-tls=0x0F0F0F0F
+--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}
+--dpi-desync-fake-tls-mod=rnd,dupsid,sni=ggpht.com
+--dpi-desync-split-seqovl=2108
+--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}
+--dpi-desync-fooling=badsum,badseq

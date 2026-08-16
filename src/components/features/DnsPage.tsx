@@ -95,7 +95,7 @@ export function DnsPage() {
             description="Основные параметры работы DNS-подключения"
           />
           <CardContent className="space-y-4 p-4!">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <ModuleSettingLabel
                 htmlFor="dns-bootstrap-resolvers"
                 icon={Network}
@@ -119,7 +119,7 @@ export function DnsPage() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="flex items-center justify-between gap-4">
               <ModuleSettingLabel
                 htmlFor="dns-accelerator"
                 icon={Route}

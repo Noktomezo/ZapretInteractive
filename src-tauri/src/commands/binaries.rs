@@ -1,8 +1,9 @@
 use crate::commands::process::kill_windivert_service;
 use crate::config::{
     AppConfig, AppState, current_config, ensure_config_exists_and_loaded,
-    ensure_managed_resources_dir_ready, ensure_runtime_data_dir_ready, get_config_path,
-    get_managed_resources_dir, get_runtime_data_dir, uses_dev_managed_resources_source,
+    ensure_managed_resources_dir_ready, ensure_runtime_data_dir_ready,
+    ensure_strategies_dir_and_defaults, get_config_path, get_managed_resources_dir,
+    get_runtime_data_dir, get_strategies_dir, uses_dev_managed_resources_source,
     validate_filter_filename,
 };
 use futures::stream::{self, StreamExt};
@@ -96,6 +97,8 @@ const FAKE_FILES_BASE_URL: &str =
     "https://raw.githubusercontent.com/Noktomezo/ZapretInteractive/main/thirdparty/fake";
 const FAKE_FILES: &[&str] = &[
     "4pda.bin",
+    "ACTIVE_DISCORD_UDP.bin",
+    "ACTIVE_GAME_UDP.bin",
     "dht_find_node.bin",
     "dht_get_peers.bin",
     "discord-ip-discovery-with-port.bin",
@@ -104,6 +107,9 @@ const FAKE_FILES: &[&str] = &[
     "http_iana_org.bin",
     "isakmp_initiator_request.bin",
     "max.bin",
+    "quic_initial_4pda.to.bin",
+    "quic_initial_5ka_ru.bin",
+    "quic_initial_dbankcloud_ru.bin",
     "quic_initial_facebook_com.bin",
     "quic_initial_facebook_com_quiche.bin",
     "quic_initial_rr1---sn-xguxaxjvh-n8me_googlevideo_com_kyber_1.bin",
@@ -112,11 +118,17 @@ const FAKE_FILES: &[&str] = &[
     "quic_initial_rutracker_org.bin",
     "quic_initial_rutracker_org_kyber_1.bin",
     "quic_initial_rutracker_org_kyber_2.bin",
+    "quic_initial_rutube_ru.bin",
+    "quic_initial_steamcommunity_com.bin",
+    "quic_initial_tencent_com.bin",
     "quic_initial_vk_com.bin",
     "quic_initial_www_google_com.bin",
     "quic_short_header.bin",
     "stun.bin",
+    "stun2.bin",
     "t2.bin",
+    "tls_clienthello_4pda_to.bin",
+    "tls_clienthello_5ka_ru.bin",
     "tls_clienthello_gosuslugi_ru.bin",
     "tls_clienthello_iana_org.bin",
     "tls_clienthello_max_ru.bin",
@@ -290,11 +302,8 @@ async fn fetch_remote_hashes(client: &reqwest::Client) -> Result<HashMap<String,
 fn remote_hash_for<'a>(
     remote_hashes: &'a HashMap<String, String>,
     file: &TrackedFile,
-) -> Result<&'a str, String> {
-    remote_hashes
-        .get(&tracked_key(file))
-        .map(String::as_str)
-        .ok_or_else(|| format!("Missing remote hash for {} ({})", file.name, file.group))
+) -> Option<&'a str> {
+    remote_hashes.get(&tracked_key(file)).map(String::as_str)
 }
 
 fn hash_key(group: &str, name: &str) -> String {
@@ -576,7 +585,9 @@ async fn collect_available_updates_with_context(
             .get(&tracked_key(&file))
             .and_then(|value| value.hash.clone());
         async move {
-            let remote_hash = remote_hash_for(&remote_hashes, &file)?;
+            let Some(remote_hash) = remote_hash_for(&remote_hashes, &file) else {
+                return Ok(None);
+            };
             let changed = local_hash.as_deref() != Some(remote_hash);
             Ok::<Option<String>, String>(if changed {
                 Some(tracked_display_name(&file))
@@ -617,10 +628,12 @@ fn expected_hash<'a>(
 fn ensure_base_directories() -> Result<(), String> {
     let _ = ensure_managed_resources_dir_ready()?;
     let _ = ensure_runtime_data_dir_ready()?;
+    let _ = ensure_strategies_dir_and_defaults()?;
     for dir in [
         get_fake_dir(),
         get_lists_dir(),
         get_filters_dir(),
+        get_strategies_dir(),
         get_modules_dir(),
     ] {
         if !dir.exists() {
@@ -662,6 +675,7 @@ fn event_affects_lists(paths: &[PathBuf]) -> bool {
 
 fn event_affects_tracked_files(paths: &[PathBuf]) -> bool {
     let filters_dir = get_filters_dir();
+    let strategies_dir = get_strategies_dir();
     let hashes_path = get_hashes_path();
     let config_path = get_config_path();
     let managed_root = get_managed_resources_dir();
@@ -681,6 +695,7 @@ fn event_affects_tracked_files(paths: &[PathBuf]) -> bool {
         .collect();
     paths.iter().any(|path| {
         path_is_inside(path, &filters_dir)
+            || path_is_inside(path, &strategies_dir)
             || path == &hashes_path
             || path == &config_path
             || tracked_dest_paths.iter().any(|dest_path| path == dest_path)
@@ -968,8 +983,9 @@ async fn build_download_plan(
                             let remote_hashes = remote_hashes
                                 .as_ref()
                                 .ok_or_else(|| "Remote hashes not loaded".to_string())?;
-                            let remote_hash = remote_hash_for(remote_hashes, &tracked_file)?;
-                            (local_hash != Some(remote_hash), None)
+                            let remote_hash = remote_hash_for(remote_hashes, &tracked_file);
+                            let needs_update = remote_hash.is_some() && local_hash != remote_hash;
+                            (needs_update, None)
                         } else {
                             (false, None)
                         }
@@ -981,8 +997,9 @@ async fn build_download_plan(
                             let remote_hashes = remote_hashes
                                 .as_ref()
                                 .ok_or_else(|| "Remote hashes not loaded".to_string())?;
-                            let remote_hash = remote_hash_for(remote_hashes, &tracked_file)?;
-                            (local_hash != Some(remote_hash), None)
+                            let remote_hash = remote_hash_for(remote_hashes, &tracked_file);
+                            let needs_update = remote_hash.is_some() && local_hash != remote_hash;
+                            (needs_update, None)
                         }
                     }
                     DownloadMode::ReinstallAll => (true, None),
@@ -1139,7 +1156,14 @@ async fn refresh_lists_internal() -> Result<Vec<String>, String> {
             required_for_health: true,
             include_in_remote_updates: false,
         };
-        let remote_hash = remote_hash_for(&remote_hashes, &tracked_file)?.to_string();
+        let remote_hash = remote_hash_for(&remote_hashes, &tracked_file)
+            .ok_or_else(|| {
+                format!(
+                    "Missing remote hash for {} ({})",
+                    tracked_file.name, tracked_file.group
+                )
+            })?
+            .to_string();
         let file_path = lists_dir.join(name);
         let local_hash = if file_path.exists() {
             calculate_sha256(&file_path).ok()
@@ -1447,6 +1471,15 @@ pub fn open_app_directory(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 pub fn open_filters_directory(app: AppHandle) -> Result<(), String> {
     let dir = get_filters_dir();
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    app.opener()
+        .open_path(dir.to_string_lossy().to_string(), None::<&str>)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn open_strategies_directory(app: AppHandle) -> Result<(), String> {
+    let dir = get_strategies_dir();
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     app.opener()
         .open_path(dir.to_string_lossy().to_string(), None::<&str>)

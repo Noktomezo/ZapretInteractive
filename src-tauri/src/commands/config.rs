@@ -1,3 +1,4 @@
+use include_dir::{Dir, include_dir};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
@@ -7,6 +8,7 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Mutex;
 use uuid::Uuid;
 
+static DEFAULT_STRATEGIES_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/default-strategies");
 const DEFAULT_CONFIG: &str = include_str!("../../default-config.json");
 const DEFAULT_FILTER_DHT: &str = include_str!("../../default-filters/windivert_part.dht.txt");
 const DEFAULT_FILTER_DISCORD_MEDIA: &str =
@@ -647,6 +649,255 @@ pub(crate) fn get_runtime_data_dir() -> PathBuf {
     executable_dir().unwrap_or_else(|| PathBuf::from("."))
 }
 
+pub fn get_strategies_dir() -> PathBuf {
+    get_runtime_data_dir().join("strategies")
+}
+
+pub fn ensure_strategies_dir_and_defaults() -> Result<PathBuf, String> {
+    let strategies_dir = get_strategies_dir();
+    fs::create_dir_all(&strategies_dir).map_err(|e| e.to_string())?;
+
+    for category_dir_entry in DEFAULT_STRATEGIES_DIR.dirs() {
+        let category_name = category_dir_entry
+            .path()
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
+        let target_category_dir = strategies_dir.join(&category_name);
+        fs::create_dir_all(&target_category_dir).map_err(|e| e.to_string())?;
+
+        for strategy_file in category_dir_entry.files() {
+            let file_name = strategy_file
+                .path()
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+            let target_file_path = target_category_dir.join(&file_name);
+            if !target_file_path.exists()
+                && let Some(content) = strategy_file.contents_utf8()
+            {
+                fs::write(&target_file_path, content).map_err(|e| e.to_string())?;
+            }
+        }
+    }
+
+    Ok(strategies_dir)
+}
+
+fn populate_builtin_strategy_content(categories: &mut [Category]) {
+    for category in categories.iter_mut() {
+        for strategy in category.strategies.iter_mut() {
+            let path_with_ext = format!("{}/{}.txt", category.name, strategy.name);
+            if let Some(file) = DEFAULT_STRATEGIES_DIR.get_file(&path_with_ext)
+                && let Some(content) = file.contents_utf8()
+            {
+                strategy.content = content.to_string();
+            }
+        }
+    }
+}
+
+fn populate_strategy_content_and_discover_from_disk(config: &mut AppConfig) -> bool {
+    let strategies_dir = get_strategies_dir();
+    if !strategies_dir.exists() {
+        return false;
+    }
+
+    let mut changed = false;
+
+    // 1. For each category in config.categories, sync strategy files from its category folder
+    for category in &mut config.categories {
+        let category_dir = strategies_dir.join(&category.name);
+        if category_dir.is_dir() {
+            let mut disk_strategy_stems = HashSet::new();
+
+            if let Ok(entries) = fs::read_dir(&category_dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_file() {
+                        let stem = path
+                            .file_stem()
+                            .unwrap_or_default()
+                            .to_string_lossy()
+                            .to_string();
+                        if stem.is_empty() {
+                            continue;
+                        }
+                        disk_strategy_stems.insert(stem.clone());
+
+                        if let Ok(file_content) = fs::read_to_string(&path) {
+                            if let Some(strategy) =
+                                category.strategies.iter_mut().find(|s| s.name == stem)
+                            {
+                                strategy.content = file_content;
+                            } else {
+                                // Newly discovered strategy file on disk
+                                let new_strategy = Strategy {
+                                    id: format!(
+                                        "{}-{}",
+                                        category.id,
+                                        stem.to_lowercase().replace(' ', "-")
+                                    ),
+                                    name: stem,
+                                    content: file_content,
+                                    active: false,
+                                    system: false,
+                                    system_base_name: None,
+                                    system_base_content: None,
+                                };
+                                category.strategies.push(new_strategy);
+                                changed = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            let before_count = category.strategies.len();
+            category
+                .strategies
+                .retain(|s| disk_strategy_stems.contains(&s.name));
+            if category.strategies.len() != before_count {
+                changed = true;
+            }
+        }
+    }
+
+    // 2. Discover newly added category directories on disk that are not in config.categories
+    let mut disk_category_names = HashSet::new();
+    if let Ok(entries) = fs::read_dir(&strategies_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                let folder_name = path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string();
+                if folder_name.is_empty() {
+                    continue;
+                }
+                disk_category_names.insert(folder_name.clone());
+
+                if !config.categories.iter().any(|c| c.name == folder_name) {
+                    let mut strategies = Vec::new();
+                    if let Ok(strategy_entries) = fs::read_dir(&path) {
+                        for s_entry in strategy_entries.flatten() {
+                            let s_path = s_entry.path();
+                            if s_path.is_file() {
+                                let stem = s_path
+                                    .file_stem()
+                                    .unwrap_or_default()
+                                    .to_string_lossy()
+                                    .to_string();
+                                if !stem.is_empty()
+                                    && let Ok(content) = fs::read_to_string(&s_path)
+                                {
+                                    strategies.push(Strategy {
+                                        id: format!(
+                                            "custom-{}-{}",
+                                            folder_name.to_lowercase().replace(' ', "-"),
+                                            stem.to_lowercase().replace(' ', "-")
+                                        ),
+                                        name: stem,
+                                        content,
+                                        active: false,
+                                        system: false,
+                                        system_base_name: None,
+                                        system_base_content: None,
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    config.categories.push(Category {
+                        id: format!("category-{}", folder_name.to_lowercase().replace(' ', "-")),
+                        name: folder_name,
+                        strategies,
+                        system: false,
+                        system_base_name: None,
+                    });
+                    changed = true;
+                }
+            }
+        }
+    }
+
+    let before_cat_count = config.categories.len();
+    config
+        .categories
+        .retain(|c| disk_category_names.contains(&c.name));
+    if config.categories.len() != before_cat_count {
+        changed = true;
+    }
+
+    changed
+}
+
+fn sync_strategies_to_disk(config: &AppConfig) -> Result<(), String> {
+    let strategies_dir = get_strategies_dir();
+    fs::create_dir_all(&strategies_dir).map_err(|e| e.to_string())?;
+
+    let mut current_category_names = HashSet::new();
+
+    for category in &config.categories {
+        let category_dir = strategies_dir.join(&category.name);
+        fs::create_dir_all(&category_dir).map_err(|e| e.to_string())?;
+        current_category_names.insert(category.name.clone());
+
+        let mut current_strategy_files = HashSet::new();
+
+        for strategy in &category.strategies {
+            let filename = format!("{}.txt", strategy.name);
+            let file_path = category_dir.join(&filename);
+            current_strategy_files.insert(filename);
+
+            let existing = fs::read_to_string(&file_path).ok();
+            if existing.as_deref() != Some(&strategy.content) {
+                fs::write(&file_path, &strategy.content).map_err(|e| e.to_string())?;
+            }
+        }
+
+        // Remove strategy files deleted from UI
+        if let Ok(entries) = fs::read_dir(&category_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() {
+                    let file_name = path
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .to_string();
+                    if !current_strategy_files.contains(&file_name) {
+                        let _ = fs::remove_file(&path);
+                    }
+                }
+            }
+        }
+    }
+
+    // Remove category directories deleted from UI
+    if let Ok(entries) = fs::read_dir(&strategies_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                let folder_name = path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string();
+                if !current_category_names.contains(&folder_name) {
+                    let _ = fs::remove_dir_all(&path);
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
 fn managed_relative_path(path: &str) -> Option<String> {
     let normalized = path.replace('\\', "/");
     if normalized == MANAGED_PATH_ALIAS {
@@ -727,6 +978,7 @@ impl Default for AppConfig {
             config.filters = default_filters_metadata();
         }
         populate_builtin_filter_content(&mut config.filters);
+        populate_builtin_strategy_content(&mut config.categories);
         normalize_placeholder_paths(&mut config.placeholders);
         for placeholder in &mut config.placeholders {
             annotate_builtin_placeholder(placeholder);
@@ -978,6 +1230,8 @@ fn normalize_config(mut config: AppConfig) -> NormalizedConfigResult {
         changed = true;
     }
 
+    let _ = ensure_strategies_dir_and_defaults();
+
     if populate_builtin_filter_content(&mut config.filters) {
         changed = true;
     }
@@ -995,6 +1249,10 @@ fn normalize_config(mut config: AppConfig) -> NormalizedConfigResult {
     }
 
     if sync_builtin_categories(&mut config, &builtin_config) {
+        changed = true;
+    }
+
+    if populate_strategy_content_and_discover_from_disk(&mut config) {
         changed = true;
     }
 
@@ -1435,15 +1693,8 @@ fn sync_builtin_strategy(
         changed = true;
     }
 
-    if strategy.system_base_name.is_none() {
-        strategy.system_base_name = Some(builtin_strategy.name.clone());
-        changed = true;
-    }
-
-    if strategy.system_base_content.is_none() {
-        strategy.system_base_content = Some(builtin_strategy.content.clone());
-        changed = true;
-    }
+    strategy.system_base_name = Some(builtin_strategy.name.clone());
+    strategy.system_base_content = Some(builtin_strategy.content.clone());
 
     let can_auto_migrate_legacy_name = strategy.content == strategy_base_content(strategy)
         && strategy_base_name(strategy) == builtin_strategy.name
@@ -1455,23 +1706,11 @@ fn sync_builtin_strategy(
             &builtin_strategy.name,
         );
 
-    if !is_system_strategy_modified(strategy) || can_auto_migrate_legacy_name {
-        if strategy.name != builtin_strategy.name {
-            strategy.name = builtin_strategy.name.clone();
-            changed = true;
-        }
-        if strategy.content != builtin_strategy.content {
-            strategy.content = builtin_strategy.content.clone();
-            changed = true;
-        }
-        if strategy.system_base_name.as_deref() != Some(builtin_strategy.name.as_str()) {
-            strategy.system_base_name = Some(builtin_strategy.name.clone());
-            changed = true;
-        }
-        if strategy.system_base_content.as_deref() != Some(builtin_strategy.content.as_str()) {
-            strategy.system_base_content = Some(builtin_strategy.content.clone());
-            changed = true;
-        }
+    if (!is_system_strategy_modified(strategy) || can_auto_migrate_legacy_name)
+        && strategy.name != builtin_strategy.name
+    {
+        strategy.name = builtin_strategy.name.clone();
+        changed = true;
     }
 
     changed
@@ -1526,8 +1765,18 @@ pub fn current_config(state: &AppState) -> Result<AppConfig, String> {
 
 pub fn save_config_to_disk(config: &AppConfig) -> Result<(), String> {
     let _ = ensure_runtime_data_dir_ready()?;
+    sync_strategies_to_disk(config)?;
+
     let config_path = get_config_path();
-    let content = serde_json::to_string_pretty(&config).map_err(|e| e.to_string())?;
+    let mut config_for_disk = config.clone();
+    for category in &mut config_for_disk.categories {
+        for strategy in &mut category.strategies {
+            strategy.content.clear();
+            strategy.system_base_content = None;
+        }
+    }
+
+    let content = serde_json::to_string_pretty(&config_for_disk).map_err(|e| e.to_string())?;
     let temp_path = config_path.with_extension("json.tmp");
     let mut temp_file = fs::File::create(&temp_path).map_err(|e| e.to_string())?;
     use std::io::Write;
@@ -1567,11 +1816,17 @@ pub fn save_config(config: AppConfig, state: tauri::State<'_, AppState>) -> Resu
 
 #[tauri::command]
 pub fn reset_config(state: tauri::State<'_, AppState>) -> Result<AppConfig, String> {
+    let _ = ensure_strategies_dir_and_defaults();
     let default_config = AppConfig::default();
     save_config_to_disk(&default_config)?;
     let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
     *cfg = default_config.clone();
     Ok(default_config)
+}
+
+#[tauri::command]
+pub fn get_strategies_path() -> String {
+    get_strategies_dir().to_string_lossy().to_string()
 }
 
 #[tauri::command]

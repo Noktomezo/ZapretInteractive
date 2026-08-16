@@ -1,0 +1,8 @@
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=fake
+--dpi-desync-repeats=6
+--dpi-desync-fooling=ts
+--dpi-desync-fake-tls={{STUN}}
+--dpi-desync-fake-tls={{TLS_CLIENTHELLO_4PDA}}
+--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}

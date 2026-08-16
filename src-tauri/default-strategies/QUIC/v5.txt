@@ -1,0 +1,5 @@
+--filter-udp=443
+<LIST_MODE>
+--dpi-desync=fake
+--dpi-desync-repeats=11
+--dpi-desync-fake-quic={{QUIC_INITIAL_GOOGLE}}

@@ -1,0 +1,6 @@
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=hostfakesplit
+--dpi-desync-fooling=badseq,badsum
+--dpi-desync-hostfakesplit-mod=host=ozon.ru
+--dpi-desync-badseq-increment=0

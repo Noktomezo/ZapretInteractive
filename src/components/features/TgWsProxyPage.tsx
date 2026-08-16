@@ -201,7 +201,7 @@ function TgWsProxyPageContent({
             description="Основные параметры локального Telegram-прокси на этом ПК"
           />
           <CardContent className="space-y-4 p-4!">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <ModuleSettingLabel
                 htmlFor="tg-ws-proxy-port"
                 icon={Link2}
@@ -221,7 +221,7 @@ function TgWsProxyPageContent({
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <ModuleSettingLabel
                 htmlFor="tg-ws-proxy-secret"
                 icon={KeyRound}

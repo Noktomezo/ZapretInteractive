@@ -1,0 +1,5 @@
+--filter-l7=tls
+--hostlist={{HOSTS_GOOGLE}}
+--dpi-desync=hostfakesplit
+--dpi-desync-hostfakesplit-mod=host=google.com
+--dpi-desync-fooling=ts

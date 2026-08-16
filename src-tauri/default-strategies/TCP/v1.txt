@@ -1,0 +1,5 @@
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=split2
+--dpi-desync-split-seqovl=681
+--dpi-desync-split-seqovl-pattern={{STUN}}
