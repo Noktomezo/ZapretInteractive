@@ -385,8 +385,8 @@ export function PlaceholdersPage() {
                         className="bg-card flex min-h-[4.5rem] items-center justify-between gap-4 overflow-hidden rounded-lg border px-4 py-3"
                       >
                         <div className="flex min-w-0 w-0 flex-1 items-center gap-3 overflow-hidden">
-                          <div className="text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25">
-                            <FileCode className="size-4" />
+                          <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25 text-muted-foreground">
+                            <FileCode className="size-4 text-[#DA702C] dark:text-[#DA702C]" />
                           </div>
                           <div className="min-w-0 w-0 flex-1 overflow-hidden space-y-1">
                             <div className="flex items-center gap-1 truncate text-sm font-normal text-foreground">

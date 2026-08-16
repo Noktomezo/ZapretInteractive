@@ -12,7 +12,6 @@ function ModuleCard({
   title,
   description,
   icon,
-  iconClassName,
   enabled,
   status,
   isBusy,
@@ -22,7 +21,6 @@ function ModuleCard({
   title: string
   description: string
   icon: ReactNode
-  iconClassName?: string
   enabled: boolean
   status: { running: boolean, moduleAvailable: boolean } | null
   isBusy: boolean
@@ -45,12 +43,7 @@ function ModuleCard({
       <div
         className="pointer-events-none relative z-10 flex min-w-0 flex-1 items-center gap-3 self-stretch"
       >
-        <div
-          className={cn(
-            'flex size-9 shrink-0 items-center justify-center rounded-md border',
-            iconClassName ?? 'border-border/70 bg-muted/25 text-muted-foreground',
-          )}
-        >
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/25 text-muted-foreground">
           {icon}
         </div>
         <div className="min-w-0 flex-1">
@@ -110,8 +103,7 @@ export function ModulesPage() {
           <ModuleCard
             title="DNS"
             description="Дополнительный обход геоблока иностранных сервисов через DNS"
-            icon={<Globe className="size-4" />}
-            iconClassName="border-primary/30 bg-[color-mix(in_oklab,var(--primary)_14%,transparent)] text-primary"
+            icon={<Globe className="size-4 text-[#3AA99F] dark:text-[#3AA99F]" />}
             enabled={dnsModule.enabled}
             status={dnsModule.status
               ? {
@@ -131,8 +123,7 @@ export function ModulesPage() {
           <ModuleCard
             title="TG WS Proxy"
             description="Локальный MTProto-прокси для Telegram Desktop через WebSocket"
-            icon={<Send className="size-4" />}
-            iconClassName="border-chart-1/30 bg-[color-mix(in_oklab,var(--chart-1)_14%,transparent)] text-chart-1"
+            icon={<Send className="size-4 text-[#4385BE] dark:text-[#4385BE]" />}
             enabled={tgWsProxyModule.enabled}
             status={tgWsProxyModule.status
               ? {

@@ -4,10 +4,8 @@ import {
   Check,
   Globe,
   Loader2,
-  Network,
   Power,
   RefreshCw,
-  Route,
   ShieldCheck,
 } from 'lucide-react'
 import { MODULE_PAGE_CARD_CLASS, ModuleSectionHeader, ModuleSettingLabel } from '@/components/features/module-ui'
@@ -91,6 +89,7 @@ export function DnsPage() {
         <Card className={MODULE_PAGE_CARD_CLASS}>
           <ModuleSectionHeader
             icon={ShieldCheck}
+            iconClassName="text-[#879A39] dark:text-[#879A39]"
             title="Параметры"
             description="Основные параметры работы DNS-подключения"
           />
@@ -98,7 +97,6 @@ export function DnsPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <ModuleSettingLabel
                 htmlFor="dns-bootstrap-resolvers"
-                icon={Network}
                 description="Нужен для первого подключения к DNS-серверу."
               >
                 Начальный резолвер
@@ -122,7 +120,6 @@ export function DnsPage() {
             <div className="flex items-center justify-between gap-4">
               <ModuleSettingLabel
                 htmlFor="dns-accelerator"
-                icon={Route}
                 description="Может ускорить работу DNS и сделать подключение к некоторым сервисам стабильнее."
               >
                 Акселератор
@@ -140,6 +137,7 @@ export function DnsPage() {
         <Card className={MODULE_PAGE_CARD_CLASS}>
           <ModuleSectionHeader
             icon={Globe}
+            iconClassName="text-[#3AA99F] dark:text-[#3AA99F]"
             title="DNS провайдеры"
             description="Выбор адреса для DNS-подключения"
             action={(

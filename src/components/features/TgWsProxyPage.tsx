@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { ArrowLeft, ChevronDown, Copy, KeyRound, Link2, Loader2, Power, RefreshCw, Send, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Copy, Link2, Loader2, Power, RefreshCw, Send, ShieldCheck } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { MODULE_PAGE_CARD_CLASS, ModuleSectionHeader, ModuleSettingLabel } from '@/components/features/module-ui'
@@ -151,13 +151,12 @@ function TgWsProxyPageContent({
     try {
       await openUrl(nextTgLink)
     }
-    catch {
+    catch (primaryError) {
       try {
         await openUrl(nextTgHttpLink)
       }
       catch (fallbackError) {
-        const reason = fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
-        toast.error(`Не удалось открыть Telegram-ссылку: ${reason}`)
+        toast.error(`Не удалось открыть ссылку в Telegram: ${fallbackError instanceof Error ? fallbackError.message : String(primaryError)}`)
       }
     }
   }
@@ -181,9 +180,12 @@ function TgWsProxyPageContent({
             ref={toggleButtonRef}
             type="button"
             variant={enabled ? 'destructive' : 'default'}
-            className={cn('gap-2', enabled && 'shadow-none hover:shadow-none')}
+            className={cn(
+              'gap-2',
+              enabled && 'shadow-none hover:shadow-none',
+            )}
             disabled={isBusy || status == null || (!enabled && status.moduleAvailable === false)}
-            onClick={() => { void handleToggleWithDraftSync() }}
+            onClick={() => void handleToggleWithDraftSync()}
           >
             {isBusy
               ? <Loader2 className="size-4 animate-spin" />
@@ -197,6 +199,7 @@ function TgWsProxyPageContent({
         <Card className={MODULE_PAGE_CARD_CLASS}>
           <ModuleSectionHeader
             icon={ShieldCheck}
+            iconClassName="text-[#879A39] dark:text-[#879A39]"
             title="Параметры"
             description="Основные параметры локального Telegram-прокси на этом ПК"
           />
@@ -204,7 +207,6 @@ function TgWsProxyPageContent({
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <ModuleSettingLabel
                 htmlFor="tg-ws-proxy-port"
-                icon={Link2}
                 description="Локальный порт, через который Telegram Desktop подключается к прокси."
               >
                 Порт
@@ -224,7 +226,6 @@ function TgWsProxyPageContent({
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <ModuleSettingLabel
                 htmlFor="tg-ws-proxy-secret"
-                icon={KeyRound}
                 description="32 шестнадцатеричных символа."
               >
                 Секрет
@@ -261,6 +262,7 @@ function TgWsProxyPageContent({
         <Card className={MODULE_PAGE_CARD_CLASS}>
           <ModuleSectionHeader
             icon={Send}
+            iconClassName="text-[#4385BE] dark:text-[#4385BE]"
             title="Подключение"
             description="Используйте ссылку ниже, чтобы быстро добавить прокси в Telegram Desktop"
             action={(
