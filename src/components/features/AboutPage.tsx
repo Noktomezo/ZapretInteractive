@@ -181,6 +181,7 @@ export function AboutPage() {
         <Card className={MODULE_PAGE_CARD_CLASS}>
           <ModuleSectionHeader
             icon={Package}
+            iconClassName="text-[#4385BE] dark:text-[#4385BE]"
             title={APP_NAME}
             description={t('about.appDescription')}
           />
@@ -250,6 +251,7 @@ export function AboutPage() {
         <Card className={MODULE_PAGE_CARD_CLASS}>
           <ModuleSectionHeader
             icon={ExternalLink}
+            iconClassName="text-[#8B7EC8] dark:text-[#8B7EC8]"
             title={t('about.linksSectionTitle')}
             description={t('about.linksSectionDescription')}
           />
