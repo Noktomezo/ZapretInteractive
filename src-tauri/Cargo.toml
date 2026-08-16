@@ -9,8 +9,6 @@ edition = "2024"
 name = "zapret_interactive_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
-[profile.dev]
-
 [profile.release]
 overflow-checks = false
 codegen-units = 1
@@ -50,8 +48,8 @@ toml = "1.1.2"
 duct = "1.1.1"
 sysinfo = "0.38.4"
 rayon = "1.12.0"
-discord-presence = "3.2.0"
 include_dir = "0.7.4"
+discord-rich-presence = "1.1.0"
 
 
 [target.'cfg(windows)'.dependencies]
