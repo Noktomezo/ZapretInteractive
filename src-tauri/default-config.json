@@ -902,7 +902,7 @@
           "id": "preset-unknown-tcp-v1",
           "name": "v1",
           "content": "",
-          "active": true
+          "active": false
         },
         {
           "id": "preset-unknown-tcp-v2",
@@ -1022,7 +1022,7 @@
           "id": "preset-unknown-tcp-v21",
           "name": "v21",
           "content": "",
-          "active": false
+          "active": true
         }
       ]
     }
