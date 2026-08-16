@@ -1,6 +1,7 @@
 import type { Filter as FilterType } from '@/lib/types'
 import { FilePenLine, Filter, FolderOpen, Loader2, Package, Pencil, Plus, RefreshCcw, RotateCcw, Trash2, UserRoundPlus } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -67,6 +68,7 @@ const emptyDraft: FilterDraft = {
 }
 
 export function FiltersPage() {
+  const { t } = useTranslation()
   const config = useConfigStore(state => state.config)
   const builtinConfig = useConfigStore(state => state.builtinConfig)
   const loading = useConfigStore(state => state.loading)
@@ -98,51 +100,45 @@ export function FiltersPage() {
   useMountEffect(() => {
     Promise.all([
       load(),
-      tauri.getReservedFilterFilenames().then((names) => {
-        reservedBundledFilenamesRef.current = new Set(names.map(name => name.trim().toLowerCase()))
-      }),
-    ]).catch(console.error)
+      tauri.getReservedFilterFilenames().catch(() => []),
+    ]).then(([_, bundledFiles]) => {
+      reservedBundledFilenamesRef.current = new Set(bundledFiles.map(normalizeFilterFilename))
+    }).catch(console.error)
   })
 
   const resetDraft = () => {
     setDraft(emptyDraft)
     editingFilterIdRef.current = null
+    currentLoadIdRef.current = null
+    setCurrentLoadId(null)
     setEditLoading(false)
     setEditLoadSucceeded(false)
-    setCurrentLoadId(null)
-    currentLoadIdRef.current = null
-    requestAnimationFrame(() => {
-      autosizeTextarea(createContentTextareaRef.current)
-      autosizeTextarea(editContentTextareaRef.current)
-    })
   }
 
-  const updateDraft = (updates: Partial<FilterDraft>) => {
-    setDraft(prev => ({ ...prev, ...updates }))
+  const updateDraft = (patch: Partial<FilterDraft>) => {
+    setDraft(prev => ({ ...prev, ...patch }))
   }
 
-  const validateFilename = (filename: string, currentFilename?: string) => {
-    const normalized = normalizeFilterFilename(filename)
-    const normalizedLower = normalized.toLowerCase()
-    const currentFilenameLower = currentFilename ? normalizeFilterFilename(currentFilename).toLowerCase() : undefined
-    if (!normalized) {
-      toast.error('Укажите имя файла фильтра')
+  const validateFilename = (filename: string, currentFilter?: FilterType) => {
+    const nextFilename = normalizeFilterFilename(filename)
+    if (!nextFilename) {
+      toast.error('Имя файла не может быть пустым')
       return false
     }
 
-    const existingFilters = useConfigStore.getState().config?.filters || []
-    const hasCollision = existingFilters.some(filter =>
-      normalizeFilterFilename(filter.filename).toLowerCase() === normalizedLower
-      && normalizeFilterFilename(filter.filename).toLowerCase() !== currentFilenameLower,
+    const currentFilters = useConfigStore.getState().config?.filters || []
+    const duplicateInConfig = currentFilters.some(
+      filter => filter.id !== currentFilter?.id && normalizeFilterFilename(filter.filename).toLowerCase() === nextFilename.toLowerCase(),
     )
 
-    if (hasCollision) {
-      toast.error('Фильтр с таким именем файла уже существует')
+    if (duplicateInConfig) {
+      toast.error(t('filters.fileAlreadyExists'))
       return false
     }
 
-    if (reservedBundledFilenamesRef.current.has(normalizedLower) && normalizedLower !== currentFilenameLower) {
-      toast.error('Это имя файла зарезервировано встроенным фильтром')
+    const isCurrentFile = currentFilter && normalizeFilterFilename(currentFilter.filename).toLowerCase() === nextFilename.toLowerCase()
+    if (!isCurrentFile && reservedBundledFilenamesRef.current.has(nextFilename)) {
+      toast.error(t('filters.fileAlreadyExists'))
       return false
     }
 
@@ -155,12 +151,12 @@ export function FiltersPage() {
     const currentFilters = useConfigStore.getState().config?.filters || []
 
     if (currentFilters.some(filter => filter.id !== currentFilter?.id && filter.name.trim().toLocaleLowerCase() === nextName)) {
-      toast.error('Фильтр с таким названием уже существует')
+      toast.error(t('filters.nameExists'))
       return false
     }
 
     if (nextContent && currentFilters.some(filter => filter.id !== currentFilter?.id && filter.content.trim() === nextContent)) {
-      toast.error('Фильтр с таким содержимым уже существует')
+      toast.error(t('filters.contentExists'))
       return false
     }
 
@@ -194,7 +190,7 @@ export function FiltersPage() {
         }
         return restartIfConnected()
           .then(() => {
-            notifyConfigApplied('Фильтр обновлён')
+            notifyConfigApplied(t('filters.filterUpdated'))
           })
           .catch((e) => {
             toast.error(`Ошибка применения фильтров: ${e instanceof Error ? e.message : String(e)}`)
@@ -234,7 +230,7 @@ export function FiltersPage() {
       addConfigLog(`добавлен фильтр "${newFilter.name}" (${newFilter.filename})`)
       resetDraft()
       setCreateDialogOpen(false)
-      toast.success('Фильтр создан')
+      toast.success(t('filters.filterCreated'))
     }
     catch (e) {
       await tauri.deleteFilterFile(nextFilename).catch(() => {})
@@ -250,100 +246,96 @@ export function FiltersPage() {
     currentLoadIdRef.current = loadId
     setCurrentLoadId(loadId)
     editingFilterIdRef.current = filter.id
-    setEditDialogOpen(true)
-    setEditLoading(true)
-    setEditLoadSucceeded(false)
     setDraft({
       name: filter.name,
       filename: normalizeFilterFilename(filter.filename),
-      content: filter.content,
+      content: filter.content ?? '',
     })
+    setEditLoading(true)
+    setEditLoadSucceeded(false)
+    setEditDialogOpen(true)
 
     try {
-      const content = await tauri.loadFilterFile(normalizeFilterFilename(filter.filename))
+      const content = await tauri.loadFilterFile(filter.filename)
       if (currentLoadIdRef.current === loadId) {
         setDraft({
           name: filter.name,
           filename: normalizeFilterFilename(filter.filename),
           content,
         })
-        requestAnimationFrame(() => autosizeTextarea(editContentTextareaRef.current))
         setEditLoadSucceeded(true)
       }
     }
     catch (e) {
       if (currentLoadIdRef.current === loadId) {
+        toast.error(`Ошибка загрузки содержимого фильтра: ${e instanceof Error ? e.message : String(e)}`)
         setEditLoadSucceeded(false)
-        toast.error(`Ошибка загрузки фильтра: ${e instanceof Error ? e.message : String(e)}`)
       }
     }
     finally {
       if (currentLoadIdRef.current === loadId) {
         setEditLoading(false)
+        setCurrentLoadId(null)
       }
     }
   }
 
   const handleSaveEdit = async () => {
-    if (editInFlight)
-      return
-    if (!editingFilterIdRef.current || !draft.name.trim() || !draft.filename.trim() || !editLoadSucceeded)
-      return
-
-    const editingFilterId = editingFilterIdRef.current
     const currentFilters = useConfigStore.getState().config?.filters || []
-    const targetFilter = currentFilters.find(filter => filter.id === editingFilterId)
-    if (!targetFilter)
+    const currentFilter = currentFilters.find(filter => filter.id === editingFilterIdRef.current)
+    if (!currentFilter || editInFlight || !editLoadSucceeded)
+      return
+    if (!draft.name.trim() || !draft.filename.trim())
       return
 
     const nextFilename = normalizeFilterFilename(draft.filename)
-    if (!validateFilename(nextFilename, targetFilter.filename))
+    if (!validateFilename(nextFilename, currentFilter))
       return
-    if (!validateFilterDraft(draft, targetFilter))
+    if (!validateFilterDraft(draft, currentFilter))
       return
 
-    const targetFilename = normalizeFilterFilename(targetFilter.filename)
-    const renamed = targetFilename.toLowerCase() !== nextFilename.toLowerCase()
+    const prevFilename = normalizeFilterFilename(currentFilter.filename)
+    const isFilenameChanged = prevFilename.toLowerCase() !== nextFilename.toLowerCase()
+    let prevContent: string | null = null
+
     setEditInFlight(true)
-    const originalContent = await tauri.loadFilterFile(targetFilename).catch(() => draft.content)
     try {
-      await tauri.saveFilterFile(nextFilename, draft.content)
-      if (renamed) {
-        try {
-          await tauri.deleteFilterFile(targetFilename)
-        }
-        catch (e) {
-          await tauri.deleteFilterFile(nextFilename).catch(() => {})
-          throw e
-        }
+      if (isFilenameChanged) {
+        prevContent = await tauri.loadFilterFile(prevFilename).catch(() => currentFilter.content)
+        await tauri.saveFilterFile(nextFilename, draft.content ?? '')
+        await tauri.deleteFilterFile(prevFilename)
+      }
+      else {
+        await tauri.saveFilterFile(nextFilename, draft.content ?? '')
       }
 
-      const updatedFilters = currentFilters.map(filter =>
-        filter.id === editingFilterId
-          ? {
-              ...filter,
-              name: draft.name.trim(),
-              filename: nextFilename,
-              content: draft.content,
-            }
-          : filter,
-      )
+      const updatedFilters = currentFilters.map((filter) => {
+        if (filter.id !== currentFilter.id)
+          return filter
+        return {
+          ...filter,
+          name: draft.name.trim(),
+          filename: nextFilename,
+          content: draft.content ?? '',
+        }
+      })
 
       await persistFilters(updatedFilters, currentFilters)
-      addConfigLog(
-        renamed
-          ? `фильтр "${targetFilter.name}" обновлён, файл переименован с ${targetFilename} на ${nextFilename}`
-          : `обновлён фильтр "${draft.name.trim()}"`,
-      )
-      resetDraft()
+      if (currentFilter.active) {
+        await restartIfConnected()
+        notifyConfigApplied(t('filters.filterUpdated'))
+      }
+
+      addConfigLog(`фильтр "${draft.name.trim()}" (${nextFilename}) сохранён`)
       setEditDialogOpen(false)
-      toast.success('Фильтр сохранён')
+      resetDraft()
+      toast.success(t('filters.filterSaved'))
     }
     catch (e) {
-      if (renamed) {
+      if (isFilenameChanged && prevContent !== null) {
+        await tauri.saveFilterFile(prevFilename, prevContent).catch(() => {})
         await tauri.deleteFilterFile(nextFilename).catch(() => {})
       }
-      await tauri.saveFilterFile(targetFilename, originalContent).catch(() => {})
       toast.error(`Ошибка сохранения фильтра: ${e instanceof Error ? e.message : String(e)}`)
     }
     finally {
@@ -354,39 +346,35 @@ export function FiltersPage() {
   const handleDeleteFilter = async (filter: FilterType) => {
     if (deleteInFlightId)
       return
+    const currentFilters = config?.filters || []
+    const filename = normalizeFilterFilename(filter.filename)
+    const nextFilters = currentFilters.filter(f => f.id !== filter.id)
+    const nextRemovedFilterIds = filter.system
+      ? Array.from(new Set([...(config?.systemRemovedFilterIds ?? []), filter.systemBaseName ?? filter.id]))
+      : (config?.systemRemovedFilterIds ?? [])
+
     setDeleteInFlightId(filter.id)
-    let originalContent: string | undefined
+    let fileContent: string | null = null
+
     try {
-      const filterFilename = normalizeFilterFilename(filter.filename)
-      try {
-        originalContent = await tauri.loadFilterFile(filterFilename)
+      fileContent = await tauri.loadFilterFile(filename).catch(() => filter.content)
+      await tauri.deleteFilterFile(filename)
+      replaceFiltersState(nextFilters, nextRemovedFilterIds)
+      await saveNow()
+
+      if (filter.active) {
+        await restartIfConnected()
+        notifyConfigApplied(t('filters.filterUpdated'))
       }
-      catch {}
-      await tauri.deleteFilterFile(filterFilename)
-      const currentFilters = useConfigStore.getState().config?.filters || []
-      const nextFilters = currentFilters.filter(item => item.id !== filter.id)
-      const nextRemovedFilterIds = filter.system
-        ? Array.from(new Set([...(config?.systemRemovedFilterIds ?? []), filter.id]))
-        : (config?.systemRemovedFilterIds ?? [])
-      try {
-        replaceFiltersState(nextFilters, nextRemovedFilterIds)
-        await saveNow()
-      }
-      catch (e) {
-        if (originalContent !== undefined) {
-          await tauri.saveFilterFile(filterFilename, originalContent).catch(() => {})
-        }
-        replaceFiltersState(currentFilters, config?.systemRemovedFilterIds ?? [])
-        throw e
-      }
-      if (editingFilterIdRef.current === filter.id) {
-        resetDraft()
-        setEditDialogOpen(false)
-      }
-      addConfigLog(`удалён фильтр "${filter.name}" (${filterFilename})`)
-      toast.success('Фильтр удалён')
+
+      addConfigLog(`фильтр "${filter.name}" (${filter.filename}) удалён`)
+      toast.success(t('filters.filterDeleted'))
     }
     catch (e) {
+      if (fileContent !== null) {
+        await tauri.saveFilterFile(filename, fileContent).catch(() => {})
+      }
+      replaceFiltersState(currentFilters, config?.systemRemovedFilterIds ?? [])
       toast.error(`Ошибка удаления фильтра: ${e instanceof Error ? e.message : String(e)}`)
     }
     finally {
@@ -447,7 +435,7 @@ export function FiltersPage() {
     try {
       addConfigLog(`фильтр "${systemFilterTarget.name}" обновлён до системного значения`)
       await restartIfConnected()
-      notifyConfigApplied('Фильтр обновлён')
+      notifyConfigApplied(t('filters.filterUpdated'))
       setSystemFilterTarget(null)
     }
     catch (error) {
@@ -469,21 +457,21 @@ export function FiltersPage() {
         <div className="space-y-6 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-medium">Фильтры</h1>
+              <h1 className="text-2xl font-medium">{t('filters.title')}</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                WinDivert фильтры для отсечения полезной нагрузки
+                {t('filters.subtitle')}
               </p>
             </div>
             <div className="flex items-center gap-1">
               <Button onClick={() => setCreateDialogOpen(true)}>
                 <Plus className="size-4" />
-                Новый фильтр
+                {t('filters.newFilter')}
               </Button>
               <Button
                 variant="outline"
                 size="icon"
-                title="Открыть папку filters"
-                aria-label="Открыть папку filters"
+                title={t('filters.openFiltersFolder')}
+                aria-label={t('filters.openFiltersFolder')}
                 onClick={async () => {
                   try {
                     await tauri.openFiltersDirectory()
@@ -519,17 +507,17 @@ export function FiltersPage() {
                         </Label>
                         <div className="flex items-center gap-1 text-muted-foreground">
                           {isSystemFilter(filter)
-                            ? <InlineMarker icon={Package} label="Системный фильтр" />
-                            : <InlineMarker icon={UserRoundPlus} label="Пользовательский фильтр" className="text-primary/80" />}
+                            ? <InlineMarker icon={Package} label={t('filters.systemBadge')} />
+                            : <InlineMarker icon={UserRoundPlus} label={t('filters.customBadge')} className="text-primary/80" />}
                           {isSystemFilterModified(filter) && (
-                            <InlineMarker icon={FilePenLine} label="Системный фильтр изменён пользователем" className="text-warning" />
+                            <InlineMarker icon={FilePenLine} label={t('filters.modifiedBadge')} className="text-warning" />
                           )}
                           {isSystemFilter(filter) && (isSystemFilterModified(filter) || hasUpdate) && (
                             <InlineMarker
                               icon={hasUpdate ? RefreshCcw : RotateCcw}
                               label={hasUpdate
-                                ? 'Обновить фильтр до актуального системного значения'
-                                : 'Откатить фильтр к системному значению'}
+                                ? t('filters.updateAvailable')
+                                : t('filters.rollbackToSystem')}
                               className={hasUpdate ? 'text-primary' : 'text-destructive'}
                               onClick={() => setSystemFilterTarget(filter)}
                             />
@@ -550,8 +538,8 @@ export function FiltersPage() {
                     <Button
                       variant="outline"
                       size="icon"
-                      aria-label={`Редактировать фильтр ${filter.name}`}
-                      title={`Редактировать фильтр ${filter.name}`}
+                      aria-label={t('filters.editAria', { name: filter.name })}
+                      title={t('filters.editAria', { name: filter.name })}
                       disabled={editInFlight || deleteInFlightId === filter.id}
                       onClick={() => openEditDialog(filter)}
                     >
@@ -563,8 +551,8 @@ export function FiltersPage() {
                           variant="outline"
                           size="icon"
                           className="bg-destructive/10 text-destructive hover:bg-destructive/18"
-                          aria-label={`Удалить фильтр ${filter.name}`}
-                          title={`Удалить фильтр ${filter.name}`}
+                          aria-label={t('filters.deleteAria', { name: filter.name })}
+                          title={t('filters.deleteAria', { name: filter.name })}
                           disabled={deleteInFlightId === filter.id || editInFlight}
                         >
                           <Trash2 className="size-4" />
@@ -572,18 +560,18 @@ export function FiltersPage() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Удалить фильтр?</AlertDialogTitle>
+                          <AlertDialogTitle>{t('filters.deleteDialogTitle')}</AlertDialogTitle>
                           <AlertDialogDescription>
-                            {`Фильтр "${filter.name}" будет удалён из списка, а файл ${filter.filename} будет удалён с диска.`}
+                            {t('filters.deleteDialogDescription', { name: filter.name, filename: filter.filename })}
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Отмена</AlertDialogCancel>
+                          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                           <AlertDialogAction
                             onClick={() => handleDeleteFilter(filter)}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           >
-                            Удалить
+                            {t('common.delete')}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -599,19 +587,19 @@ export function FiltersPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>
                   {systemFilterTarget && isSystemFilterUpdateAvailable(systemFilterTarget, getBuiltinFilter(builtinConfig, systemFilterTarget.id))
-                    ? 'Обновить системный фильтр?'
-                    : 'Откатить фильтр к системному значению?'}
+                    ? t('filters.updateSystemDialogTitle')
+                    : t('filters.restoreSystemDialogTitle')}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
                   {systemFilterTarget
-                    ? `Фильтр "${systemFilterTarget.name}" будет возвращён к актуальному системному значению.`
+                    ? t('filters.updateSystemDialogDescription', { name: systemFilterTarget.name })
                     : ''}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Отмена</AlertDialogCancel>
+                <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                 <AlertDialogAction onClick={() => void handleRestoreFilter()}>
-                  Обновить
+                  {t('filters.updateDialogConfirm')}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -627,14 +615,14 @@ export function FiltersPage() {
           >
             <DialogContent className="max-h-[calc(100vh-4rem)] max-w-2xl overflow-hidden">
               <DialogHeader>
-                <DialogTitle>Новый фильтр</DialogTitle>
+                <DialogTitle>{t('filters.createDialogTitle')}</DialogTitle>
                 <DialogDescription>
-                  Создайте новый файл фильтра и добавьте его в конфигурацию.
+                  {t('filters.createDialogDescription')}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="filter-name">Название</Label>
+                  <Label htmlFor="filter-name">{t('filters.nameLabel')}</Label>
                   <Input
                     id="filter-name"
                     value={draft.name}
@@ -643,7 +631,7 @@ export function FiltersPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="filter-filename">Имя файла</Label>
+                  <Label htmlFor="filter-filename">{t('filters.filenameLabel')}</Label>
                   <Input
                     id="filter-filename"
                     value={draft.filename}
@@ -657,7 +645,7 @@ export function FiltersPage() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="filter-content">Содержимое фильтра</Label>
+                  <Label htmlFor="filter-content">{t('filters.contentLabel')}</Label>
                   <EditorTextarea
                     textareaRef={createContentTextareaRef}
                     id="filter-content"
@@ -666,17 +654,17 @@ export function FiltersPage() {
                       updateDraft({ content: e.target.value })
                       autosizeTextarea(e.currentTarget)
                     }}
-                    placeholder="WinDivert фильтр..."
+                    placeholder={t('filters.contentPlaceholder')}
                     rows={10}
                   />
                 </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
-                  Отмена
+                  {t('common.cancel')}
                 </Button>
                 <Button onClick={handleCreateFilter} disabled={createInFlight || !draft.name.trim() || !draft.filename.trim()}>
-                  Создать
+                  {t('filters.createButton')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -692,15 +680,15 @@ export function FiltersPage() {
           >
             <DialogContent className="max-h-[calc(100vh-4rem)] max-w-3xl overflow-hidden">
               <DialogHeader>
-                <DialogTitle>Редактировать фильтр</DialogTitle>
+                <DialogTitle>{t('filters.editDialogTitle')}</DialogTitle>
                 <DialogDescription>
-                  Просмотр и изменение имени, файла и содержимого фильтра.
+                  {t('filters.editDialogDescription')}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="edit-filter-name">Название</Label>
+                    <Label htmlFor="edit-filter-name">{t('filters.nameLabel')}</Label>
                     <Input
                       id="edit-filter-name"
                       value={draft.name}
@@ -710,7 +698,7 @@ export function FiltersPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="edit-filter-filename">Имя файла</Label>
+                    <Label htmlFor="edit-filter-filename">{t('filters.filenameLabel')}</Label>
                     <Input
                       id="edit-filter-filename"
                       value={draft.filename}
@@ -721,7 +709,7 @@ export function FiltersPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-filter-content">Содержимое фильтра</Label>
+                  <Label htmlFor="edit-filter-content">{t('filters.contentLabel')}</Label>
                   <EditorTextarea
                     textareaRef={editContentTextareaRef}
                     id="edit-filter-content"
@@ -730,21 +718,21 @@ export function FiltersPage() {
                       updateDraft({ content: e.target.value })
                       autosizeTextarea(e.currentTarget)
                     }}
-                    placeholder="WinDivert фильтр..."
+                    placeholder={t('filters.contentPlaceholder')}
                     rows={16}
                     disabled={editLoading}
                   />
                   {editLoading && currentLoadId && (
-                    <p className="text-xs text-muted-foreground">Загружаю содержимое файла...</p>
+                    <p className="text-xs text-muted-foreground">{t('filters.loadingContent')}</p>
                   )}
                 </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-                  Закрыть
+                  {t('filters.closeDialog')}
                 </Button>
                 <Button onClick={handleSaveEdit} disabled={editLoading || editInFlight || !editLoadSucceeded || !draft.name.trim() || !draft.filename.trim()}>
-                  Сохранить
+                  {t('common.save')}
                 </Button>
               </DialogFooter>
             </DialogContent>

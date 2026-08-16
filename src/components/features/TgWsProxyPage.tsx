@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { ArrowLeft, ChevronDown, Copy, Link2, Loader2, Power, RefreshCw, Send, ShieldCheck } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { MODULE_PAGE_CARD_CLASS, ModuleSectionHeader, ModuleSettingLabel } from '@/components/features/module-ui'
 import { Button } from '@/components/ui/button'
@@ -35,6 +36,7 @@ function TgWsProxyPageContent({
 }) {
   interface DraftState { port: string, secret: string }
 
+  const { t } = useTranslation()
   const [draftPort, setDraftPort] = useState(() => String(port))
   const [draftSecret, setDraftSecret] = useState(() => secret)
   const [isInfoExpanded, setIsInfoExpanded] = useState(false)
@@ -133,7 +135,7 @@ function TgWsProxyPageContent({
 
     try {
       await navigator.clipboard.writeText(nextTgLink)
-      toast.success('Ссылка TG WS Proxy скопирована')
+      toast.success(t('tgWsProxy.connection.linkCopied'))
     }
     catch (error) {
       toast.error(`Не удалось скопировать ссылку: ${error instanceof Error ? error.message : String(error)}`)
@@ -166,13 +168,13 @@ function TgWsProxyPageContent({
       <div className="space-y-6 p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <Link to="/modules" className="cursor-pointer text-muted-foreground hover:text-foreground" aria-label="Назад к модулям">
+            <Link to="/modules" className="cursor-pointer text-muted-foreground hover:text-foreground" aria-label={t('tgWsProxy.backAria')}>
               <ArrowLeft className="size-5" />
             </Link>
             <div>
-              <h1 className="text-2xl font-medium">TG WS Proxy</h1>
+              <h1 className="text-2xl font-medium">{t('tgWsProxy.title')}</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Локальный MTProto-прокси для Telegram Desktop через WebSocket
+                {t('tgWsProxy.subtitle')}
               </p>
             </div>
           </div>
@@ -191,8 +193,8 @@ function TgWsProxyPageContent({
               ? <Loader2 className="size-4 animate-spin" />
               : <Power className="size-4" />}
             {isBusy
-              ? 'Сохранение...'
-              : enabled ? 'Выключить модуль' : 'Включить модуль'}
+              ? t('tgWsProxy.saving')
+              : enabled ? t('tgWsProxy.turnOff') : t('tgWsProxy.turnOn')}
           </Button>
         </div>
 
@@ -200,16 +202,16 @@ function TgWsProxyPageContent({
           <ModuleSectionHeader
             icon={ShieldCheck}
             iconClassName="text-[#879A39] dark:text-[#879A39]"
-            title="Параметры"
-            description="Основные параметры локального Telegram-прокси на этом ПК"
+            title={t('tgWsProxy.params.title')}
+            description={t('tgWsProxy.params.description')}
           />
           <CardContent className="space-y-4 p-4!">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <ModuleSettingLabel
                 htmlFor="tg-ws-proxy-port"
-                description="Локальный порт, через который Telegram Desktop подключается к прокси."
+                description={t('tgWsProxy.params.port.description')}
               >
-                Порт
+                {t('tgWsProxy.params.port.title')}
               </ModuleSettingLabel>
               <div className="w-full sm:w-[8rem]">
                 <Input
@@ -226,9 +228,9 @@ function TgWsProxyPageContent({
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <ModuleSettingLabel
                 htmlFor="tg-ws-proxy-secret"
-                description="32 шестнадцатеричных символа."
+                description={t('tgWsProxy.params.secret.description')}
               >
-                Секрет
+                {t('tgWsProxy.params.secret.title')}
               </ModuleSettingLabel>
               <div className="relative w-full sm:w-[24rem]">
                 <Input
@@ -243,7 +245,7 @@ function TgWsProxyPageContent({
                   type="button"
                   className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 inline-flex size-4 -translate-y-1/2 cursor-pointer items-center justify-center transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={isBusy}
-                  aria-label="Сгенерировать новый секрет"
+                  aria-label={t('tgWsProxy.params.secret.generateAria')}
                   onMouseDown={event => event.preventDefault()}
                   onClick={() => {
                     const nextSecret = generateTgWsProxySecret()
@@ -263,8 +265,8 @@ function TgWsProxyPageContent({
           <ModuleSectionHeader
             icon={Send}
             iconClassName="text-[#4385BE] dark:text-[#4385BE]"
-            title="Подключение"
-            description="Используйте ссылку ниже, чтобы быстро добавить прокси в Telegram Desktop"
+            title={t('tgWsProxy.connection.title')}
+            description={t('tgWsProxy.connection.description')}
             action={(
               <div className="flex items-center gap-2">
                 <Button
@@ -273,13 +275,13 @@ function TgWsProxyPageContent({
                   size="icon"
                   className="size-8 cursor-pointer rounded-md hover:bg-muted/40"
                   onClick={() => setIsInfoExpanded(!isInfoExpanded)}
-                  aria-label={isInfoExpanded ? 'Скрыть информацию' : 'Показать информацию'}
+                  aria-label={isInfoExpanded ? t('tgWsProxy.connection.hideInfo') : t('tgWsProxy.connection.showInfo')}
                 >
                   <ChevronDown className={cn('size-4 transition-transform duration-200', isInfoExpanded ? 'rotate-180' : '')} />
                 </Button>
                 <Button type="button" className="gap-2 shadow-none hover:shadow-none" onClick={() => void handleOpenTelegram()}>
                   <Link2 className="size-4" />
-                  Открыть в Telegram
+                  {t('tgWsProxy.connection.openInTelegram')}
                 </Button>
               </div>
             )}
@@ -294,15 +296,15 @@ function TgWsProxyPageContent({
               <CardContent className="space-y-4 p-4!">
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div className="rounded-xl border border-border/60 bg-muted/18 p-3">
-                    <p className="text-xs text-muted-foreground">Хост</p>
+                    <p className="text-xs text-muted-foreground">{t('tgWsProxy.connection.host')}</p>
                     <div className="-mx-3 mt-2 border-t border-border/60 px-3 pt-2">
                       <div className="flex items-end justify-between gap-3">
                         <p className="text-sm font-medium">127.0.0.1</p>
                         <button
                           type="button"
                           className="text-muted-foreground hover:text-foreground inline-flex size-4 shrink-0 cursor-pointer items-center justify-center transition-colors"
-                          aria-label="Скопировать хост"
-                          onClick={() => void navigator.clipboard.writeText('127.0.0.1').then(() => toast.success('Хост скопирован')).catch((error) => {
+                          aria-label={t('tgWsProxy.connection.copyHost')}
+                          onClick={() => void navigator.clipboard.writeText('127.0.0.1').then(() => toast.success(t('tgWsProxy.connection.hostCopied'))).catch((error) => {
                             toast.error(`Не удалось скопировать хост: ${error instanceof Error ? error.message : String(error)}`)
                           })}
                         >
@@ -312,15 +314,15 @@ function TgWsProxyPageContent({
                     </div>
                   </div>
                   <div className="rounded-xl border border-border/60 bg-muted/18 p-3">
-                    <p className="text-xs text-muted-foreground">Порт</p>
+                    <p className="text-xs text-muted-foreground">{t('tgWsProxy.connection.port')}</p>
                     <div className="-mx-3 mt-2 border-t border-border/60 px-3 pt-2">
                       <div className="flex items-end justify-between gap-3">
                         <p className="text-sm font-medium">{port}</p>
                         <button
                           type="button"
                           className="text-muted-foreground hover:text-foreground inline-flex size-4 shrink-0 cursor-pointer items-center justify-center transition-colors"
-                          aria-label="Скопировать порт"
-                          onClick={() => void navigator.clipboard.writeText(String(port)).then(() => toast.success('Порт скопирован')).catch((error) => {
+                          aria-label={t('tgWsProxy.connection.copyPort')}
+                          onClick={() => void navigator.clipboard.writeText(String(port)).then(() => toast.success(t('tgWsProxy.connection.portCopied'))).catch((error) => {
                             toast.error(`Не удалось скопировать порт: ${error instanceof Error ? error.message : String(error)}`)
                           })}
                         >
@@ -330,21 +332,40 @@ function TgWsProxyPageContent({
                     </div>
                   </div>
                   <div className="rounded-xl border border-border/60 bg-muted/18 p-3">
-                    <p className="text-xs text-muted-foreground">PID</p>
+                    <p className="text-xs text-muted-foreground">{t('tgWsProxy.connection.pid')}</p>
                     <div className="-mx-3 mt-2 border-t border-border/60 px-3 pt-2">
                       <div className="flex items-end justify-between gap-3">
-                        <p className="text-sm font-medium">{status?.pid ?? 'не запущен'}</p>
+                        <p className="text-sm font-medium">{status?.pid ?? t('tgWsProxy.connection.notRunning')}</p>
                         <button
                           type="button"
                           className="text-muted-foreground hover:text-foreground inline-flex size-4 shrink-0 cursor-pointer items-center justify-center transition-colors"
-                          aria-label="Скопировать PID"
-                          onClick={() => void navigator.clipboard.writeText(String(status?.pid ?? 'не запущен')).then(() => toast.success('PID скопирован')).catch((error) => {
+                          aria-label={t('tgWsProxy.connection.copyPid')}
+                          onClick={() => void navigator.clipboard.writeText(String(status?.pid ?? t('tgWsProxy.connection.notRunning'))).then(() => toast.success(t('tgWsProxy.connection.pidCopied'))).catch((error) => {
                             toast.error(`Не удалось скопировать PID: ${error instanceof Error ? error.message : String(error)}`)
                           })}
                         >
                           <Copy className="size-4" />
                         </button>
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-border/60 bg-muted/18 p-3">
+                  <p className="text-xs text-muted-foreground">{t('tgWsProxy.params.secret.title')}</p>
+                  <div className="-mx-3 mt-2 border-t border-border/60 px-3 pt-2">
+                    <div className="flex items-end justify-between gap-3">
+                      <p className="break-all text-sm font-mono">{secret}</p>
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-foreground inline-flex size-4 shrink-0 cursor-pointer items-center justify-center transition-colors"
+                        aria-label={t('tgWsProxy.connection.copySecret')}
+                        onClick={() => void navigator.clipboard.writeText(secret).then(() => toast.success('Секрет скопирован')).catch((error) => {
+                          toast.error(`Не удалось скопировать секрет: ${error instanceof Error ? error.message : String(error)}`)
+                        })}
+                      >
+                        <Copy className="size-4" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -357,7 +378,7 @@ function TgWsProxyPageContent({
                       <button
                         type="button"
                         className="text-muted-foreground hover:text-foreground inline-flex size-4 shrink-0 cursor-pointer items-center justify-center transition-colors"
-                        aria-label="Скопировать ссылку TG WS Proxy"
+                        aria-label={t('tgWsProxy.connection.copyLink')}
                         onClick={() => void handleCopyLink()}
                       >
                         <Copy className="size-4" />

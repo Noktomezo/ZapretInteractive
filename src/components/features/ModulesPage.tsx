@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { ChevronRight, Globe, Loader2, Send } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { Switch } from '@/components/ui/switch'
 import { useDnsModuleSummary, useTgWsProxyModuleSummary } from '@/hooks/use-module-summary'
@@ -70,6 +71,7 @@ function ModuleCard({
 }
 
 export function ModulesPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const config = useConfigStore(state => state.config)
   const loading = useConfigStore(state => state.loading)
@@ -93,16 +95,16 @@ export function ModulesPage() {
     <LenisScrollArea className="h-full min-h-0">
       <div className="space-y-6 p-6">
         <div>
-          <h1 className="text-2xl font-medium">Модули</h1>
+          <h1 className="text-2xl font-medium">{t('modules.title')}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Дополнительные инструменты приложения
+            {t('modules.subtitle')}
           </p>
         </div>
 
         <div className="space-y-3">
           <ModuleCard
-            title="DNS"
-            description="Дополнительный обход геоблока иностранных сервисов через DNS"
+            title={t('modules.dns.title')}
+            description={t('modules.dns.description')}
             icon={<Globe className="size-4 text-[#3AA99F] dark:text-[#3AA99F]" />}
             enabled={dnsModule.enabled}
             status={dnsModule.status
@@ -121,8 +123,8 @@ export function ModulesPage() {
           />
 
           <ModuleCard
-            title="TG WS Proxy"
-            description="Локальный MTProto-прокси для Telegram Desktop через WebSocket"
+            title={t('modules.tgWsProxy.title')}
+            description={t('modules.tgWsProxy.description')}
             icon={<Send className="size-4 text-[#4385BE] dark:text-[#4385BE]" />}
             enabled={tgWsProxyModule.enabled}
             status={tgWsProxyModule.status

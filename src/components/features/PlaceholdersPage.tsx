@@ -1,6 +1,7 @@
 import type { Placeholder } from '@/lib/types'
 import { FileCode, FilePenLine, FolderOpen, Loader2, Package, Pencil, Plus, RefreshCcw, RotateCcw, Trash2, UserRoundPlus } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -47,27 +48,29 @@ function isResourcesAliasPath(path: string) {
 }
 
 export function PlaceholdersPage() {
-  const [editingIndex, setEditingIndex] = useState<number | null>(null)
-  const [editName, setEditName] = useState('')
-  const [editPath, setEditPath] = useState('')
-  const [addOpen, setAddOpen] = useState(false)
-  const [newName, setNewName] = useState('')
-  const [newPath, setNewPath] = useState('')
-  const [resourcesDir, setResourcesDir] = useState('')
-  const [systemPlaceholderTarget, setSystemPlaceholderTarget] = useState<Placeholder | null>(null)
-  const isSavingRef = useRef(false)
-  const scrollAreaRef = useRef<HTMLDivElement | null>(null)
-
+  const { t } = useTranslation()
+  const scrollAreaRef = useRef<HTMLDivElement>(null)
   const config = useConfigStore(state => state.config)
   const builtinConfig = useConfigStore(state => state.builtinConfig)
   const loading = useConfigStore(state => state.loading)
   const load = useConfigStore(state => state.load)
   const saveNow = useConfigStore(state => state.saveNow)
-  const addPlaceholder = useConfigStore(state => state.addPlaceholder)
   const revertTo = useConfigStore(state => state.revertTo)
+  const addPlaceholder = useConfigStore(state => state.addPlaceholder)
   const updatePlaceholder = useConfigStore(state => state.updatePlaceholder)
   const replacePlaceholdersState = useConfigStore(state => state.replacePlaceholdersState)
   const addConfigLog = useConnectionStore(state => state.addConfigLog)
+
+  const [addOpen, setAddOpen] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newPath, setNewPath] = useState('')
+  const [resourcesDir, setResourcesDir] = useState('')
+
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editPath, setEditPath] = useState('')
+  const [systemPlaceholderTarget, setSystemPlaceholderTarget] = useState<Placeholder | null>(null)
+  const isSavingRef = useRef(false)
 
   useMountEffect(() => {
     void load().catch(console.error)
@@ -144,12 +147,12 @@ export function PlaceholdersPage() {
     const placeholders = useConfigStore.getState().config?.placeholders ?? []
 
     if (placeholders.some((placeholder, index) => index !== excludedIndex && placeholder.name.trim().toLocaleLowerCase() === normalizedName)) {
-      toast.error('Плейсхолдер с таким названием уже существует')
+      toast.error(t('placeholders.nameExists'))
       return false
     }
 
     if (placeholders.some((placeholder, index) => index !== excludedIndex && placeholder.path.trim().toLocaleLowerCase() === normalizedPath)) {
-      toast.error('Плейсхолдер с таким путём уже существует')
+      toast.error(t('placeholders.pathExists'))
       return false
     }
 
@@ -157,12 +160,11 @@ export function PlaceholdersPage() {
   }
 
   const handleAdd = async () => {
-    if (isSavingRef.current) {
-      toast.error('Подождите, выполняется сохранение')
+    if (!newName.trim() || !newPath.trim() || isSavingRef.current)
       return
-    }
 
-    if (!newName.trim() || !newPath.trim()) {
+    const storedPath = toStoredPlaceholderPath(newPath)
+    if (!validatePlaceholder(newName, storedPath)) {
       return
     }
 
@@ -172,24 +174,22 @@ export function PlaceholdersPage() {
     }
 
     const previousConfig = structuredClone(currentConfig)
-    const placeholderName = newName.trim()
-    const placeholderPath = toStoredPlaceholderPath(newPath.trim())
-    if (!validatePlaceholder(placeholderName, placeholderPath)) {
-      return
-    }
-    addPlaceholder(placeholderName, placeholderPath)
+    const nameToAdd = newName.trim()
+
     isSavingRef.current = true
+    addPlaceholder(nameToAdd, storedPath)
+
     try {
       await saveNow()
-      addConfigLog(`добавлен плейсхолдер "{{${placeholderName}}}" -> ${placeholderPath}`)
+      addConfigLog(`добавлен плейсхолдер "${nameToAdd}"`)
       setNewName('')
       setNewPath('')
       setAddOpen(false)
-      toast.success('Плейсхолдер добавлен')
+      toast.success(t('placeholders.placeholderAdded'))
     }
     catch (e) {
       revertTo(previousConfig)
-      toast.error(`Ошибка сохранения плейсхолдера: ${e instanceof Error ? e.message : String(e)}`)
+      toast.error(`Ошибка сохранения: ${e instanceof Error ? e.message : String(e)}`)
     }
     finally {
       isSavingRef.current = false
@@ -202,29 +202,12 @@ export function PlaceholdersPage() {
     setEditPath(resolvePlaceholderPath(placeholder.path))
   }
 
-  const handleOpenAppDirectory = async () => {
-    try {
-      await tauri.openAppDirectory()
-    }
-    catch (error) {
-      console.error('Failed to open app directory:', error)
-      toast.error(`Не удалось открыть папку приложения: ${error instanceof Error ? error.message : String(error)}`)
-    }
-  }
-
   const handleSaveEdit = async () => {
-    if (isSavingRef.current) {
-      toast.error('Подождите, выполняется сохранение')
+    if (editingIndex === null || !editName.trim() || !editPath.trim() || isSavingRef.current)
       return
-    }
 
-    if (editingIndex === null) {
-      return
-    }
-
-    const trimmedName = editName.trim()
-    const trimmedPath = toStoredPlaceholderPath(editPath)
-    if (!trimmedName || !trimmedPath) {
+    const storedPath = toStoredPlaceholderPath(editPath)
+    if (!validatePlaceholder(editName, storedPath, editingIndex)) {
       return
     }
 
@@ -234,27 +217,25 @@ export function PlaceholdersPage() {
     }
 
     const previousConfig = structuredClone(currentConfig)
-    const previousPlaceholder = previousConfig.placeholders[editingIndex]
-    if (!validatePlaceholder(trimmedName, trimmedPath, editingIndex)) {
-      return
-    }
-    updatePlaceholder(editingIndex, trimmedName, trimmedPath)
+    const previousName = currentConfig.placeholders[editingIndex]?.name ?? editName
+    const nextName = editName.trim()
+
     isSavingRef.current = true
+    updatePlaceholder(editingIndex, nextName, storedPath)
+
     try {
       await saveNow()
-      if (previousPlaceholder) {
-        addConfigLog(
-          previousPlaceholder.name !== trimmedName
-            ? `обновлён плейсхолдер "{{${previousPlaceholder.name}}}" -> "{{${trimmedName}}}"`
-            : `путь плейсхолдера "{{${trimmedName}}}" изменён на ${trimmedPath}`,
-        )
-      }
+      addConfigLog(
+        previousName !== nextName
+          ? `плейсхолдер "${previousName}" переименован в "${nextName}"`
+          : `обновлен плейсхолдер "${previousName}"`,
+      )
       setEditingIndex(null)
-      toast.success('Плейсхолдер сохранён')
+      toast.success(t('placeholders.placeholderSaved'))
     }
     catch (e) {
       revertTo(previousConfig)
-      toast.error(`Ошибка сохранения плейсхолдера: ${e instanceof Error ? e.message : String(e)}`)
+      toast.error(`Ошибка сохранения: ${e instanceof Error ? e.message : String(e)}`)
     }
     finally {
       isSavingRef.current = false
@@ -262,27 +243,41 @@ export function PlaceholdersPage() {
   }
 
   const handleDelete = async (index: number) => {
-    if (isSavingRef.current)
+    if (isSavingRef.current) {
+      toast.error(t('placeholders.waitSaving'))
       return
-    const prevPlaceholders = config?.placeholders?.slice() ?? []
-    const prevRemovedNames = config?.systemRemovedPlaceholderNames ?? []
-    const deletedPlaceholder = prevPlaceholders[index]
-    const nextPlaceholders = prevPlaceholders.filter((_, currentIndex) => currentIndex !== index)
-    const nextRemovedNames = deletedPlaceholder?.system
-      ? Array.from(new Set([...(config?.systemRemovedPlaceholderNames ?? []), deletedPlaceholder.systemBaseName ?? deletedPlaceholder.name]))
-      : (config?.systemRemovedPlaceholderNames ?? [])
-    replacePlaceholdersState(nextPlaceholders, nextRemovedNames)
+    }
+
+    const currentConfig = useConfigStore.getState().config
+    if (!currentConfig) {
+      return
+    }
+
+    const targetPlaceholder = currentConfig.placeholders[index]
+    if (!targetPlaceholder) {
+      return
+    }
+
+    const previousConfig = structuredClone(currentConfig)
+    const nextPlaceholders = currentConfig.placeholders.filter((_, i) => i !== index)
+    const nextRemovedNames = isSystemPlaceholder(targetPlaceholder)
+      ? Array.from(new Set([
+          ...(currentConfig.systemRemovedPlaceholderNames ?? []),
+          targetPlaceholder.systemBaseName ?? targetPlaceholder.name,
+        ]))
+      : (currentConfig.systemRemovedPlaceholderNames ?? [])
+
     isSavingRef.current = true
+    replacePlaceholdersState(nextPlaceholders, nextRemovedNames)
+
     try {
       await saveNow()
-      if (deletedPlaceholder) {
-        addConfigLog(`удалён плейсхолдер "{{${deletedPlaceholder.name}}}"`)
-      }
-      toast.success('Плейсхолдер удалён')
+      addConfigLog(`удален плейсхолдер "${targetPlaceholder.name}"`)
+      toast.success(t('placeholders.placeholderDeleted'))
     }
     catch (e) {
-      toast.error(`Ошибка сохранения: ${e}`)
-      replacePlaceholdersState(prevPlaceholders, prevRemovedNames)
+      revertTo(previousConfig)
+      toast.error(`Ошибка сохранения: ${e instanceof Error ? e.message : String(e)}`)
     }
     finally {
       isSavingRef.current = false
@@ -290,7 +285,12 @@ export function PlaceholdersPage() {
   }
 
   const handleRestorePlaceholder = async () => {
-    if (!systemPlaceholderTarget || !config) {
+    if (!systemPlaceholderTarget || isSavingRef.current) {
+      return
+    }
+
+    const currentConfig = useConfigStore.getState().config
+    if (!currentConfig) {
       return
     }
 
@@ -303,31 +303,44 @@ export function PlaceholdersPage() {
       return
     }
 
-    const placeholderIndex = config.placeholders.findIndex(placeholder => placeholder.name === systemPlaceholderTarget.name)
-    if (placeholderIndex < 0) {
-      return
-    }
+    const targetName = systemPlaceholderTarget.name
+    const previousConfig = structuredClone(currentConfig)
+    const nextPlaceholders = currentConfig.placeholders.map((placeholder) => {
+      if (placeholder.name !== targetName) {
+        return placeholder
+      }
+      return buildRestoredPlaceholder(builtinPlaceholder)
+    })
 
-    const previousPlaceholders = structuredClone(config.placeholders)
-    const nextPlaceholders = structuredClone(config.placeholders)
-    nextPlaceholders[placeholderIndex] = buildRestoredPlaceholder(builtinPlaceholder)
-    const nextRemovedNames = (config.systemRemovedPlaceholderNames ?? []).filter(name => name !== builtinPlaceholder.name)
-    replacePlaceholdersState(nextPlaceholders, nextRemovedNames)
     isSavingRef.current = true
+    replacePlaceholdersState(nextPlaceholders, currentConfig.systemRemovedPlaceholderNames)
+
     try {
       await saveNow()
-      addConfigLog(`плейсхолдер "{{${systemPlaceholderTarget.name}}}" обновлён до системного значения`)
-      toast.success('Плейсхолдер обновлён')
+      addConfigLog(`плейсхолдер "${targetName}" обновлен до системного значения`)
+      toast.success(t('placeholders.placeholderUpdated'))
     }
-    catch (error) {
-      replacePlaceholdersState(previousPlaceholders, config.systemRemovedPlaceholderNames ?? [])
-      toast.error(`Ошибка обновления плейсхолдера: ${error instanceof Error ? error.message : String(error)}`)
+    catch (e) {
+      revertTo(previousConfig)
+      toast.error(`Ошибка сохранения: ${e instanceof Error ? e.message : String(e)}`)
     }
     finally {
-      setSystemPlaceholderTarget(null)
       isSavingRef.current = false
+      setSystemPlaceholderTarget(null)
     }
   }
+
+  const handleOpenAppDirectory = async () => {
+    try {
+      await tauri.openAppDirectory()
+    }
+    catch (err) {
+      console.error('Failed to open app directory:', err)
+      toast.error('Не удалось открыть папку приложения')
+    }
+  }
+
+  const placeholders = config?.placeholders ?? []
 
   if (loading) {
     return (
@@ -339,45 +352,47 @@ export function PlaceholdersPage() {
 
   return (
     <div className="relative h-full min-h-0">
-      <LenisScrollArea ref={scrollAreaRef} className="h-full min-h-0 min-w-0">
-        <div className="w-full min-w-0 max-w-full space-y-6 overflow-x-hidden p-6">
-          <div className="flex min-w-0 items-center justify-between">
-            <div className="min-w-0 flex-1">
-              <h1 className="text-2xl font-medium">Плейсхолдеры</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Замена плейсхолдеров на пути к бинарным файлам
+      <LenisScrollArea ref={scrollAreaRef} className="h-full min-h-0">
+        <div className="space-y-6 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-medium">{t('placeholders.title')}</h1>
+              <p className="text-muted-foreground mt-1 text-sm">
+                {t('placeholders.subtitle')}
               </p>
             </div>
-            <div className="ml-4 flex shrink-0 items-center gap-1">
-              <Button onClick={() => setAddOpen(true)}>
-                <Plus className="size-4" />
-                Новый плейсхолдер
-              </Button>
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="icon"
                 onClick={() => void handleOpenAppDirectory()}
-                title="Открыть папку приложения"
-                aria-label="Открыть папку приложения"
+                title={t('placeholders.openAppDir')}
+                aria-label={t('placeholders.openAppDir')}
               >
                 <FolderOpen className="size-4" />
+              </Button>
+              <Button onClick={() => setAddOpen(true)} className="flex items-center gap-2">
+                <Plus className="size-4" />
+                {t('placeholders.newPlaceholder')}
               </Button>
             </div>
           </div>
 
-          <div className="min-w-0 space-y-3">
-            {!config || config.placeholders.length === 0
+          <div className="space-y-3">
+            {placeholders.length === 0
               ? (
-                  <div className="text-muted-foreground flex min-h-32 items-center justify-center rounded-lg border border-dashed">
-                    Нет плейсхолдеров
-                  </div>
+                  <p className="text-muted-foreground text-sm">{t('placeholders.noPlaceholders')}</p>
                 )
               : (
-                  config.placeholders.map((placeholder: Placeholder, index: number) => {
-                    const builtin = getBuiltinPlaceholder(builtinConfig, placeholder.name, placeholder.systemBaseName)
+                  placeholders.map((placeholder, index) => {
                     const isSystem = isSystemPlaceholder(placeholder)
                     const isModified = isSystemPlaceholderModified(placeholder)
-                    const hasUpdate = isSystemPlaceholderUpdateAvailable(placeholder, builtin)
+                    const builtinPlaceholder = getBuiltinPlaceholder(
+                      builtinConfig,
+                      placeholder.name,
+                      placeholder.systemBaseName,
+                    )
+                    const hasUpdate = isSystemPlaceholderUpdateAvailable(placeholder, builtinPlaceholder)
 
                     return (
                       <div
@@ -395,17 +410,17 @@ export function PlaceholdersPage() {
                               {'}}'}
                               <div className="flex items-center gap-1 text-muted-foreground">
                                 {isSystem
-                                  ? <InlineMarker icon={Package} label="Системный плейсхолдер" />
-                                  : <InlineMarker icon={UserRoundPlus} label="Пользовательский плейсхолдер" className="text-primary/80" />}
+                                  ? <InlineMarker icon={Package} label={t('placeholders.systemBadge')} />
+                                  : <InlineMarker icon={UserRoundPlus} label={t('placeholders.customBadge')} className="text-primary/80" />}
                                 {isModified && (
-                                  <InlineMarker icon={FilePenLine} label="Системный плейсхолдер изменён пользователем" className="text-warning" />
+                                  <InlineMarker icon={FilePenLine} label={t('placeholders.modifiedBadge')} className="text-warning" />
                                 )}
                                 {isSystem && (isModified || hasUpdate) && (
                                   <InlineMarker
                                     icon={hasUpdate ? RefreshCcw : RotateCcw}
                                     label={hasUpdate
-                                      ? 'Обновить плейсхолдер до актуального системного значения'
-                                      : 'Откатить плейсхолдер к системному значению'}
+                                      ? t('placeholders.updateAvailable')
+                                      : t('placeholders.rollbackToSystem')}
                                     className={hasUpdate ? 'text-primary' : 'text-destructive'}
                                     onClick={() => setSystemPlaceholderTarget(placeholder)}
                                   />
@@ -421,7 +436,7 @@ export function PlaceholdersPage() {
                           <Button
                             variant="outline"
                             size="icon"
-                            aria-label={`Редактировать плейсхолдер ${placeholder.name}`}
+                            aria-label={t('placeholders.editAria', { name: placeholder.name })}
                             onClick={() => handleEdit(index, placeholder)}
                           >
                             <Pencil className="size-4" />
@@ -430,7 +445,7 @@ export function PlaceholdersPage() {
                             variant="outline"
                             size="icon"
                             className="bg-destructive/10 text-destructive hover:bg-destructive/18"
-                            aria-label={`Удалить плейсхолдер ${placeholder.name}`}
+                            aria-label={t('placeholders.deleteAria', { name: placeholder.name })}
                             onClick={() => handleDelete(index)}
                           >
                             <Trash2 className="size-4" />
@@ -445,18 +460,18 @@ export function PlaceholdersPage() {
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Новый плейсхолдер</DialogTitle>
+                <DialogTitle>{t('placeholders.newPlaceholder')}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <Input
-                  aria-label="Название плейсхолдера"
-                  placeholder="Название"
+                  aria-label={t('placeholders.nameInputAria')}
+                  placeholder={t('placeholders.namePlaceholder')}
                   value={newName}
                   onChange={e => setNewName(e.target.value)}
                 />
                 <Input
-                  aria-label="Путь плейсхолдера"
-                  placeholder="Путь к файлу"
+                  aria-label={t('placeholders.pathInputAria')}
+                  placeholder={t('placeholders.pathPlaceholder')}
                   value={newPath}
                   onChange={e => setNewPath(e.target.value)}
                 />
@@ -468,9 +483,9 @@ export function PlaceholdersPage() {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setAddOpen(false)}>
-                  Отмена
+                  {t('common.cancel')}
                 </Button>
-                <Button onClick={handleAdd}>Добавить</Button>
+                <Button onClick={handleAdd}>{t('placeholders.addButton')}</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -478,25 +493,25 @@ export function PlaceholdersPage() {
           <Dialog open={editingIndex !== null} onOpenChange={open => !open && setEditingIndex(null)}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Редактировать плейсхолдер</DialogTitle>
+                <DialogTitle>{t('placeholders.editPlaceholder')}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-placeholder-name">Название</Label>
+                  <Label htmlFor="edit-placeholder-name">{t('placeholders.nameLabel')}</Label>
                   <Input
                     id="edit-placeholder-name"
-                    aria-label="Название плейсхолдера"
-                    placeholder="Название"
+                    aria-label={t('placeholders.nameInputAria')}
+                    placeholder={t('placeholders.namePlaceholder')}
                     value={editName}
                     onChange={e => setEditName(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-placeholder-path">Путь</Label>
+                  <Label htmlFor="edit-placeholder-path">{t('placeholders.pathLabel')}</Label>
                   <Input
                     id="edit-placeholder-path"
-                    aria-label="Путь плейсхолдера"
-                    placeholder="Путь к файлу"
+                    aria-label={t('placeholders.pathInputAria')}
+                    placeholder={t('placeholders.pathPlaceholder')}
                     value={editPath}
                     onChange={e => setEditPath(e.target.value)}
                   />
@@ -504,9 +519,9 @@ export function PlaceholdersPage() {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setEditingIndex(null)}>
-                  Отмена
+                  {t('common.cancel')}
                 </Button>
-                <Button onClick={handleSaveEdit}>Сохранить</Button>
+                <Button onClick={handleSaveEdit}>{t('common.save')}</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -519,19 +534,19 @@ export function PlaceholdersPage() {
                     systemPlaceholderTarget,
                     getBuiltinPlaceholder(builtinConfig, systemPlaceholderTarget.name, systemPlaceholderTarget.systemBaseName),
                   )
-                    ? 'Обновить системный плейсхолдер?'
-                    : 'Откатить плейсхолдер к системному значению?'}
+                    ? t('placeholders.updateSystemDialogTitle')
+                    : t('placeholders.restoreSystemDialogTitle')}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
                   {systemPlaceholderTarget
-                    ? `Плейсхолдер "{{${systemPlaceholderTarget.name}}}" будет возвращён к актуальному системному значению.`
+                    ? t('placeholders.updateSystemDialogDescription', { name: systemPlaceholderTarget.name })
                     : ''}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Отмена</AlertDialogCancel>
+                <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                 <AlertDialogAction onClick={() => void handleRestorePlaceholder()}>
-                  Обновить
+                  {t('placeholders.updateDialogConfirm')}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

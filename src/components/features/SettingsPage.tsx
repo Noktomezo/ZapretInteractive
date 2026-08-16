@@ -17,6 +17,7 @@ import {
   Trophy,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { MODULE_PAGE_CARD_CLASS, ModuleSectionHeader, ModuleSettingLabel } from '@/components/features/module-ui'
 import {
@@ -51,21 +52,18 @@ import { useThemeStore } from '@/stores/theme.store'
 
 const RANGE_RE = /^\d+-\d+$/
 const PORT_RE = /^\d+$/
-const THEME_OPTIONS: { value: Theme, label: string, icon: React.ComponentType<{ className?: string }> }[] = [
-  { value: 'system', label: 'Системная', icon: Laptop },
-  { value: 'light', label: 'Светлая', icon: SunMedium },
-  { value: 'dark', label: 'Тёмная', icon: MoonStar },
+
+const THEME_OPTIONS_CONFIG: { value: Theme, labelKey: 'settings.theme.system' | 'settings.theme.light' | 'settings.theme.dark', icon: React.ComponentType<{ className?: string }> }[] = [
+  { value: 'system', labelKey: 'settings.theme.system', icon: Laptop },
+  { value: 'light', labelKey: 'settings.theme.light', icon: SunMedium },
+  { value: 'dark', labelKey: 'settings.theme.dark', icon: MoonStar },
 ]
 
-const DISCORD_PRESENCE_ACTIVITY_OPTIONS: { value: DiscordPresenceActivityType, label: string, icon: React.ComponentType<{ className?: string }> }[] = [
-  { value: 'playing', label: 'Играет', icon: Gamepad2 },
-  { value: 'listening', label: 'Слушает', icon: Headphones },
-  { value: 'watching', label: 'Смотрит', icon: Clapperboard },
-  { value: 'competing', label: 'Соревнуется', icon: Trophy },
-]
-const DISCORD_PRESENCE_SELECT_OPTIONS: { value: 'none' | DiscordPresenceActivityType, label: string, icon: React.ComponentType<{ className?: string }> }[] = [
-  { value: 'none', label: 'Нет', icon: CircleOff },
-  ...DISCORD_PRESENCE_ACTIVITY_OPTIONS,
+const DISCORD_PRESENCE_ACTIVITY_OPTIONS_CONFIG: { value: DiscordPresenceActivityType, labelKey: 'settings.behavior.discordPresence.playing' | 'settings.behavior.discordPresence.listening' | 'settings.behavior.discordPresence.watching' | 'settings.behavior.discordPresence.competing', icon: React.ComponentType<{ className?: string }> }[] = [
+  { value: 'playing', labelKey: 'settings.behavior.discordPresence.playing', icon: Gamepad2 },
+  { value: 'listening', labelKey: 'settings.behavior.discordPresence.listening', icon: Headphones },
+  { value: 'watching', labelKey: 'settings.behavior.discordPresence.watching', icon: Clapperboard },
+  { value: 'competing', labelKey: 'settings.behavior.discordPresence.competing', icon: Trophy },
 ]
 
 function isValidPortRange(value: string): boolean {
@@ -91,21 +89,11 @@ function isValidPortRange(value: string): boolean {
 }
 
 export function SettingsPage() {
-  const [resetDialogOpen, setResetDialogOpen] = useState(false)
-  const [autostartEnabled, setAutostartEnabled] = useState(false)
-  const [autostartKnown, setAutostartKnown] = useState(false)
-  const [autostartLoading, setAutostartLoading] = useState(true)
-  const [tcpDraft, setTcpDraft] = useState('')
-  const [udpDraft, setUdpDraft] = useState('')
-  const prevGlobalPortsRef = useRef<string | undefined>(undefined)
-  const tcpFocusedRef = useRef(false)
-  const udpFocusedRef = useRef(false)
-
+  const { t } = useTranslation()
   const config = useConfigStore(state => state.config)
   const loading = useConfigStore(state => state.loading)
   const load = useConfigStore(state => state.load)
   const saveNow = useConfigStore(state => state.saveNow)
-  const scheduleSave = useConfigStore(state => state.scheduleSave)
   const setGlobalPorts = useConfigStore(state => state.setGlobalPorts)
   const setCoreFileUpdatePromptsEnabled = useConfigStore(state => state.setCoreFileUpdatePromptsEnabled)
   const setAppAutoUpdatesEnabled = useConfigStore(state => state.setAppAutoUpdatesEnabled)
@@ -119,11 +107,38 @@ export function SettingsPage() {
   const addConfigLog = useConnectionStore(state => state.addConfigLog)
   const theme = useThemeStore(state => state.theme)
   const setTheme = useThemeStore(state => state.setTheme)
-  const selectedThemeOption = THEME_OPTIONS.find(option => option.value === theme) ?? THEME_OPTIONS[0]
+
+  const themeOptions = THEME_OPTIONS_CONFIG.map(opt => ({
+    value: opt.value,
+    label: t(opt.labelKey),
+    icon: opt.icon,
+  }))
+  const selectedThemeOption = themeOptions.find(option => option.value === theme) ?? themeOptions[0]
+
+  const discordOptions: { value: 'none' | DiscordPresenceActivityType, label: string, icon: React.ComponentType<{ className?: string }> }[] = [
+    { value: 'none', label: t('settings.behavior.discordPresence.off'), icon: CircleOff },
+    ...DISCORD_PRESENCE_ACTIVITY_OPTIONS_CONFIG.map(opt => ({
+      value: opt.value,
+      label: t(opt.labelKey),
+      icon: opt.icon,
+    })),
+  ]
+
   const selectedDiscordPresenceValue = (config?.discordPresenceEnabled ?? false)
     ? (config?.discordPresenceActivityType ?? 'playing')
     : 'none'
-  const selectedDiscordPresenceOption = DISCORD_PRESENCE_SELECT_OPTIONS.find(option => option.value === selectedDiscordPresenceValue) ?? DISCORD_PRESENCE_SELECT_OPTIONS[0]
+  const selectedDiscordPresenceOption = discordOptions.find(option => option.value === selectedDiscordPresenceValue) ?? discordOptions[0]
+
+  const [autostartEnabled, setAutostartEnabled] = useState(false)
+  const [autostartLoading, setAutostartLoading] = useState(false)
+  const [autostartKnown, setAutostartKnown] = useState(true)
+  const [resetDialogOpen, setResetDialogOpen] = useState(false)
+  const [tcpDraft, setTcpDraft] = useState('')
+  const [udpDraft, setUdpDraft] = useState('')
+  const tcpFocusedRef = useRef(false)
+  const udpFocusedRef = useRef(false)
+  const saveTimeoutRef = useRef<number | null>(null)
+  const pendingSectionRef = useRef<string | null>(null)
 
   const refreshAutostartState = async (isMounted = true) => {
     try {
@@ -143,54 +158,58 @@ export function SettingsPage() {
 
   useMountEffect(() => {
     let isMounted = true
-
-    const init = async () => {
-      try {
-        await load()
-        await refreshAutostartState(isMounted)
-      }
-      finally {
-        if (isMounted)
-          setAutostartLoading(false)
-      }
-    }
-
-    init().catch((e) => {
-      if (isMounted)
-        toast.error(`Ошибка инициализации настроек: ${e}`)
-    })
-
+    void load()
+    void refreshAutostartState(isMounted)
     return () => {
       isMounted = false
+      if (saveTimeoutRef.current) {
+        window.clearTimeout(saveTimeoutRef.current)
+      }
     }
   })
 
   useEffect(() => {
-    if (config?.global_ports) {
-      const currentPortsJson = JSON.stringify(config.global_ports)
-      if (prevGlobalPortsRef.current === currentPortsJson) {
-        return
-      }
-      prevGlobalPortsRef.current = currentPortsJson
-      if (!tcpFocusedRef.current) {
-        setTcpDraft(config.global_ports.tcp)
-      }
-      if (!udpFocusedRef.current) {
-        setUdpDraft(config.global_ports.udp)
-      }
+    if (!tcpFocusedRef.current) {
+      setTcpDraft(config?.global_ports.tcp ?? '')
     }
-  }, [config?.global_ports])
+  }, [config?.global_ports.tcp])
+
+  useEffect(() => {
+    if (!udpFocusedRef.current) {
+      setUdpDraft(config?.global_ports.udp ?? '')
+    }
+  }, [config?.global_ports.udp])
+
+  const scheduleSave = (section: string) => {
+    pendingSectionRef.current = section
+    if (saveTimeoutRef.current) {
+      window.clearTimeout(saveTimeoutRef.current)
+    }
+    saveTimeoutRef.current = window.setTimeout(async () => {
+      try {
+        await saveNow()
+      }
+      catch (e) {
+        console.error('Failed to save settings:', e)
+        toast.error(`Ошибка сохранения настроек: ${e instanceof Error ? e.message : String(e)}`)
+      }
+      finally {
+        saveTimeoutRef.current = null
+        pendingSectionRef.current = null
+      }
+    }, 400)
+  }
 
   const handleReset = async () => {
     try {
       await reset()
-      await tauri.ensureManagedFiles()
+      addConfigLog(t('settings.resetSection.successLog'))
+      toast.success(t('settings.resetSection.successToast'))
       setResetDialogOpen(false)
-      addConfigLog('конфигурация сброшена к значениям по умолчанию')
-      toast.success('Настройки сброшены')
+      await restartIfConnected()
     }
     catch (e) {
-      toast.error(`Ошибка сброса настроек: ${e}`)
+      toast.error(t('settings.resetSection.errorToast', { error: e instanceof Error ? e.message : String(e) }))
     }
   }
 
@@ -268,18 +287,19 @@ export function SettingsPage() {
     try {
       await saveNow()
       if (!nextEnabled) {
-        addConfigLog('Статус в Discord отключён')
-        toast.success('Статус в Discord отключён')
+        addConfigLog(t('settings.behavior.discordPresence.disabledLog'))
+        toast.success(t('settings.behavior.discordPresence.disabledToast'))
       }
       else {
-        addConfigLog(`Тип активности в Discord изменён на: ${value}`)
-        toast.success(`Статус в Discord: ${DISCORD_PRESENCE_ACTIVITY_OPTIONS.find(option => option.value === value)?.label ?? value}`)
+        addConfigLog(t('settings.behavior.discordPresence.changedLog', { value }))
+        const label = discordOptions.find(option => option.value === value)?.label ?? value
+        toast.success(t('settings.behavior.discordPresence.statusToast', { label }))
       }
     }
     catch (e) {
       setDiscordPresenceEnabled(previousEnabled)
       setDiscordPresenceActivityType(previous)
-      toast.error(`Ошибка настройки статуса в Discord: ${e instanceof Error ? e.message : String(e)}`)
+      toast.error(t('settings.behavior.discordPresence.errorToast', { error: e instanceof Error ? e.message : String(e) }))
     }
   }
 
@@ -295,9 +315,9 @@ export function SettingsPage() {
     <LenisScrollArea className="h-full min-h-0">
       <div className="space-y-6 p-6">
         <div>
-          <h1 className="text-2xl font-medium">Настройки</h1>
+          <h1 className="text-2xl font-medium">{t('settings.title')}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Глобальные параметры приложения
+            {t('settings.subtitle')}
           </p>
         </div>
 
@@ -305,8 +325,8 @@ export function SettingsPage() {
           <ModuleSectionHeader
             icon={Palette}
             iconClassName="text-[#8B7EC8] dark:text-[#8B7EC8]"
-            title="Тема"
-            description="Режим отображения интерфейса приложения"
+            title={t('settings.theme.title')}
+            description={t('settings.theme.description')}
             withDivider={false}
             action={(
               <div className="w-[10.5rem]">
@@ -317,13 +337,13 @@ export function SettingsPage() {
                   <SelectTrigger id="theme-select" className="w-full cursor-pointer">
                     <span className="flex items-center gap-2">
                       <selectedThemeOption.icon className="size-4 text-muted-foreground" />
-                      <SelectValue placeholder="Выберите тему">
+                      <SelectValue placeholder={t('settings.theme.placeholder')}>
                         {selectedThemeOption.label}
                       </SelectValue>
                     </span>
                   </SelectTrigger>
                   <SelectContent>
-                    {THEME_OPTIONS.map(option => (
+                    {themeOptions.map(option => (
                       <SelectItem key={option.value} value={option.value}>
                         <span className="flex items-center gap-2">
                           <option.icon className="size-4 text-muted-foreground" />
@@ -342,16 +362,16 @@ export function SettingsPage() {
           <ModuleSectionHeader
             icon={Download}
             iconClassName="text-[#3AA99F] dark:text-[#3AA99F]"
-            title="Обновления"
-            description="Настройки фоновых проверок и автоматических предложений"
+            title={t('settings.updates.title')}
+            description={t('settings.updates.description')}
           />
           <CardContent className="space-y-4 p-4!">
             <div className="flex items-center justify-between gap-4">
               <ModuleSettingLabel
                 htmlFor="app-auto-updates"
-                description="При запуске и каждые 30 секунд приложение будет проверять наличие новой версии"
+                description={t('settings.updates.appAuto.description')}
               >
-                Автоматически проверять обновления приложения
+                {t('settings.updates.appAuto.title')}
               </ModuleSettingLabel>
               <Switch
                 id="app-auto-updates"
@@ -363,9 +383,9 @@ export function SettingsPage() {
             <div className="flex items-center justify-between gap-4">
               <ModuleSettingLabel
                 htmlFor="core-file-update-prompts"
-                description="Отключает только предложения обновить файлы, не саму проверку"
+                description={t('settings.updates.corePrompts.description')}
               >
-                Уведомлять об обновлениях критических файлов
+                {t('settings.updates.corePrompts.title')}
               </ModuleSettingLabel>
               <Switch
                 id="core-file-update-prompts"
@@ -380,17 +400,17 @@ export function SettingsPage() {
           <ModuleSectionHeader
             icon={AppWindow}
             iconClassName="text-[#879A39] dark:text-[#879A39]"
-            title="Поведение"
-            description="Настройки запуска и закрытия приложения"
+            title={t('settings.behavior.title')}
+            description={t('settings.behavior.description')}
           />
           <CardContent className="space-y-4 p-4!">
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-4">
                 <ModuleSettingLabel
                   htmlFor="autostart"
-                  description="Приложение будет запускаться автоматически при входе в систему"
+                  description={t('settings.behavior.autostart.description')}
                 >
-                  Автозапуск с Windows
+                  {t('settings.behavior.autostart.title')}
                 </ModuleSettingLabel>
                 <Switch
                   id="autostart"
@@ -401,7 +421,7 @@ export function SettingsPage() {
               </div>
               {!autostartKnown && (
                 <p className="text-warning text-xs">
-                  Не удалось определить текущий статус автозапуска. Перезайдите на страницу позже.
+                  {t('settings.behavior.autostart.unknown')}
                 </p>
               )}
 
@@ -417,9 +437,9 @@ export function SettingsPage() {
                   <div className="flex items-center justify-between gap-4 border-l border-border/60 pl-4">
                     <ModuleSettingLabel
                       htmlFor="connect-on-autostart"
-                      description="При запуске из автозагрузки приложение будет сразу запускать подключение"
+                      description={t('settings.behavior.connectOnAutostart.description')}
                     >
-                      Подключаться автоматически
+                      {t('settings.behavior.connectOnAutostart.title')}
                     </ModuleSettingLabel>
                     <Switch
                       id="connect-on-autostart"
@@ -431,9 +451,9 @@ export function SettingsPage() {
                   <div className="mt-3 flex items-center justify-between gap-4 border-l border-border/60 pl-4">
                     <ModuleSettingLabel
                       htmlFor="launch-to-tray"
-                      description="При старте приложения основное окно будет скрыто, а доступ останется через иконку в трее"
+                      description={t('settings.behavior.launchToTray.description')}
                     >
-                      Запускать свернутым в трей
+                      {t('settings.behavior.launchToTray.title')}
                     </ModuleSettingLabel>
                     <Switch
                       id="launch-to-tray"
@@ -449,9 +469,9 @@ export function SettingsPage() {
             <div className="flex items-center justify-between gap-4">
               <ModuleSettingLabel
                 htmlFor="minimize-to-tray"
-                description="При закрытии окно будет скрыто в системный трей вместо завершения работы"
+                description={t('settings.behavior.minimizeToTray.description')}
               >
-                Сворачивать в трей при закрытии
+                {t('settings.behavior.minimizeToTray.title')}
               </ModuleSettingLabel>
               <Switch
                 id="minimize-to-tray"
@@ -463,9 +483,9 @@ export function SettingsPage() {
             <div className="flex items-center justify-between gap-4">
               <ModuleSettingLabel
                 htmlFor="discord-presence"
-                description="Показывает текущую страницу и статус подключения в Discord"
+                description={t('settings.behavior.discordPresence.description')}
               >
-                Статус в Discord
+                {t('settings.behavior.discordPresence.title')}
               </ModuleSettingLabel>
               <div className="w-[10.5rem]">
                 <Select
@@ -475,13 +495,13 @@ export function SettingsPage() {
                   <SelectTrigger id="discord-presence" className="w-full cursor-pointer">
                     <span className="flex items-center gap-2">
                       <selectedDiscordPresenceOption.icon className="size-4 text-muted-foreground" />
-                      <SelectValue placeholder="Выберите статус">
+                      <SelectValue placeholder={t('settings.behavior.discordPresence.placeholder')}>
                         {selectedDiscordPresenceOption.label}
                       </SelectValue>
                     </span>
                   </SelectTrigger>
                   <SelectContent>
-                    {DISCORD_PRESENCE_SELECT_OPTIONS.map(option => (
+                    {discordOptions.map(option => (
                       <SelectItem key={option.value} value={option.value}>
                         <span className="flex items-center gap-2">
                           <option.icon className="size-4 text-muted-foreground" />
@@ -500,16 +520,16 @@ export function SettingsPage() {
           <ModuleSectionHeader
             icon={Router}
             iconClassName="text-[#DA702C] dark:text-[#DA702C]"
-            title="Порты"
-            description="Глобальные порты для фильтрации трафика"
+            title={t('settings.ports.title')}
+            description={t('settings.ports.description')}
           />
           <CardContent className="space-y-4 p-4!">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <ModuleSettingLabel
                 htmlFor="tcpPortsInput"
-                description="Порты TCP-трафика, на которые применяются стратегии фильтрации."
+                description={t('settings.ports.tcp.description')}
               >
-                TCP порты
+                {t('settings.ports.tcp.title')}
               </ModuleSettingLabel>
               <div className="w-full sm:w-[11rem]">
                 <Input
@@ -527,16 +547,16 @@ export function SettingsPage() {
                       setGlobalPorts({ ...latestGlobalPorts, tcp: tcpDraft })
                       try {
                         await saveNow()
-                        addConfigLog(`TCP порты изменены с ${latestGlobalPorts.tcp} на ${tcpDraft}`)
+                        addConfigLog(t('settings.ports.tcpChangedLog', { from: latestGlobalPorts.tcp, to: tcpDraft }))
                         await restartIfConnected()
                       }
                       catch (err) {
                         console.error('Failed to apply TCP port change:', err)
-                        toast.error('Не удалось применить новые TCP порты')
+                        toast.error(t('settings.ports.tcpError'))
                       }
                     }
                     else {
-                      toast.error('Неверный формат портов. Пример: 80,443 или 1000-2000')
+                      toast.error(t('settings.ports.invalidFormat'))
                     }
                   }}
                   placeholder="1-65535"
@@ -546,9 +566,9 @@ export function SettingsPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <ModuleSettingLabel
                 htmlFor="udpPortsInput"
-                description="Порты UDP-трафика, на которые применяются стратегии фильтрации."
+                description={t('settings.ports.udp.description')}
               >
-                UDP порты
+                {t('settings.ports.udp.title')}
               </ModuleSettingLabel>
               <div className="w-full sm:w-[11rem]">
                 <Input
@@ -566,16 +586,16 @@ export function SettingsPage() {
                       setGlobalPorts({ ...latestGlobalPorts, udp: udpDraft })
                       try {
                         await saveNow()
-                        addConfigLog(`UDP порты изменены с ${latestGlobalPorts.udp} на ${udpDraft}`)
+                        addConfigLog(t('settings.ports.udpChangedLog', { from: latestGlobalPorts.udp, to: udpDraft }))
                         await restartIfConnected()
                       }
                       catch (err) {
                         console.error('Failed to apply UDP port change:', err)
-                        toast.error('Не удалось применить новые UDP порты')
+                        toast.error(t('settings.ports.udpError'))
                       }
                     }
                     else {
-                      toast.error('Неверный формат портов. Пример: 80,443 или 1000-2000')
+                      toast.error(t('settings.ports.invalidFormat'))
                     }
                   }}
                   placeholder="1-65535"
@@ -589,8 +609,8 @@ export function SettingsPage() {
           <ModuleSectionHeader
             icon={RotateCcw}
             iconClassName="text-[#D14D41] dark:text-[#D14D41]"
-            title="Сброс"
-            description="Возврат к настройкам по умолчанию"
+            title={t('settings.resetSection.title')}
+            description={t('settings.resetSection.description')}
             withDivider={false}
             action={(
               <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
@@ -601,20 +621,20 @@ export function SettingsPage() {
                     className="border border-destructive/35 bg-destructive/72 shadow-none hover:bg-destructive/82 hover:shadow-none dark:border-destructive/30 dark:bg-destructive/58 dark:hover:bg-destructive/68"
                   >
                     <RotateCcw className="size-4" />
-                    Сбросить
+                    {t('settings.resetSection.button')}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Сбросить настройки?</AlertDialogTitle>
+                    <AlertDialogTitle>{t('settings.resetSection.dialogTitle')}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Все категории, стратегии, плейсхолдеры и фильтры будут удалены и заменены на значения по умолчанию. Это действие нельзя отменить.
+                      {t('settings.resetSection.dialogDescription')}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Отмена</AlertDialogCancel>
+                    <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                     <AlertDialogAction variant="destructive" onClick={handleReset}>
-                      Сбросить
+                      {t('settings.resetSection.confirm')}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>

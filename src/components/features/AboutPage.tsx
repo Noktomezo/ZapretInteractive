@@ -8,6 +8,7 @@ import {
   Shield,
   UserRound,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { MODULE_PAGE_CARD_CLASS, ModuleSectionHeader } from '@/components/features/module-ui'
 import { Button } from '@/components/ui/button'
@@ -21,12 +22,6 @@ const APP_NAME = 'Zapret Interactive'
 const APP_DEVELOPER = 'Noktomezo'
 const APP_REPOSITORY_URL = 'https://github.com/Noktomezo/ZapretInteractive'
 const APP_RELEASES_URL = 'https://github.com/Noktomezo/ZapretInteractive/releases'
-
-const APP_LINKS = [
-  { label: 'Исходники', value: 'Noktomezo/ZapretInteractive', href: APP_REPOSITORY_URL, icon: ExternalLink },
-  { label: 'Релизы', value: 'Последние сборки и changelog', href: APP_RELEASES_URL, icon: Download },
-  { label: 'Лицензия', value: 'MIT License', href: `${APP_REPOSITORY_URL}/blob/main/LICENSE`, icon: Shield },
-]
 
 const APP_FOUNDATIONS = [
   {
@@ -99,6 +94,7 @@ function MetaItem({
 }
 
 export function AboutPage() {
+  const { t } = useTranslation()
   const loading = useConfigStore(state => state.loading)
   const load = useConfigStore(state => state.load)
   const initUpdater = useUpdaterStore(state => state.init)
@@ -109,6 +105,12 @@ export function AboutPage() {
   const appUpdateInstalling = useUpdaterStore(state => state.installing)
   const checkForAppUpdates = useUpdaterStore(state => state.checkForUpdates)
   const installAvailableAppUpdate = useUpdaterStore(state => state.installAvailableUpdate)
+
+  const appLinks = [
+    { label: t('about.links.sources'), value: 'Noktomezo/ZapretInteractive', href: APP_REPOSITORY_URL, icon: ExternalLink },
+    { label: t('about.links.releases'), value: t('about.links.releasesDesc'), href: APP_RELEASES_URL, icon: Download },
+    { label: t('about.links.license'), value: 'MIT License', href: `${APP_REPOSITORY_URL}/blob/main/LICENSE`, icon: Shield },
+  ]
 
   useMountEffect(() => {
     let isMounted = true
@@ -170,9 +172,9 @@ export function AboutPage() {
     <LenisScrollArea className="h-full min-h-0">
       <div className="space-y-6 p-6">
         <div>
-          <h1 className="text-2xl font-medium">О программе</h1>
+          <h1 className="text-2xl font-medium">{t('about.title')}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Информация о приложении, проверка обновлений и ссылки на проект
+            {t('about.subtitle')}
           </p>
         </div>
 
@@ -180,7 +182,7 @@ export function AboutPage() {
           <ModuleSectionHeader
             icon={Package}
             title={APP_NAME}
-            description="Desktop GUI для zapret-win-bundle с управлением стратегиями, фильтрами, плейсхолдерами и обновлениями"
+            description={t('about.appDescription')}
           />
           <CardContent className="grid grid-cols-1 gap-3 p-4! sm:grid-cols-2">
             <div className="flex h-full flex-col rounded-xl border border-border/60 bg-muted/25 p-4">
@@ -188,7 +190,7 @@ export function AboutPage() {
                 <div className="min-w-0">
                   <div className="mb-2 flex flex-wrap items-center gap-2 text-muted-foreground">
                     <Package className="size-4" />
-                    <span className="text-xs uppercase tracking-[0.18em]">Версия</span>
+                    <span className="text-xs uppercase tracking-[0.18em]">{t('about.version')}</span>
                     <span
                       className={[
                         'rounded-[4px] border px-2 py-0.5 text-[10px] leading-none font-medium',
@@ -197,12 +199,12 @@ export function AboutPage() {
                           : 'border-success/30 bg-success/10 text-success',
                       ].join(' ')}
                     >
-                      {appUpdate && !appUpdateChecking && !appUpdateDownloading && !appUpdateInstalling ? 'Есть новее' : 'Последняя'}
+                      {appUpdate && !appUpdateChecking && !appUpdateDownloading && !appUpdateInstalling ? t('about.updateAvailableBadge') : t('about.latestBadge')}
                     </span>
                     <button
                       type="button"
                       className="inline-flex size-4 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-60"
-                      aria-label="Проверить обновления"
+                      aria-label={t('about.checkUpdatesAria')}
                       onClick={() => { void handleManualAppUpdateCheck() }}
                       disabled={appUpdateChecking || appUpdateDownloading || appUpdateInstalling}
                     >
@@ -220,7 +222,7 @@ export function AboutPage() {
                       disabled={appUpdateChecking || appUpdateDownloading || appUpdateInstalling}
                     >
                       <Download className="size-4" />
-                      Обновить
+                      {t('about.updateButton')}
                     </Button>
                   )}
                 </div>
@@ -230,7 +232,7 @@ export function AboutPage() {
                 <div className="mt-3 rounded-lg border border-warning/30 bg-warning/12 p-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-medium">Доступна новая версия приложения</p>
+                      <p className="text-sm font-medium">{t('about.newVersionAvailable')}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {appUpdate.version}
                         {appUpdate.date ? ` (${formatAboutTimestamp(appUpdate.date)})` : ''}
@@ -241,19 +243,19 @@ export function AboutPage() {
               )}
             </div>
 
-            <MetaItem icon={UserRound} label="Разработчик" value={APP_DEVELOPER} />
+            <MetaItem icon={UserRound} label={t('about.developer')} value={APP_DEVELOPER} />
           </CardContent>
         </Card>
 
         <Card className={MODULE_PAGE_CARD_CLASS}>
           <ModuleSectionHeader
             icon={ExternalLink}
-            title="Метаданные и ссылки"
-            description="Базовая информация о проекте и полезные ссылки"
+            title={t('about.linksSectionTitle')}
+            description={t('about.linksSectionDescription')}
           />
           <CardContent className="space-y-4 p-4!">
             <div className="grid gap-3 sm:grid-cols-2">
-              {APP_LINKS.map(({ label, value, href, icon: Icon }) => (
+              {appLinks.map(({ label, value, href, icon: Icon }) => (
                 <button
                   key={label}
                   type="button"

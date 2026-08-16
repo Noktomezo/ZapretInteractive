@@ -2,6 +2,7 @@ import type { Strategy } from '@/lib/types'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { ArrowLeft, BrushCleaning, Check, FilePenLine, FolderOpen, Loader2, Package, Pencil, Plus, RefreshCcw, RotateCcw, Trash2, UserRoundPlus } from 'lucide-react'
 import { memo, useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -120,6 +121,7 @@ const StrategyCard = memo(({
   handleDeleteStrategy,
   onSystemActionClick,
 }: StrategyCardProps) => {
+  const { t } = useTranslation()
   const canRestore = isSystem && (isModified || updateAvailable)
 
   return (
@@ -138,23 +140,23 @@ const StrategyCard = memo(({
           <div className="flex items-center gap-1 text-muted-foreground">
             {isSystem
               ? (
-                  <InlineMarker icon={Package} label="Системная стратегия" />
+                  <InlineMarker icon={Package} label={t('category.systemBadge')} />
                 )
               : (
-                  <InlineMarker icon={UserRoundPlus} label="Пользовательская стратегия" className="text-primary/80" />
+                  <InlineMarker icon={UserRoundPlus} label={t('category.customBadge')} className="text-primary/80" />
                 )}
             {strategy.active && (
-              <InlineMarker icon={Check} label="Активная стратегия" className="text-success animate-pulse" />
+              <InlineMarker icon={Check} label={t('category.activeBadge')} className="text-success animate-pulse" />
             )}
             {isModified && (
-              <InlineMarker icon={FilePenLine} label="Системная стратегия изменена пользователем" className="text-warning" />
+              <InlineMarker icon={FilePenLine} label={t('category.modifiedBadge')} className="text-warning" />
             )}
             {canRestore && (
               <InlineMarker
                 icon={updateAvailable ? RefreshCcw : RotateCcw}
                 label={updateAvailable
-                  ? 'Обновить стратегию до актуального системного значения'
-                  : 'Откатить стратегию к системному значению'}
+                  ? t('category.updateAvailable')
+                  : t('category.rollbackToSystem')}
                 className={updateAvailable ? 'text-primary' : 'text-destructive'}
                 onClick={() => onSystemActionClick(strategy.id, strategy.name, updateAvailable)}
               />
@@ -169,12 +171,12 @@ const StrategyCard = memo(({
                   variant="outline"
                   size="icon"
                   onClick={() => handleSetActive(strategy.id)}
-                  aria-label={`Активировать стратегию ${strategy.name}`}
+                  aria-label={t('category.activateAria', { name: strategy.name })}
                 >
                   <Check className="size-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Активировать</TooltipContent>
+              <TooltipContent>{t('category.activateTooltip')}</TooltipContent>
             </Tooltip>
           )}
           <Tooltip>
@@ -183,12 +185,12 @@ const StrategyCard = memo(({
                 variant="outline"
                 size="icon"
                 onClick={() => handleEditStrategy(strategy)}
-                aria-label={`Редактировать стратегию ${strategy.name}`}
+                aria-label={t('category.editAria', { name: strategy.name })}
               >
                 <Pencil className="size-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Редактировать</TooltipContent>
+            <TooltipContent>{t('category.editTooltip')}</TooltipContent>
           </Tooltip>
           {strategy.active && (
             <Tooltip>
@@ -198,12 +200,12 @@ const StrategyCard = memo(({
                   size="icon"
                   className="text-warning hover:text-warning"
                   onClick={() => handleClearActive(strategy.id)}
-                  aria-label={`Деактивировать стратегию ${strategy.name}`}
+                  aria-label={t('category.deactivateAria', { name: strategy.name })}
                 >
                   <BrushCleaning className="size-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Деактивировать</TooltipContent>
+              <TooltipContent>{t('category.deactivateTooltip')}</TooltipContent>
             </Tooltip>
           )}
           <Tooltip>
@@ -213,12 +215,12 @@ const StrategyCard = memo(({
                 size="icon"
                 className="text-destructive hover:text-destructive"
                 onClick={() => handleDeleteStrategy(strategy.id)}
-                aria-label={`Удалить стратегию ${strategy.name}`}
+                aria-label={t('category.deleteAria', { name: strategy.name })}
               >
                 <Trash2 className="size-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Удалить</TooltipContent>
+            <TooltipContent>{t('category.deleteTooltip')}</TooltipContent>
           </Tooltip>
         </div>
       </div>
@@ -241,6 +243,7 @@ type SystemActionTarget
     | { type: 'strategy', strategyId: string, title: string, description: string }
 
 export function CategoryPage() {
+  const { t } = useTranslation()
   const { categoryId } = useParams({ from: '/strategies/$categoryId' })
   const navigate = useNavigate()
 
@@ -341,13 +344,13 @@ export function CategoryPage() {
       setNewStrategyName('')
       setNewStrategyContent('')
       setNewStrategyOpen(false)
-      toast.success('Стратегия добавлена')
+      toast.success(t('category.strategyAdded'))
     }
     catch (e) {
       revertTo(previousConfig)
       toast.error(`Ошибка сохранения стратегии: ${e instanceof Error ? e.message : String(e)}`)
     }
-  }, [newStrategyName, newStrategyContent, categoryId, addStrategy, saveNow, addConfigLog, revertTo])
+  }, [newStrategyName, newStrategyContent, categoryId, addStrategy, saveNow, addConfigLog, revertTo, t])
 
   const handleEditStrategy = useCallback((strategy: Strategy) => {
     setEditingStrategy(strategy)
@@ -391,13 +394,13 @@ export function CategoryPage() {
         )
       }
       setEditingStrategy(null)
-      toast.success('Стратегия сохранена')
+      toast.success(t('category.strategySaved'))
     }
     catch (e) {
       revertTo(previousConfig)
       toast.error(`Ошибка сохранения стратегии: ${e instanceof Error ? e.message : String(e)}`)
     }
-  }, [editingStrategy, categoryId, editingName, editingContent, updateStrategy, saveNow, addConfigLog, revertTo])
+  }, [editingStrategy, categoryId, editingName, editingContent, updateStrategy, saveNow, addConfigLog, revertTo, t])
 
   const handleSetActive = useCallback(async (strategyId: string) => {
     if (!categoryId)
@@ -421,13 +424,13 @@ export function CategoryPage() {
         }
       }
       await restartIfConnected()
-      notifyConfigApplied('Стратегия активирована')
+      notifyConfigApplied(t('category.strategyActivated'))
     }
     catch (e) {
       revertTo(previousConfig)
       toast.error(`Ошибка активации стратегии: ${e instanceof Error ? e.message : String(e)}`)
     }
-  }, [categoryId, setActiveStrategy, saveNow, addConfigLog, restartIfConnected, notifyConfigApplied, revertTo])
+  }, [categoryId, setActiveStrategy, saveNow, addConfigLog, restartIfConnected, notifyConfigApplied, revertTo, t])
 
   const handleClearActive = useCallback(async (strategyId: string) => {
     if (!categoryId)
@@ -451,13 +454,13 @@ export function CategoryPage() {
         }
       }
       await restartIfConnected()
-      notifyConfigApplied('Стратегия деактивирована')
+      notifyConfigApplied(t('category.strategyDeactivated'))
     }
     catch (e) {
       revertTo(previousConfig)
       toast.error(`Ошибка деактивации стратегии: ${e instanceof Error ? e.message : String(e)}`)
     }
-  }, [categoryId, clearActiveStrategy, saveNow, addConfigLog, restartIfConnected, notifyConfigApplied, revertTo])
+  }, [categoryId, clearActiveStrategy, saveNow, addConfigLog, restartIfConnected, notifyConfigApplied, revertTo, t])
 
   const handleClearAllActive = useCallback(async () => {
     if (!categoryId)
@@ -478,13 +481,13 @@ export function CategoryPage() {
         addConfigLog(`все активные стратегии отключены в категории "${latestCategory.name}"`)
       }
       await restartIfConnected()
-      notifyConfigApplied('Активные стратегии отключены')
+      notifyConfigApplied(t('category.allStrategiesDeactivated'))
     }
     catch (e) {
       revertTo(previousConfig)
       toast.error(`Ошибка деактивации стратегий: ${e instanceof Error ? e.message : String(e)}`)
     }
-  }, [categoryId, clearAllActiveStrategies, saveNow, addConfigLog, restartIfConnected, notifyConfigApplied, revertTo])
+  }, [categoryId, clearAllActiveStrategies, saveNow, addConfigLog, restartIfConnected, notifyConfigApplied, revertTo, t])
 
   const handleDeleteStrategy = useCallback(async (strategyId: string) => {
     if (categoryId) {
@@ -507,7 +510,7 @@ export function CategoryPage() {
           if (latestCategory && strategy) {
             addConfigLog(`удалена стратегия "${strategy.name}" из категории "${latestCategory.name}"`)
           }
-          toast.success('Стратегия удалена')
+          toast.success(t('category.strategyDeleted'))
         }
         catch (err) {
           revertTo(previousConfig)
@@ -540,7 +543,7 @@ export function CategoryPage() {
           if (latestCategory && strategy) {
             addConfigLog(`удалена стратегия "${strategy.name}" из категории "${latestCategory.name}"`)
           }
-          toast.success('Стратегия удалена')
+          toast.success(t('category.strategyDeleted'))
         }
         catch (e) {
           revertTo(previousConfig)
@@ -548,20 +551,20 @@ export function CategoryPage() {
         }
       }
     }
-  }, [categoryId, deleteStrategy, saveNow, addConfigLog, restartIfConnected, revertTo])
+  }, [categoryId, deleteStrategy, saveNow, addConfigLog, restartIfConnected, revertTo, t])
 
   const onSystemActionClick = useCallback((strategyId: string, name: string, updateAvailable: boolean) => {
     setSystemActionTarget({
       type: 'strategy',
       strategyId,
       title: updateAvailable
-        ? 'Обновить системную стратегию?'
-        : 'Откатить стратегию к системному значению?',
+        ? t('category.updateStrategyDialogTitle')
+        : t('category.restoreStrategyDialogTitle'),
       description: updateAvailable
-        ? `Стратегия «${name}» будет обновлена до актуальной системной версии.`
-        : `Стратегия «${name}» будет возвращена к системному значению.`,
+        ? t('category.updateStrategyDialogDescription', { name })
+        : t('category.restoreStrategyDialogDescription', { name }),
     })
-  }, [])
+  }, [t])
 
   const handleDeleteCategory = async () => {
     if (categoryId) {
@@ -593,7 +596,7 @@ export function CategoryPage() {
         addConfigLog(`удалена категория "${categoryName}"`)
       }
       setDeleteDialogOpen(false)
-      toast.success('Категория удалена')
+      toast.success(t('category.categoryDeleted'))
       navigate({ to: '/strategies' })
     }
   }
@@ -618,7 +621,7 @@ export function CategoryPage() {
         addConfigLog(`категория "${previousName}" переименована в "${nextName}"`)
       }
       setRenameDialogOpen(false)
-      toast.success('Категория переименована')
+      toast.success(t('category.categoryRenamed'))
     }
     catch (e) {
       revertTo(previousConfig)
@@ -657,7 +660,7 @@ export function CategoryPage() {
     try {
       addConfigLog(`категория "${category.name}" обновлена до системного значения`)
       await restartIfConnected()
-      notifyConfigApplied('Категория обновлена')
+      notifyConfigApplied(t('category.categoryUpdated'))
     }
     catch (error) {
       toast.error(`Категория обновлена, но не удалось применить изменения: ${error instanceof Error ? error.message : String(error)}`)
@@ -693,7 +696,7 @@ export function CategoryPage() {
     try {
       addConfigLog(`стратегия "${strategy.name}" обновлена до системного значения в категории "${category.name}"`)
       await restartIfConnected()
-      notifyConfigApplied('Стратегия обновлена')
+      notifyConfigApplied(t('category.strategyUpdated'))
     }
     catch (error) {
       toast.error(`Стратегия обновлена, но не удалось применить изменения: ${error instanceof Error ? error.message : String(error)}`)
@@ -717,9 +720,9 @@ export function CategoryPage() {
         <div className="p-6 space-y-6">
           <Link to="/strategies" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
             <ArrowLeft className="size-4" />
-            Назад к категориям
+            {t('category.backToCategories')}
           </Link>
-          <p className="text-muted-foreground">Категория не найдена</p>
+          <p className="text-muted-foreground">{t('category.notFound')}</p>
         </div>
       </LenisScrollArea>
     )
@@ -731,7 +734,7 @@ export function CategoryPage() {
         <div className="p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link to="/strategies" className="text-muted-foreground hover:text-foreground cursor-pointer" aria-label="Назад к категориям">
+              <Link to="/strategies" className="text-muted-foreground hover:text-foreground cursor-pointer" aria-label={t('category.backToCategories')}>
                 <ArrowLeft className="size-5" />
               </Link>
               <div>
@@ -740,36 +743,36 @@ export function CategoryPage() {
                   <div className="flex items-center gap-1 text-muted-foreground">
                     {isSystemCategory(category)
                       ? (
-                          <InlineMarker icon={Package} label="Системная категория" />
+                          <InlineMarker icon={Package} label={t('category.systemBadge')} />
                         )
                       : (
-                          <InlineMarker icon={UserRoundPlus} label="Пользовательская категория" className="text-primary/80" />
+                          <InlineMarker icon={UserRoundPlus} label={t('category.customBadge')} className="text-primary/80" />
                         )}
                     {isSystemCategoryModifiedByUser && (
-                      <InlineMarker icon={FilePenLine} label="Системная категория изменена пользователем" className="text-warning" />
+                      <InlineMarker icon={FilePenLine} label={t('category.modifiedBadge')} className="text-warning" />
                     )}
                     {isSystemCategory(category) && (isSystemCategoryModifiedByUser || isSystemCategoryBuiltinUpdateAvailable) && (
                       <InlineMarker
                         icon={isSystemCategoryBuiltinUpdateAvailable ? RefreshCcw : RotateCcw}
                         label={isSystemCategoryBuiltinUpdateAvailable
-                          ? 'Обновить категорию до актуального системного значения'
-                          : 'Откатить категорию к системному значению'}
+                          ? t('category.updateAvailable')
+                          : t('category.rollbackToSystem')}
                         className={isSystemCategoryBuiltinUpdateAvailable ? 'text-primary' : 'text-destructive'}
                         onClick={() => setSystemActionTarget({
                           type: 'category',
                           title: isSystemCategoryBuiltinUpdateAvailable
-                            ? 'Обновить системную категорию?'
-                            : 'Откатить категорию к системному значению?',
+                            ? t('category.updateCategoryDialogTitle')
+                            : t('category.restoreCategoryDialogTitle'),
                           description: isSystemCategoryBuiltinUpdateAvailable
-                            ? `Категория «${category.name}» будет обновлена до актуальной системной версии. Пользовательские изменения внутри категории будут сброшены.`
-                            : `Категория «${category.name}» будет возвращена к системному значению. Пользовательские изменения внутри категории будут сброшены.`,
+                            ? t('category.updateCategoryDialogDescription', { name: category.name })
+                            : t('category.restoreCategoryDialogDescription', { name: category.name }),
                         })}
                       />
                     )}
                     {isLegacySystemCategory && (
                       <InlineMarker
                         icon={RotateCcw}
-                        label="Системная категория из старой версии приложения"
+                        label={t('category.legacyBadge')}
                         className="text-warning"
                       />
                     )}
@@ -787,7 +790,7 @@ export function CategoryPage() {
                                 </button>
                               </TooltipTrigger>
                               <TooltipContent>
-                                {activeCount === 1 ? 'Прокрутить к текущей стратегии' : 'Прокрутить к первой активной стратегии'}
+                                {activeCount === 1 ? t('category.scrollToCurrent') : t('category.scrollToFirstActive')}
                               </TooltipContent>
                             </Tooltip>
                           )
@@ -800,7 +803,7 @@ export function CategoryPage() {
                                 aria-hidden="true"
                               />
                             </TooltipTrigger>
-                            <TooltipContent>Нет активных стратегий</TooltipContent>
+                            <TooltipContent>{t('category.noActive')}</TooltipContent>
                           </Tooltip>
                         )}
                   </div>
@@ -839,28 +842,28 @@ export function CategoryPage() {
                         })
                       })
                     }}
-                    aria-label="Папка со стратегиями"
+                    aria-label={t('category.strategiesFolderAria')}
                   >
                     <FolderOpen className="size-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Папка со стратегиями</TooltipContent>
+                <TooltipContent>{t('category.strategiesFolderTooltip')}</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button size="icon" onClick={() => setNewStrategyOpen(true)} aria-label="Новая стратегия">
+                  <Button size="icon" onClick={() => setNewStrategyOpen(true)} aria-label={t('category.newStrategyAria')}>
                     <Plus className="size-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Новая стратегия</TooltipContent>
+                <TooltipContent>{t('category.newStrategyTooltip')}</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon" onClick={openRenameDialog} aria-label="Переименовать категорию">
+                  <Button variant="outline" size="icon" onClick={openRenameDialog} aria-label={t('category.renameAria', { name: category.name })}>
                     <Pencil className="size-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Переименовать категорию</TooltipContent>
+                <TooltipContent>{t('category.renameCategoryTooltip')}</TooltipContent>
               </Tooltip>
               {category.strategies.some(s => s.active) && (
                 <Tooltip>
@@ -870,12 +873,12 @@ export function CategoryPage() {
                       size="icon"
                       className="text-warning hover:text-warning"
                       onClick={handleClearAllActive}
-                      aria-label="Деактивировать все активные стратегии"
+                      aria-label={t('category.deactivateAllAria')}
                     >
                       <BrushCleaning className="size-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Деактивировать все активные стратегии</TooltipContent>
+                  <TooltipContent>{t('category.deactivateAllTooltip')}</TooltipContent>
                 </Tooltip>
               )}
               <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -886,32 +889,30 @@ export function CategoryPage() {
                         variant="outline"
                         size="icon"
                         className="text-destructive hover:text-destructive"
-                        aria-label={`Удалить категорию ${category.name}`}
+                        aria-label={t('category.deleteAria', { name: category.name })}
                       >
                         <Trash2 className="size-4" />
                       </Button>
                     </AlertDialogTrigger>
                   </TooltipTrigger>
-                  <TooltipContent>Удалить категорию</TooltipContent>
+                  <TooltipContent>{t('category.deleteCategoryTooltip')}</TooltipContent>
                 </Tooltip>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Удалить категорию?</AlertDialogTitle>
+                    <AlertDialogTitle>{t('category.deleteDialogTitle')}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Категория «
-                      {category.name}
-                      » и все её стратегии будут удалены. Это действие нельзя отменить.
+                      {t('category.deleteDialogDescription', { name: category.name })}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Отмена</AlertDialogCancel>
+                    <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                     <Button
                       onClick={async () => {
                         await handleDeleteCategory()
                       }}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
-                      Удалить
+                      {t('common.delete')}
                     </Button>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -922,7 +923,7 @@ export function CategoryPage() {
           <div className="space-y-4">
             {category.strategies.length === 0
               ? (
-                  <p className="text-sm text-muted-foreground">Нет стратегий</p>
+                  <p className="text-sm text-muted-foreground">{t('category.noStrategies')}</p>
                 )
               : (
                   category.strategies.map((strategy: Strategy) => {
@@ -956,7 +957,7 @@ export function CategoryPage() {
                 <AlertDialogDescription>{systemActionTarget?.description}</AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Отмена</AlertDialogCancel>
+                <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                 <Button
                   onClick={async () => {
                     if (!systemActionTarget) {
@@ -971,7 +972,7 @@ export function CategoryPage() {
                     await handleRestoreStrategy(systemActionTarget.strategyId)
                   }}
                 >
-                  Обновить
+                  {t('category.updateConfirm')}
                 </Button>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -980,20 +981,20 @@ export function CategoryPage() {
           <Dialog open={newStrategyOpen} onOpenChange={setNewStrategyOpen}>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Новая стратегия</DialogTitle>
+                <DialogTitle>{t('category.newStrategyTitle')}</DialogTitle>
               </DialogHeader>
               <div className="py-4 space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="strategy-name">Название стратегии</Label>
+                  <Label htmlFor="strategy-name">{t('category.strategyNameLabel')}</Label>
                   <Input
                     id="strategy-name"
-                    placeholder="Название стратегии"
+                    placeholder={t('category.strategyNameLabel')}
                     value={newStrategyName}
                     onChange={e => setNewStrategyName(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="strategy-content">Содержимое</Label>
+                  <Label htmlFor="strategy-content">{t('category.strategyContentLabel')}</Label>
                   <EditorTextarea
                     textareaRef={newStrategyContentTextareaRef}
                     id="strategy-content"
@@ -1010,15 +1011,15 @@ export function CategoryPage() {
                       {'<LIST_MODE>'}
                     </code>
                     {' '}
-                    автоматически заменяется на текущий режим списков: список исключений или список заблокированных адресов.
+                    {t('category.listModeHelp')}
                   </p>
                 </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setNewStrategyOpen(false)}>
-                  Отмена
+                  {t('common.cancel')}
                 </Button>
-                <Button onClick={handleAddStrategy}>Создать</Button>
+                <Button onClick={handleAddStrategy}>{t('category.createButton')}</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -1026,20 +1027,20 @@ export function CategoryPage() {
           <Dialog open={!!editingStrategy} onOpenChange={() => setEditingStrategy(null)}>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Редактировать стратегию</DialogTitle>
+                <DialogTitle>{t('category.editStrategyTitle')}</DialogTitle>
               </DialogHeader>
               <div className="py-4 space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-strategy-name">Название стратегии</Label>
+                  <Label htmlFor="edit-strategy-name">{t('category.strategyNameLabel')}</Label>
                   <Input
                     id="edit-strategy-name"
-                    placeholder="Название стратегии"
+                    placeholder={t('category.strategyNameLabel')}
                     value={editingName}
                     onChange={e => setEditingName(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-strategy-content">Содержимое</Label>
+                  <Label htmlFor="edit-strategy-content">{t('category.strategyContentLabel')}</Label>
                   <EditorTextarea
                     textareaRef={editStrategyContentTextareaRef}
                     id="edit-strategy-content"
@@ -1056,15 +1057,15 @@ export function CategoryPage() {
                       {'<LIST_MODE>'}
                     </code>
                     {' '}
-                    автоматически заменяется на текущий режим списков: список исключений или список заблокированных адресов.
+                    {t('category.listModeHelp')}
                   </p>
                 </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setEditingStrategy(null)}>
-                  Отмена
+                  {t('common.cancel')}
                 </Button>
-                <Button onClick={handleSaveEdit}>Сохранить</Button>
+                <Button onClick={handleSaveEdit}>{t('common.save')}</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -1072,14 +1073,14 @@ export function CategoryPage() {
           <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Переименовать категорию</DialogTitle>
+                <DialogTitle>{t('category.renameCategoryTitle')}</DialogTitle>
               </DialogHeader>
               <div className="py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="category-name">Название категории</Label>
+                  <Label htmlFor="category-name">{t('category.categoryNameLabel')}</Label>
                   <Input
                     id="category-name"
-                    placeholder="Название категории"
+                    placeholder={t('category.categoryNameLabel')}
                     value={newCategoryName}
                     onChange={e => setNewCategoryName(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleRenameCategory()}
@@ -1088,9 +1089,9 @@ export function CategoryPage() {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>
-                  Отмена
+                  {t('common.cancel')}
                 </Button>
-                <Button onClick={handleRenameCategory}>Сохранить</Button>
+                <Button onClick={handleRenameCategory}>{t('common.save')}</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

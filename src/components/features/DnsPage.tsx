@@ -8,6 +8,7 @@ import {
   RefreshCw,
   ShieldCheck,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { MODULE_PAGE_CARD_CLASS, ModuleSectionHeader, ModuleSettingLabel } from '@/components/features/module-ui'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -26,6 +27,7 @@ import { BOOTSTRAP_RESOLVER_OPTIONS, DNS_PRESETS, getDnsLatencyBadgeClass } from
 import { cn } from '@/lib/utils'
 
 export function DnsPage() {
+  const { t } = useTranslation()
   const {
     config,
     loading,
@@ -57,13 +59,13 @@ export function DnsPage() {
       <div className="space-y-6 p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <Link to="/modules" className="cursor-pointer text-muted-foreground hover:text-foreground" aria-label="Назад к модулям">
+            <Link to="/modules" className="cursor-pointer text-muted-foreground hover:text-foreground" aria-label={t('dns.backAria')}>
               <ArrowLeft className="size-5" />
             </Link>
             <div>
-              <h1 className="text-2xl font-medium">DNS</h1>
+              <h1 className="text-2xl font-medium">{t('dns.title')}</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Дополнительный обход геоблока иностранных сервисов: ИИ, игр, сайтов и других ресурсов
+                {t('dns.subtitle')}
               </p>
             </div>
           </div>
@@ -81,8 +83,8 @@ export function DnsPage() {
               ? <Loader2 className="size-4 animate-spin" />
               : <Power className="size-4" />}
             {isBusy
-              ? 'Сохранение...'
-              : enabled ? 'Выключить модуль' : 'Включить модуль'}
+              ? t('dns.saving')
+              : enabled ? t('dns.turnOff') : t('dns.turnOn')}
           </Button>
         </div>
 
@@ -90,21 +92,21 @@ export function DnsPage() {
           <ModuleSectionHeader
             icon={ShieldCheck}
             iconClassName="text-[#879A39] dark:text-[#879A39]"
-            title="Параметры"
-            description="Основные параметры работы DNS-подключения"
+            title={t('dns.params.title')}
+            description={t('dns.params.description')}
           />
           <CardContent className="space-y-4 p-4!">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <ModuleSettingLabel
                 htmlFor="dns-bootstrap-resolvers"
-                description="Нужен для первого подключения к DNS-серверу."
+                description={t('dns.params.bootstrap.description')}
               >
-                Начальный резолвер
+                {t('dns.params.bootstrap.title')}
               </ModuleSettingLabel>
               <div className="w-full sm:w-[11rem]">
                 <Select value={selectedBootstrapResolver} onValueChange={handleBootstrapSelect} disabled={isBusy}>
                   <SelectTrigger id="dns-bootstrap-resolvers" className="w-full cursor-pointer">
-                    <SelectValue placeholder="Выберите резолвер" />
+                    <SelectValue placeholder={t('dns.params.bootstrap.placeholder')} />
                   </SelectTrigger>
                   <SelectContent>
                     {BOOTSTRAP_RESOLVER_OPTIONS.map(option => (
@@ -120,9 +122,9 @@ export function DnsPage() {
             <div className="flex items-center justify-between gap-4">
               <ModuleSettingLabel
                 htmlFor="dns-accelerator"
-                description="Может ускорить работу DNS и сделать подключение к некоторым сервисам стабильнее."
+                description={t('dns.params.accelerator.description')}
               >
-                Акселератор
+                {t('dns.params.accelerator.title')}
               </ModuleSettingLabel>
               <Switch
                 id="dns-accelerator"
@@ -138,8 +140,8 @@ export function DnsPage() {
           <ModuleSectionHeader
             icon={Globe}
             iconClassName="text-[#3AA99F] dark:text-[#3AA99F]"
-            title="DNS провайдеры"
-            description="Выбор адреса для DNS-подключения"
+            title={t('dns.providers.title')}
+            description={t('dns.providers.description')}
             action={(
               <Button
                 type="button"
@@ -151,7 +153,7 @@ export function DnsPage() {
                 {isCheckingLatency
                   ? <Loader2 className="size-4 animate-spin" />
                   : <RefreshCw className="size-4" />}
-                Проверить пинг
+                {isCheckingLatency ? t('dns.providers.checkingLatency') : t('dns.providers.checkLatency')}
               </Button>
             )}
           />

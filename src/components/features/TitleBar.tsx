@@ -3,6 +3,7 @@ import { Link, useLocation } from '@tanstack/react-router'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { Copy, Minus, Square, X } from 'lucide-react'
 import { Fragment, useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -21,13 +22,6 @@ interface BreadcrumbEntry {
   to?: string
 }
 
-const WINDOW_CONTROL_LABELS = {
-  close: 'Закрыть',
-  maximize: 'Развернуть',
-  minimize: 'Свернуть',
-  restore: 'Восстановить',
-}
-
 function safeDecode(value: string) {
   try {
     return decodeURIComponent(value)
@@ -35,63 +29,6 @@ function safeDecode(value: string) {
   catch {
     return value
   }
-}
-
-function getBreadcrumbItems(pathname: string, categoryName?: string): BreadcrumbEntry[] {
-  if (pathname === '/') {
-    return [{ id: 'home', label: 'Главная' }]
-  }
-
-  if (pathname === '/about') {
-    return [{ id: 'about', label: 'О программе' }]
-  }
-
-  if (pathname === '/settings') {
-    return [{ id: 'settings', label: 'Настройки' }]
-  }
-
-  if (pathname === '/logs') {
-    return [{ id: 'logs', label: 'Логи' }]
-  }
-
-  if (pathname === '/filters') {
-    return [{ id: 'filters', label: 'Фильтры' }]
-  }
-
-  if (pathname === '/placeholders') {
-    return [{ id: 'placeholders', label: 'Плейсхолдеры' }]
-  }
-
-  if (pathname === '/strategies') {
-    return [{ id: 'strategies', label: 'Стратегии' }]
-  }
-
-  if (pathname.startsWith('/strategies/')) {
-    return [
-      { id: 'strategies-root', label: 'Стратегии', to: '/strategies' },
-      { id: `category-${pathname.split('/').pop() || 'category'}`, label: categoryName ?? 'Категория' },
-    ]
-  }
-
-  if (pathname === '/modules') {
-    return [{ id: 'modules', label: 'Модули' }]
-  }
-
-  if (pathname === '/modules/dns') {
-    return [
-      { id: 'modules-root', label: 'Модули', to: '/modules' },
-      { id: 'dns', label: 'DNS' },
-    ]
-  }
-
-  if (pathname === '/modules/tg-ws-proxy') {
-    return [
-      { id: 'modules-root', label: 'Модули', to: '/modules' },
-      { id: 'tg-ws-proxy', label: 'TG WS Proxy' },
-    ]
-  }
-
-  return []
 }
 
 function WindowControlButton({
@@ -122,6 +59,7 @@ function WindowControlButton({
 }
 
 export function TitleBar() {
+  const { t } = useTranslation()
   const location = useLocation()
   const [isMaximized, setIsMaximized] = useState(false)
   const syncMaximizedState = useCallback(() => {
@@ -136,8 +74,55 @@ export function TitleBar() {
   const currentCategoryName = location.pathname.startsWith('/strategies/')
     ? config?.categories.find(category => category.id === safeDecode(location.pathname.slice('/strategies/'.length)))?.name
     : undefined
-  const breadcrumbItems = getBreadcrumbItems(location.pathname, currentCategoryName)
-  const maximizeLabel = isMaximized ? WINDOW_CONTROL_LABELS.restore : WINDOW_CONTROL_LABELS.maximize
+
+  const getBreadcrumbs = (pathname: string): BreadcrumbEntry[] => {
+    if (pathname === '/') {
+      return [{ id: 'home', label: t('sidebar.home') }]
+    }
+    if (pathname === '/about') {
+      return [{ id: 'about', label: t('sidebar.about') }]
+    }
+    if (pathname === '/settings') {
+      return [{ id: 'settings', label: t('sidebar.settings') }]
+    }
+    if (pathname === '/logs') {
+      return [{ id: 'logs', label: t('sidebar.logs') }]
+    }
+    if (pathname === '/filters') {
+      return [{ id: 'filters', label: t('sidebar.filters') }]
+    }
+    if (pathname === '/placeholders') {
+      return [{ id: 'placeholders', label: t('sidebar.placeholders') }]
+    }
+    if (pathname === '/strategies') {
+      return [{ id: 'strategies', label: t('sidebar.categories') }]
+    }
+    if (pathname.startsWith('/strategies/')) {
+      return [
+        { id: 'strategies-root', label: t('sidebar.categories'), to: '/strategies' },
+        { id: `category-${pathname.split('/').pop() || 'category'}`, label: currentCategoryName ?? t('categories.title') },
+      ]
+    }
+    if (pathname === '/modules') {
+      return [{ id: 'modules', label: t('sidebar.modules') }]
+    }
+    if (pathname === '/modules/dns') {
+      return [
+        { id: 'modules-root', label: t('sidebar.modules'), to: '/modules' },
+        { id: 'dns', label: t('modules.dns.title') },
+      ]
+    }
+    if (pathname === '/modules/tg-ws-proxy') {
+      return [
+        { id: 'modules-root', label: t('sidebar.modules'), to: '/modules' },
+        { id: 'tg-ws-proxy', label: t('modules.tgWsProxy.title') },
+      ]
+    }
+    return []
+  }
+
+  const breadcrumbItems = getBreadcrumbs(location.pathname)
+  const maximizeLabel = isMaximized ? t('titleBar.restore') : t('titleBar.maximize')
 
   useEffect(() => {
     let unlisten: (() => void) | undefined
@@ -227,7 +212,7 @@ export function TitleBar() {
       </div>
       <div className="flex-1" data-tauri-drag-region />
       <div className="flex items-center gap-1" data-tauri-drag-region>
-        <WindowControlButton label={WINDOW_CONTROL_LABELS.minimize} onClick={handleMinimize}>
+        <WindowControlButton label={t('titleBar.minimize')} onClick={handleMinimize}>
           <Minus aria-hidden="true" className="size-3.5" strokeWidth={2} />
         </WindowControlButton>
         <WindowControlButton label={maximizeLabel} onClick={handleToggleMaximize}>
@@ -235,7 +220,7 @@ export function TitleBar() {
             ? <Copy aria-hidden="true" className="size-3.5" strokeWidth={2} />
             : <Square aria-hidden="true" className="size-3.5" strokeWidth={2} />}
         </WindowControlButton>
-        <WindowControlButton label={WINDOW_CONTROL_LABELS.close} onClick={handleClose} destructive>
+        <WindowControlButton label={t('titleBar.close')} onClick={handleClose} destructive>
           <X aria-hidden="true" className="size-3.5" strokeWidth={2} />
         </WindowControlButton>
       </div>

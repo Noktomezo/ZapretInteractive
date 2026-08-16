@@ -1,5 +1,6 @@
 import { ArrowDown, BrushCleaning } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { LenisScrollArea } from '@/components/ui/lenis-scroll-area'
 import { useConnectionStore } from '@/stores/connection.store'
@@ -18,6 +19,7 @@ function formatLogTimestamp(timestamp: number) {
 }
 
 export function LogsPage() {
+  const { t } = useTranslation()
   const logs = useConnectionStore(state => state.logs)
   const clearLogs = useConnectionStore(state => state.clearLogs)
   const scrollAreaRef = useRef<HTMLDivElement | null>(null)
@@ -75,9 +77,9 @@ export function LogsPage() {
     <div className="flex h-full min-h-0 flex-col p-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-medium">Логи</h1>
+          <h1 className="text-2xl font-medium">{t('logs.title')}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Журнал запуска, остановки и внутренних событий подключения.
+            {t('logs.subtitle')}
           </p>
         </div>
         <Button
@@ -89,7 +91,7 @@ export function LogsPage() {
           className="gap-2"
         >
           <BrushCleaning className="text-warning size-4" />
-          Очистить
+          {t('logs.clear')}
         </Button>
       </div>
 
@@ -100,7 +102,7 @@ export function LogsPage() {
             size="default"
             variant="secondary"
             className="absolute right-4 bottom-4 z-10 border border-border bg-background/60 text-foreground shadow-lg backdrop-blur-md hover:bg-background/72 hover:backdrop-blur-xl dark:bg-card/60 dark:hover:bg-card/72"
-            aria-label="Перейти к новым логам"
+            aria-label={t('logs.newLogsAria')}
             onClick={() => {
               const viewport = getViewport()
               if (!viewport)
@@ -121,7 +123,7 @@ export function LogsPage() {
           >
 
             <ArrowDown className="size-4" />
-            Новые логи
+            {t('logs.newLogs')}
           </Button>
         )}
         <LenisScrollArea ref={scrollAreaRef} className="h-full">
@@ -129,7 +131,7 @@ export function LogsPage() {
             {logs.length === 0
               ? (
                   <div className="text-muted-foreground flex min-h-[12rem] items-center justify-center">
-                    Нет логов
+                    {t('logs.noLogs')}
                   </div>
                 )
               : (

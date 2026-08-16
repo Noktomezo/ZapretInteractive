@@ -24,6 +24,7 @@ import '@fontsource/ibm-plex-mono/400.css'
 import '@fontsource/ibm-plex-mono/500.css'
 import '@fontsource/ibm-plex-mono/600.css'
 import './index.css'
+import './lib/i18n'
 
 const routeTree = rootRoute.addChildren([
   indexRoute,

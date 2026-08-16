@@ -6,6 +6,7 @@ import {
   Power,
 } from 'lucide-react'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import FaultyTerminal from '@/components/FaultyTerminal'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -28,31 +29,17 @@ import { useDownloadStore } from '@/stores/download.store'
 import { useUpdaterStore } from '@/stores/updater.store'
 
 const terminalGridMul: [number, number] = [2, 1]
-const LIST_MODE_OPTIONS: {
+
+interface ListModeOptionItem {
   value: ListMode
   label: string
   tooltip: string
   activeClassName: string
   indicatorClassName: string
-}[] = [
-  {
-    value: 'ipset',
-    label: 'Только заблокированные',
-    tooltip: 'Обрабатываются только заблокированные в России IP-адреса. Достоверность 99.9%',
-    activeClassName: 'data-[state=on]:text-success data-[state=on]:[text-shadow:0_0_12px_color-mix(in_oklab,var(--success)_32%,transparent)]',
-    indicatorClassName: 'border-success/42 bg-success/20',
-  },
-  {
-    value: 'exclude',
-    label: 'Исключения',
-    tooltip: 'По умолчанию обрабатываются все адреса, кроме тех, которые стратегии ломают',
-    activeClassName: 'data-[state=on]:text-warning data-[state=on]:[text-shadow:0_0_12px_color-mix(in_oklab,var(--warning)_32%,transparent)]',
-    indicatorClassName: 'border-warning/42 bg-warning/22',
-  },
-]
+}
 
 interface ToggleItemProps extends Omit<React.ComponentPropsWithoutRef<typeof ToggleGroupItem>, 'value'> {
-  option: typeof LIST_MODE_OPTIONS[number]
+  option: ListModeOptionItem
   disabled: boolean
   ref?: React.Ref<React.ElementRef<typeof ToggleGroupItem>>
 }
@@ -179,6 +166,7 @@ export function MainPageTerminalBackdrop({ visible }: { visible: boolean }) {
 }
 
 export function MainPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const availableUpdatesPromptKeyRef = useRef('')
   const dismissedPromptKeysRef = useRef<Set<string>>(new Set())
@@ -217,9 +205,27 @@ export function MainPage() {
   const dismissedAppUpdateVersion = useUpdaterStore(state => state.dismissedVersionThisSession)
   const installAvailableAppUpdate = useUpdaterStore(state => state.installAvailableUpdate)
   const dismissCurrentAppUpdate = useUpdaterStore(state => state.dismissCurrentVersionUntilRestart)
+
+  const listModeOptions: ListModeOptionItem[] = [
+    {
+      value: 'ipset',
+      label: t('main.listMode.ipset'),
+      tooltip: t('main.listMode.ipsetTooltip'),
+      activeClassName: 'data-[state=on]:text-success data-[state=on]:[text-shadow:0_0_12px_color-mix(in_oklab,var(--success)_32%,transparent)]',
+      indicatorClassName: 'border-success/42 bg-success/20',
+    },
+    {
+      value: 'exclude',
+      label: t('main.listMode.exclude'),
+      tooltip: t('main.listMode.excludeTooltip'),
+      activeClassName: 'data-[state=on]:text-warning data-[state=on]:[text-shadow:0_0_12px_color-mix(in_oklab,var(--warning)_32%,transparent)]',
+      indicatorClassName: 'border-warning/42 bg-warning/22',
+    },
+  ]
+
   const selectedListMode = config?.listMode ?? 'ipset'
-  const activeListModeIndex = Math.max(LIST_MODE_OPTIONS.findIndex(option => option.value === selectedListMode), 0)
-  const listModeOptionCount = LIST_MODE_OPTIONS.length
+  const activeListModeIndex = Math.max(listModeOptions.findIndex(option => option.value === selectedListMode), 0)
+  const listModeOptionCount = listModeOptions.length
   const listModeIndicatorWidth = `calc((100% - 0.25rem - ${(listModeOptionCount - 1) * 0.125}rem) / ${listModeOptionCount})`
   const listModeDisabled = !initialized || !config || status !== 'disconnected' || listModeUpdating
 
@@ -520,7 +526,7 @@ export function MainPage() {
         </div>
       </div>
     ), { duration: Number.POSITIVE_INFINITY })
-  }, [availableUpdates, binariesOk, config?.coreFileUpdatePromptsEnabled, dismissActiveUpdateToast, handleApplyCoreFileUpdates, handleDisableCoreFileUpdatePrompts, initialized])
+  }, [availableUpdates, binariesOk, config?.coreFileUpdatePromptsEnabled, dismissActiveUpdateToast, handleApplyCoreFileUpdates, handleDisableCoreFileUpdatePrompts, initialized, navigate])
 
   useEffect(() => {
     if (availableUpdates.length === 0) {
@@ -606,7 +612,7 @@ export function MainPage() {
       <div className="flex h-full items-center justify-center p-8">
         <Alert variant="destructive" className="max-w-lg">
           <AlertCircle className="size-4" />
-          <AlertTitle>Ошибка инициализации</AlertTitle>
+          <AlertTitle>{t('main.initError')}</AlertTitle>
           <AlertDescription>{initError}</AlertDescription>
         </Alert>
       </div>
@@ -618,10 +624,9 @@ export function MainPage() {
       <div className="flex h-full items-center justify-center p-8">
         <Alert variant="destructive" className="max-w-lg">
           <AlertCircle className="size-4" />
-          <AlertTitle>Требуются права администратора</AlertTitle>
+          <AlertTitle>{t('main.adminRequiredTitle')}</AlertTitle>
           <AlertDescription>
-            Для работы WinDivert необходимы права администратора. Запустите
-            приложение от имени администратора.
+            {t('main.adminRequiredDescription')}
           </AlertDescription>
         </Alert>
       </div>
@@ -633,9 +638,9 @@ export function MainPage() {
       <div className="flex h-full items-center justify-center p-8">
         <Card className="max-w-md space-y-4 p-6 text-center">
           <div>
-            <h2 className="text-lg font-medium">Обновление файлов</h2>
+            <h2 className="text-lg font-medium">{t('main.updatingFiles')}</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Интерфейс временно заблокирован до завершения обновления.
+              {t('main.updatingFilesDescription')}
             </p>
           </div>
           {progress
@@ -660,7 +665,7 @@ export function MainPage() {
               )
             : (
                 <Button disabled className="w-full">
-                  Обновление...
+                  {t('main.updatingProgress')}
                 </Button>
               )}
         </Card>
@@ -676,17 +681,13 @@ export function MainPage() {
             <AlertCircle className="size-8 text-muted-foreground" />
           </div>
           <div>
-            <h2 className="text-lg font-medium">Не удалось автоматически восстановить конфигурацию</h2>
+            <h2 className="text-lg font-medium">{t('main.configRestoreFailed')}</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Файл
-              {' '}
-              <code>config.json</code>
-              {' '}
-              недоступен или не был восстановлен автоматически. Можно повторить восстановление дефолтного конфига вручную.
+              {t('main.configRestoreFailedDescription')}
             </p>
           </div>
           <Button onClick={handleRestoreDefaultConfig} className="w-full">
-            Использовать дефолтный конфиг
+            {t('main.useDefaultConfig')}
           </Button>
         </Card>
       </div>
@@ -701,24 +702,24 @@ export function MainPage() {
             <AlertCircle className="size-8 text-muted-foreground" />
           </div>
           <div>
-            <h2 className="text-lg font-medium">Требуется обновление файлов</h2>
+            <h2 className="text-lg font-medium">{t('main.coreFilesUpdateRequired')}</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Один или несколько критичных файлов приложения отсутствуют либо повреждены. Загрузятся только нужные файлы.
+              {t('main.coreFilesUpdateRequiredDescription')}
             </p>
             {missingCriticalFiles.length > 0 && (
               <p className="mt-2 text-xs text-muted-foreground">
                 {missingCriticalFiles.length === 1
-                  ? `Требует восстановления: ${missingCriticalFiles[0]}`
-                  : `Требуют восстановления: ${missingCriticalFiles.slice(0, 4).join(', ')}${missingCriticalFiles.length > 4 ? '…' : ''}`}
+                  ? t('main.missingCriticalSingle', { file: missingCriticalFiles[0] })
+                  : t('main.missingCriticalMultiple', { files: `${missingCriticalFiles.slice(0, 4).join(', ')}${missingCriticalFiles.length > 4 ? '…' : ''}` })}
               </p>
             )}
           </div>
           <Button onClick={handleDownloadBinaries} className="w-full">
-            Загрузить нужные файлы
+            {t('main.downloadRequiredFiles')}
           </Button>
           {missingCriticalFiles.length === 0 && (
             <Button variant="outline" onClick={handleRebuildHashes} className="w-full">
-              Восстановить hashes.json
+              {t('main.restoreHashes')}
             </Button>
           )}
         </Card>
@@ -795,14 +796,14 @@ export function MainPage() {
         <div>
           <h2 className="text-2xl font-medium">
             {status === 'connected'
-              ? 'Подключено'
+              ? t('main.connected')
               : status === 'connecting'
-                ? 'Подключение...'
+                ? t('main.connecting')
                 : status === 'disconnecting'
-                  ? 'Отключение...'
+                  ? t('main.disconnecting')
                   : status === 'error'
-                    ? 'Ошибка'
-                    : 'Отключено'}
+                    ? t('main.error')
+                    : t('main.disconnected')}
           </h2>
         </div>
 
@@ -817,19 +818,19 @@ export function MainPage() {
           disabled={listModeDisabled}
           className="relative mx-auto grid w-fit gap-0.5 rounded-lg border border-border/60 bg-background/76 p-0.5 shadow-lg shadow-black/10 backdrop-blur-md"
           style={{ gridTemplateColumns: `repeat(${listModeOptionCount}, minmax(max-content, 1fr))` }}
-          aria-label="Режим списков"
+          aria-label={t('main.listMode.ariaLabel')}
         >
           <div
             className={cn(
               'pointer-events-none absolute inset-y-0.5 left-0.5 rounded-[calc(var(--radius)-0.125rem)] border shadow-sm transition-all duration-300 ease-out',
-              LIST_MODE_OPTIONS[activeListModeIndex].indicatorClassName,
+              listModeOptions[activeListModeIndex].indicatorClassName,
             )}
             style={{
               width: listModeIndicatorWidth,
               transform: `translateX(calc(${activeListModeIndex} * (100% + 0.125rem)))`,
             }}
           />
-          {LIST_MODE_OPTIONS.map(option => (
+          {listModeOptions.map(option => (
             status === 'disconnected'
               ? (
                   <Tooltip key={option.value}>

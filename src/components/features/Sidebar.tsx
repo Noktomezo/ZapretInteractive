@@ -10,6 +10,7 @@ import {
   Logs,
   Settings,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import {
   Sidebar as AppSidebar,
   SidebarContent,
@@ -30,31 +31,35 @@ import {
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/app.store'
 
-const mainNavItems = [
-  { path: '/', label: 'Главная', icon: Home },
-  { path: '/modules', label: 'Модули', icon: Boxes },
-  { path: '/strategies', label: 'Стратегии', icon: Layers, requiresFiles: true },
-  { path: '/filters', label: 'Фильтры', icon: Filter, requiresFiles: true },
-  { path: '/placeholders', label: 'Плейсхолдеры', icon: FileCode, requiresFiles: true },
-  { path: '/logs', label: 'Логи', icon: Logs },
+interface NavItemConfig {
+  path: string
+  labelKey: 'sidebar.home' | 'sidebar.modules' | 'sidebar.categories' | 'sidebar.filters' | 'sidebar.placeholders' | 'sidebar.logs' | 'sidebar.settings' | 'sidebar.about'
+  icon: LucideIcon
+  requiresFiles?: boolean
+}
+
+const mainNavItems: NavItemConfig[] = [
+  { path: '/', labelKey: 'sidebar.home', icon: Home },
+  { path: '/modules', labelKey: 'sidebar.modules', icon: Boxes },
+  { path: '/strategies', labelKey: 'sidebar.categories', icon: Layers, requiresFiles: true },
+  { path: '/filters', labelKey: 'sidebar.filters', icon: Filter, requiresFiles: true },
+  { path: '/placeholders', labelKey: 'sidebar.placeholders', icon: FileCode, requiresFiles: true },
+  { path: '/logs', labelKey: 'sidebar.logs', icon: Logs },
 ]
 
-const footerNavItems = [
-  { path: '/settings', label: 'Настройки', icon: Settings },
-  { path: '/about', label: 'О программе', icon: Info },
+const footerNavItems: NavItemConfig[] = [
+  { path: '/settings', labelKey: 'sidebar.settings', icon: Settings },
+  { path: '/about', labelKey: 'sidebar.about', icon: Info },
 ]
 
 function SidebarNavItem({
   path,
-  label,
+  labelKey,
   icon: Icon,
   requiresFiles = false,
-}: {
-  path: string
-  label: string
-  icon: LucideIcon
-  requiresFiles?: boolean
-}) {
+}: NavItemConfig) {
+  const { t } = useTranslation()
+  const label = t(labelKey)
   const location = useLocation()
   const currentPath = location.pathname
   const { open } = useSidebar()

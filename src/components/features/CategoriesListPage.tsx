@@ -21,6 +21,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useNavigate } from '@tanstack/react-router'
 import { BrushCleaning, ChevronRight, FilePenLine, FolderOpen, GripVertical, Loader2, Package, Pencil, Plus, RefreshCcw, RotateCcw, Trash2, UserRoundPlus } from 'lucide-react'
 import { memo, useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -110,6 +111,7 @@ function formatActiveStrategiesSrText(activeCount: number) {
 }
 
 const SortableCategoryItem = memo(({ category, config, builtinConfig, onClearActive, onRename, onDelete, onRestoreSystem }: SortableCategoryItemProps) => {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const activeStrategies = category.strategies.filter(strategy => strategy.active)
   const activeCount = activeStrategies.length
@@ -149,7 +151,7 @@ const SortableCategoryItem = memo(({ category, config, builtinConfig, onClearAct
       <button
         type="button"
         className="absolute inset-0 z-0 cursor-pointer rounded-lg"
-        aria-label={`Открыть категорию ${category.name}`}
+        aria-label={t('categories.openAria', { name: category.name })}
         aria-describedby={activeStrategiesSrId}
         onClick={openCategory}
       />
@@ -157,7 +159,7 @@ const SortableCategoryItem = memo(({ category, config, builtinConfig, onClearAct
         type="button"
         {...attributes}
         {...listeners}
-        aria-label={`Перетащить категорию ${category.name}`}
+        aria-label={t('categories.dragAria', { name: category.name })}
         aria-describedby={activeStrategiesSrId}
         className="text-muted-foreground hover:text-foreground relative z-20 flex size-9 shrink-0 cursor-grab touch-none items-center justify-center rounded-md border border-border/70 bg-muted/25 transition-colors active:cursor-grabbing"
       >
@@ -173,20 +175,20 @@ const SortableCategoryItem = memo(({ category, config, builtinConfig, onClearAct
               <div className="flex min-w-0 items-center gap-1 text-muted-foreground">
                 {isSystem
                   ? (
-                      <InlineMarker icon={Package} label="Системная категория" className="pointer-events-auto" />
+                      <InlineMarker icon={Package} label={t('categories.systemBadge')} className="pointer-events-auto" />
                     )
                   : (
-                      <InlineMarker icon={UserRoundPlus} label="Пользовательская категория" className="pointer-events-auto text-primary/80" />
+                      <InlineMarker icon={UserRoundPlus} label={t('categories.customBadge')} className="pointer-events-auto text-primary/80" />
                     )}
                 {isModified && (
-                  <InlineMarker icon={FilePenLine} label="Системная категория изменена пользователем" className="pointer-events-auto text-warning" />
+                  <InlineMarker icon={FilePenLine} label={t('categories.modifiedBadge')} className="pointer-events-auto text-warning" />
                 )}
                 {builtinCategory && isSystem && (isModified || updateAvailable) && (
                   <InlineMarker
                     icon={updateAvailable ? RefreshCcw : RotateCcw}
                     label={updateAvailable
-                      ? 'Обновить категорию до актуального системного значения'
-                      : 'Откатить категорию к системному значению'}
+                      ? t('categories.updateAvailable')
+                      : t('categories.rollbackToSystem')}
                     className={updateAvailable ? 'pointer-events-auto text-primary' : 'pointer-events-auto text-destructive'}
                     onClick={() => onRestoreSystem(category)}
                   />
@@ -194,7 +196,7 @@ const SortableCategoryItem = memo(({ category, config, builtinConfig, onClearAct
                 {isLegacySystemCategory && (
                   <InlineMarker
                     icon={RotateCcw}
-                    label="Системная категория из старой версии приложения"
+                    label={t('categories.legacyBadge')}
                     className="pointer-events-auto text-warning"
                   />
                 )}
@@ -208,7 +210,7 @@ const SortableCategoryItem = memo(({ category, config, builtinConfig, onClearAct
                             </span>
                           </TooltipTrigger>
                           <TooltipContent>
-                            {activeCount === 1 ? 'Текущая активная стратегия' : formatActiveStrategiesSrText(activeCount)}
+                            {activeCount === 1 ? t('categories.currentActive') : formatActiveStrategiesSrText(activeCount)}
                           </TooltipContent>
                         </Tooltip>
                       )
@@ -221,7 +223,7 @@ const SortableCategoryItem = memo(({ category, config, builtinConfig, onClearAct
                             aria-hidden="true"
                           />
                         </TooltipTrigger>
-                        <TooltipContent>Нет активных стратегий</TooltipContent>
+                        <TooltipContent>{t('categories.noActive')}</TooltipContent>
                       </Tooltip>
                     )}
               </div>
@@ -246,12 +248,12 @@ const SortableCategoryItem = memo(({ category, config, builtinConfig, onClearAct
               size="icon"
               onClick={() => onRename(category)}
               className="cursor-pointer"
-              aria-label={`Переименовать категорию ${category.name}`}
+              aria-label={t('categories.renameAria', { name: category.name })}
             >
               <Pencil className="size-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Переименовать</TooltipContent>
+          <TooltipContent>{t('categories.renameTooltip')}</TooltipContent>
         </Tooltip>
         {activeCount > 0 && (
           <Tooltip>
@@ -261,12 +263,12 @@ const SortableCategoryItem = memo(({ category, config, builtinConfig, onClearAct
                 size="icon"
                 onClick={e => onClearActive(category.id, e)}
                 className="cursor-pointer text-warning hover:text-warning"
-                aria-label="Очистить стратегию"
+                aria-label={t('categories.clearStrategyAria')}
               >
                 <BrushCleaning className="size-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Деактивировать текущую стратегию</TooltipContent>
+            <TooltipContent>{t('categories.deactivateTooltip')}</TooltipContent>
           </Tooltip>
         )}
         <AlertDialog>
@@ -277,27 +279,25 @@ const SortableCategoryItem = memo(({ category, config, builtinConfig, onClearAct
                   variant="outline"
                   size="icon"
                   className="cursor-pointer text-destructive hover:text-destructive"
-                  aria-label={`Удалить категорию ${category.name}`}
+                  aria-label={t('categories.deleteAria', { name: category.name })}
                 >
                   <Trash2 className="size-4" />
                 </Button>
               </AlertDialogTrigger>
             </TooltipTrigger>
-            <TooltipContent>Удалить</TooltipContent>
+            <TooltipContent>{t('categories.deleteTooltip')}</TooltipContent>
           </Tooltip>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Удалить категорию?</AlertDialogTitle>
+              <AlertDialogTitle>{t('categories.deleteDialogTitle')}</AlertDialogTitle>
               <AlertDialogDescription>
-                Категория «
-                {category.name}
-                » и все её стратегии будут удалены. Это действие нельзя отменить.
+                {t('categories.deleteDialogDescription', { name: category.name })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Отмена</AlertDialogCancel>
+              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
               <AlertDialogAction onClick={() => onDelete(category)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                Удалить
+                {t('common.delete')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -308,6 +308,7 @@ const SortableCategoryItem = memo(({ category, config, builtinConfig, onClearAct
 })
 
 export function CategoriesListPage() {
+  const { t } = useTranslation()
   const [newCategoryOpen, setNewCategoryOpen] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [renameDialogOpen, setRenameDialogOpen] = useState(false)
@@ -363,13 +364,13 @@ export function CategoriesListPage() {
       addConfigLog(`добавлена категория "${categoryName}"`)
       setNewCategoryName('')
       setNewCategoryOpen(false)
-      toast.success('Категория добавлена')
+      toast.success(t('categories.categoryAdded'))
     }
     catch (e) {
       revertTo(previousConfig)
       toast.error(`Ошибка сохранения категории: ${e instanceof Error ? e.message : String(e)}`)
     }
-  }, [newCategoryName, addCategory, saveNow, addConfigLog, revertTo])
+  }, [newCategoryName, addCategory, saveNow, addConfigLog, revertTo, t])
 
   const handleClearActive = useCallback(async (categoryId: string, e: React.MouseEvent) => {
     e.preventDefault()
@@ -396,13 +397,13 @@ export function CategoriesListPage() {
     }
     try {
       await restartIfConnected()
-      notifyConfigApplied('Стратегия деактивирована')
+      notifyConfigApplied(t('categories.strategyDeactivated'))
     }
     catch (err) {
       console.error('Failed to restart after deactivating strategy:', err)
       notifyConfigApplied('Стратегия деактивирована, но не удалось переподключиться')
     }
-  }, [clearAllActiveStrategies, saveNow, addConfigLog, revertTo, restartIfConnected, notifyConfigApplied])
+  }, [clearAllActiveStrategies, saveNow, addConfigLog, revertTo, restartIfConnected, notifyConfigApplied, t])
 
   const handleRestoreSystemCategory = useCallback(async (category: Category) => {
     const currentConfig = useConfigStore.getState().config
@@ -426,7 +427,7 @@ export function CategoriesListPage() {
     try {
       addConfigLog(`категория "${category.name}" обновлена до системного значения`)
       await restartIfConnected()
-      notifyConfigApplied('Категория обновлена')
+      notifyConfigApplied(t('categories.categoryUpdated'))
     }
     catch (error) {
       toast.error(`Категория обновлена, но не удалось применить изменения: ${error instanceof Error ? error.message : String(error)}`)
@@ -434,7 +435,7 @@ export function CategoriesListPage() {
     finally {
       setSystemCategoryTarget(null)
     }
-  }, [restoreBuiltinCategory, saveNow, revertTo, addConfigLog, restartIfConnected, notifyConfigApplied])
+  }, [restoreBuiltinCategory, saveNow, revertTo, addConfigLog, restartIfConnected, notifyConfigApplied, t])
 
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event
@@ -453,7 +454,7 @@ export function CategoriesListPage() {
         try {
           await saveNow()
           addConfigLog('изменён порядок категорий')
-          toast.success('Порядок категорий сохранён')
+          toast.success(t('categories.orderSaved'))
         }
         catch (e) {
           revertTo(previousConfig)
@@ -461,7 +462,7 @@ export function CategoriesListPage() {
         }
       }
     }
-  }, [reorderCategories, saveNow, addConfigLog, revertTo])
+  }, [reorderCategories, saveNow, addConfigLog, revertTo, t])
 
   const handleOpenRenameDialog = useCallback((category: Category) => {
     categoryToRenameRef.current = category
@@ -488,13 +489,13 @@ export function CategoriesListPage() {
       setRenameDialogOpen(false)
       categoryToRenameRef.current = null
       setNewCategoryNameDraft('')
-      toast.success('Категория переименована')
+      toast.success(t('categories.categoryRenamed'))
     }
     catch (e) {
       revertTo(previousConfig)
       toast.error(`Ошибка сохранения категории: ${e instanceof Error ? e.message : String(e)}`)
     }
-  }, [newCategoryNameDraft, updateCategory, saveNow, addConfigLog, revertTo])
+  }, [newCategoryNameDraft, updateCategory, saveNow, addConfigLog, revertTo, t])
 
   const handleDeleteCategory = useCallback(async (category: Category) => {
     const currentConfig = useConfigStore.getState().config
@@ -527,8 +528,8 @@ export function CategoriesListPage() {
       }
     }
     addConfigLog(`удалена категория "${category.name}"`)
-    toast.success('Категория удалена')
-  }, [deleteCategory, saveNow, revertTo, restartIfConnected, addConfigLog])
+    toast.success(t('categories.categoryDeleted'))
+  }, [deleteCategory, saveNow, revertTo, restartIfConnected, addConfigLog, t])
 
   const systemCategoryBuiltin = systemCategoryTarget ? getBuiltinCategory(builtinConfig, systemCategoryTarget.id) : null
   const systemCategoryUpdateAvailable = systemCategoryTarget && systemCategoryBuiltin
@@ -548,9 +549,9 @@ export function CategoriesListPage() {
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-medium">Стратегии</h1>
+            <h1 className="text-2xl font-medium">{t('categories.title')}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Категоризированное управление стратегиями
+              {t('categories.subtitle')}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -565,11 +566,11 @@ export function CategoriesListPage() {
               }}
             >
               <FolderOpen className="size-4" />
-              Папка со стратегиями
+              {t('categories.strategiesFolder')}
             </Button>
             <Button onClick={() => setNewCategoryOpen(true)}>
               <Plus className="size-4" />
-              Новая категория
+              {t('categories.newCategory')}
             </Button>
           </div>
         </div>
@@ -577,7 +578,7 @@ export function CategoriesListPage() {
         <div className="space-y-3">
           {config?.categories.length === 0
             ? (
-                <p className="text-sm text-muted-foreground">Нет категорий</p>
+                <p className="text-sm text-muted-foreground">{t('categories.noCategories')}</p>
               )
             : (
                 <DndContext
@@ -612,17 +613,17 @@ export function CategoriesListPage() {
             <AlertDialogHeader>
               <AlertDialogTitle>
                 {systemCategoryUpdateAvailable
-                  ? 'Обновить системную категорию?'
-                  : 'Откатить категорию к системному значению?'}
+                  ? t('categories.updateSystemDialogTitle')
+                  : t('categories.restoreSystemDialogTitle')}
               </AlertDialogTitle>
               <AlertDialogDescription>
                 {systemCategoryTarget
-                  ? `Категория «${systemCategoryTarget.name}» будет возвращена к актуальному системному значению. Пользовательские изменения внутри категории будут сброшены.`
+                  ? t('categories.updateSystemDialogDescription', { name: systemCategoryTarget.name })
                   : ''}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Отмена</AlertDialogCancel>
+              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={async () => {
                   if (systemCategoryTarget && systemCategoryBuiltin) {
@@ -630,7 +631,7 @@ export function CategoriesListPage() {
                   }
                 }}
               >
-                {systemCategoryUpdateAvailable ? 'Обновить' : 'Откатить'}
+                {systemCategoryUpdateAvailable ? t('categories.updateDialogConfirm') : t('categories.restoreDialogConfirm')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -639,13 +640,13 @@ export function CategoriesListPage() {
         <Dialog open={newCategoryOpen} onOpenChange={setNewCategoryOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Новая категория</DialogTitle>
+              <DialogTitle>{t('categories.newCategory')}</DialogTitle>
             </DialogHeader>
             <div className="py-4">
-              <label htmlFor="new-category-name" className="text-sm font-normal">Название категории</label>
+              <label htmlFor="new-category-name" className="text-sm font-normal">{t('categories.categoryNameLabel')}</label>
               <Input
                 id="new-category-name"
-                placeholder="Название категории"
+                placeholder={t('categories.categoryNameLabel')}
                 value={newCategoryName}
                 onChange={e => setNewCategoryName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleAddCategory()}
@@ -653,9 +654,9 @@ export function CategoriesListPage() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setNewCategoryOpen(false)}>
-                Отмена
+                {t('common.cancel')}
               </Button>
-              <Button onClick={handleAddCategory}>Создать</Button>
+              <Button onClick={handleAddCategory}>{t('categories.createButton')}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -663,13 +664,13 @@ export function CategoriesListPage() {
         <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Переименовать категорию</DialogTitle>
+              <DialogTitle>{t('categories.renameCategoryTitle')}</DialogTitle>
             </DialogHeader>
             <div className="py-4">
-              <label htmlFor="rename-category-name" className="text-sm font-normal">Название категории</label>
+              <label htmlFor="rename-category-name" className="text-sm font-normal">{t('categories.categoryNameLabel')}</label>
               <Input
                 id="rename-category-name"
-                placeholder="Название категории"
+                placeholder={t('categories.categoryNameLabel')}
                 value={newCategoryNameDraft}
                 onChange={e => setNewCategoryNameDraft(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleRenameCategory()}
@@ -677,9 +678,9 @@ export function CategoriesListPage() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>
-                Отмена
+                {t('common.cancel')}
               </Button>
-              <Button onClick={handleRenameCategory}>Сохранить</Button>
+              <Button onClick={handleRenameCategory}>{t('common.save')}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
