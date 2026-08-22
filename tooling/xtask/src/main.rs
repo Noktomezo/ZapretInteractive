@@ -136,8 +136,33 @@ fn build_release() -> Result<()> {
             )
         })?;
     }
+    sync_release_resources()?;
 
     println!("Release binary ready at {}", compiled_exe.display());
+    Ok(())
+}
+
+fn sync_release_resources() -> Result<()> {
+    let source = Path::new("thirdparty");
+    let destination = Path::new("target/release/resources");
+    if destination.exists() {
+        fs::remove_dir_all(destination)
+            .with_context(|| format!("Failed to clear {}", destination.display()))?;
+    }
+
+    for entry in walkdir::WalkDir::new(source) {
+        let entry = entry?;
+        let relative = entry.path().strip_prefix(source)?;
+        let target = destination.join(relative);
+        if entry.file_type().is_dir() {
+            fs::create_dir_all(&target)?;
+        } else if entry.file_type().is_file() {
+            fs::copy(entry.path(), &target)
+                .with_context(|| format!("Failed to copy resources to {}", target.display()))?;
+        }
+    }
+
+    println!("Release resources ready at {}", destination.display());
     Ok(())
 }
 
@@ -229,7 +254,6 @@ fn build_nsis_bundle() -> Result<()> {
     let setup_exe_name = format!("Zapret Interactive_{version}_x64-setup.exe");
     let bundle_setup_exe = bundle_nsis_dir.join(&setup_exe_name);
 
-    // Clean up any legacy root setup exe if present
     let legacy_exe = root_dir.join("target/release").join(&setup_exe_name);
     if legacy_exe.is_file() {
         fs::remove_file(&legacy_exe).with_context(|| {
@@ -285,7 +309,6 @@ fn build_portable_bundle() -> Result<()> {
     let zip_name = format!("Zapret Interactive_{version}_x64-portable.zip");
     let bundle_zip_path = bundle_portable_dir.join(&zip_name);
 
-    // Clean up legacy zip in root release dir if present
     let legacy_zip = root_dir.join("target/release").join(&zip_name);
     if legacy_zip.is_file() {
         fs::remove_file(&legacy_zip)
@@ -298,7 +321,6 @@ fn build_portable_bundle() -> Result<()> {
         .compression_method(zip::CompressionMethod::Deflated)
         .unix_permissions(0o755);
 
-    // 1. Add main executable as 'Zapret Interactive.exe'
     let exe_path = root_dir.join("target/release/ZapretInteractive.exe");
     if !exe_path.is_file() {
         bail!("Release binary not found at {}", exe_path.display());
@@ -307,7 +329,6 @@ fn build_portable_bundle() -> Result<()> {
     let mut reader = BufReader::new(File::open(&exe_path)?);
     std::io::copy(&mut reader, &mut zip)?;
 
-    // 2. Add resources/ directory recursively (copied from thirdparty)
     let thirdparty_dir = root_dir.join("thirdparty");
     if thirdparty_dir.is_dir() {
         for entry in walkdir::WalkDir::new(&thirdparty_dir) {
