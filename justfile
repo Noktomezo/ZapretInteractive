@@ -32,6 +32,14 @@ fmt:
 # Full strict verification
 strict: check test clippy fmt
 
+# Refresh managed thirdparty files and their hashes from upstream
+update-thirdparty:
+    uv run scripts/update-thirdparty.py
+
+# Verify that thirdparty/hashes.json matches the managed files
+verify-thirdparty:
+    uv run scripts/verify-thirdparty-hashes.py
+
 # Clean build artifacts
 clean:
     cargo clean
