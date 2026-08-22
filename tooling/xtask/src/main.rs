@@ -127,18 +127,25 @@ fn build_release() -> Result<()> {
         bail!("Built binary not found at {}", compiled_exe.display());
     }
 
-    let legacy_shipping_exe = PathBuf::from("target/release/Zapret Interactive.exe");
-    if legacy_shipping_exe.is_file() {
-        fs::remove_file(&legacy_shipping_exe).with_context(|| {
+    let shipping_exe = PathBuf::from("target/release/Zapret Interactive.exe");
+    if shipping_exe.is_file() {
+        fs::remove_file(&shipping_exe).with_context(|| {
             format!(
-                "Failed to remove legacy shipping executable {}",
-                legacy_shipping_exe.display()
+                "Failed to replace shipping executable {}",
+                shipping_exe.display()
             )
         })?;
     }
+    fs::rename(&compiled_exe, &shipping_exe).with_context(|| {
+        format!(
+            "Failed to rename {} to {}",
+            compiled_exe.display(),
+            shipping_exe.display()
+        )
+    })?;
     sync_release_resources()?;
 
-    println!("Release binary ready at {}", compiled_exe.display());
+    println!("Release binary ready at {}", shipping_exe.display());
     Ok(())
 }
 
@@ -321,7 +328,7 @@ fn build_portable_bundle() -> Result<()> {
         .compression_method(zip::CompressionMethod::Deflated)
         .unix_permissions(0o755);
 
-    let exe_path = root_dir.join("target/release/ZapretInteractive.exe");
+    let exe_path = root_dir.join("target/release/Zapret Interactive.exe");
     if !exe_path.is_file() {
         bail!("Release binary not found at {}", exe_path.display());
     }

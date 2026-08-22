@@ -93,7 +93,7 @@ Section "MainSection" SEC01
   SetOverwrite on
 
   ; Copy main executable
-  File "/oname=${APP_EXE_NAME}" "${SOURCE_DIR}\ZapretInteractive.exe"
+  File "/oname=${APP_EXE_NAME}" "${SOURCE_DIR}\Zapret Interactive.exe"
 
   ; Copy resources files
   SetOutPath "$INSTDIR\resources"
