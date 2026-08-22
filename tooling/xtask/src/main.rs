@@ -103,7 +103,7 @@ fn find_makensis() -> Option<PathBuf> {
     None
 }
 
-fn build_release() -> Result<PathBuf> {
+fn build_release() -> Result<()> {
     println!("=== Building Release Binary ===");
     gpui_patch::apply_release()?;
     let status = Command::new("cargo")
@@ -127,16 +127,18 @@ fn build_release() -> Result<PathBuf> {
         bail!("Built binary not found at {}", compiled_exe.display());
     }
 
-    let exe_path = PathBuf::from("target/release/Zapret Interactive.exe");
-    fs::copy(&compiled_exe, &exe_path).with_context(|| {
-        format!(
-            "Failed to create shipping executable at {}",
-            exe_path.display()
-        )
-    })?;
+    let legacy_shipping_exe = PathBuf::from("target/release/Zapret Interactive.exe");
+    if legacy_shipping_exe.is_file() {
+        fs::remove_file(&legacy_shipping_exe).with_context(|| {
+            format!(
+                "Failed to remove legacy shipping executable {}",
+                legacy_shipping_exe.display()
+            )
+        })?;
+    }
 
-    println!("Release binary ready at {}", exe_path.display());
-    Ok(exe_path)
+    println!("Release binary ready at {}", compiled_exe.display());
+    Ok(())
 }
 
 fn convert_png_to_bmp(
@@ -297,7 +299,7 @@ fn build_portable_bundle() -> Result<()> {
         .unix_permissions(0o755);
 
     // 1. Add main executable as 'Zapret Interactive.exe'
-    let exe_path = root_dir.join("target/release/Zapret Interactive.exe");
+    let exe_path = root_dir.join("target/release/ZapretInteractive.exe");
     if !exe_path.is_file() {
         bail!("Release binary not found at {}", exe_path.display());
     }
