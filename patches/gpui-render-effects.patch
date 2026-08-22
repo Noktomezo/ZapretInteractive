@@ -1014,7 +1014,7 @@ diff --git a/crates/gpui_windows/src/shaders.hlsl b/crates/gpui_windows/src/shad
 index d20cb317db..a3e84d7ba0 100644
 --- a/crates/gpui_windows/src/shaders.hlsl
 +++ b/crates/gpui_windows/src/shaders.hlsl
-@@ -1266,3 +1266,95 @@ float4 polychrome_sprite_fragment(PolychromeSpriteFragmentInput input): SV_Targe
+@@ -1266,3 +1266,92 @@ float4 polychrome_sprite_fragment(PolychromeSpriteFragmentInput input): SV_Targe
      color.a *= sprite.opacity * saturate(0.5 - distance);
      return color;
  }
@@ -1079,29 +1079,26 @@ index d20cb317db..a3e84d7ba0 100644
 +    BackdropBlurPrimitive blur = backdrop_blurs[input.blur_id];
 +    float2 screen_uv = input.position.xy / global_viewport_size;
 +    float2 texel = 1.0 / global_viewport_size;
-+    float sample_step = blur.blur_radius / 6.0;
-+    const float offsets[4] = { 0.0, 1.4584, 3.4045, 5.3518 };
-+    const float weights[4] = { 0.137023, 0.239337, 0.139463, 0.052711 };
 +    float3 color = 0.0;
++    float weight_sum = 0.0;
++    const int sample_count = 48;
++    const float golden_angle = 2.39996323;
++    float sigma = max(blur.blur_radius * 0.45, 0.5);
 +
 +    [unroll]
-+    for (int y = -3; y <= 3; y++) {
-+        [unroll]
-+        for (int x = -3; x <= 3; x++) {
-+            int ax = abs(x);
-+            int ay = abs(y);
-+            float2 offset = float2(
-+                x < 0 ? -offsets[ax] : offsets[ax],
-+                y < 0 ? -offsets[ay] : offsets[ay]
-+            );
-+            float weight = weights[ax] * weights[ay];
-+            color += t_sprite.SampleLevel(
-+                s_sprite,
-+                screen_uv + offset * texel * sample_step,
-+                0.0
-+            ).rgb * weight;
-+        }
++    for (int i = 0; i < sample_count; i++) {
++        float radius = blur.blur_radius * sqrt((float(i) + 0.5) / float(sample_count));
++        float angle = float(i) * golden_angle;
++        float2 offset = float2(cos(angle), sin(angle)) * radius;
++        float weight = exp(-0.5 * radius * radius / (sigma * sigma));
++        color += t_sprite.SampleLevel(
++            s_sprite,
++            screen_uv + offset * texel,
++            0.0
++        ).rgb * weight;
++        weight_sum += weight;
 +    }
++    color /= weight_sum;
 +
 +    float4 tint = hsla_to_rgba(blur.tint);
 +    color = lerp(color, tint.rgb, tint.a);

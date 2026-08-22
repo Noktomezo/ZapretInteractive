@@ -23,8 +23,10 @@ fn apply_for_profile(profile: Option<&str>) -> Result<()> {
     }
     let patch_abs = fs::canonicalize(&patch_file)?;
     let patch_str = patch_abs.to_string_lossy().replace(r"\\?\", "");
-    let migration_abs = fs::canonicalize("patches/gpui-backdrop-blur-quality.patch")?;
-    let migration_str = migration_abs.to_string_lossy().replace(r"\\?\", "");
+    let migrations = [
+        "patches/gpui-backdrop-blur-quality.patch",
+        "patches/gpui-backdrop-blur-frost.patch",
+    ];
 
     let mut candidate_dirs = Vec::new();
     if let Ok(cargo_home) = env::var("CARGO_HOME") {
@@ -109,32 +111,37 @@ fn apply_for_profile(profile: Option<&str>) -> Result<()> {
                                     continue;
                                 }
 
-                                let check_migration = Command::new("git")
-                                    .args(["apply", "--check", "--ignore-space-change"])
-                                    .arg(&migration_str)
-                                    .current_dir(&checkout_path)
-                                    .output();
-                                if let Ok(out) = check_migration
-                                    && out.status.success()
-                                {
-                                    println!(
-                                        "Updating GPUI backdrop blur in {}",
-                                        checkout_path.display()
-                                    );
-                                    let apply = Command::new("git")
-                                        .args([
-                                            "apply",
-                                            "--whitespace=nowarn",
-                                            "--ignore-space-change",
-                                        ])
+                                for migration in migrations {
+                                    let migration_abs = fs::canonicalize(migration)?;
+                                    let migration_str =
+                                        migration_abs.to_string_lossy().replace(r"\\?\", "");
+                                    let check_migration = Command::new("git")
+                                        .args(["apply", "--check", "--ignore-space-change"])
                                         .arg(&migration_str)
                                         .current_dir(&checkout_path)
-                                        .status();
-                                    if let Ok(status) = apply
-                                        && status.success()
+                                        .output();
+                                    if let Ok(out) = check_migration
+                                        && out.status.success()
                                     {
-                                        patched_count += 1;
-                                        source_changed = true;
+                                        println!(
+                                            "Updating GPUI backdrop blur in {}",
+                                            checkout_path.display()
+                                        );
+                                        let apply = Command::new("git")
+                                            .args([
+                                                "apply",
+                                                "--whitespace=nowarn",
+                                                "--ignore-space-change",
+                                            ])
+                                            .arg(&migration_str)
+                                            .current_dir(&checkout_path)
+                                            .status();
+                                        if let Ok(status) = apply
+                                            && status.success()
+                                        {
+                                            patched_count += 1;
+                                            source_changed = true;
+                                        }
                                     }
                                 }
                             }
