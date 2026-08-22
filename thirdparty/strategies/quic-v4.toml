@@ -1,0 +1,14 @@
+id = "quic-v4"
+name = "v4"
+category = "QUIC"
+categoryId = "preset-quic"
+categoryOrder = 4
+order = 4
+content = """
+--filter-udp=443
+<LIST_MODE>
+--dpi-desync=fake
+--dpi-desync-repeats=6
+--dpi-desync-fake-quic={{QUIC_INITIAL_GOOGLE}}"""
+active = false
+system = true

@@ -1,0 +1,17 @@
+id = "youtube-v32"
+name = "v32"
+category = "YouTube"
+categoryId = "preset-youtube"
+categoryOrder = 2
+order = 32
+content = """
+--filter-l7=tls
+--hostlist={{HOSTS_GOOGLE}}
+--ip-id=zero
+--dpi-desync=fake,multisplit
+--dpi-desync-repeats=6
+--dpi-desync-fooling=badseq
+--dpi-desync-badseq-increment=1000
+--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}"""
+active = false
+system = true

@@ -1,0 +1,18 @@
+id = "tcp-v13"
+name = "v13"
+category = "TCP"
+categoryId = "preset-tcp"
+categoryOrder = 3
+order = 13
+content = """
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=fake,fakedsplit
+--dpi-desync-repeats=6
+--dpi-desync-fooling=ts
+--dpi-desync-fakedsplit-pattern=0x00
+--dpi-desync-fake-tls={{STUN}}
+--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}
+--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}"""
+active = false
+system = true

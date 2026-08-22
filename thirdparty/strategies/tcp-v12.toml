@@ -1,0 +1,17 @@
+id = "tcp-v12"
+name = "v12"
+category = "TCP"
+categoryId = "preset-tcp"
+categoryOrder = 3
+order = 12
+content = """
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=fake,split2
+--dpi-desync-split-pos=2
+--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}
+--dpi-desync-hostfakesplit-mod=host=maxcdn.bootstrapcdn.com
+--dpi-desync-fake-tls-mod=rnd,sni=maxcdn.bootstrapcdn.com
+--dpi-desync-fooling=ts"""
+active = false
+system = true

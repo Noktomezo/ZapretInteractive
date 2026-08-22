@@ -1,0 +1,17 @@
+id = "preset-unknown-tcp-v12"
+name = "v12"
+category = "Game TCP"
+categoryId = "preset-unknown-tcp"
+categoryOrder = 7
+order = 12
+content = """
+--filter-tcp=1024-65535
+--filter-l7=unknown
+--dpi-desync=hostfakesplit
+--dpi-desync-repeats=4
+--dpi-desync-any-protocol=1
+--dpi-desync-cutoff=n3
+--dpi-desync-fooling=ts
+--dpi-desync-hostfakesplit-mod=host=ozon.ru"""
+active = false
+system = true

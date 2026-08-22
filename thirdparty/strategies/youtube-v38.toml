@@ -1,0 +1,19 @@
+id = "youtube-v38"
+name = "v38"
+category = "YouTube"
+categoryId = "preset-youtube"
+categoryOrder = 2
+order = 38
+content = """
+--filter-l7=tls
+--hostlist={{HOSTS_GOOGLE}}
+--ip-id=zero
+--dpi-desync=fake,multisplit
+--dpi-desync-split-seqovl=681
+--dpi-desync-split-pos=1
+--dpi-desync-fooling=ts
+--dpi-desync-repeats=8
+--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}
+--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com"""
+active = false
+system = true

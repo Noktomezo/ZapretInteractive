@@ -1,0 +1,15 @@
+id = "discord-stun-v3"
+name = "v3"
+category = "Discord + Stun"
+categoryId = "preset-discord-stun"
+categoryOrder = 5
+order = 3
+content = """
+--filter-udp=19294-19344,50000-50100
+--filter-l7=discord,stun
+--dpi-desync=fake
+--dpi-desync-fake-discord={{ACTIVE_DISCORD_UDP}}
+--dpi-desync-fake-stun={{ACTIVE_DISCORD_UDP}}
+--dpi-desync-repeats=6"""
+active = false
+system = true

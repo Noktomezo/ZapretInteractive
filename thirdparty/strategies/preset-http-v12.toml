@@ -1,0 +1,15 @@
+id = "preset-http-v12"
+name = "v12"
+category = "HTTP"
+categoryId = "preset-http"
+categoryOrder = 1
+order = 12
+content = """
+--filter-l7=http
+<LIST_MODE>
+--dpi-desync=multisplit
+--dpi-desync-split-pos=2,sniext+1
+--dpi-desync-split-seqovl=679
+--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}"""
+active = false
+system = true

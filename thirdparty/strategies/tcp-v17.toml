@@ -1,0 +1,15 @@
+id = "tcp-v17"
+name = "v17"
+category = "TCP"
+categoryId = "preset-tcp"
+categoryOrder = 3
+order = 17
+content = """
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=multisplit
+--dpi-desync-split-seqovl=652
+--dpi-desync-split-pos=2
+--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}"""
+active = false
+system = true

@@ -1,0 +1,14 @@
+id = "unknown-udp-v5"
+name = "v5"
+category = "Game UDP"
+categoryId = "preset-unknown-udp"
+categoryOrder = 8
+order = 5
+content = """
+--filter-udp=1024-65535
+--dpi-desync=fake
+--dpi-desync-cutoff=d2
+--dpi-desync-any-protocol=1
+--dpi-desync-fake-unknown-udp={{STUN}}"""
+active = false
+system = true

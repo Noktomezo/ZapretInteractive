@@ -1,0 +1,19 @@
+id = "preset-http-v22"
+name = "v22"
+category = "HTTP"
+categoryId = "preset-http"
+categoryOrder = 1
+order = 22
+content = """
+--filter-l7=http
+<LIST_MODE>
+--dpi-desync=fake,multidisorder
+--dpi-desync-split-pos=1,midsld
+--dpi-desync-repeats=11
+--dpi-desync-fooling=badseq
+--dpi-desync-fake-tls=0x00000000
+--dpi-desync-fake-tls=!
+--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com
+--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}"""
+active = false
+system = true

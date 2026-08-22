@@ -1,0 +1,15 @@
+id = "tcp-v25"
+name = "v25"
+category = "TCP"
+categoryId = "preset-tcp"
+categoryOrder = 3
+order = 25
+content = """
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=hostfakesplit
+--dpi-desync-repeats=4
+--dpi-desync-fooling=ts,md5sig
+--dpi-desync-hostfakesplit-mod=host=ozon.ru"""
+active = false
+system = true

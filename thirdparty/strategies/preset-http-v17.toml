@@ -1,0 +1,19 @@
+id = "preset-http-v17"
+name = "v17"
+category = "HTTP"
+categoryId = "preset-http"
+categoryOrder = 1
+order = 17
+content = """
+--filter-l7=http
+<LIST_MODE>
+--dpi-desync=fake,multisplit
+--dpi-desync-split-seqovl=480
+--dpi-desync-split-pos=1
+--dpi-desync-fooling=ts
+--dpi-desync-repeats=4
+--dpi-desync-split-seqovl-pattern={{STUN2}}
+--dpi-desync-fake-tls={{TLS_CLIENTHELLO_MAX}}
+--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}"""
+active = false
+system = true

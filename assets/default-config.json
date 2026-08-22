@@ -33,6 +33,150 @@
           "name": "v2",
           "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=fakedsplit\n--dpi-desync-ttl=4\n--dpi-desync-repeats=16",
           "active": false
+        },
+        {
+          "id": "preset-http-v3",
+          "name": "v3",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=fake,fakedsplit\n--dpi-desync-repeats=6\n--dpi-desync-fooling=ts\n--dpi-desync-fakedsplit-pattern=0x00\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-http-v4",
+          "name": "v4",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=fake\n--dpi-desync-repeats=6\n--dpi-desync-fooling=ts\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_4PDA}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-http-v5",
+          "name": "v5",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=664\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=ts\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-tls={{STUN2}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-http-v6",
+          "name": "v6",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=664\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=ts\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-http-v7",
+          "name": "v7",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=multisplit\n--dpi-desync-split-seqovl=652\n--dpi-desync-split-pos=2\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "preset-http-v8",
+          "name": "v8",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=fake,hostfakesplit\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=ya.ru\n--dpi-desync-hostfakesplit-mod=host=ya.ru,altorder=1\n--dpi-desync-fooling=ts\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-http-v9",
+          "name": "v9",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=fake,multisplit\n--dpi-desync-repeats=6\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=1000\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-http-v10",
+          "name": "v10",
+          "content": "--filter-l3=ipv4\n--filter-l7=http\n<LIST_MODE>,2053,2083,2087,2096,8443\n--dpi-desync=syndata,multidisorder",
+          "active": false
+        },
+        {
+          "id": "preset-http-v11",
+          "name": "v11",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=multisplit\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-pos=1\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "preset-http-v12",
+          "name": "v12",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=multisplit\n--dpi-desync-split-pos=2,sniext+1\n--dpi-desync-split-seqovl=679\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "preset-http-v13",
+          "name": "v13",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=syndata",
+          "active": false
+        },
+        {
+          "id": "preset-http-v14",
+          "name": "v14",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=fake\n--dpi-desync-fake-tls-mod=none\n--dpi-desync-repeats=6\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=2\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-http-v15",
+          "name": "v15",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=hostfakesplit\n--dpi-desync-repeats=4\n--dpi-desync-fooling=ts,md5sig\n--dpi-desync-hostfakesplit-mod=host=ozon.ru",
+          "active": false
+        },
+        {
+          "id": "preset-http-v16",
+          "name": "v16",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=hostfakesplit\n--dpi-desync-repeats=4\n--dpi-desync-fooling=ts\n--dpi-desync-hostfakesplit-mod=host=ozon.ru",
+          "active": false
+        },
+        {
+          "id": "preset-http-v17",
+          "name": "v17",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=480\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=ts\n--dpi-desync-repeats=4\n--dpi-desync-split-seqovl-pattern={{STUN2}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-http-v18",
+          "name": "v18",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--hostlist-exclude-domains=fonts.googleapis.com\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=480\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=ts\n--dpi-desync-repeats=4\n--dpi-desync-split-seqovl-pattern={{STUN2}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-http-v19",
+          "name": "v19",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=fake,fakedsplit\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=2\n--dpi-desync-repeats=8\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-http-v20",
+          "name": "v20",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=10000000\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-http-v21",
+          "name": "v21",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=ts\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-http-v22",
+          "name": "v22",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=fake,multidisorder\n--dpi-desync-split-pos=1,midsld\n--dpi-desync-repeats=11\n--dpi-desync-fooling=badseq\n--dpi-desync-fake-tls=0x00000000\n--dpi-desync-fake-tls=!\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-http-v23",
+          "name": "v23",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=fake\n--dpi-desync-repeats=6\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=2\n--dpi-desync-fake-tls={{STUN2}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-http-v24",
+          "name": "v24",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=fake\n--dpi-desync-repeats=6\n--dpi-desync-fooling=ts\n--dpi-desync-fake-tls={{STUN2}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-http-v25",
+          "name": "v25",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=fake\n--dpi-desync-repeats=6\n--dpi-desync-fooling=ts\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-http-v26",
+          "name": "v26",
+          "content": "--filter-l7=http\n<LIST_MODE>\n--dpi-desync=multisplit\n--dpi-desync-split-seqovl=568\n--dpi-desync-split-pos=1\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_4PDA}}",
+          "active": false
         }
       ]
     },
@@ -207,6 +351,78 @@
           "name": "v28",
           "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--dpi-desync=fake,multisplit\n--dpi-desync-fake-tls=0x00000000\n--dpi-desync-fake-tls=!\n--dpi-desync-split-pos=1,sniext+1,host+1,midsld-2,midsld,midsld+2,endhost-1\n--dpi-desync-repeats=2\n--dpi-desync-fooling=badseq\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com",
           "active": false
+        },
+        {
+          "id": "youtube-v29",
+          "name": "v29",
+          "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--ip-id=zero\n--dpi-desync=fake\n--dpi-desync-repeats=6\n--dpi-desync-fooling=ts\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "youtube-v30",
+          "name": "v30",
+          "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--ip-id=zero\n--dpi-desync=hostfakesplit\n--dpi-desync-fooling=ts\n--dpi-desync-hostfakesplit-mod=host=www.google.com",
+          "active": false
+        },
+        {
+          "id": "youtube-v31",
+          "name": "v31",
+          "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--ip-id=zero\n--dpi-desync=multisplit\n--dpi-desync-split-seqovl=652\n--dpi-desync-split-pos=2\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "youtube-v32",
+          "name": "v32",
+          "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--ip-id=zero\n--dpi-desync=fake,multisplit\n--dpi-desync-repeats=6\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=1000\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "youtube-v33",
+          "name": "v33",
+          "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--ip-id=zero\n--dpi-desync=multisplit\n--dpi-desync-split-pos=2,sniext+1\n--dpi-desync-split-seqovl=679\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "youtube-v34",
+          "name": "v34",
+          "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--ip-id=zero\n--dpi-desync=fake\n--dpi-desync-fake-tls-mod=none\n--dpi-desync-repeats=6\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=2",
+          "active": false
+        },
+        {
+          "id": "youtube-v35",
+          "name": "v35",
+          "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--ip-id=zero\n--dpi-desync=hostfakesplit\n--dpi-desync-repeats=4\n--dpi-desync-fooling=ts\n--dpi-desync-hostfakesplit-mod=host=www.google.com",
+          "active": false
+        },
+        {
+          "id": "youtube-v36",
+          "name": "v36",
+          "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--ip-id=zero\n--dpi-desync=fake,fakedsplit\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=2\n--dpi-desync-repeats=8\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com",
+          "active": false
+        },
+        {
+          "id": "youtube-v37",
+          "name": "v37",
+          "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--ip-id=zero\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=10000000\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com",
+          "active": false
+        },
+        {
+          "id": "youtube-v38",
+          "name": "v38",
+          "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--ip-id=zero\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=ts\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com",
+          "active": false
+        },
+        {
+          "id": "youtube-v39",
+          "name": "v39",
+          "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--ip-id=zero\n--dpi-desync=fake,multidisorder\n--dpi-desync-split-pos=1,midsld\n--dpi-desync-repeats=11\n--dpi-desync-fooling=badseq\n--dpi-desync-fake-tls=0x00000000\n--dpi-desync-fake-tls=!\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com",
+          "active": false
+        },
+        {
+          "id": "youtube-v40",
+          "name": "v40",
+          "content": "--filter-l7=tls\n--hostlist={{HOSTS_GOOGLE}}\n--ip-id=zero\n--dpi-desync=fake\n--dpi-desync-repeats=6\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=2\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
         }
       ]
     },
@@ -218,7 +434,7 @@
           "id": "tcp-v1",
           "name": "v1",
           "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=split2\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-seqovl-pattern={{STUN}}",
-          "active": false
+          "active": true
         },
         {
           "id": "tcp-v2",
@@ -254,7 +470,7 @@
           "id": "tcp-v7",
           "name": "v7",
           "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=654\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=badseq,badsum\n--dpi-desync-repeats=6\n--dpi-desync-split-seqovl-pattern={{STUN}}\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-badseq-increment=0",
-          "active": true
+          "active": false
         },
         {
           "id": "tcp-v8",
@@ -278,6 +494,156 @@
           "id": "tcp-v11",
           "name": "v11",
           "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=hostfakesplit\n--dpi-desync-hostfakesplit-mod=host=ozon.ru\n--dpi-desync-repeats=4\n--dpi-desync-fooling=ts,md5sig\n--dpi-desync-badseq-increment=0",
+          "active": false
+        },
+        {
+          "id": "tcp-v12",
+          "name": "v12",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,split2\n--dpi-desync-split-pos=2\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-hostfakesplit-mod=host=maxcdn.bootstrapcdn.com\n--dpi-desync-fake-tls-mod=rnd,sni=maxcdn.bootstrapcdn.com\n--dpi-desync-fooling=ts",
+          "active": false
+        },
+        {
+          "id": "tcp-v13",
+          "name": "v13",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,fakedsplit\n--dpi-desync-repeats=6\n--dpi-desync-fooling=ts\n--dpi-desync-fakedsplit-pattern=0x00\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "tcp-v14",
+          "name": "v14",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake\n--dpi-desync-repeats=6\n--dpi-desync-fooling=ts\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_4PDA}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "tcp-v15",
+          "name": "v15",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=664\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=ts\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-tls={{STUN2}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "tcp-v16",
+          "name": "v16",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=664\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=ts\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "tcp-v17",
+          "name": "v17",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=multisplit\n--dpi-desync-split-seqovl=652\n--dpi-desync-split-pos=2\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "tcp-v18",
+          "name": "v18",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,hostfakesplit\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=ya.ru\n--dpi-desync-hostfakesplit-mod=host=ya.ru,altorder=1\n--dpi-desync-fooling=ts\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "tcp-v19",
+          "name": "v19",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,multisplit\n--dpi-desync-repeats=6\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=1000\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "tcp-v20",
+          "name": "v20",
+          "content": "--filter-l3=ipv4\n--filter-l7=tls\n<LIST_MODE>,2053,2083,2087,2096,8443\n--dpi-desync=syndata,multidisorder",
+          "active": false
+        },
+        {
+          "id": "tcp-v21",
+          "name": "v21",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=multisplit\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-pos=1\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "tcp-v22",
+          "name": "v22",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=multisplit\n--dpi-desync-split-pos=2,sniext+1\n--dpi-desync-split-seqovl=679\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "tcp-v23",
+          "name": "v23",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=syndata",
+          "active": false
+        },
+        {
+          "id": "tcp-v24",
+          "name": "v24",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake\n--dpi-desync-fake-tls-mod=none\n--dpi-desync-repeats=6\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=2\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "tcp-v25",
+          "name": "v25",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=hostfakesplit\n--dpi-desync-repeats=4\n--dpi-desync-fooling=ts,md5sig\n--dpi-desync-hostfakesplit-mod=host=ozon.ru",
+          "active": false
+        },
+        {
+          "id": "tcp-v26",
+          "name": "v26",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=hostfakesplit\n--dpi-desync-repeats=4\n--dpi-desync-fooling=ts\n--dpi-desync-hostfakesplit-mod=host=ozon.ru",
+          "active": false
+        },
+        {
+          "id": "tcp-v27",
+          "name": "v27",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=480\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=ts\n--dpi-desync-repeats=4\n--dpi-desync-split-seqovl-pattern={{STUN2}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "tcp-v28",
+          "name": "v28",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--hostlist-exclude-domains=fonts.googleapis.com\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=480\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=ts\n--dpi-desync-repeats=4\n--dpi-desync-split-seqovl-pattern={{STUN2}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "tcp-v29",
+          "name": "v29",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,fakedsplit\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=2\n--dpi-desync-repeats=8\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "tcp-v30",
+          "name": "v30",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=10000000\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "tcp-v31",
+          "name": "v31",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=ts\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "tcp-v32",
+          "name": "v32",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake,multidisorder\n--dpi-desync-split-pos=1,midsld\n--dpi-desync-repeats=11\n--dpi-desync-fooling=badseq\n--dpi-desync-fake-tls=0x00000000\n--dpi-desync-fake-tls=!\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "tcp-v33",
+          "name": "v33",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake\n--dpi-desync-repeats=6\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=2\n--dpi-desync-fake-tls={{STUN2}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "tcp-v34",
+          "name": "v34",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake\n--dpi-desync-repeats=6\n--dpi-desync-fooling=ts\n--dpi-desync-fake-tls={{STUN2}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "tcp-v35",
+          "name": "v35",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=fake\n--dpi-desync-repeats=6\n--dpi-desync-fooling=ts\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "tcp-v36",
+          "name": "v36",
+          "content": "--filter-l7=tls\n<LIST_MODE>\n--dpi-desync=multisplit\n--dpi-desync-split-seqovl=568\n--dpi-desync-split-pos=1\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_4PDA}}",
           "active": false
         }
       ]
@@ -303,6 +669,18 @@
           "name": "v3",
           "content": "--filter-l7=quic\n--dpi-desync=fake\n--dpi-desync-fake-quic={{QUIC_INITIAL_GOOGLE}}",
           "active": false
+        },
+        {
+          "id": "quic-v4",
+          "name": "v4",
+          "content": "--filter-udp=443\n<LIST_MODE>\n--dpi-desync=fake\n--dpi-desync-repeats=6\n--dpi-desync-fake-quic={{QUIC_INITIAL_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "quic-v5",
+          "name": "v5",
+          "content": "--filter-udp=443\n<LIST_MODE>\n--dpi-desync=fake\n--dpi-desync-repeats=11\n--dpi-desync-fake-quic={{QUIC_INITIAL_GOOGLE}}",
+          "active": false
         }
       ]
     },
@@ -315,36 +693,342 @@
           "name": "v1",
           "content": "--filter-udp=19294-19344,50000-50100\n--filter-l7=discord,stun\n--dpi-desync=fake\n--dpi-desync-repeats=6",
           "active": true
+        },
+        {
+          "id": "discord-stun-v2",
+          "name": "v2",
+          "content": "--filter-udp=19294-19344,50000-50100\n--filter-l7=discord,stun\n--dpi-desync=fake\n--dpi-desync-fake-discord={{STUN}}\n--dpi-desync-fake-stun={{STUN}}\n--dpi-desync-repeats=6",
+          "active": false
+        },
+        {
+          "id": "discord-stun-v3",
+          "name": "v3",
+          "content": "--filter-udp=19294-19344,50000-50100\n--filter-l7=discord,stun\n--dpi-desync=fake\n--dpi-desync-fake-discord={{ACTIVE_DISCORD_UDP}}\n--dpi-desync-fake-stun={{ACTIVE_DISCORD_UDP}}\n--dpi-desync-repeats=6",
+          "active": false
+        },
+        {
+          "id": "discord-stun-v4",
+          "name": "v4",
+          "content": "--filter-udp=19294-19344,50000-50100\n--filter-l7=discord,stun\n--dpi-desync=fake\n--dpi-desync-fake-discord={{STUN}}\n--dpi-desync-fake-discord={{ACTIVE_DISCORD_UDP}}\n--dpi-desync-fake-stun={{ACTIVE_DISCORD_UDP}}\n--dpi-desync-repeats=3",
+          "active": false
+        },
+        {
+          "id": "discord-stun-v5",
+          "name": "v5",
+          "content": "--filter-udp=19294-19344,50000-50100\n--filter-l7=discord,stun,unknown\n--dpi-desync=fake\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-discord={{QUIC_INITIAL_GOOGLE}}\n--dpi-desync-fake-discord={{ACTIVE_DISCORD_UDP}}\n--dpi-desync-fake-stun={{ACTIVE_DISCORD_UDP}}\n--dpi-desync-fake-unknown-udp={{QUIC_INITIAL_GOOGLE}}\n--dpi-desync-fake-unknown-udp={{ACTIVE_DISCORD_UDP}}\n--dpi-desync-repeats=4",
+          "active": false
+        }
+      ]
+    },
+    {
+      "id": "preset-discord-media",
+      "name": "Discord Media",
+      "strategies": [
+        {
+          "id": "discord-media-v1",
+          "name": "v1",
+          "content": "--filter-tcp=2053,2083,2087,2096,8443\n--hostlist-domains=discord.media\n--dpi-desync=multisplit\n--dpi-desync-split-seqovl=652\n--dpi-desync-split-pos=2\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": true
+        },
+        {
+          "id": "discord-media-v2",
+          "name": "v2",
+          "content": "--filter-tcp=2053,2083,2087,2096,8443\n--hostlist-domains=discord.media\n--dpi-desync=fake,fakedsplit\n--dpi-desync-repeats=6\n--dpi-desync-fooling=ts\n--dpi-desync-fakedsplit-pattern=0x00\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "discord-media-v3",
+          "name": "v3",
+          "content": "--filter-tcp=2053,2083,2087,2096,8443\n--hostlist-domains=discord.media\n--dpi-desync=fake\n--dpi-desync-repeats=6\n--dpi-desync-fooling=ts\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls-mod=none",
+          "active": false
+        },
+        {
+          "id": "discord-media-v4",
+          "name": "v4",
+          "content": "--filter-tcp=2053,2083,2087,2096,8443\n--hostlist-domains=discord.media\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=ts\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "discord-media-v5",
+          "name": "v5",
+          "content": "--filter-tcp=2053,2083,2087,2096,8443\n--hostlist-domains=discord.media\n--dpi-desync=fake,hostfakesplit\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com\n--dpi-desync-hostfakesplit-mod=host=www.google.com,altorder=1\n--dpi-desync-fooling=ts",
+          "active": false
+        },
+        {
+          "id": "discord-media-v6",
+          "name": "v6",
+          "content": "--filter-tcp=2053,2083,2087,2096,8443\n--hostlist-domains=discord.media\n--dpi-desync=fake,multisplit\n--dpi-desync-repeats=6\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=1000\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "discord-media-v7",
+          "name": "v7",
+          "content": "--filter-tcp=2053,2083,2087,2096,8443\n--hostlist-domains=discord.media\n--dpi-desync=multisplit\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-pos=1\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "discord-media-v8",
+          "name": "v8",
+          "content": "--filter-tcp=2053,2083,2087,2096,8443\n--hostlist-domains=discord.media\n--dpi-desync=multisplit\n--dpi-desync-split-pos=2,sniext+1\n--dpi-desync-split-seqovl=679\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "discord-media-v9",
+          "name": "v9",
+          "content": "--filter-tcp=2053,2083,2087,2096,8443\n--hostlist-domains=discord.media\n--dpi-desync=fake\n--dpi-desync-fake-tls-mod=none\n--dpi-desync-repeats=6\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=2",
+          "active": false
+        },
+        {
+          "id": "discord-media-v10",
+          "name": "v10",
+          "content": "--filter-tcp=2053,2083,2087,2096,8443\n--hostlist-domains=discord.media\n--dpi-desync=hostfakesplit\n--dpi-desync-repeats=4\n--dpi-desync-fooling=ts\n--dpi-desync-hostfakesplit-mod=host=www.google.com",
+          "active": false
+        },
+        {
+          "id": "discord-media-v11",
+          "name": "v11",
+          "content": "--filter-tcp=2053,2083,2087,2096,8443\n--hostlist-domains=discord.media\n--dpi-desync=fake,fakedsplit\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=2\n--dpi-desync-repeats=8\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com",
+          "active": false
+        },
+        {
+          "id": "discord-media-v12",
+          "name": "v12",
+          "content": "--filter-tcp=2053,2083,2087,2096,8443\n--hostlist-domains=discord.media\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=10000000\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com",
+          "active": false
+        },
+        {
+          "id": "discord-media-v13",
+          "name": "v13",
+          "content": "--filter-tcp=2053,2083,2087,2096,8443\n--hostlist-domains=discord.media\n--dpi-desync=fake,multisplit\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=ts\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com",
+          "active": false
+        },
+        {
+          "id": "discord-media-v14",
+          "name": "v14",
+          "content": "--filter-tcp=2053,2083,2087,2096,8443\n--hostlist-domains=discord.media\n--dpi-desync=fake,multidisorder\n--dpi-desync-split-pos=1,midsld\n--dpi-desync-repeats=11\n--dpi-desync-fooling=badseq\n--dpi-desync-fake-tls=0x00000000\n--dpi-desync-fake-tls=!\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com",
+          "active": false
+        },
+        {
+          "id": "discord-media-v15",
+          "name": "v15",
+          "content": "--filter-tcp=2053,2083,2087,2096,8443\n--hostlist-domains=discord.media\n--dpi-desync=fake\n--dpi-desync-repeats=6\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=2\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "discord-media-v16",
+          "name": "v16",
+          "content": "--filter-tcp=2053,2083,2087,2096,8443\n--hostlist-domains=discord.media\n--dpi-desync=fake\n--dpi-desync-repeats=6\n--dpi-desync-fooling=ts\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        }
+      ]
+    },
+    {
+      "id": "preset-unknown-tcp",
+      "name": "Game TCP",
+      "strategies": [
+        {
+          "id": "preset-unknown-tcp-v1",
+          "name": "v1",
+          "content": "--filter-tcp=1024-65535\n--filter-l7=unknown\n--dpi-desync=fake,fakedsplit\n--dpi-desync-repeats=6\n--dpi-desync-any-protocol=1\n--dpi-desync-cutoff=n4\n--dpi-desync-fooling=ts\n--dpi-desync-fakedsplit-pattern=0x00\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-unknown={{STUN}}\n--dpi-desync-fake-unknown={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "preset-unknown-tcp-v2",
+          "name": "v2",
+          "content": "--filter-tcp=1024-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=6\n--dpi-desync-any-protocol=1\n--dpi-desync-cutoff=n3\n--dpi-desync-fooling=ts\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_4PDA}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-unknown={{STUN}}\n--dpi-desync-fake-unknown={{TLS_CLIENTHELLO_4PDA}}",
+          "active": false
+        },
+        {
+          "id": "preset-unknown-tcp-v3",
+          "name": "v3",
+          "content": "--filter-tcp=1024-65535\n--filter-l7=unknown\n--dpi-desync=fake,multisplit\n--dpi-desync-any-protocol=1\n--dpi-desync-cutoff=n4\n--dpi-desync-split-seqovl=664\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=ts\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-tls={{STUN2}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-unknown={{STUN2}}\n--dpi-desync-fake-unknown={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-unknown-tcp-v4",
+          "name": "v4",
+          "content": "--filter-tcp=1024-65535\n--filter-l7=unknown\n--dpi-desync=fake,multisplit\n--dpi-desync-any-protocol=1\n--dpi-desync-cutoff=n4\n--dpi-desync-split-seqovl=664\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=ts\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-unknown={{STUN}}\n--dpi-desync-fake-unknown={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-unknown-tcp-v5",
+          "name": "v5",
+          "content": "--filter-tcp=1024-65535\n--filter-l7=unknown\n--dpi-desync=multisplit\n--dpi-desync-any-protocol=1\n--dpi-desync-cutoff=n3\n--dpi-desync-split-seqovl=652\n--dpi-desync-split-pos=2\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "preset-unknown-tcp-v6",
+          "name": "v6",
+          "content": "--filter-tcp=1024-65535\n--filter-l7=unknown\n--dpi-desync=fake,hostfakesplit\n--dpi-desync-any-protocol=1\n--dpi-desync-cutoff=n4\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=ya.ru\n--dpi-desync-hostfakesplit-mod=host=ya.ru,altorder=1\n--dpi-desync-fooling=ts\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-unknown={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-unknown-tcp-v7",
+          "name": "v7",
+          "content": "--filter-tcp=1024-65535\n--filter-l7=unknown\n--dpi-desync=fake,multisplit\n--dpi-desync-repeats=6\n--dpi-desync-any-protocol=1\n--dpi-desync-cutoff=n3\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=1000\n--dpi-desync-fake-tls={{STUN}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-unknown={{STUN}}\n--dpi-desync-fake-unknown={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "preset-unknown-tcp-v8",
+          "name": "v8",
+          "content": "--filter-tcp=1024-65535\n--filter-l7=unknown\n--dpi-desync=syndata,multidisorder\n--dpi-desync-any-protocol=1\n--dpi-desync-cutoff=n4",
+          "active": false
+        },
+        {
+          "id": "preset-unknown-tcp-v9",
+          "name": "v9",
+          "content": "--filter-tcp=1024-65535\n--filter-l7=unknown\n--dpi-desync=multisplit\n--dpi-desync-any-protocol=1\n--dpi-desync-cutoff=n3\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-pos=1\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "preset-unknown-tcp-v10",
+          "name": "v10",
+          "content": "--filter-tcp=1024-65535\n--filter-l7=unknown\n--dpi-desync=syndata\n--dpi-desync-any-protocol=1\n--dpi-desync-cutoff=n4",
+          "active": false
+        },
+        {
+          "id": "preset-unknown-tcp-v11",
+          "name": "v11",
+          "content": "--filter-tcp=1024-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-any-protocol=1\n--dpi-desync-cutoff=n3\n--dpi-desync-fake-tls-mod=none\n--dpi-desync-repeats=6\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=2\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-unknown={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-unknown-tcp-v12",
+          "name": "v12",
+          "content": "--filter-tcp=1024-65535\n--filter-l7=unknown\n--dpi-desync=hostfakesplit\n--dpi-desync-repeats=4\n--dpi-desync-any-protocol=1\n--dpi-desync-cutoff=n3\n--dpi-desync-fooling=ts\n--dpi-desync-hostfakesplit-mod=host=ozon.ru",
+          "active": false
+        },
+        {
+          "id": "preset-unknown-tcp-v13",
+          "name": "v13",
+          "content": "--filter-tcp=1024-65535\n--filter-l7=unknown\n--dpi-desync=fake,multisplit\n--dpi-desync-any-protocol=1\n--dpi-desync-cutoff=n4\n--dpi-desync-split-seqovl=664\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=ts\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-tls={{STUN2}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-unknown-tcp-v14",
+          "name": "v14",
+          "content": "--filter-tcp=1024-65535\n--filter-l7=unknown\n--dpi-desync=fake,fakedsplit\n--dpi-desync-any-protocol=1\n--dpi-desync-cutoff=n3\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=2\n--dpi-desync-repeats=8\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-unknown={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-unknown-tcp-v15",
+          "name": "v15",
+          "content": "--filter-tcp=1024-65535\n--filter-l7=unknown\n--dpi-desync=fake,multisplit\n--dpi-desync-any-protocol=1\n--dpi-desync-cutoff=n3\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=10000000\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-unknown={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-unknown-tcp-v16",
+          "name": "v16",
+          "content": "--filter-tcp=1024-65535\n--filter-l7=unknown\n--dpi-desync=fake,multisplit\n--dpi-desync-any-protocol=1\n--dpi-desync-cutoff=n4\n--dpi-desync-split-seqovl=681\n--dpi-desync-split-pos=1\n--dpi-desync-fooling=ts\n--dpi-desync-repeats=8\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-unknown={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-unknown-tcp-v17",
+          "name": "v17",
+          "content": "--filter-tcp=1024-65535\n--filter-l7=unknown\n--dpi-desync=fake,multidisorder\n--dpi-desync-any-protocol=1\n--dpi-desync-cutoff=n4\n--dpi-desync-split-pos=1,midsld\n--dpi-desync-repeats=11\n--dpi-desync-fooling=badseq\n--dpi-desync-fake-tls=0x00000000\n--dpi-desync-fake-tls=!\n--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-unknown=0x00000000\n--dpi-desync-fake-unknown={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-unknown-tcp-v18",
+          "name": "v18",
+          "content": "--filter-tcp=1024-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=6\n--dpi-desync-any-protocol=1\n--dpi-desync-cutoff=n3\n--dpi-desync-fooling=badseq\n--dpi-desync-badseq-increment=2\n--dpi-desync-fake-tls={{STUN2}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-unknown={{STUN2}}\n--dpi-desync-fake-unknown={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "preset-unknown-tcp-v19",
+          "name": "v19",
+          "content": "--filter-tcp=1024-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=6\n--dpi-desync-any-protocol=1\n--dpi-desync-cutoff=n5\n--dpi-desync-fooling=ts\n--dpi-desync-fake-tls={{STUN2}}\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-unknown={{STUN2}}\n--dpi-desync-fake-unknown={{TLS_CLIENTHELLO_MAX}}",
+          "active": false
+        },
+        {
+          "id": "preset-unknown-tcp-v20",
+          "name": "v20",
+          "content": "--filter-tcp=1024-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=6\n--dpi-desync-any-protocol=1\n--dpi-desync-cutoff=n4\n--dpi-desync-fooling=ts\n--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}\n--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}\n--dpi-desync-fake-unknown={{STUN2}}\n--dpi-desync-fake-unknown={{TLS_CLIENTHELLO_GOOGLE}}",
+          "active": false
+        },
+        {
+          "id": "preset-unknown-tcp-v21",
+          "name": "v21",
+          "content": "--filter-tcp=1024-65535\n--filter-l7=unknown\n--dpi-desync=multisplit\n--dpi-desync-any-protocol=1\n--dpi-desync-cutoff=n3\n--dpi-desync-split-seqovl=568\n--dpi-desync-split-pos=1\n--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_4PDA}}",
+          "active": true
         }
       ]
     },
     {
       "id": "preset-unknown-udp",
-      "name": "Unknown UDP",
+      "name": "Game UDP",
       "strategies": [
         {
           "id": "unknown-udp-v1",
           "name": "v1",
-          "active": true,
-          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-cutoff=d2\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{STUN}}"
+          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-cutoff=d2\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{STUN}}",
+          "active": true
         },
         {
           "id": "unknown-udp-v2",
           "name": "v2",
-          "active": false,
-          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=10\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{QUIC_INITIAL_GOOGLE}}\n--dpi-desync-cutoff=n2"
+          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=10\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{QUIC_INITIAL_GOOGLE}}\n--dpi-desync-cutoff=n2",
+          "active": false
         },
         {
           "id": "unknown-udp-v3",
           "name": "v3",
-          "active": false,
-          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=10\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{QUIC_INITIAL_GOOGLE}}\n--dpi-desync-cutoff=n3"
+          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=10\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{QUIC_INITIAL_GOOGLE}}\n--dpi-desync-cutoff=n3",
+          "active": false
         },
         {
           "id": "unknown-udp-v4",
           "name": "v4",
-          "active": false,
-          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=10\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{QUIC_INITIAL_GOOGLE}}\n--dpi-desync-cutoff=n4"
+          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=10\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{QUIC_INITIAL_GOOGLE}}\n--dpi-desync-cutoff=n4",
+          "active": false
+        },
+        {
+          "id": "unknown-udp-v5",
+          "name": "v5",
+          "content": "--filter-udp=1024-65535\n--dpi-desync=fake\n--dpi-desync-cutoff=d2\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{STUN}}",
+          "active": false
+        },
+        {
+          "id": "unknown-udp-v6",
+          "name": "v6",
+          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=12\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{ACTIVE_GAME_UDP}}\n--dpi-desync-cutoff=n3",
+          "active": false
+        },
+        {
+          "id": "unknown-udp-v7",
+          "name": "v7",
+          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=12\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{ACTIVE_GAME_UDP}}\n--dpi-desync-cutoff=n2",
+          "active": false
+        },
+        {
+          "id": "unknown-udp-v8",
+          "name": "v8",
+          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=10\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{ACTIVE_GAME_UDP}}\n--dpi-desync-cutoff=n4",
+          "active": false
+        },
+        {
+          "id": "unknown-udp-v9",
+          "name": "v9",
+          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=10\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{ACTIVE_GAME_UDP}}\n--dpi-desync-cutoff=n2",
+          "active": false
+        },
+        {
+          "id": "unknown-udp-v10",
+          "name": "v10",
+          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=14\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{ACTIVE_GAME_UDP}}\n--dpi-desync-cutoff=n3",
+          "active": false
+        },
+        {
+          "id": "unknown-udp-v11",
+          "name": "v11",
+          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=5\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{QUIC_INITIAL_4PDA}}\n--dpi-desync-fake-unknown-udp={{ACTIVE_GAME_UDP}}\n--dpi-desync-cutoff=n4",
+          "active": false
+        },
+        {
+          "id": "unknown-udp-v12",
+          "name": "v12",
+          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=10\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{ACTIVE_GAME_UDP}}\n--dpi-desync-cutoff=n3",
+          "active": false
         }
       ]
     }
@@ -505,6 +1189,50 @@
     {
       "name": "IP_USER",
       "path": "@resources/lists/zapret-ip-user.txt"
+    },
+    {
+      "name": "ACTIVE_DISCORD_UDP",
+      "path": "@resources/fake/ACTIVE_DISCORD_UDP.bin"
+    },
+    {
+      "name": "ACTIVE_GAME_UDP",
+      "path": "@resources/fake/ACTIVE_GAME_UDP.bin"
+    },
+    {
+      "name": "STUN2",
+      "path": "@resources/fake/stun2.bin"
+    },
+    {
+      "name": "TLS_CLIENTHELLO_4PDA",
+      "path": "@resources/fake/tls_clienthello_4pda_to.bin"
+    },
+    {
+      "name": "TLS_CLIENTHELLO_5KA",
+      "path": "@resources/fake/tls_clienthello_5ka_ru.bin"
+    },
+    {
+      "name": "QUIC_INITIAL_4PDA",
+      "path": "@resources/fake/quic_initial_4pda.to.bin"
+    },
+    {
+      "name": "QUIC_INITIAL_5KA",
+      "path": "@resources/fake/quic_initial_5ka_ru.bin"
+    },
+    {
+      "name": "QUIC_INITIAL_DBANKCLOUD",
+      "path": "@resources/fake/quic_initial_dbankcloud_ru.bin"
+    },
+    {
+      "name": "QUIC_INITIAL_RUTUBE",
+      "path": "@resources/fake/quic_initial_rutube_ru.bin"
+    },
+    {
+      "name": "QUIC_INITIAL_STEAMCOMMUNITY",
+      "path": "@resources/fake/quic_initial_steamcommunity_com.bin"
+    },
+    {
+      "name": "QUIC_INITIAL_TENCENT",
+      "path": "@resources/fake/quic_initial_tencent_com.bin"
     }
   ],
   "filters": [

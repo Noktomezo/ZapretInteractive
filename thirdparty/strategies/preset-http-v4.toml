@@ -1,0 +1,17 @@
+id = "preset-http-v4"
+name = "v4"
+category = "HTTP"
+categoryId = "preset-http"
+categoryOrder = 1
+order = 4
+content = """
+--filter-l7=http
+<LIST_MODE>
+--dpi-desync=fake
+--dpi-desync-repeats=6
+--dpi-desync-fooling=ts
+--dpi-desync-fake-tls={{STUN}}
+--dpi-desync-fake-tls={{TLS_CLIENTHELLO_4PDA}}
+--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}"""
+active = false
+system = true

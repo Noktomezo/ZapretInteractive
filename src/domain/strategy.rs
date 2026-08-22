@@ -232,6 +232,22 @@ mod tests {
         let parsed: serde_json::Value = serde_json::from_str(default_config_json).unwrap();
         let categories: Vec<Category> =
             serde_json::from_value(parsed["categories"].clone()).unwrap();
+        assert_eq!(
+            categories
+                .iter()
+                .map(|category| category.name.as_str())
+                .collect::<Vec<_>>(),
+            [
+                "HTTP",
+                "YouTube",
+                "TCP",
+                "QUIC",
+                "Discord + Stun",
+                "Discord Media",
+                "Game TCP",
+                "Game UDP",
+            ]
+        );
 
         let unique_id = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -241,7 +257,23 @@ mod tests {
         sync_builtin_strategies(&temp_dir, &categories).unwrap();
 
         let loaded = load_strategies_from_dir(&temp_dir).unwrap();
-        assert_eq!(loaded.len(), 49);
+        assert_eq!(loaded.len(), 161);
+
+        let bundled_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("thirdparty")
+            .join("strategies");
+        let bundled = load_strategies_from_dir(&bundled_dir).unwrap();
+        assert_eq!(bundled.len(), 161);
+        assert!(
+            group_strategies_into_categories(&bundled)
+                .iter()
+                .all(|category| category
+                    .strategies
+                    .iter()
+                    .filter(|strategy| strategy.active)
+                    .count()
+                    == 1)
+        );
 
         let _cleanup_result = fs::remove_dir_all(&temp_dir);
     }
