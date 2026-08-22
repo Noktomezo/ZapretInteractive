@@ -271,7 +271,7 @@ pub async fn check_remote_updates(
     let remote_hashes = fetch_remote_hashes(client).await?;
     let mut available_updates = Vec::new();
     for (rel_path, expected_hash) in remote_hashes {
-        if !is_core_path(&rel_path) {
+        if !is_module_update_path(&rel_path) {
             continue;
         }
         let local_file = resources_dir.join(&rel_path);
@@ -284,8 +284,8 @@ pub async fn check_remote_updates(
     Ok(snapshot)
 }
 
-fn is_core_path(path: &str) -> bool {
-    BINARIES.contains(&path) || path.starts_with("fake/") || path.starts_with("modules/")
+fn is_module_update_path(path: &str) -> bool {
+    path.starts_with("modules/")
 }
 
 pub async fn repair_managed_files(client: &Client, resources_dir: &Path) -> Result<Vec<String>> {
@@ -534,6 +534,15 @@ mod tests {
             manifest_key("filters/windivert_part.dht.txt"),
             "filters:windivert_part.dht.txt"
         );
+    }
+
+    #[test]
+    fn update_prompts_only_include_modules() {
+        assert!(is_module_update_path(
+            "modules/dnscrypt-proxy/dnscrypt-proxy.exe"
+        ));
+        assert!(!is_module_update_path("winws.exe"));
+        assert!(!is_module_update_path("fake/stun.bin"));
     }
 
     #[test]
