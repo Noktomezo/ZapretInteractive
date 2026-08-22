@@ -6,15 +6,9 @@ use crate::ui::components::dropdown::dropdown;
 
 impl AppView {
     pub(crate) fn settings_page(&self, cx: &mut Context<Self>) -> AnyElement {
-        let (config, autostart, app_update, is_updating, update_download_progress) = {
+        let (config, autostart) = {
             let state = self.state.read(cx);
-            (
-                state.config.clone(),
-                state.autostart_enabled,
-                state.app_update.clone(),
-                state.is_updating,
-                state.update_download_progress,
-            )
+            (state.config.clone(), state.autostart_enabled)
         };
 
         page(
@@ -30,14 +24,7 @@ impl AppView {
                     self.state.clone(),
                     cx,
                 ))
-                .child(updates_card(
-                    &config,
-                    app_update.as_ref(),
-                    is_updating,
-                    update_download_progress,
-                    self.state.clone(),
-                    cx,
-                ))
+                .child(updates_card(&config, self.state.clone(), cx))
                 .child(behavior_card(
                     &config,
                     autostart,
@@ -94,23 +81,36 @@ fn appearance_card(
 
 fn updates_card(
     config: &crate::domain::AppConfig,
-    app_update: Option<&crate::services::updater::AppUpdateInfo>,
-    is_updating: bool,
-    update_download_progress: Option<f32>,
     state: Entity<crate::app_state::AppState>,
     cx: &App,
 ) -> AnyElement {
+    let (
+        app_update,
+        app_update_checked,
+        app_update_error,
+        checking_app_update,
+        is_updating,
+        update_download_progress,
+    ) = {
+        let app_state = state.read(cx);
+        (
+            app_state.app_update.clone(),
+            app_state.app_update_checked,
+            app_state.app_update_error.clone(),
+            app_state.checking_app_update,
+            app_state.is_updating,
+            app_state.update_download_progress,
+        )
+    };
     let mut body = module_body();
 
-    if app_update.is_some() || is_updating {
-        let update_banner = render_update_banner(
-            app_update,
-            is_updating,
-            update_download_progress,
-            state.clone(),
-            cx,
+    if let Some(error) = app_update_error.as_deref() {
+        body = body.child(
+            div()
+                .text_xs()
+                .text_color(colors::destructive())
+                .child(t!("settings.update_failed", error = error)),
         );
-        body = body.child(update_banner);
     }
 
     let state_auto = state.clone();
@@ -141,17 +141,50 @@ fn updates_card(
         body = body.child(action);
     }
 
-    let has_update = app_update.is_some();
     let current_version = env!("CARGO_PKG_VERSION");
 
-    let version_badge = crate::ui::components::badge::Badge::new(current_version)
+    let version_badge = crate::ui::components::badge::Badge::new(format!("v{current_version}"))
         .neutral()
         .monospace();
 
-    let status_badge = if has_update {
-        crate::ui::components::badge::Badge::new(t!("settings.badge_update_available")).accent()
+    let status_badge = if checking_app_update {
+        Some(crate::ui::components::badge::loading_badge(t!(
+            "settings.checking_version"
+        )))
+    } else if is_updating {
+        Some(update_download_progress.map_or_else(
+            || {
+                crate::ui::components::badge::loading_badge(t!(
+                    "settings.update_downloading_indeterminate"
+                ))
+            },
+            |progress| {
+                let percent = (progress.clamp(0.0, 1.0) * 100.0).round() as u32;
+                crate::ui::components::badge::progress_badge(
+                    t!("settings.update_downloading", percent = percent),
+                    progress,
+                )
+            },
+        ))
+    } else if let Some(update) = app_update.as_ref() {
+        Some(
+            crate::ui::components::badge::Badge::new(format!(
+                "{} · v{}",
+                t!("settings.badge_update_available"),
+                update.new_version
+            ))
+            .warning()
+            .pulse("settings-update-available-pulse")
+            .into_any_element(),
+        )
+    } else if app_update_checked {
+        Some(
+            crate::ui::components::badge::Badge::new(t!("settings.badge_latest"))
+                .success()
+                .into_any_element(),
+        )
     } else {
-        crate::ui::components::badge::Badge::new(t!("settings.badge_latest")).success()
+        None
     };
 
     let title_element = div()
@@ -166,14 +199,22 @@ fn updates_card(
                 .child(t!("settings.updates_title")),
         )
         .child(version_badge)
-        .child(status_badge);
+        .children(status_badge);
+
+    let actions = update_actions(
+        app_update.is_some(),
+        checking_app_update,
+        is_updating,
+        state,
+        cx,
+    );
 
     module_card(
         module_header_custom(
             ("icons/download.svg", colors::cyan()),
             title_element,
             t!("settings.updates_desc"),
-            None,
+            Some(actions),
             true,
         ),
         Some(body),
@@ -181,46 +222,47 @@ fn updates_card(
     .into_any_element()
 }
 
-fn render_update_banner(
-    app_update: Option<&crate::services::updater::AppUpdateInfo>,
+fn update_actions(
+    has_update: bool,
+    checking_app_update: bool,
     is_updating: bool,
-    update_download_progress: Option<f32>,
     state: Entity<crate::app_state::AppState>,
     cx: &App,
 ) -> AnyElement {
-    let version_str = app_update.map_or("".into(), |u| u.new_version.clone());
-    let progress_pct = update_download_progress.map(|p| (p * 100.0) as u32);
+    let mut actions = div().flex_none().flex().items_center().gap_2();
+    if has_update && !checking_app_update && !is_updating {
+        let update_state = state.clone();
+        actions = actions.child(
+            crate::ui::components::button::Button::new(
+                "btn-apply-update",
+                t!("settings.btn_update_and_restart"),
+                cx,
+            )
+            .primary()
+            .small()
+            .icon_prefix("icons/cloud-download.svg")
+            .on_click(move |_, _, cx| {
+                update_state.update(cx, |state, cx| state.trigger_app_update(cx));
+            }),
+        );
+    }
 
-    let title = if is_updating {
-        if let Some(pct) = progress_pct {
-            t!("settings.update_downloading", percent = pct)
-        } else {
-            t!("settings.update_downloading_indeterminate")
-        }
-    } else {
-        t!("settings.update_available", version = version_str.as_str())
-    };
-
-    let btn_label = if is_updating {
-        t!("settings.btn_installing")
-    } else {
-        t!("settings.btn_update_and_restart")
-    };
-
-    let action_btn = crate::ui::components::button::Button::new("btn-apply-update", btn_label, cx)
-        .primary()
-        .small()
-        .loading(is_updating)
-        .icon_prefix("icons/download.svg")
-        .on_click(move |_, _, cx| {
-            state.update(cx, |s, cx| s.trigger_app_update(cx));
-        });
-
-    crate::ui::components::banner::Banner::warning()
-        .icon_pulsing("icons/cloud-download.svg", "settings-update-pulse")
-        .title(title)
-        .description(t!("settings.update_action_hint"))
-        .action(action_btn)
+    actions
+        .child(
+            crate::ui::components::button::IconButton::new(
+                "btn-check-app-update",
+                "icons/refresh-cw.svg",
+                cx,
+            )
+            .outline()
+            .small()
+            .loading(checking_app_update)
+            .disabled(is_updating)
+            .tooltip(t!("settings.btn_check_version"))
+            .on_click(move |_, _, cx| {
+                state.update(cx, |state, cx| state.check_app_updates(cx));
+            }),
+        )
         .into_any_element()
 }
 

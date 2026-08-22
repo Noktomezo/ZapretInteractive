@@ -9,7 +9,7 @@ use crate::ui::components::dropdown::{DropdownChoice, DropdownEvent, DropdownSta
 use crate::ui::components::text_input::{TextInputEvent, TextInputState};
 use crate::ui::foundation::colors::{
     accent_foreground, background, border, card as card_color, destructive, foreground,
-    muted_foreground, secondary, yellow as accent,
+    muted_foreground, orange, secondary, yellow as accent,
 };
 use crate::ui::foundation::motion::{DropdownMotion, ScalarTransition, mix_color};
 
@@ -719,7 +719,7 @@ fn titlebar(
 fn titlebar_update_button(
     app_update: Option<crate::services::updater::AppUpdateInfo>,
     is_updating: bool,
-    _download_progress: Option<f32>,
+    download_progress: Option<f32>,
     state: Entity<AppState>,
     cx: &App,
 ) -> Option<AnyElement> {
@@ -727,11 +727,13 @@ fn titlebar_update_button(
         return None;
     }
 
-    let icon = if is_updating {
+    let icon = if let Some(progress) = download_progress.filter(|_| is_updating) {
+        crate::ui::components::badge::progress_ring(progress)
+    } else if is_updating {
         svg()
             .path("icons/refresh-cw.svg")
             .size_4()
-            .text_color(accent())
+            .text_color(orange())
             .with_animation(
                 "titlebar-update-downloading",
                 Animation::new(Duration::from_millis(850)).repeat(),
@@ -746,7 +748,7 @@ fn titlebar_update_button(
         svg()
             .path("icons/cloud-download.svg")
             .size_4()
-            .text_color(rgba(0xf59e0bff))
+            .text_color(orange())
             .with_animation(
                 "titlebar-update-available-pulse",
                 Animation::new(crate::ui::foundation::motion::UPDATE_PULSE_MOTION).repeat(),
@@ -767,12 +769,16 @@ fn titlebar_update_button(
 
     let hover_key = SharedString::from("titlebar-button-titlebar-update-btn");
     let button = titlebar_button("titlebar-update-btn", false, cx)
-        .on_mouse_down(MouseButton::Left, |_, window, cx| {
-            window.prevent_default();
-            cx.stop_propagation();
-        })
-        .on_click(move |_, _, cx| {
-            state.update(cx, |s, cx| s.trigger_app_update(cx));
+        .when(is_updating, |button| button.cursor_default())
+        .when(!is_updating, |button| {
+            button
+                .on_mouse_down(MouseButton::Left, |_, window, cx| {
+                    window.prevent_default();
+                    cx.stop_propagation();
+                })
+                .on_click(move |_, _, cx| {
+                    state.update(cx, |s, cx| s.trigger_app_update(cx));
+                })
         })
         .child(icon);
 

@@ -28,7 +28,7 @@ jobs:
   promote:
     runs-on: ubuntu-latest
     env:
-      MINISIGN_PUBLIC_KEY: RWRG3iNHI5kbNnWDXm9kKGfmB9MsTJoNl24S9dlMM3F8bXMq5qkjBhiJ
+      ZAPRET_INTERACTIVE_UPDATE_MINISIGN_PUBLIC_KEY: RWS5zhFQ4rkbboZKKUjZcLVN3G27o284/pxz48zoxV7Nw2A0iQSts8/T
 
     steps:
       - name: Resolve merged version bump
@@ -154,21 +154,23 @@ jobs:
         if: steps.release.outputs.skip != 'true'
         shell: bash
         env:
-          MINISIGN_SECRET_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          MINISIGN_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          ZAPRET_INTERACTIVE_UPDATE_MINISIGN_SECRET_KEY: ${{ secrets.ZAPRET_INTERACTIVE_UPDATE_MINISIGN_SECRET_KEY }}
+          ZAPRET_INTERACTIVE_UPDATE_MINISIGN_PASSWORD: ${{ secrets.ZAPRET_INTERACTIVE_UPDATE_MINISIGN_PASSWORD }}
         run: |
           set -euo pipefail
-          test -n "$MINISIGN_SECRET_KEY"
-          test -n "$MINISIGN_PASSWORD"
+          : "${ZAPRET_INTERACTIVE_UPDATE_MINISIGN_PUBLIC_KEY:?Configure ZAPRET_INTERACTIVE_UPDATE_MINISIGN_PUBLIC_KEY}"
+          : "${ZAPRET_INTERACTIVE_UPDATE_MINISIGN_SECRET_KEY:?Configure ZAPRET_INTERACTIVE_UPDATE_MINISIGN_SECRET_KEY}"
+          : "${ZAPRET_INTERACTIVE_UPDATE_MINISIGN_PASSWORD:?Configure ZAPRET_INTERACTIVE_UPDATE_MINISIGN_PASSWORD}"
 
           key_file="$(mktemp)"
           trap 'rm -f "$key_file"' EXIT
-          printf '%s' "$MINISIGN_SECRET_KEY" > "$key_file"
+          printf '%s' "$ZAPRET_INTERACTIVE_UPDATE_MINISIGN_SECRET_KEY" | tr -d '[:space:]' | base64 -d > "$key_file"
           chmod 600 "$key_file"
 
           for artifact in dist/*.exe dist/*.zip; do
-            MINISIGN_PASSWORD="$MINISIGN_PASSWORD" minisign -S -s "$key_file" -m "$artifact" -x "$artifact.sig"
-            minisign -V -P "$MINISIGN_PUBLIC_KEY" -m "$artifact" -x "$artifact.sig"
+            printf '%s\n' "$ZAPRET_INTERACTIVE_UPDATE_MINISIGN_PASSWORD" | \
+              minisign -S -s "$key_file" -m "$artifact" -x "$artifact.sig"
+            minisign -V -P "$ZAPRET_INTERACTIVE_UPDATE_MINISIGN_PUBLIC_KEY" -m "$artifact" -x "$artifact.sig"
           done
 
       - name: Create checksums and updater manifest

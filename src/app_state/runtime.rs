@@ -397,6 +397,12 @@ impl AppState {
         let health_dir = res_dir.clone();
         let runtime = self.runtime.clone();
         let config = self.config.clone();
+        self.error = None;
+        self.download_progress = Some(crate::services::binaries::DownloadProgress {
+            current: 0,
+            total: 0,
+            filename: String::new(),
+        });
         self.log("Начинаю загрузку файлов thirdparty...");
         cx.spawn(async move |entity, cx| {
             let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
@@ -478,6 +484,9 @@ impl AppState {
             return;
         }
         self.checking_app_update = true;
+        self.app_update = None;
+        self.app_update_checked = false;
+        self.app_update_error = None;
         self.log("Проверяю доступность новой версии...");
         cx.notify();
 
@@ -494,12 +503,15 @@ impl AppState {
                     Ok(Some(update)) => {
                         state.log(&format!("Доступна новая версия: {}", update.new_version));
                         state.app_update = Some(update);
+                        state.app_update_checked = true;
                     }
                     Ok(None) => {
                         state.log("У вас установлена последняя версия Zapret Interactive");
+                        state.app_update_checked = true;
                     }
                     Err(e) => {
                         state.log(&format!("Не удалось проверить обновления: {e:#}"));
+                        state.app_update_error = Some(format!("{e:#}"));
                     }
                 }
                 cx.notify();
@@ -522,6 +534,7 @@ impl AppState {
         };
 
         self.is_updating = true;
+        self.app_update_error = None;
         self.update_download_progress = Some(0.0);
         self.log(&format!(
             "Начинаю загрузку обновления {}...",
@@ -559,7 +572,9 @@ impl AppState {
                 state.is_updating = false;
                 state.update_download_progress = None;
                 if let Err(e) = result {
-                    state.set_error(e, cx);
+                    let error = format!("{e:#}");
+                    state.log(&format!("Не удалось установить обновление: {error}"));
+                    state.app_update_error = Some(error);
                 }
                 cx.notify();
             });

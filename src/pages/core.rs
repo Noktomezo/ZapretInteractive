@@ -63,6 +63,10 @@ impl AppView {
     }
 
     fn home(&self, cx: &mut Context<Self>) -> AnyElement {
+        if let Some(block) = critical_files_block(self.state.clone(), cx) {
+            return block;
+        }
+
         let state = self.state.read(cx);
         let status = state.status;
         let mode = state.config.list_mode;
@@ -268,6 +272,172 @@ impl AppView {
     }
 }
 
+fn critical_files_block(state: Entity<crate::app_state::AppState>, cx: &App) -> Option<AnyElement> {
+    let (missing_files, checking, progress, error) = {
+        let app_state = state.read(cx);
+        if app_state.health.binaries_ok {
+            return None;
+        }
+        (
+            app_state.health.missing_critical_files.clone(),
+            app_state.checking_files,
+            app_state.download_progress.clone(),
+            app_state.error.clone(),
+        )
+    };
+
+    let downloading = progress.is_some();
+    let busy = checking || downloading;
+    let status_icon = if busy {
+        svg()
+            .path("icons/refresh-cw.svg")
+            .size(px(28.))
+            .text_color(colors::orange())
+            .with_animation(
+                "critical-files-loader",
+                Animation::new(Duration::from_millis(850)).repeat(),
+                |icon, delta| {
+                    icon.with_transformation(Transformation::rotate(
+                        crate::ui::foundation::motion::refresh_rotation(delta),
+                    ))
+                },
+            )
+            .into_any_element()
+    } else {
+        svg()
+            .path("icons/triangle-alert.svg")
+            .size(px(28.))
+            .text_color(colors::orange())
+            .with_animation(
+                "critical-files-pulse",
+                Animation::new(crate::ui::foundation::motion::UPDATE_PULSE_MOTION).repeat(),
+                |icon, delta| {
+                    icon.opacity(crate::ui::foundation::motion::update_pulse_opacity(delta))
+                },
+            )
+            .into_any_element()
+    };
+
+    let status_badge = if let Some(progress) = progress.as_ref() {
+        if let Some(fraction) = critical_download_fraction(progress.current, progress.total) {
+            crate::ui::components::badge::progress_badge(
+                t!(
+                    "home.downloading_files",
+                    current = progress.current,
+                    total = progress.total
+                ),
+                fraction,
+            )
+        } else {
+            crate::ui::components::badge::loading_badge(t!("home.downloading_critical_files"))
+        }
+    } else if checking {
+        crate::ui::components::badge::loading_badge(t!("home.checking_critical_files"))
+    } else {
+        crate::ui::components::badge::Badge::new(t!("home.download_required"))
+            .warning()
+            .icon("icons/triangle-alert.svg")
+            .into_any_element()
+    };
+
+    let files = missing_files.iter().take(4).cloned().collect::<Vec<_>>();
+    let mut files_text = files.join(", ");
+    if missing_files.len() > files.len() {
+        files_text.push('…');
+    }
+    let description = t!("home.missing_binaries_desc", files = files_text.as_str());
+    let action_state = state;
+    let action_label = if downloading {
+        t!("home.downloading_critical_files")
+    } else if checking {
+        t!("home.checking_critical_files")
+    } else {
+        t!("home.btn_download_binaries")
+    };
+
+    let content = div()
+        .p_5()
+        .flex()
+        .flex_col()
+        .items_center()
+        .gap_4()
+        .child(
+            div()
+                .size(px(64.))
+                .flex()
+                .items_center()
+                .justify_center()
+                .rounded_full()
+                .border_1()
+                .border_color(colors::orange().opacity(0.35))
+                .bg(colors::orange().opacity(0.10))
+                .child(status_icon),
+        )
+        .child(
+            div()
+                .flex()
+                .flex_col()
+                .items_center()
+                .gap_2()
+                .text_center()
+                .child(
+                    div()
+                        .text_lg()
+                        .font_weight(FontWeight::MEDIUM)
+                        .child(t!("home.missing_binaries_title")),
+                )
+                .child(
+                    div()
+                        .max_w(px(380.))
+                        .text_xs()
+                        .line_height(px(18.))
+                        .text_color(muted_foreground())
+                        .child(description),
+                ),
+        )
+        .child(status_badge)
+        .when_some(error, |content, error| {
+            content.child(
+                div()
+                    .max_w(px(380.))
+                    .text_xs()
+                    .text_center()
+                    .text_color(danger())
+                    .child(error),
+            )
+        })
+        .child(
+            crate::ui::components::button::Button::new("download-critical-files", action_label, cx)
+                .primary()
+                .loading(busy)
+                .icon_prefix("icons/cloud-download.svg")
+                .on_click(move |_, _, cx| {
+                    action_state.update(cx, |state, cx| state.download_files(cx));
+                }),
+        );
+
+    Some(
+        div()
+            .size_full()
+            .flex()
+            .items_center()
+            .justify_center()
+            .p_8()
+            .child(
+                div().w_full().max_w(px(440.)).child(
+                    crate::ui::components::card::Card::new()
+                        .child(content)
+                        .into_any_element(),
+                ),
+            )
+            .into_any_element(),
+    )
+}
+
+fn critical_download_fraction(current: usize, total: usize) -> Option<f32> {
+    (total > 0).then(|| (current as f32 / total as f32).clamp(0.0, 1.0))
+}
+
 fn mode_indicator(mode: ListMode, cx: &App) -> AnyElement {
     let exclude = mode == ListMode::Exclude;
     let progress = crate::ui::foundation::hover_motion::state_progress(
@@ -321,4 +491,16 @@ fn mode_item(
         .cursor_pointer()
         .on_click(click)
         .child(label.into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::critical_download_fraction;
+
+    #[test]
+    fn critical_download_progress_handles_indeterminate_and_caps_complete() {
+        assert_eq!(critical_download_fraction(0, 0), None);
+        assert_eq!(critical_download_fraction(5, 10), Some(0.5));
+        assert_eq!(critical_download_fraction(15, 10), Some(1.0));
+    }
 }

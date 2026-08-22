@@ -3,7 +3,7 @@ use gpui::*;
 use std::time::Duration;
 
 use crate::ui::foundation::colors;
-use crate::ui::foundation::motion::{refresh_rotation, update_pulse_opacity};
+use crate::ui::foundation::motion::{UPDATE_PULSE_MOTION, refresh_rotation, update_pulse_opacity};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum BadgeVariant {
@@ -236,7 +236,7 @@ impl IntoElement for Badge {
         if let Some(pulse_id) = self.pulse_id {
             el.with_animation(
                 pulse_id,
-                Animation::new(Duration::from_millis(1000)).repeat(),
+                Animation::new(UPDATE_PULSE_MOTION).repeat(),
                 |badge, delta| badge.opacity(update_pulse_opacity(delta)),
             )
             .into_any_element()
@@ -264,4 +264,75 @@ pub fn loading_badge(text: impl Into<SharedString>) -> AnyElement {
         .accent()
         .spinner("loading-badge-spinner")
         .into_any_element()
+}
+
+pub fn progress_badge(text: impl Into<SharedString>, progress: f32) -> AnyElement {
+    let foreground = colors::orange();
+    div()
+        .flex_none()
+        .flex()
+        .items_center()
+        .justify_center()
+        .gap(px(5.))
+        .px(px(6.))
+        .py(px(2.))
+        .rounded(px(4.))
+        .border_1()
+        .border_color(foreground.opacity(0.4))
+        .bg(foreground.opacity(0.12))
+        .text_size(px(11.))
+        .line_height(px(12.))
+        .font_weight(FontWeight::MEDIUM)
+        .text_color(foreground)
+        .child(progress_ring(progress))
+        .child(text.into())
+        .into_any_element()
+}
+
+pub fn progress_ring(progress: f32) -> AnyElement {
+    let progress = progress.clamp(0.0, 1.0);
+    canvas(
+        |_, _, _| {},
+        move |bounds, _, window, _| {
+            let center = point(
+                bounds.origin.x + bounds.size.width / 2.0,
+                bounds.origin.y + bounds.size.height / 2.0,
+            );
+            let radius = px(6.0);
+            let top = point(center.x, center.y - radius);
+            let bottom = point(center.x, center.y + radius);
+            let radii = point(radius, radius);
+
+            let mut track = PathBuilder::stroke(px(2.0));
+            track.move_to(top);
+            track.arc_to(radii, px(0.0), false, true, bottom);
+            track.arc_to(radii, px(0.0), false, true, top);
+            if let Ok(track) = track.build() {
+                window.paint_path(track, colors::orange().opacity(0.25));
+            }
+
+            if progress <= f32::EPSILON {
+                return;
+            }
+
+            let mut arc = PathBuilder::stroke(px(2.0));
+            arc.move_to(top);
+            if progress >= 1.0 - f32::EPSILON {
+                arc.arc_to(radii, px(0.0), false, true, bottom);
+                arc.arc_to(radii, px(0.0), false, true, top);
+            } else {
+                let angle = -std::f32::consts::FRAC_PI_2 + std::f32::consts::TAU * progress;
+                let end = point(
+                    center.x + radius * angle.cos(),
+                    center.y + radius * angle.sin(),
+                );
+                arc.arc_to(radii, px(0.0), progress > 0.5, true, end);
+            }
+            if let Ok(arc) = arc.build() {
+                window.paint_path(arc, colors::orange());
+            }
+        },
+    )
+    .size_4()
+    .into_any_element()
 }
