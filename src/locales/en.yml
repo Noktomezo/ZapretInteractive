@@ -138,7 +138,7 @@ settings:
   auto_updates: "Automatically check for app updates"
   auto_updates_desc: "Checks for a newer release on launch and every 30 seconds"
   file_updates: "Notify about module updates"
-  file_updates_desc: "Shows update prompts for DNS and Telegram modules"
+  file_updates_desc: "Shows prompts to install available module updates"
   btn_check_version: "Check version"
   checking_version: "Checking version..."
   btn_check_files: "Verify files"

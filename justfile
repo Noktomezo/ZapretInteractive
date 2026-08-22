@@ -1,9 +1,9 @@
 default: check
 
-# Run with auto-reload on Rust source changes
+# Run with auto-reload on source and localization changes
 dev:
     CARGO_TARGET_DIR=target/dev CARGO_INCREMENTAL=0 cargo run --package xtask -- patch-gpui
-    CARGO_TARGET_DIR=target/dev CARGO_INCREMENTAL=0 watchexec -r -e rs,hlsl -- cargo run
+    CARGO_TARGET_DIR=target/dev CARGO_INCREMENTAL=0 watchexec -r -e rs,hlsl,yml,yaml -- cargo run
 
 # Apply the pinned GPUI D3D11 source patch idempotently
 patch-gpui:
