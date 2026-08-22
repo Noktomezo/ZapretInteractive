@@ -110,7 +110,12 @@ fn main() {
             let state = match AppState::load() {
                 Ok(state) => cx.new(|_| state),
                 Err(error) => {
-                    eprintln!("не удалось запустить Zapret Interactive: {error:#}");
+                    let message = format!("не удалось запустить Zapret Interactive: {error:#}");
+                    eprintln!("{message}");
+                    if let Err(log_error) = std::fs::write("startup-error.log", &message) {
+                        eprintln!("не удалось записать startup-error.log: {log_error}");
+                    }
+                    cx.quit();
                     return;
                 }
             };

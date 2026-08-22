@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs::{self, File};
 use std::io::{BufReader, Read};
 use std::path::Path;
@@ -16,7 +16,6 @@ const REMOTE_HASHES_URL: &str =
 const BINARIES: &[&str] = &["WinDivert.dll", "Monkey64.sys", "winws.exe", "cygwin1.dll"];
 const MODULE_FILES: &[&str] = &[
     "modules/dnscrypt-proxy/dnscrypt-proxy.exe",
-    "modules/dnscrypt-proxy/LICENSE",
     "modules/tg-ws-proxy-rs/tg-ws-proxy.exe",
 ];
 
@@ -136,7 +135,7 @@ fn normalize_remote_hashes(hashes: HashMap<String, String>) -> HashMap<String, S
     hashes
         .into_iter()
         .map(|(key, hash)| {
-            let path = ["binaries", "fake", "lists", "modules"]
+            let path = ["binaries", "fake", "filters", "lists", "modules"]
                 .into_iter()
                 .find_map(|group| {
                     key.strip_prefix(&format!("{group}:")).map(|name| {
@@ -417,6 +416,7 @@ pub async fn refresh_stale_lists(client: &Client, resources_dir: &Path) -> Resul
         if dest.is_file()
             && compute_sha256(&dest).is_ok_and(|hash| hash.eq_ignore_ascii_case(expected_hash))
         {
+            stored_hashes.insert((*rel_path).to_owned(), expected_hash.clone());
             continue;
         }
         let resp = client
@@ -435,9 +435,9 @@ pub async fn refresh_stale_lists(client: &Client, resources_dir: &Path) -> Resul
         let tmp = dest.with_extension("tmp");
         fs::write(&tmp, bytes).with_context(|| format!("failed to write {}", tmp.display()))?;
         replace_file(&tmp, &dest)?;
+        stored_hashes.insert((*rel_path).to_owned(), expected_hash.clone());
         updated.push((*rel_path).to_string());
     }
-    stored_hashes.extend(remote_hashes);
     write_hashes(resources_dir, &stored_hashes)?;
     Ok(updated)
 }
@@ -448,15 +448,16 @@ fn write_hashes(resources_dir: &Path, hashes: &HashMap<String, String>) -> Resul
     let compatible_hashes = hashes
         .iter()
         .map(|(path, hash)| (manifest_key(path), hash))
-        .collect::<HashMap<_, _>>();
-    let json = serde_json::to_vec_pretty(&compatible_hashes)?;
+        .collect::<BTreeMap<_, _>>();
+    let mut json = serde_json::to_string_pretty(&compatible_hashes)?;
+    json.push('\n');
     fs::write(&temporary, json)
         .with_context(|| format!("failed to write {}", temporary.display()))?;
     replace_file(&temporary, &path)
 }
 
 fn manifest_key(path: &str) -> String {
-    for group in ["fake", "lists", "modules"] {
+    for group in ["fake", "filters", "lists", "modules"] {
         if let Some(name) = path.strip_prefix(&format!("{group}/")) {
             return format!("{group}:{name}");
         }
@@ -504,9 +505,11 @@ mod tests {
 
     #[test]
     fn grouped_manifest_keys_map_to_portable_paths() {
+        assert!(!tracked_paths().any(|path| path.ends_with("/LICENSE")));
         let hashes = normalize_remote_hashes(HashMap::from([
             ("binaries:winws.exe".to_owned(), "a".to_owned()),
             ("fake:stun.bin".to_owned(), "b".to_owned()),
+            ("filters:windivert_part.dht.txt".to_owned(), "d".to_owned()),
             (
                 "modules:dnscrypt-proxy/dnscrypt-proxy.exe".to_owned(),
                 "c".to_owned(),
@@ -517,10 +520,65 @@ mod tests {
         assert_eq!(hashes.get("fake/stun.bin").map(String::as_str), Some("b"));
         assert_eq!(
             hashes
+                .get("filters/windivert_part.dht.txt")
+                .map(String::as_str),
+            Some("d")
+        );
+        assert_eq!(
+            hashes
                 .get("modules/dnscrypt-proxy/dnscrypt-proxy.exe")
                 .map(String::as_str),
             Some("c")
         );
+        assert_eq!(
+            manifest_key("filters/windivert_part.dht.txt"),
+            "filters:windivert_part.dht.txt"
+        );
+    }
+
+    #[test]
+    fn hash_manifest_is_written_in_canonical_order() {
+        let root =
+            std::env::temp_dir().join(format!("zapret_hashes_{}", uuid::Uuid::new_v4().simple()));
+        fs::create_dir_all(&root).unwrap();
+        write_hashes(
+            &root,
+            &HashMap::from([
+                ("filters/example.txt".to_owned(), "a".to_owned()),
+                ("winws.exe".to_owned(), "b".to_owned()),
+            ]),
+        )
+        .unwrap();
+
+        assert_eq!(
+            fs::read_to_string(root.join("hashes.json")).unwrap(),
+            "{\n  \"binaries:winws.exe\": \"b\",\n  \"filters:example.txt\": \"a\"\n}\n"
+        );
+        let _cleanup_result = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn bootstrap_accepts_valid_grouped_filter_hashes() {
+        let root = std::env::temp_dir().join(format!(
+            "zapret_bootstrap_{}",
+            uuid::Uuid::new_v4().simple()
+        ));
+        let content = b"valid filter\n";
+        let hash = compute_sha256_bytes(content);
+        let mut hashes = HashMap::new();
+        for relative in DEFAULT_FILTERS {
+            let path = root.join(relative);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, content).unwrap();
+            hashes.insert((*relative).to_owned(), hash.clone());
+        }
+        write_hashes(&root, &hashes).unwrap();
+
+        let repaired = crate::services::async_runtime::TOKIO
+            .block_on(repair_default_filters_for_bootstrap(&Client::new(), &root))
+            .unwrap();
+        assert!(repaired.is_empty());
+        let _cleanup_result = fs::remove_dir_all(root);
     }
 
     #[test]
