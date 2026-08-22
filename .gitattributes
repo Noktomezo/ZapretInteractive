@@ -1,0 +1,2 @@
+thirdparty/filters/*.txt text eol=lf
+thirdparty/lists/*.txt text eol=lf
