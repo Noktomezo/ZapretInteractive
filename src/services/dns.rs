@@ -8,7 +8,7 @@ use dnsstamps::DoHBuilder;
 use toml::{Table, Value};
 use url::Url;
 
-use super::{hidden_cmd, remove_if_exists};
+use super::{hidden_cmd, process_name_running, remove_if_exists};
 
 pub const PRESETS: [(&str, &str, &str); 6] = [
     ("comss-one", "Comss", "https://dns.comss.one/dns-query"),
@@ -182,20 +182,7 @@ impl DnsRuntime {
 }
 
 fn dnscrypt_is_running() -> Result<bool> {
-    let output = hidden_cmd(
-        "tasklist.exe",
-        [
-            "/FI",
-            "IMAGENAME eq dnscrypt-proxy.exe",
-            "/FO",
-            "CSV",
-            "/NH",
-        ],
-    )
-    .unchecked()
-    .read()
-    .context("не удалось проверить запущенный dnscrypt-proxy")?;
-    Ok(output.to_ascii_lowercase().contains("dnscrypt-proxy.exe"))
+    process_name_running("dnscrypt-proxy.exe")
 }
 
 fn format_optional_error(error: Option<impl std::fmt::Display>) -> String {

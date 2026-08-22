@@ -6,7 +6,7 @@ use anyhow::{Context as _, Result, bail};
 
 use super::discord::DiscordPresence;
 use super::dns::DnsRuntime;
-use super::{hidden_cmd, remove_if_exists};
+use super::{hidden_cmd, process_name_running, remove_if_exists};
 use crate::domain::{AppConfig, ConfigRepository, build_winws_args, validate_port_spec};
 
 pub struct RuntimeServices {
@@ -363,17 +363,6 @@ fn spawn_tg_proxy(resources: &Path, config: &AppConfig, runtime: &Path) -> Resul
     .stderr_null()
     .start()
     .context("не удалось запустить TG-прокси")
-}
-
-fn process_name_running(name: &str) -> Result<bool> {
-    let filter = format!("IMAGENAME eq {name}");
-    let output = hidden_cmd("tasklist.exe", ["/FI", &filter, "/FO", "CSV", "/NH"])
-        .unchecked()
-        .read()
-        .with_context(|| format!("не удалось проверить запущенный {name}"))?;
-    Ok(output
-        .to_ascii_lowercase()
-        .contains(&name.to_ascii_lowercase()))
 }
 
 fn stop_child(child: &mut Option<duct::Handle>, name: &str) -> Result<()> {
