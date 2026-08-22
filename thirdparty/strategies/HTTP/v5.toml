@@ -1,0 +1,20 @@
+id = "preset-http-v5"
+name = "v5"
+category = "HTTP"
+categoryId = "preset-http"
+categoryOrder = 1
+order = 5
+content = """
+--filter-l7=http
+<LIST_MODE>
+--dpi-desync=fake,multisplit
+--dpi-desync-split-seqovl=664
+--dpi-desync-split-pos=1
+--dpi-desync-fooling=ts
+--dpi-desync-repeats=8
+--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_MAX}}
+--dpi-desync-fake-tls={{STUN2}}
+--dpi-desync-fake-tls={{TLS_CLIENTHELLO_MAX}}
+--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}"""
+active = false
+system = true

@@ -1,0 +1,15 @@
+id = "discord-media-v8"
+name = "v8"
+category = "Discord Media"
+categoryId = "preset-discord-media"
+categoryOrder = 6
+order = 8
+content = """
+--filter-tcp=2053,2083,2087,2096,8443
+--hostlist-domains=discord.media
+--dpi-desync=multisplit
+--dpi-desync-split-pos=2,sniext+1
+--dpi-desync-split-seqovl=679
+--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}"""
+active = false
+system = true

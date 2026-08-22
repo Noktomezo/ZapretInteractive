@@ -1,0 +1,13 @@
+id = "preset-http-v10"
+name = "v10"
+category = "HTTP"
+categoryId = "preset-http"
+categoryOrder = 1
+order = 10
+content = """
+--filter-l3=ipv4
+--filter-l7=http
+<LIST_MODE>,2053,2083,2087,2096,8443
+--dpi-desync=syndata,multidisorder"""
+active = false
+system = true

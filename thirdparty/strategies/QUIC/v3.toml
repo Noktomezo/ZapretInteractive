@@ -1,0 +1,12 @@
+id = "quic-v3"
+name = "v3"
+category = "QUIC"
+categoryId = "preset-quic"
+categoryOrder = 4
+order = 3
+content = """
+--filter-l7=quic
+--dpi-desync=fake
+--dpi-desync-fake-quic={{QUIC_INITIAL_GOOGLE}}"""
+active = false
+system = true

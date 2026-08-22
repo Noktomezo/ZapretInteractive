@@ -1,51 +1,45 @@
-set windows-shell := ["powershell", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
+default: check
 
-# List all available recipes
-_default:
-  @just --list
-
-# Generate icons from the same source used in CI
-gen-icons:
-  bun tauri icon assets/app-logo.png
-
-# Run in dev mode with hot reload
+# Run with auto-reload on source and localization changes
 dev:
-  bun run tauri dev
+    CARGO_TARGET_DIR=target/dev CARGO_INCREMENTAL=0 cargo run --package xtask -- patch-gpui
+    CARGO_TARGET_DIR=target/dev CARGO_INCREMENTAL=0 watchexec -r -e rs,hlsl,yml,yaml -- cargo run
 
-# Install developer hooks
-boot:
-  bun install
-  cargo check --manifest-path "src-tauri/Cargo.toml"
+# Apply the pinned GPUI D3D11 source patch idempotently
+patch-gpui:
+    cargo run --package xtask -- patch-gpui
 
-# Final release build with UPX compression.
-build: gen-icons
-  bun tauri build --no-sign
-  upx --best --lzma "src-tauri/target/release/Zapret Interactive.exe"
+# Build optimized release binary and compress with UPX via xtask
+build:
+    cargo run --package xtask --release -- build
 
-# Lint only backend
-lint-back:
-  cargo clippy --manifest-path "src-tauri/Cargo.toml" --all-targets --all-features -- -D warnings
+# Run cargo check across all targets
+check: patch-gpui
+    cargo check --all-targets
 
-# Lint only frontend
-lint-front:
-  bun run typecheck
-  bun run lint
+# Run unit and integration tests
+test: patch-gpui
+    cargo test --all-targets
 
-# Lint both backend and frontend
-lint: lint-back lint-front
+# Run strict Clippy checks
+clippy: patch-gpui
+    cargo clippy --all-targets -- -D warnings
 
-# Format only backend
-format-back:
-  cargo clippy --fix --allow-dirty --manifest-path "src-tauri/Cargo.toml" --all-targets --all-features
-  cargo fmt --manifest-path "src-tauri/Cargo.toml"
+# Check formatting
+fmt:
+    cargo fmt --all --check
 
-# Format only frontend
-format-front:
-  bun run format
+# Full strict verification
+strict: check test clippy fmt
 
-# Format both backend and frontend
-format: format-back format-front
+# Refresh managed thirdparty files and their hashes from upstream
+update-thirdparty:
+    uv run scripts/update-thirdparty.py
 
-# Cache and generated files clean-up
+# Verify that thirdparty/hashes.json matches the managed files
+verify-thirdparty:
+    uv run scripts/verify-thirdparty-hashes.py
+
+# Clean build artifacts
 clean:
-  bunx poof dist src-tauri/target
+    cargo clean

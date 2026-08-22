@@ -1,0 +1,23 @@
+id = "preset-unknown-tcp-v15"
+name = "v15"
+category = "Game TCP"
+categoryId = "preset-unknown-tcp"
+categoryOrder = 7
+order = 15
+content = """
+--filter-tcp=1024-65535
+--filter-l7=unknown
+--dpi-desync=fake,multisplit
+--dpi-desync-any-protocol=1
+--dpi-desync-cutoff=n3
+--dpi-desync-split-seqovl=681
+--dpi-desync-split-pos=1
+--dpi-desync-fooling=badseq
+--dpi-desync-badseq-increment=10000000
+--dpi-desync-repeats=8
+--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}
+--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com
+--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}
+--dpi-desync-fake-unknown={{TLS_CLIENTHELLO_MAX}}"""
+active = false
+system = true

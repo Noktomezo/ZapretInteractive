@@ -1,0 +1,16 @@
+id = "tcp-v11"
+name = "v11"
+category = "TCP"
+categoryId = "preset-tcp"
+categoryOrder = 3
+order = 11
+content = """
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=hostfakesplit
+--dpi-desync-hostfakesplit-mod=host=ozon.ru
+--dpi-desync-repeats=4
+--dpi-desync-fooling=ts,md5sig
+--dpi-desync-badseq-increment=0"""
+active = false
+system = true

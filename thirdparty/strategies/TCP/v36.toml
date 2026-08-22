@@ -1,0 +1,15 @@
+id = "tcp-v36"
+name = "v36"
+category = "TCP"
+categoryId = "preset-tcp"
+categoryOrder = 3
+order = 36
+content = """
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=multisplit
+--dpi-desync-split-seqovl=568
+--dpi-desync-split-pos=1
+--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_4PDA}}"""
+active = false
+system = true

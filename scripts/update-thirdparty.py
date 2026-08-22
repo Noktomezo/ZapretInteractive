@@ -26,6 +26,8 @@ BINARY_FILES = [
 
 FAKE_FILES = [
     "4pda.bin",
+    "ACTIVE_DISCORD_UDP.bin",
+    "ACTIVE_GAME_UDP.bin",
     "dht_find_node.bin",
     "dht_get_peers.bin",
     "discord-ip-discovery-with-port.bin",
@@ -34,6 +36,9 @@ FAKE_FILES = [
     "http_iana_org.bin",
     "isakmp_initiator_request.bin",
     "max.bin",
+    "quic_initial_4pda.to.bin",
+    "quic_initial_5ka_ru.bin",
+    "quic_initial_dbankcloud_ru.bin",
     "quic_initial_facebook_com.bin",
     "quic_initial_facebook_com_quiche.bin",
     "quic_initial_rr1---sn-xguxaxjvh-n8me_googlevideo_com_kyber_1.bin",
@@ -42,11 +47,17 @@ FAKE_FILES = [
     "quic_initial_rutracker_org.bin",
     "quic_initial_rutracker_org_kyber_1.bin",
     "quic_initial_rutracker_org_kyber_2.bin",
+    "quic_initial_rutube_ru.bin",
+    "quic_initial_steamcommunity_com.bin",
+    "quic_initial_tencent_com.bin",
     "quic_initial_vk_com.bin",
     "quic_initial_www_google_com.bin",
     "quic_short_header.bin",
     "stun.bin",
+    "stun2.bin",
     "t2.bin",
+    "tls_clienthello_4pda_to.bin",
+    "tls_clienthello_5ka_ru.bin",
     "tls_clienthello_gosuslugi_ru.bin",
     "tls_clienthello_iana_org.bin",
     "tls_clienthello_max_ru.bin",
@@ -67,6 +78,14 @@ LIST_FILES = [
     "zapret-hosts-google.txt",
     "zapret-hosts-user-exclude.txt",
     "zapret-ip-user.txt",
+]
+
+FILTER_FILES = [
+    "windivert_part.dht.txt",
+    "windivert_part.discord_media.txt",
+    "windivert_part.quic_initial_ietf.txt",
+    "windivert_part.stun.txt",
+    "windivert_part.wireguard.txt",
 ]
 
 MODULE_FILES = [
@@ -293,6 +312,12 @@ def build_hash_manifest() -> dict[str, str]:
         if not path.is_file():
             raise FileNotFoundError(f"Missing managed list: {path}")
         manifest[f"lists:{name}"] = sha256_file(path)
+
+    for name in FILTER_FILES:
+        path = THIRDPARTY_DIR / "filters" / name
+        if not path.is_file():
+            raise FileNotFoundError(f"Missing managed filter: {path}")
+        manifest[f"filters:{name}"] = sha256_file(path)
 
     for name in MODULE_FILES:
         path = THIRDPARTY_DIR / "modules" / name

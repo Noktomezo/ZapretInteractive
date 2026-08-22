@@ -1,0 +1,18 @@
+id = "preset-http-v19"
+name = "v19"
+category = "HTTP"
+categoryId = "preset-http"
+categoryOrder = 1
+order = 19
+content = """
+--filter-l7=http
+<LIST_MODE>
+--dpi-desync=fake,fakedsplit
+--dpi-desync-split-pos=1
+--dpi-desync-fooling=badseq
+--dpi-desync-badseq-increment=2
+--dpi-desync-repeats=8
+--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com
+--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}"""
+active = false
+system = true

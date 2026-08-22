@@ -1,0 +1,18 @@
+id = "tcp-v19"
+name = "v19"
+category = "TCP"
+categoryId = "preset-tcp"
+categoryOrder = 3
+order = 19
+content = """
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=fake,multisplit
+--dpi-desync-repeats=6
+--dpi-desync-fooling=badseq
+--dpi-desync-badseq-increment=1000
+--dpi-desync-fake-tls={{STUN}}
+--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}
+--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}"""
+active = false
+system = true

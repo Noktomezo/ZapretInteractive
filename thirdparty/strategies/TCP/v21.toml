@@ -1,0 +1,15 @@
+id = "tcp-v21"
+name = "v21"
+category = "TCP"
+categoryId = "preset-tcp"
+categoryOrder = 3
+order = 21
+content = """
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=multisplit
+--dpi-desync-split-seqovl=681
+--dpi-desync-split-pos=1
+--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}"""
+active = false
+system = true

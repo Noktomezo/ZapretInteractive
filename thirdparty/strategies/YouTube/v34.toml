@@ -1,0 +1,17 @@
+id = "youtube-v34"
+name = "v34"
+category = "YouTube"
+categoryId = "preset-youtube"
+categoryOrder = 2
+order = 34
+content = """
+--filter-l7=tls
+--hostlist={{HOSTS_GOOGLE}}
+--ip-id=zero
+--dpi-desync=fake
+--dpi-desync-fake-tls-mod=none
+--dpi-desync-repeats=6
+--dpi-desync-fooling=badseq
+--dpi-desync-badseq-increment=2"""
+active = false
+system = true

@@ -1,0 +1,15 @@
+id = "youtube-v30"
+name = "v30"
+category = "YouTube"
+categoryId = "preset-youtube"
+categoryOrder = 2
+order = 30
+content = """
+--filter-l7=tls
+--hostlist={{HOSTS_GOOGLE}}
+--ip-id=zero
+--dpi-desync=hostfakesplit
+--dpi-desync-fooling=ts
+--dpi-desync-hostfakesplit-mod=host=www.google.com"""
+active = false
+system = true

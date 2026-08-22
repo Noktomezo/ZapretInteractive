@@ -1,0 +1,15 @@
+id = "preset-http-v26"
+name = "v26"
+category = "HTTP"
+categoryId = "preset-http"
+categoryOrder = 1
+order = 26
+content = """
+--filter-l7=http
+<LIST_MODE>
+--dpi-desync=multisplit
+--dpi-desync-split-seqovl=568
+--dpi-desync-split-pos=1
+--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_4PDA}}"""
+active = false
+system = true

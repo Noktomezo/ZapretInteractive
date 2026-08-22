@@ -1,0 +1,15 @@
+id = "discord-media-v10"
+name = "v10"
+category = "Discord Media"
+categoryId = "preset-discord-media"
+categoryOrder = 6
+order = 10
+content = """
+--filter-tcp=2053,2083,2087,2096,8443
+--hostlist-domains=discord.media
+--dpi-desync=hostfakesplit
+--dpi-desync-repeats=4
+--dpi-desync-fooling=ts
+--dpi-desync-hostfakesplit-mod=host=www.google.com"""
+active = false
+system = true

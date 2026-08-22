@@ -1,0 +1,29 @@
+id = "youtube-v28"
+name = "v28"
+category = "YouTube"
+categoryId = "preset-youtube"
+categoryOrder = 2
+order = 28
+content = """
+--filter-l7=tls
+--hostlist={{HOSTS_GOOGLE}}
+--dpi-desync=fake,multisplit
+--dpi-desync-fake-tls=0x00000000
+--dpi-desync-fake-tls=!
+--dpi-desync-split-pos=1,sniext+1,host+1,midsld-2,midsld,midsld+2,endhost-1
+--dpi-desync-repeats=2
+--dpi-desync-fooling=badseq
+--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com"""
+active = false
+system = true
+systemBaseName = "v28"
+systemBaseContent = """
+--filter-l7=tls
+--hostlist={{HOSTS_GOOGLE}}
+--dpi-desync=fake,multisplit
+--dpi-desync-fake-tls=0x00000000
+--dpi-desync-fake-tls=!
+--dpi-desync-split-pos=1,sniext+1,host+1,midsld-2,midsld,midsld+2,endhost-1
+--dpi-desync-repeats=2
+--dpi-desync-fooling=badseq
+--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com"""

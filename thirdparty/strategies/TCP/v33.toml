@@ -1,0 +1,18 @@
+id = "tcp-v33"
+name = "v33"
+category = "TCP"
+categoryId = "preset-tcp"
+categoryOrder = 3
+order = 33
+content = """
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=fake
+--dpi-desync-repeats=6
+--dpi-desync-fooling=badseq
+--dpi-desync-badseq-increment=2
+--dpi-desync-fake-tls={{STUN2}}
+--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}
+--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}"""
+active = false
+system = true
