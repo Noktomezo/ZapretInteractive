@@ -93,15 +93,25 @@ pub fn group_strategies_into_categories(strategies: &[Strategy]) -> Vec<Category
 }
 
 pub fn strategy_filename(strategy: &Strategy) -> String {
-    let safe_id = slugify(&strategy.id);
-    format!("{safe_id}.toml")
+    format!("{}.toml", slugify(&strategy.name))
 }
 
 pub fn save_strategy_to_file(dir: &Path, strategy: &Strategy) -> Result<PathBuf> {
-    fs::create_dir_all(dir)
-        .with_context(|| format!("Failed to create strategies directory {}", dir.display()))?;
-    let file_name = strategy_filename(strategy);
-    let target_path = dir.join(&file_name);
+    let category_dir = dir.join(category_directory_name(strategy));
+    fs::create_dir_all(&category_dir).with_context(|| {
+        format!(
+            "Failed to create strategy category directory {}",
+            category_dir.display()
+        )
+    })?;
+    let target_path = category_dir.join(strategy_filename(strategy));
+    let previous_path = find_strategy_file(dir, &strategy.id)?;
+    if target_path.is_file() && previous_path.as_deref() != Some(&target_path) {
+        anyhow::bail!(
+            "Strategy file {} is already occupied by another strategy",
+            target_path.display()
+        );
+    }
 
     let toml_str = toml::to_string_pretty(strategy)
         .with_context(|| format!("Failed to serialize strategy {}", strategy.id))?;
@@ -109,37 +119,28 @@ pub fn save_strategy_to_file(dir: &Path, strategy: &Strategy) -> Result<PathBuf>
     fs::write(&target_path, toml_str)
         .with_context(|| format!("Failed to write strategy file {}", target_path.display()))?;
 
+    if let Some(previous_path) = previous_path
+        && previous_path != target_path
+    {
+        fs::remove_file(&previous_path)
+            .with_context(|| format!("Failed to remove {}", previous_path.display()))?;
+        if let Some(parent) = previous_path.parent()
+            && parent != dir
+        {
+            let _remove_empty_category = fs::remove_dir(parent);
+        }
+    }
+
     Ok(target_path)
 }
 
 pub fn delete_strategy_from_file(dir: &Path, strategy_id: &str) -> Result<()> {
-    if !dir.is_dir() {
-        return Ok(());
-    }
-
-    let direct_file = dir.join(format!("{}.toml", slugify(strategy_id)));
-    if direct_file.is_file() {
-        fs::remove_file(&direct_file)
-            .with_context(|| format!("Failed to delete {}", direct_file.display()))?;
-        return Ok(());
-    }
-
-    // Search recursively if file name is different from ID
-    let entries =
-        fs::read_dir(dir).with_context(|| format!("Failed to read directory {}", dir.display()))?;
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_file() && path.extension().and_then(|ext| ext.to_str()) == Some("toml") {
-            if let Ok(content) = fs::read_to_string(&path)
-                && let Ok(strat) = toml::from_str::<Strategy>(&content)
-                && strat.id == strategy_id
-            {
-                fs::remove_file(&path)
-                    .with_context(|| format!("Failed to delete {}", path.display()))?;
-                return Ok(());
-            }
-        } else if path.is_dir() {
-            delete_strategy_from_file(&path, strategy_id)?;
+    if let Some(path) = find_strategy_file(dir, strategy_id)? {
+        fs::remove_file(&path).with_context(|| format!("Failed to delete {}", path.display()))?;
+        if let Some(parent) = path.parent()
+            && parent != dir
+        {
+            let _remove_empty_category = fs::remove_dir(parent);
         }
     }
 
@@ -163,13 +164,82 @@ pub fn sync_builtin_strategies(dir: &Path, builtin_categories: &[Category]) -> R
             s.order = Some((strat_idx + 1) as i32);
             s.system = true;
 
-            let path = dir.join(strategy_filename(&s));
+            let path = dir
+                .join(category_directory_name(&s))
+                .join(strategy_filename(&s));
             if !path.exists() {
                 save_strategy_to_file(dir, &s)?;
             }
         }
     }
     Ok(())
+}
+
+fn find_strategy_file(dir: &Path, strategy_id: &str) -> Result<Option<PathBuf>> {
+    if !dir.is_dir() {
+        return Ok(None);
+    }
+
+    let entries =
+        fs::read_dir(dir).with_context(|| format!("Failed to read directory {}", dir.display()))?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            if let Some(found) = find_strategy_file(&path, strategy_id)? {
+                return Ok(Some(found));
+            }
+        } else if path.extension().and_then(|ext| ext.to_str()) == Some("toml") {
+            let content = fs::read_to_string(&path)
+                .with_context(|| format!("Failed to read strategy file {}", path.display()))?;
+            if toml::from_str::<Strategy>(&content).is_ok_and(|item| item.id == strategy_id) {
+                return Ok(Some(path));
+            }
+        }
+    }
+
+    Ok(None)
+}
+
+fn category_directory_name(strategy: &Strategy) -> String {
+    let category = strategy.category.trim();
+    let is_reserved = matches!(
+        category.to_ascii_uppercase().as_str(),
+        "CON"
+            | "PRN"
+            | "AUX"
+            | "NUL"
+            | "COM1"
+            | "COM2"
+            | "COM3"
+            | "COM4"
+            | "COM5"
+            | "COM6"
+            | "COM7"
+            | "COM8"
+            | "COM9"
+            | "LPT1"
+            | "LPT2"
+            | "LPT3"
+            | "LPT4"
+            | "LPT5"
+            | "LPT6"
+            | "LPT7"
+            | "LPT8"
+            | "LPT9"
+    );
+    let is_safe = !category.is_empty()
+        && category != "."
+        && category != ".."
+        && !category.ends_with(['.', ' '])
+        && !category
+            .chars()
+            .any(|character| character.is_control() || r#"<>:"/\|?*"#.contains(character));
+
+    if is_safe && !is_reserved {
+        category.to_owned()
+    } else {
+        slugify(&strategy.category_id)
+    }
 }
 
 fn slugify(input: &str) -> String {
@@ -258,10 +328,47 @@ mod tests {
 
         let loaded = load_strategies_from_dir(&temp_dir).unwrap();
         assert_eq!(loaded.len(), 161);
+        assert!(temp_dir.join("HTTP").join("v1.toml").is_file());
+        assert!(
+            fs::read_dir(&temp_dir)
+                .unwrap()
+                .flatten()
+                .all(|entry| entry.path().is_dir())
+        );
+
+        let mut moved = loaded
+            .iter()
+            .find(|strategy| strategy.id == "preset-http-1")
+            .unwrap()
+            .clone();
+        moved.category = "Renamed HTTP".to_string();
+        moved.name = "renamed".to_string();
+        save_strategy_to_file(&temp_dir, &moved).unwrap();
+        assert!(!temp_dir.join("HTTP").join("v1.toml").exists());
+        assert!(temp_dir.join("Renamed HTTP").join("renamed.toml").is_file());
+
+        moved.category = "../escape".to_string();
+        moved.category_id = "safe-category".to_string();
+        assert_eq!(category_directory_name(&moved), "safe-category");
 
         let bundled_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("thirdparty")
             .join("strategies");
+        let bundled_category_dirs = fs::read_dir(&bundled_dir)
+            .unwrap()
+            .flatten()
+            .filter(|entry| entry.path().is_dir())
+            .collect::<Vec<_>>();
+        assert_eq!(bundled_category_dirs.len(), 8);
+        for entry in bundled_category_dirs {
+            let category_name = entry.file_name().to_string_lossy().into_owned();
+            assert!(
+                load_strategies_from_dir(&entry.path())
+                    .unwrap()
+                    .iter()
+                    .all(|strategy| strategy.category == category_name)
+            );
+        }
         let bundled = load_strategies_from_dir(&bundled_dir).unwrap();
         assert_eq!(bundled.len(), 161);
         assert!(
