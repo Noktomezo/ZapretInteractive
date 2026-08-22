@@ -1,0 +1,35 @@
+diff --git a/crates/gpui_windows/src/shaders.hlsl b/crates/gpui_windows/src/shaders.hlsl
+--- a/crates/gpui_windows/src/shaders.hlsl
++++ b/crates/gpui_windows/src/shaders.hlsl
+@@ -1314,18 +1314,25 @@ float4 backdrop_blur_fragment(BackdropBlurFragmentInput input): SV_Target {
+     BackdropBlurPrimitive blur = backdrop_blurs[input.blur_id];
+     float2 screen_uv = input.position.xy / global_viewport_size;
+     float2 texel = 1.0 / global_viewport_size;
+-    float sample_step = max(blur.blur_radius * 0.5, 0.5);
+-    const float weights[5] = { 0.06136, 0.24477, 0.38774, 0.24477, 0.06136 };
++    float sample_step = blur.blur_radius / 6.0;
++    const float offsets[4] = { 0.0, 1.4584, 3.4045, 5.3518 };
++    const float weights[4] = { 0.137023, 0.239337, 0.139463, 0.052711 };
+     float3 color = 0.0;
+ 
+     [unroll]
+-    for (int y = -2; y <= 2; y++) {
++    for (int y = -3; y <= 3; y++) {
+         [unroll]
+-        for (int x = -2; x <= 2; x++) {
+-            float weight = weights[x + 2] * weights[y + 2];
++        for (int x = -3; x <= 3; x++) {
++            int ax = abs(x);
++            int ay = abs(y);
++            float2 offset = float2(
++                x < 0 ? -offsets[ax] : offsets[ax],
++                y < 0 ? -offsets[ay] : offsets[ay]
++            );
++            float weight = weights[ax] * weights[ay];
+             color += t_sprite.SampleLevel(
+                 s_sprite,
+-                screen_uv + float2(x, y) * texel * sample_step,
++                screen_uv + offset * texel * sample_step,
+                 0.0
+             ).rgb * weight;
+         }

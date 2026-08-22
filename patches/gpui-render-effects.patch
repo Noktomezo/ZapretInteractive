@@ -190,7 +190,7 @@ index ea0f5d7e31..e92b76f129 100644
 @@ -495,12 +589,121 @@ pub enum PrimitiveBatch {
      Surfaces(Range<usize>),
  }
-
+ 
 +/// Number of `float4` slots available to a GPU canvas shader.
 +pub const GPU_CANVAS_UNIFORM_SLOTS: usize = 16;
 +
@@ -332,7 +332,7 @@ index bb0412a077..d07029df79 100644
 @@ -4257,6 +4258,47 @@ impl Window {
          }
      }
-
+ 
 +    /// Paint a runtime HLSL canvas in the current stacking context.
 +    pub fn paint_gpu_canvas(&mut self, canvas: PaintGpuCanvas) {
 +        self.invalidator.debug_assert_paint();
@@ -380,7 +380,7 @@ index bb0412a077..d07029df79 100644
 @@ -6853,6 +6895,36 @@ impl From<[u8; 20]> for ElementId {
      }
  }
-
+ 
 +/// Parameters for [`Window::paint_gpu_canvas`].
 +#[derive(Clone, Copy, Debug)]
 +pub struct PaintGpuCanvas {
@@ -444,12 +444,12 @@ index 5719c12f2d..dbd7ff96b1 100644
 -    core::{HSTRING, Interface},
 +    core::{HSTRING, Interface, PCSTR},
  };
-
+ 
  use crate::directx_renderer::shader_resources::{RawShaderBytes, ShaderModule, ShaderTarget};
 @@ -73,6 +75,10 @@ struct DirectXResources {
      render_target: Option<ID3D11Texture2D>,
      render_target_view: Option<ID3D11RenderTargetView>,
-
+ 
 +    effects_intermediate_texture: ID3D11Texture2D,
 +    effects_intermediate_srv: Option<ID3D11ShaderResourceView>,
 +    effects_intermediate_view: Option<ID3D11RenderTargetView>,
@@ -501,7 +501,7 @@ index 5719c12f2d..dbd7ff96b1 100644
 @@ -454,6 +475,45 @@ impl DirectXRenderer {
              )?;
          }
-
+ 
 +        for shader in &scene.gpu_canvas_shaders {
 +            if self.pipelines.failed_gpu_canvas_shaders.contains(shader) {
 +                continue;
@@ -547,7 +547,7 @@ index 5719c12f2d..dbd7ff96b1 100644
 @@ -521,6 +581,124 @@ impl DirectXRenderer {
          )
      }
-
+ 
 +    fn draw_gpu_canvases(
 +        &mut self,
 +        scene: &Scene,
@@ -734,9 +734,9 @@ index 5719c12f2d..dbd7ff96b1 100644
              path_sprite_pipeline,
              underline_pipeline,
 @@ -988,6 +1188,75 @@ struct BatchParams {
-
+ 
  const _: () = assert!(std::mem::size_of::<BatchParams>() == 16);
-
+ 
 +fn compile_hlsl(source: &str, name: &str, entry: &str, target: &str) -> Result<Vec<u8>> {
 +    use windows::Win32::Graphics::Direct3D::{
 +        Fxc::{
@@ -864,7 +864,7 @@ index 5719c12f2d..dbd7ff96b1 100644
 +        let fragment = create_fragment_shader(device, fragment_shader)?;
          let buffer = create_buffer(device, std::mem::size_of::<T>(), buffer_size)?;
          let view = create_buffer_view(device, &buffer)?;
-
+ 
 -        Ok(PipelineState {
 +        Ok(Self {
              label,
@@ -873,7 +873,7 @@ index 5719c12f2d..dbd7ff96b1 100644
 @@ -1255,6 +1557,12 @@ fn create_swap_chain(
      Ok(swap_chain)
  }
-
+ 
 +#[derive(Clone, Copy)]
 +enum IntermediateTextureKind {
 +    Effects,
@@ -926,7 +926,7 @@ index 5719c12f2d..dbd7ff96b1 100644
          path_intermediate_msaa_texture,
 @@ -1307,17 +1632,29 @@ fn create_render_target_and_its_view(
  }
-
+ 
  #[inline]
 -fn create_path_intermediate_texture(
 +fn create_intermediate_texture(
@@ -968,7 +968,7 @@ index 5719c12f2d..dbd7ff96b1 100644
 -        output.unwrap()
 +        output.context("missing intermediate texture")?
      };
-
+ 
      let mut shader_resource_view = None;
 -    unsafe { device.CreateShaderResourceView(&texture, None, Some(&mut shader_resource_view))? };
 +    let mut render_target_view = None;
@@ -977,11 +977,11 @@ index 5719c12f2d..dbd7ff96b1 100644
 +        device.CreateShaderResourceView(&texture, None, Some(&mut shader_resource_view))?;
 +        device.CreateRenderTargetView(&texture, None, Some(&mut render_target_view))?;
 +    }
-
+ 
 -    Ok((texture, Some(shader_resource_view.unwrap())))
 +    Ok((texture, shader_resource_view, render_target_view))
  }
-
+ 
  #[inline]
 @@ -1612,6 +1954,7 @@ pub(crate) mod shader_resources {
      #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -1014,7 +1014,7 @@ diff --git a/crates/gpui_windows/src/shaders.hlsl b/crates/gpui_windows/src/shad
 index d20cb317db..a3e84d7ba0 100644
 --- a/crates/gpui_windows/src/shaders.hlsl
 +++ b/crates/gpui_windows/src/shaders.hlsl
-@@ -1266,3 +1266,88 @@ float4 polychrome_sprite_fragment(PolychromeSpriteFragmentInput input): SV_Targe
+@@ -1266,3 +1266,95 @@ float4 polychrome_sprite_fragment(PolychromeSpriteFragmentInput input): SV_Targe
      color.a *= sprite.opacity * saturate(0.5 - distance);
      return color;
  }
@@ -1079,18 +1079,25 @@ index d20cb317db..a3e84d7ba0 100644
 +    BackdropBlurPrimitive blur = backdrop_blurs[input.blur_id];
 +    float2 screen_uv = input.position.xy / global_viewport_size;
 +    float2 texel = 1.0 / global_viewport_size;
-+    float sample_step = max(blur.blur_radius * 0.5, 0.5);
-+    const float weights[5] = { 0.06136, 0.24477, 0.38774, 0.24477, 0.06136 };
++    float sample_step = blur.blur_radius / 6.0;
++    const float offsets[4] = { 0.0, 1.4584, 3.4045, 5.3518 };
++    const float weights[4] = { 0.137023, 0.239337, 0.139463, 0.052711 };
 +    float3 color = 0.0;
 +
 +    [unroll]
-+    for (int y = -2; y <= 2; y++) {
++    for (int y = -3; y <= 3; y++) {
 +        [unroll]
-+        for (int x = -2; x <= 2; x++) {
-+            float weight = weights[x + 2] * weights[y + 2];
++        for (int x = -3; x <= 3; x++) {
++            int ax = abs(x);
++            int ay = abs(y);
++            float2 offset = float2(
++                x < 0 ? -offsets[ax] : offsets[ax],
++                y < 0 ? -offsets[ay] : offsets[ay]
++            );
++            float weight = weights[ax] * weights[ay];
 +            color += t_sprite.SampleLevel(
 +                s_sprite,
-+                screen_uv + float2(x, y) * texel * sample_step,
++                screen_uv + offset * texel * sample_step,
 +                0.0
 +            ).rgb * weight;
 +        }

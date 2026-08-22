@@ -23,6 +23,8 @@ fn apply_for_profile(profile: Option<&str>) -> Result<()> {
     }
     let patch_abs = fs::canonicalize(&patch_file)?;
     let patch_str = patch_abs.to_string_lossy().replace(r"\\?\", "");
+    let migration_abs = fs::canonicalize("patches/gpui-backdrop-blur-quality.patch")?;
+    let migration_str = migration_abs.to_string_lossy().replace(r"\\?\", "");
 
     let mut candidate_dirs = Vec::new();
     if let Ok(cargo_home) = env::var("CARGO_HOME") {
@@ -41,6 +43,7 @@ fn apply_for_profile(profile: Option<&str>) -> Result<()> {
     ));
 
     let mut patched_count = 0;
+    let mut source_changed = false;
     for base in candidate_dirs {
         if !base.exists() {
             continue;
@@ -55,7 +58,12 @@ fn apply_for_profile(profile: Option<&str>) -> Result<()> {
                             let checkout_path = sub.path();
                             if checkout_path.join("crates").join("gpui").exists() {
                                 let check_reverse = Command::new("git")
-                                    .args(["apply", "--check", "--reverse"])
+                                    .args([
+                                        "apply",
+                                        "--check",
+                                        "--reverse",
+                                        "--ignore-space-change",
+                                    ])
                                     .arg(&patch_str)
                                     .current_dir(&checkout_path)
                                     .output();
@@ -71,7 +79,7 @@ fn apply_for_profile(profile: Option<&str>) -> Result<()> {
                                 }
 
                                 let check_forward = Command::new("git")
-                                    .args(["apply", "--check"])
+                                    .args(["apply", "--check", "--ignore-space-change"])
                                     .arg(&patch_str)
                                     .current_dir(&checkout_path)
                                     .output();
@@ -80,7 +88,11 @@ fn apply_for_profile(profile: Option<&str>) -> Result<()> {
                                 {
                                     println!("Applying patch to {}", checkout_path.display());
                                     let apply = Command::new("git")
-                                        .args(["apply", "--whitespace=nowarn"])
+                                        .args([
+                                            "apply",
+                                            "--whitespace=nowarn",
+                                            "--ignore-space-change",
+                                        ])
                                         .arg(&patch_str)
                                         .current_dir(&checkout_path)
                                         .status();
@@ -92,6 +104,37 @@ fn apply_for_profile(profile: Option<&str>) -> Result<()> {
                                             checkout_path.display()
                                         );
                                         patched_count += 1;
+                                        source_changed = true;
+                                    }
+                                    continue;
+                                }
+
+                                let check_migration = Command::new("git")
+                                    .args(["apply", "--check", "--ignore-space-change"])
+                                    .arg(&migration_str)
+                                    .current_dir(&checkout_path)
+                                    .output();
+                                if let Ok(out) = check_migration
+                                    && out.status.success()
+                                {
+                                    println!(
+                                        "Updating GPUI backdrop blur in {}",
+                                        checkout_path.display()
+                                    );
+                                    let apply = Command::new("git")
+                                        .args([
+                                            "apply",
+                                            "--whitespace=nowarn",
+                                            "--ignore-space-change",
+                                        ])
+                                        .arg(&migration_str)
+                                        .current_dir(&checkout_path)
+                                        .status();
+                                    if let Ok(status) = apply
+                                        && status.success()
+                                    {
+                                        patched_count += 1;
+                                        source_changed = true;
                                     }
                                 }
                             }
@@ -104,11 +147,11 @@ fn apply_for_profile(profile: Option<&str>) -> Result<()> {
     if patched_count == 0 {
         println!("Note: No unpatched GPUI checkouts found or checkouts were already patched.");
     }
-    refresh_artifacts(&patch_abs, profile)?;
+    refresh_artifacts(&patch_abs, profile, source_changed)?;
     Ok(())
 }
 
-fn refresh_artifacts(patch: &Path, profile: Option<&str>) -> Result<()> {
+fn refresh_artifacts(patch: &Path, profile: Option<&str>, source_changed: bool) -> Result<()> {
     let target_dir = env::var_os("CARGO_TARGET_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("target"));
@@ -116,7 +159,9 @@ fn refresh_artifacts(patch: &Path, profile: Option<&str>) -> Result<()> {
     let patch_bytes = fs::read(patch)
         .with_context(|| format!("failed to read GPUI patch at {}", patch.display()))?;
     let fingerprint = fingerprint(&patch_bytes);
-    if fs::read_to_string(&stamp).is_ok_and(|stored| stored.trim() == fingerprint) {
+    if !source_changed
+        && fs::read_to_string(&stamp).is_ok_and(|stored| stored.trim() == fingerprint)
+    {
         return Ok(());
     }
 
