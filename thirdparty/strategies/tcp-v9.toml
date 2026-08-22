@@ -1,0 +1,15 @@
+id = "tcp-v9"
+name = "v9"
+category = "TCP"
+categoryId = "preset-tcp"
+categoryOrder = 3
+order = 9
+content = """
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=hostfakesplit
+--dpi-desync-fooling=badseq,badsum
+--dpi-desync-hostfakesplit-mod=host=ozon.ru
+--dpi-desync-badseq-increment=0"""
+active = false
+system = true

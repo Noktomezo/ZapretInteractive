@@ -1,0 +1,15 @@
+id = "tcp-v8"
+name = "v8"
+category = "TCP"
+categoryId = "preset-tcp"
+categoryOrder = 3
+order = 8
+content = """
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=fake
+--dpi-desync-fooling=ts
+--dpi-desync-fake-tls={{4PDA}}
+--dpi-desync-fake-tls-mod=none"""
+active = false
+system = true

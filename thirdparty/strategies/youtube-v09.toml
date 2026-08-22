@@ -1,0 +1,17 @@
+id = "youtube-v09"
+name = "v9"
+category = "YouTube"
+categoryId = "preset-youtube"
+categoryOrder = 2
+order = 9
+content = """
+--filter-l7=tls
+--hostlist={{HOSTS_GOOGLE}}
+--dpi-desync-repeats=6
+--dpi-desync-fooling=badseq
+--dpi-desync-badseq-increment=2
+--dpi-desync=multidisorder
+--dpi-desync-split-pos=1,midsld
+--dpi-desync-fake-quic={{QUIC_INITIAL_GOOGLE}}"""
+active = false
+system = true

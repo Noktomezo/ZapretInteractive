@@ -1,7 +1,0 @@
---filter-l7=tls
---hostlist={{HOSTS_GOOGLE}}
---ip-id=zero
---dpi-desync=fake
---dpi-desync-repeats=6
---dpi-desync-fooling=ts
---dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}

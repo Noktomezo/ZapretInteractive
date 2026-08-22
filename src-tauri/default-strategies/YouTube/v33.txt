@@ -1,7 +1,0 @@
---filter-l7=tls
---hostlist={{HOSTS_GOOGLE}}
---ip-id=zero
---dpi-desync=multisplit
---dpi-desync-split-seqovl=652
---dpi-desync-split-pos=2
---dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}

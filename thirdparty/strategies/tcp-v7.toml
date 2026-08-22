@@ -1,0 +1,19 @@
+id = "tcp-v7"
+name = "v7"
+category = "TCP"
+categoryId = "preset-tcp"
+categoryOrder = 3
+order = 7
+content = """
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=fake,multisplit
+--dpi-desync-split-seqovl=654
+--dpi-desync-split-pos=1
+--dpi-desync-fooling=badseq,badsum
+--dpi-desync-repeats=6
+--dpi-desync-split-seqovl-pattern={{STUN}}
+--dpi-desync-fake-tls={{STUN}}
+--dpi-desync-badseq-increment=0"""
+active = false
+system = true

@@ -1,0 +1,15 @@
+id = "youtube-v25"
+name = "v25"
+category = "YouTube"
+categoryId = "preset-youtube"
+categoryOrder = 2
+order = 25
+content = """
+--filter-l7=tls
+--hostlist={{HOSTS_GOOGLE}}
+--dpi-desync=hostfakesplit
+--dpi-desync-fooling=badseq,badsum
+--dpi-desync-hostfakesplit-mod=host=mapgl.2gis.com
+--dpi-desync-badseq-increment=0"""
+active = false
+system = true

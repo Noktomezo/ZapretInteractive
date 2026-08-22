@@ -1,0 +1,17 @@
+id = "youtube-v20"
+name = "v20"
+category = "YouTube"
+categoryId = "preset-youtube"
+categoryOrder = 2
+order = 20
+content = """
+--filter-l7=tls
+--hostlist={{HOSTS_GOOGLE}}
+--ip-id=zero
+--dpi-desync=fake,fakedsplit
+--dpi-desync-repeats=6
+--dpi-desync-fooling=ts
+--dpi-desync-fakedsplit-pattern=0x00
+--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}"""
+active = false
+system = true

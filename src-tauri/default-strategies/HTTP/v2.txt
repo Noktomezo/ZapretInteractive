@@ -1,5 +1,0 @@
---filter-l7=http
-<LIST_MODE>
---dpi-desync=fakedsplit
---dpi-desync-ttl=4
---dpi-desync-repeats=16

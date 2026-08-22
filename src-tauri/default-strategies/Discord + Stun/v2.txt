@@ -1,6 +1,0 @@
---filter-udp=19294-19344,50000-50100
---filter-l7=discord,stun
---dpi-desync=fake
---dpi-desync-fake-discord={{ACTIVE_DISCORD_UDP}}
---dpi-desync-fake-stun={{ACTIVE_DISCORD_UDP}}
---dpi-desync-repeats=6

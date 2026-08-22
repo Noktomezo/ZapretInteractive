@@ -1,9 +1,0 @@
---filter-l7=tls
---hostlist={{HOSTS_GOOGLE}}
---ip-id=zero
---dpi-desync=fake,fakedsplit
---dpi-desync-split-pos=1
---dpi-desync-fooling=badseq
---dpi-desync-badseq-increment=2
---dpi-desync-repeats=8
---dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com

@@ -1,0 +1,14 @@
+id = "youtube-v19"
+name = "v19"
+category = "YouTube"
+categoryId = "preset-youtube"
+categoryOrder = 2
+order = 19
+content = """
+--filter-l7=tls
+--hostlist={{HOSTS_GOOGLE}}
+--dpi-desync=hostfakesplit
+--dpi-desync-hostfakesplit-mod=host=google.com
+--dpi-desync-fooling=ts"""
+active = false
+system = true

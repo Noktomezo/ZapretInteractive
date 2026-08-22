@@ -1,0 +1,70 @@
+name: PR Build
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-build-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: startsWith(github.head_ref, 'chore/version-bump-v')
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout pull request
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install NSIS
+        run: choco install nsis -y --no-progress
+
+      - name: Patch GPUI checkout
+        run: cargo xtask patch-gpui
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Run tests
+        run: cargo test --all-targets
+
+      - name: Run Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Build distributions
+        run: cargo xtask dist
+
+      - name: Stage tested artifacts
+        shell: pwsh
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          $cargo = Get-Content -Raw -LiteralPath Cargo.toml
+          $version = [regex]::Match($cargo, '(?m)^version\s*=\s*"(?<version>\d+\.\d+\.\d+)"').Groups['version'].Value
+          if (-not $version) { throw 'Package version not found in Cargo.toml' }
+
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item -LiteralPath "target/release/bundle/nsis/Zapret Interactive_${version}_x64-setup.exe" -Destination "dist/Zapret-Interactive-pr-$env:PR_NUMBER-windows-x86_64-setup.exe"
+          Copy-Item -LiteralPath "target/release/bundle/portable/Zapret Interactive_${version}_x64-portable.zip" -Destination "dist/Zapret-Interactive-pr-$env:PR_NUMBER-windows-x86_64-portable.zip"
+
+      - name: Upload tested artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Zapret-Interactive-pr-${{ github.event.pull_request.number }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14

@@ -1,8 +1,0 @@
---filter-l7=tls
---hostlist={{HOSTS_GOOGLE}}
---dpi-desync=fakeddisorder
---dpi-desync-fooling=md5sig
---dup=1
---dup-cutoff=n2
---dup-fooling=md5sig
---dpi-desync-split-pos=method+2

@@ -1,6 +1,0 @@
---filter-l7=tls
-<LIST_MODE>
---dpi-desync=fake
---dpi-desync-fooling=ts
---dpi-desync-fake-tls={{4PDA}}
---dpi-desync-fake-tls-mod=none

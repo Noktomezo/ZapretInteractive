@@ -1,8 +1,0 @@
---filter-l7=tls
-<LIST_MODE>
---dpi-desync=hostfakesplit
---dpi-desync-hostfakesplit-mod=host=i2.photo.2gis.com
---dpi-desync-hostfakesplit-midhost=host-2
---dpi-desync-split-seqovl=726
---dpi-desync-fooling=badsum,badseq
---dpi-desync-badseq-increment=0

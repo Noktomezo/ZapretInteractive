@@ -1,0 +1,18 @@
+id = "tcp-v5"
+name = "v5"
+category = "TCP"
+categoryId = "preset-tcp"
+categoryOrder = 3
+order = 5
+content = """
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=fake,fakeddisorder
+--dpi-desync-split-pos=1
+--dpi-desync-fake-tls={{STUN}}
+--dpi-desync-fake-tls-mod=none
+--dpi-desync-fakedsplit-pattern={{TLS_CLIENTHELLO_GOOGLE}}
+--dpi-desync-fooling=badseq,badsum
+--dpi-desync-badseq-increment=0"""
+active = false
+system = true
