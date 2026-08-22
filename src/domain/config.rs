@@ -104,6 +104,10 @@ impl ConfigRepository {
             .with_context(|| format!("не удалось прочитать {}", path.display()))?;
         let mut config: AppConfig = serde_json::from_str(&content)
             .with_context(|| format!("некорректный JSON в {}", path.display()))?;
+        let migrate_embedded_strategies = config
+            .categories
+            .iter()
+            .any(|category| !category.strategies.is_empty());
         config.binaries_path = self.resources_dir.to_string_lossy().into_owned();
 
         let strat_dir = self.strategies_dir();
@@ -135,6 +139,25 @@ impl ConfigRepository {
         } else if !config.categories.is_empty() {
             super::strategy::sync_builtin_strategies(&strat_dir, &config.categories)
                 .context("не удалось экспортировать стратегии из config.json")?;
+        }
+
+        if migrate_embedded_strategies {
+            if !loaded_strategies.is_empty() {
+                for strategy in config
+                    .categories
+                    .iter()
+                    .flat_map(|category| &category.strategies)
+                {
+                    self.save_strategy(strategy).with_context(|| {
+                        format!(
+                            "не удалось вынести стратегию {} из config.json",
+                            strategy.id
+                        )
+                    })?;
+                }
+            }
+            self.save(&config)
+                .context("не удалось удалить встроенные стратегии из config.json")?;
         }
 
         Ok(config)
@@ -271,18 +294,85 @@ mod tests {
 
     #[test]
     fn test_app_config_defaults_and_json_roundtrip() {
-        let config: AppConfig =
+        let mut config: AppConfig =
             serde_json::from_str(DEFAULT_CONFIG).expect("valid default config json");
-        assert!(!config.categories.is_empty());
+        assert!(config.categories.is_empty());
         assert!(!config.placeholders.is_empty());
         assert!(config.acrylic_material);
 
+        config.categories.push(
+            serde_json::from_value(serde_json::json!({
+                "id": "custom",
+                "name": "Custom",
+                "strategies": [{
+                    "id": "custom-v1",
+                    "name": "v1",
+                    "content": "--filter-tcp=443"
+                }]
+            }))
+            .expect("test category is valid"),
+        );
+
         let json_str = serde_json::to_string(&config).expect("failed to serialize default config");
+        assert!(!json_str.contains("\"strategies\""));
         let deserialized: AppConfig =
             serde_json::from_str(&json_str).expect("failed to deserialize config");
         assert_eq!(deserialized.categories.len(), config.categories.len());
+        assert!(
+            deserialized
+                .categories
+                .iter()
+                .all(|category| category.strategies.is_empty())
+        );
         assert_eq!(deserialized.placeholders.len(), config.placeholders.len());
         assert_eq!(deserialized.acrylic_material, config.acrylic_material);
+    }
+
+    #[test]
+    fn legacy_config_moves_strategies_to_toml_files() {
+        let root = std::env::temp_dir().join(format!(
+            "zapret_strategy_migration_{}",
+            uuid::Uuid::new_v4().simple()
+        ));
+        let repository = ConfigRepository {
+            runtime_dir: root.clone(),
+            resources_dir: root.join("thirdparty"),
+        };
+        fs::create_dir_all(root.join("thirdparty/strategies"))
+            .expect("temporary strategy directory is created");
+        let mut legacy: serde_json::Value =
+            serde_json::from_str(DEFAULT_CONFIG).expect("valid default config json");
+        legacy["categories"] = serde_json::json!([{
+            "id": "HTTP",
+            "name": "HTTP",
+            "strategies": [{
+                "id": "http-v1",
+                "name": "v1",
+                "content": "--filter-l7=http",
+                "active": true
+            }]
+        }]);
+        fs::write(
+            repository.config_path(),
+            serde_json::to_vec_pretty(&legacy).expect("legacy config is serialized"),
+        )
+        .expect("legacy config is written");
+
+        let loaded = repository
+            .load_or_create()
+            .expect("legacy config is migrated");
+        assert!(!loaded.categories.is_empty());
+        assert!(repository.strategies_dir().join("HTTP").is_dir());
+        assert!(
+            super::super::strategy::load_strategies_from_dir(&repository.strategies_dir())
+                .expect("migrated strategies are readable")
+                .iter()
+                .any(|strategy| strategy.id == "http-v1" && strategy.active)
+        );
+        let saved = fs::read_to_string(repository.config_path()).expect("config is readable");
+        assert!(!saved.contains("\"strategies\""));
+
+        let _cleanup_result = fs::remove_dir_all(root);
     }
 
     #[test]

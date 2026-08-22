@@ -114,6 +114,11 @@ mod tests {
         let mut config: AppConfig =
             serde_json::from_str(include_str!("../../assets/default-config.json"))
                 .expect("default config is part of the build");
+        let strategies = crate::domain::strategy::load_strategies_from_dir(
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("thirdparty/strategies"),
+        )
+        .expect("bundled strategies are readable");
+        config.categories = crate::domain::strategy::group_strategies_into_categories(&strategies);
         config.categories.truncate(1);
         config.categories[0].strategies.truncate(1);
         config.placeholders = vec![Placeholder {

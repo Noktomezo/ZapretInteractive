@@ -298,10 +298,11 @@ mod tests {
 
     #[test]
     fn test_populate_thirdparty_strategies() {
-        let default_config_json = include_str!("../../assets/default-config.json");
-        let parsed: serde_json::Value = serde_json::from_str(default_config_json).unwrap();
-        let categories: Vec<Category> =
-            serde_json::from_value(parsed["categories"].clone()).unwrap();
+        let bundled_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("thirdparty")
+            .join("strategies");
+        let bundled = load_strategies_from_dir(&bundled_dir).unwrap();
+        let categories = group_strategies_into_categories(&bundled);
         assert_eq!(
             categories
                 .iter()
@@ -351,9 +352,6 @@ mod tests {
         moved.category_id = "safe-category".to_string();
         assert_eq!(category_directory_name(&moved), "safe-category");
 
-        let bundled_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("thirdparty")
-            .join("strategies");
         let bundled_category_dirs = fs::read_dir(&bundled_dir)
             .unwrap()
             .flatten()
@@ -369,7 +367,6 @@ mod tests {
                     .all(|strategy| strategy.category == category_name)
             );
         }
-        let bundled = load_strategies_from_dir(&bundled_dir).unwrap();
         assert_eq!(bundled.len(), 161);
         assert!(
             group_strategies_into_categories(&bundled)

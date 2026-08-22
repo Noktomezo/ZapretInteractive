@@ -35,6 +35,7 @@ pub struct Strategy {
 pub struct Category {
     pub id: String,
     pub name: String,
+    #[serde(default, skip_serializing)]
     pub strategies: Vec<Strategy>,
     #[serde(default)]
     pub system: bool,
