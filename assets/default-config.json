@@ -967,19 +967,19 @@
         {
           "id": "unknown-udp-v2",
           "name": "v2",
-          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=10\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{QUIC_INITIAL_GOOGLE}}\n--dpi-desync-cutoff=n2",
+          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=10\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{STUN}}\n--dpi-desync-cutoff=n2",
           "active": false
         },
         {
           "id": "unknown-udp-v3",
           "name": "v3",
-          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=10\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{QUIC_INITIAL_GOOGLE}}\n--dpi-desync-cutoff=n3",
+          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=10\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{STUN}}\n--dpi-desync-cutoff=n3",
           "active": false
         },
         {
           "id": "unknown-udp-v4",
           "name": "v4",
-          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=10\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{QUIC_INITIAL_GOOGLE}}\n--dpi-desync-cutoff=n4",
+          "content": "--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535\n--filter-l7=unknown\n--dpi-desync=fake\n--dpi-desync-repeats=10\n--dpi-desync-any-protocol=1\n--dpi-desync-fake-unknown-udp={{STUN}}\n--dpi-desync-cutoff=n4",
           "active": false
         },
         {
