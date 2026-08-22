@@ -16,6 +16,8 @@ impl AppView {
                     .font_family("IBM Plex Mono")
                     .child(
                         div()
+                            .w_full()
+                            .min_w_0()
                             .flex()
                             .items_start()
                             .gap_1()
@@ -25,7 +27,13 @@ impl AppView {
                                     .text_color(muted_foreground())
                                     .child(format!("[{}]", format_timestamp(entry.timestamp))),
                             )
-                            .child(entry.message.clone()),
+                            .child(
+                                div()
+                                    .min_w_0()
+                                    .flex_1()
+                                    .whitespace_normal()
+                                    .child(entry.message.clone()),
+                            ),
                     )
             })
             .collect::<Vec<_>>();

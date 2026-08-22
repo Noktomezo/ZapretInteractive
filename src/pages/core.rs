@@ -352,7 +352,7 @@ fn critical_files_block(state: Entity<crate::app_state::AppState>, cx: &App) -> 
     } else if checking {
         t!("home.checking_critical_files")
     } else {
-        t!("home.btn_download_binaries")
+        t!("home.btn_restore_critical_files")
     };
 
     let content = div()

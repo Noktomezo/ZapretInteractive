@@ -280,16 +280,17 @@ fn render_file_update_action(
     if !needs_download {
         return None;
     }
-    let download_label = app_state.download_progress.as_ref().map_or_else(
-        || t!("home.btn_download_binaries"),
-        |progress| {
-            t!(
-                "home.downloading_files",
-                current = progress.current,
-                total = progress.total
-            )
-        },
-    );
+    let download_label = if let Some(progress) = &app_state.download_progress {
+        t!(
+            "home.downloading_files",
+            current = progress.current,
+            total = progress.total
+        )
+    } else if app_state.health.binaries_ok {
+        t!("home.btn_update_critical_files")
+    } else {
+        t!("home.btn_restore_critical_files")
+    };
 
     let state_download = state;
 
