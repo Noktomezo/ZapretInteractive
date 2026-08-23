@@ -87,10 +87,22 @@ SetCompressor /SOLID lzma
 !insertmacro MUI_LANGUAGE "English"
 
 Var PassiveMode
+Var RestartApp
 Function .onInit
-  ${GetOptions} $CMDLINE "/P" $PassiveMode
+  ${GetOptions} $CMDLINE "/P" $0
   IfErrors +2 0
     StrCpy $PassiveMode 1
+
+  ${GetOptions} $CMDLINE "/R" $0
+  IfErrors +2 0
+    StrCpy $RestartApp 1
+
+  ; GPUI 2.0.0 launches updates without arguments, but uses this temp filename.
+  StrCpy $0 $EXEFILE 24
+  ${If} $0 == "ZapretInteractive-setup-"
+    StrCpy $PassiveMode 1
+    StrCpy $RestartApp 1
+  ${EndIf}
 
   ; Tauri stores the selected path in the standard uninstall metadata.
   ReadRegStr $0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "InstallLocation"
@@ -145,14 +157,9 @@ Section "MainSection" SEC01
 SectionEnd
 
 Function .onInstSuccess
-  IfSilent check_restart 0
-  ${IfThen} $PassiveMode == 1 ${|} Goto check_restart ${|}
-  Goto restart_done
-  check_restart:
-    ${GetOptions} $CMDLINE "/R" $0
-    IfErrors restart_done 0
-      Exec '"$INSTDIR\${APP_EXE_NAME}"'
-  restart_done:
+  ${If} $RestartApp == 1
+    Exec '"$INSTDIR\${APP_EXE_NAME}"'
+  ${EndIf}
 FunctionEnd
 
 Section "Uninstall"
