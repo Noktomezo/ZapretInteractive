@@ -292,7 +292,7 @@ fn critical_files_block(state: Entity<crate::app_state::AppState>, cx: &App) -> 
         svg()
             .path("icons/refresh-cw.svg")
             .size(px(28.))
-            .text_color(colors::orange())
+            .text_color(colors::accent())
             .with_animation(
                 "critical-files-loader",
                 Animation::new(Duration::from_millis(850)).repeat(),
@@ -307,7 +307,7 @@ fn critical_files_block(state: Entity<crate::app_state::AppState>, cx: &App) -> 
         svg()
             .path("icons/triangle-alert.svg")
             .size(px(28.))
-            .text_color(colors::orange())
+            .text_color(colors::accent())
             .with_animation(
                 "critical-files-pulse",
                 Animation::new(crate::ui::foundation::motion::UPDATE_PULSE_MOTION).repeat(),
@@ -369,8 +369,8 @@ fn critical_files_block(state: Entity<crate::app_state::AppState>, cx: &App) -> 
                 .justify_center()
                 .rounded_full()
                 .border_1()
-                .border_color(colors::orange().opacity(0.35))
-                .bg(colors::orange().opacity(0.10))
+                .border_color(colors::accent().opacity(0.35))
+                .bg(colors::accent().opacity(0.10))
                 .child(status_icon),
         )
         .child(
