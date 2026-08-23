@@ -32,7 +32,7 @@ impl AppView {
                     .child(interactive_module_card(
                         t!("modules.tg_proxy_title"),
                         t!("modules.tg_proxy_desc"),
-                        ("icons/send.svg", rgba(0x4385beff)),
+                        ("icons/send.svg", colors::blue()),
                         config.tg_ws_proxy_module_enabled,
                         cx.listener(|this, _, _, cx| this.navigate(Route::TgProxy, cx)),
                         {
@@ -208,7 +208,6 @@ impl AppView {
                                         "mode-ipset",
                                         t!("home.mode_ipset"),
                                         mode == ListMode::Ipset,
-                                        success(),
                                         move |_, window, cx| {
                                             if matches!(status, ConnectionStatus::Disconnected) {
                                                 animate_toggle(
@@ -227,7 +226,6 @@ impl AppView {
                                         "mode-exclude",
                                         t!("home.mode_exclude"),
                                         mode == ListMode::Exclude,
-                                        warning(),
                                         {
                                             let state = self.state.clone();
                                             move |_, window, cx| {
@@ -454,13 +452,13 @@ fn mode_indicator(mode: ListMode, cx: &App) -> AnyElement {
         .absolute()
         .top(px(2.))
         .bottom(px(2.))
-        .w(px(168.))
+        .w(px(167.))
         .rounded(px(6.))
         .border_1()
         .border_color(color.opacity(0.42))
         .bg(color.opacity(if mode == ListMode::Ipset { 0.20 } else { 0.22 }))
         .shadow_sm()
-        .left(px(2. + 170. * progress))
+        .left(px(2. + 169. * progress))
         .into_any_element()
 }
 
@@ -468,7 +466,6 @@ fn mode_item(
     id: &'static str,
     label: impl Into<SharedString>,
     selected: bool,
-    color: Rgba,
     click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
 ) -> Stateful<Div> {
     div()
@@ -483,11 +480,7 @@ fn mode_item(
         .rounded(px(6.))
         .text_size(px(12.))
         .line_height(px(14.4))
-        .text_color(if selected {
-            color
-        } else {
-            foreground().opacity(0.8)
-        })
+        .text_color(foreground().opacity(if selected { 1.0 } else { 0.8 }))
         .cursor_pointer()
         .on_click(click)
         .child(label.into())

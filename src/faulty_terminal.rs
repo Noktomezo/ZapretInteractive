@@ -4,6 +4,7 @@ use gpui::prelude::*;
 use gpui::*;
 
 use crate::domain::ConnectionStatus;
+use crate::ui::foundation::colors;
 
 const TITLEBAR_HEIGHT: f32 = 40.0;
 const REFERENCE_CANVAS_HEIGHT: f32 = 700.0;
@@ -23,31 +24,35 @@ struct TerminalStyle {
     scanline: f32,
 }
 
+#[inline(always)]
+fn shader_color(color: Rgba) -> [f32; 4] {
+    [color.r, color.g, color.b, color.a]
+}
+
 impl TerminalStyle {
     fn for_status(status: ConnectionStatus, dark: bool) -> Self {
         let tint = match (status, dark) {
-            (ConnectionStatus::Connected, true) => [0.5059, 0.6863, 0.4235, 1.0],
-            (ConnectionStatus::Connected, false) => [0.4000, 0.5020, 0.0431, 1.0],
-            (ConnectionStatus::Connecting | ConnectionStatus::Disconnecting, _) => {
-                if dark {
-                    [0.9294, 0.7059, 0.2863, 1.0]
-                } else {
-                    [0.6745, 0.4902, 0.0588, 1.0]
-                }
+            (ConnectionStatus::Connected, true) => shader_color(colors::green_400()),
+            (ConnectionStatus::Connected, false) => shader_color(colors::green_600()),
+            (ConnectionStatus::Connecting | ConnectionStatus::Disconnecting, true) => {
+                shader_color(colors::yellow_400())
+            }
+            (ConnectionStatus::Connecting | ConnectionStatus::Disconnecting, false) => {
+                shader_color(colors::yellow_600())
             }
             (ConnectionStatus::Disconnected | ConnectionStatus::Error, true) => {
-                [0.8510, 0.5255, 0.4706, 1.0]
+                shader_color(colors::red_400())
             }
             (ConnectionStatus::Disconnected | ConnectionStatus::Error, false) => {
-                [0.6863, 0.1882, 0.1608, 1.0]
+                shader_color(colors::red_600())
             }
         };
         Self {
             tint,
             background: if dark {
-                [0.0824, 0.0745, 0.0745, 1.0]
+                shader_color(colors::black())
             } else {
-                [0.9843, 0.9569, 0.9020, 1.0]
+                shader_color(colors::paper())
             },
             flicker: f32::from(!matches!(status, ConnectionStatus::Connected)),
             curvature: f32::from(!matches!(
