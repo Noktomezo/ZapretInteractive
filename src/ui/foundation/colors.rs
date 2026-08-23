@@ -96,113 +96,65 @@ pub fn is_dark() -> bool {
     IS_DARK_THEME.load(Ordering::Relaxed)
 }
 
-// ZapretInteractive semantic tokens. The accent intentionally stays Flexoki yellow.
+// Semantic tokens use the canonical Flexoki palette from assets/THEME.md.
 #[inline(always)]
 pub fn background() -> Rgba {
-    if is_dark() {
-        rgba(0x110c0bff)
-    } else {
-        rgba(0xfbf4e6ff)
-    }
+    black()
 }
 
 #[inline(always)]
 pub fn foreground() -> Rgba {
-    if is_dark() {
-        rgba(0xd3cdbfff)
-    } else {
-        rgba(0x2a1e1aff)
-    }
+    base_200()
 }
 
 #[inline(always)]
 pub fn card() -> Rgba {
-    if is_dark() {
-        rgba(0x181210f0)
-    } else {
-        rgba(0xfefcf4eb)
-    }
+    base_950().opacity(if is_dark() { 0.94 } else { 0.92 })
 }
 
 #[inline(always)]
 pub fn popover() -> Rgba {
-    if is_dark() {
-        rgba(0x241e1cf7)
-    } else {
-        rgba(0xfefcf4f7)
-    }
+    base_900().opacity(0.97)
 }
 
 #[inline(always)]
 pub fn secondary() -> Rgba {
-    if is_dark() {
-        rgba(0x302a28ff)
-    } else {
-        rgba(0xece3d6ff)
-    }
+    base_900()
 }
 
 #[inline(always)]
 pub fn muted() -> Rgba {
-    if is_dark() {
-        rgba(0x3a3432ff)
-    } else {
-        rgba(0xe4ddd3ff)
-    }
+    base_850()
 }
 
 #[inline(always)]
 pub fn muted_foreground() -> Rgba {
-    if is_dark() {
-        rgba(0xb5ada0ff)
-    } else {
-        rgba(0x5f524cff)
-    }
+    base_500()
 }
 
 #[inline(always)]
 pub fn border() -> Rgba {
-    if is_dark() {
-        rgba(0x352f2dff)
-    } else {
-        rgba(0xd7ccc0ff)
-    }
+    base_800()
 }
 
 #[inline(always)]
 pub fn input() -> Rgba {
-    if is_dark() {
-        rgba(0x3a3432ff)
-    } else {
-        rgba(0xdfd6c9ff)
-    }
+    base_850()
 }
 
 #[inline(always)]
 pub fn success() -> Rgba {
-    if is_dark() {
-        rgba(0x66ac69ff)
-    } else {
-        rgba(0x33903cff)
-    }
+    green()
 }
 
 #[inline(always)]
 pub fn warning() -> Rgba {
-    if is_dark() {
-        rgba(0xb89d2bff)
-    } else {
-        rgba(0xab7500ff)
-    }
+    yellow()
 }
 
 #[inline(always)]
 pub fn destructive() -> Rgba {
-    if is_dark() {
-        rgba(0xdb6656ff)
-    } else {
-        rgba(0xdf000dff)
-    }
+    red()
 }
 
 #[inline(always)]

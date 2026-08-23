@@ -300,7 +300,7 @@ impl AppView {
                     _ => String::new().into(),
                 };
                 div()
-                    .text_color(muted_foreground())
+                    .text_color(foreground())
                     .child(label)
                     .into_any_element()
             }
@@ -329,7 +329,7 @@ impl AppView {
                         "breadcrumb-parent-{parent_label}"
                     )))
                     .cursor_pointer()
-                    .text_color(mix_color(muted_foreground(), foreground(), hover))
+                    .text_color(mix_color(foreground(), accent(), hover))
                     .on_hover(move |hovered, window, cx| {
                         crate::ui::foundation::hover_motion::set_hovered(
                             hover_key.clone(),
@@ -351,11 +351,7 @@ impl AppView {
                     .child(parent_label),
             )
             .child(div().text_color(muted_foreground().opacity(0.5)).child("/"))
-            .child(
-                div()
-                    .text_color(foreground().opacity(0.85))
-                    .child(current_label),
-            )
+            .child(div().text_color(foreground()).child(current_label))
             .into_any_element()
     }
 
@@ -510,7 +506,7 @@ impl AppView {
         } else {
             accent()
         };
-        let icon_color = mix_color(muted_foreground(), target_foreground, active_t);
+        let icon_color = mix_color(foreground(), target_foreground, active_t);
 
         if (selected_alpha > 0.0 && selected_alpha < 1.0)
             || (hover_alpha > 0.0 && hover_alpha < 1.0)
@@ -827,7 +823,7 @@ fn titlebar_button_base(
             secondary().opacity(0.70 * hover)
         })
         .text_color(mix_color(
-            muted_foreground(),
+            foreground(),
             if is_destructive {
                 destructive()
             } else {
@@ -846,10 +842,7 @@ fn titlebar_button_base(
 }
 
 fn titlebar_icon(path: &'static str) -> Svg {
-    svg()
-        .path(path)
-        .size(px(14.))
-        .text_color(foreground().opacity(0.82))
+    svg().path(path).size(px(14.)).text_color(foreground())
 }
 
 fn destructive_titlebar_icon(path: &'static str, cx: &App) -> Div {
@@ -869,7 +862,7 @@ fn destructive_titlebar_icon(path: &'static str, cx: &App) -> Div {
                     svg()
                         .path(path)
                         .size_4()
-                        .text_color(muted_foreground())
+                        .text_color(foreground())
                         .opacity(1.0 - hover),
                 ),
         )
@@ -905,7 +898,7 @@ fn sidebar_icon(progress: f32) -> Div {
             svg()
                 .path("icons/panel-left-close.svg")
                 .size(px(14.))
-                .text_color(foreground().opacity(0.82))
+                .text_color(foreground())
                 .opacity(progress),
         )
         .child(
@@ -914,7 +907,7 @@ fn sidebar_icon(progress: f32) -> Div {
                 .inset_0()
                 .path("icons/panel-left-open.svg")
                 .size(px(14.))
-                .text_color(foreground().opacity(0.82))
+                .text_color(foreground())
                 .opacity(1. - progress),
         )
 }
