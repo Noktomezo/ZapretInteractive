@@ -197,7 +197,7 @@ where
 
     #[cfg(windows)]
     {
-        duct::cmd(&installer_path, &[] as &[&str])
+        duct::cmd(&installer_path, ["/P", "/R"])
             .start()
             .with_context(|| {
                 format!("failed to launch installer at {}", installer_path.display())

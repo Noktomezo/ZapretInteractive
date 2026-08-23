@@ -68,11 +68,14 @@ SetCompressor /SOLID lzma
 !endif
 
 ; Modern UI Pages
+!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
 !insertmacro MUI_PAGE_WELCOME
+!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !define MUI_FINISHPAGE_RUN "$INSTDIR\${APP_EXE_NAME}"
 !define MUI_FINISHPAGE_RUN_TEXT "Запустить ${PRODUCT_NAME}"
+!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
 !insertmacro MUI_PAGE_FINISH
 
 ; Uninstaller Pages
@@ -83,9 +86,26 @@ SetCompressor /SOLID lzma
 !insertmacro MUI_LANGUAGE "Russian"
 !insertmacro MUI_LANGUAGE "English"
 
+Var PassiveMode
 Function .onInit
+  ${GetOptions} $CMDLINE "/P" $PassiveMode
+  IfErrors +2 0
+    StrCpy $PassiveMode 1
+
+  ; Tauri stores the selected path in the standard uninstall metadata.
+  ReadRegStr $0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "InstallLocation"
+  ${If} $0 != ""
+    StrCpy $1 $0 1
+    ${IfThen} $1 == '"' ${|} StrCpy $0 $0 -1 1 ${|}
+    StrCpy $INSTDIR $0
+  ${EndIf}
+
   ; Close running instances of app and winws if updating
   nsExec::Exec 'taskkill /F /IM "Zapret Interactive.exe" /IM "ZapretInteractive.exe" /IM "winws.exe" /T'
+FunctionEnd
+
+Function SkipIfPassive
+  ${IfThen} $PassiveMode == 1 ${|} Abort ${|}
 FunctionEnd
 
 Section "MainSection" SEC01
@@ -112,6 +132,7 @@ Section "MainSection" SEC01
   ; Registry Keys
   WriteRegStr HKCU "Software\${PRODUCT_NAME}" "" "$INSTDIR"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayName" "${PRODUCT_NAME}"
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "InstallLocation" '$INSTDIR'
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "UninstallString" "$INSTDIR\uninstall.exe"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayIcon" "$INSTDIR\${APP_EXE_NAME}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayVersion" "${PRODUCT_VERSION}"
@@ -119,7 +140,20 @@ Section "MainSection" SEC01
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "Publisher" "${PRODUCT_PUBLISHER}"
   WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "NoModify" 1
   WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "NoRepair" 1
+
+  ${IfThen} $PassiveMode == 1 ${|} SetAutoClose true ${|}
 SectionEnd
+
+Function .onInstSuccess
+  IfSilent check_restart 0
+  ${IfThen} $PassiveMode == 1 ${|} Goto check_restart ${|}
+  Goto restart_done
+  check_restart:
+    ${GetOptions} $CMDLINE "/R" $0
+    IfErrors restart_done 0
+      Exec '"$INSTDIR\${APP_EXE_NAME}"'
+  restart_done:
+FunctionEnd
 
 Section "Uninstall"
   nsExec::Exec 'taskkill /F /IM "ZapretInteractive.exe" /IM "Zapret Interactive.exe" /IM "winws.exe" /T'
