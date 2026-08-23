@@ -3,7 +3,7 @@ use std::time::Duration;
 use gpui::prelude::*;
 use gpui::*;
 
-use crate::ui::foundation::control_style::{CONTROL_FONT_FAMILY, DROPDOWN_CONTROL_HEIGHT};
+use crate::ui::foundation::control_style::{CONTROL_FONT_FAMILY, CONTROL_HEIGHT};
 use crate::ui::foundation::motion::{CONTROL_MOTION, mix_color};
 
 const MARQUEE_DURATION: Duration = Duration::from_millis(1_800);
@@ -85,7 +85,7 @@ impl RenderOnce for MarqueeText {
         let anchor = div()
             .relative()
             .w(viewport_width)
-            .h(DROPDOWN_CONTROL_HEIGHT)
+            .h(CONTROL_HEIGHT)
             .flex_none();
         let fade_layer = animated_edge_fades(self.fade_color, self.fade_motion);
 

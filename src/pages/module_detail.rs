@@ -103,7 +103,7 @@ pub(super) fn module_power_button(
 
     div()
         .id(id)
-        .h(px(36.))
+        .h(crate::ui::foundation::control_style::CONTROL_HEIGHT)
         .px(px(14.))
         .flex()
         .items_center()
@@ -289,7 +289,7 @@ pub(super) fn input_control(
 ) -> Div {
     div()
         .w(width)
-        .h(px(36.))
+        .h(crate::ui::foundation::control_style::CONTROL_HEIGHT)
         .px_3()
         .flex_none()
         .rounded_md()

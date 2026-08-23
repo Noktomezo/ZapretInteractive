@@ -7,7 +7,7 @@ use super::marquee_text::{MarqueeFade, MarqueeText, control_text_width};
 use super::smooth_scroll::ScrollableColumn;
 use crate::ui::foundation::colors;
 use crate::ui::foundation::control_style::{
-    ControlTypography, DROPDOWN_CONTROL_HEIGHT, DROPDOWN_CONTROL_WIDTH, DROPDOWN_ICON_LABEL_WIDTH,
+    CONTROL_HEIGHT, ControlTypography, DROPDOWN_CONTROL_WIDTH, DROPDOWN_ICON_LABEL_WIDTH,
     DROPDOWN_LABEL_WIDTH, DROPDOWN_MENU_ICON_LABEL_WIDTH, DROPDOWN_MENU_LABEL_WIDTH,
     DROPDOWN_TRAILING_GUTTER,
 };
@@ -17,7 +17,6 @@ use crate::ui::foundation::motion::{
 };
 use crate::ui::resolve_asset_path;
 
-pub const CONTROL_HEIGHT: Pixels = DROPDOWN_CONTROL_HEIGHT;
 pub const CONTROL_WIDTH: Pixels = DROPDOWN_CONTROL_WIDTH;
 const MENU_MAX_HEIGHT: Pixels = px(306.0);
 

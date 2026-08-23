@@ -12,6 +12,7 @@ pub enum BadgeVariant {
     Accent,
     Success,
     Warning,
+    Orange,
     Destructive,
     Outline,
 }
@@ -82,6 +83,11 @@ impl Badge {
 
     pub fn warning(mut self) -> Self {
         self.variant = BadgeVariant::Warning;
+        self
+    }
+
+    pub fn orange(mut self) -> Self {
+        self.variant = BadgeVariant::Orange;
         self
     }
 
@@ -170,6 +176,11 @@ impl IntoElement for Badge {
                 colors::warning().opacity(0.15),
                 colors::warning().opacity(0.40),
                 colors::warning(),
+            ),
+            BadgeVariant::Orange => (
+                colors::orange().opacity(0.12),
+                colors::orange().opacity(0.40),
+                colors::orange(),
             ),
             BadgeVariant::Destructive => (
                 colors::destructive().opacity(0.15),

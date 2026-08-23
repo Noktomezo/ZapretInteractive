@@ -158,7 +158,7 @@ impl AppView {
             .child(
                 div()
                     .id("toggle-tg-info")
-                    .size(px(36.))
+                    .size(crate::ui::foundation::control_style::CONTROL_HEIGHT)
                     .flex_none()
                     .flex()
                     .items_center()
