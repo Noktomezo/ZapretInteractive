@@ -25,9 +25,11 @@ struct LatestManifest {
 struct ManifestPlatforms {
     #[serde(rename = "windows-x86_64")]
     windows_x86_64: PlatformTarget,
+    #[serde(rename = "windows-x86_64-nsis")]
+    windows_x86_64_nsis: PlatformTarget,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 struct PlatformTarget {
     signature: String,
     url: String,
@@ -367,37 +369,24 @@ fn build_portable_bundle() -> Result<()> {
 
 fn generate_manifest(args: &[String]) -> Result<()> {
     let version = get_app_version()?;
-    let tag = format!("v{version}");
-    let zip_name = format!("Zapret Interactive_{version}_x64-portable.zip");
-    let encoded_zip_name = zip_name.replace(' ', "%20");
-    let url = format!(
-        "https://github.com/Noktomezo/ZapretInteractive/releases/download/{tag}/{encoded_zip_name}"
-    );
+    let setup_name = format!("Zapret Interactive_{version}_x64-setup.exe");
 
     let signature = if let Some(sig_idx) = args.iter().position(|a| a == "--sig") {
         args.get(sig_idx + 1)
             .cloned()
             .context("--sig requires a signature value or file path")?
     } else if let Ok(sig_file) =
-        fs::read_to_string(format!("target/release/bundle/portable/{zip_name}.sig"))
-            .or_else(|_| fs::read_to_string(format!("target/release/bundle/nsis/{zip_name}.sig")))
+        fs::read_to_string(format!("target/release/bundle/nsis/{setup_name}.sig"))
     {
         sig_file.trim().to_string()
-    } else if let Ok(sig_env) = env::var("MINISIGN_SIGNATURE") {
-        sig_env
     } else {
-        String::new()
+        env::var("MINISIGN_SIGNATURE").unwrap_or_default()
     };
+    if signature.trim().is_empty() {
+        bail!("updater manifest requires a non-empty installer signature");
+    }
 
-    let manifest = LatestManifest {
-        version: tag,
-        notes: format!("Zapret Interactive {version} Release"),
-        pub_date: Utc::now().to_rfc3339(),
-        platforms: ManifestPlatforms {
-            windows_x86_64: PlatformTarget { signature, url },
-        },
-    };
-
+    let manifest = latest_manifest(&version, signature, Utc::now().to_rfc3339());
     let json_content = serde_json::to_string_pretty(&manifest)?;
 
     let paths = [
@@ -417,6 +406,24 @@ fn generate_manifest(args: &[String]) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn latest_manifest(version: &str, signature: String, pub_date: String) -> LatestManifest {
+    let setup_name = format!("Zapret Interactive_{version}_x64-setup.exe");
+    let encoded_setup_name = setup_name.replace(' ', "%20");
+    let url = format!(
+        "https://github.com/Noktomezo/ZapretInteractive/releases/download/v{version}/{encoded_setup_name}"
+    );
+    let target = PlatformTarget { signature, url };
+    LatestManifest {
+        version: version.to_owned(),
+        notes: format!("Zapret Interactive {version} Release"),
+        pub_date,
+        platforms: ManifestPlatforms {
+            windows_x86_64: target.clone(),
+            windows_x86_64_nsis: target,
+        },
+    }
 }
 
 fn make_dev_icon() -> Result<()> {
@@ -473,4 +480,29 @@ fn make_dev_icon() -> Result<()> {
         sizes.len()
     );
     Ok(())
+}
+
+#[cfg(test)]
+mod manifest_tests {
+    use super::latest_manifest;
+
+    #[test]
+    fn tauri_manifest_targets_the_signed_nsis_installer() {
+        let json = serde_json::to_value(latest_manifest(
+            "1.7.0",
+            "signature".to_owned(),
+            "2026-08-23T00:00:00Z".to_owned(),
+        ))
+        .unwrap();
+
+        assert_eq!(json["version"], "1.7.0");
+        assert_eq!(
+            json["platforms"]["windows-x86_64"],
+            json["platforms"]["windows-x86_64-nsis"]
+        );
+        assert_eq!(
+            json["platforms"]["windows-x86_64"]["url"],
+            "https://github.com/Noktomezo/ZapretInteractive/releases/download/v1.7.0/Zapret%20Interactive_1.7.0_x64-setup.exe"
+        );
+    }
 }
