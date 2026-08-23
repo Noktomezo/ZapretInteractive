@@ -30,8 +30,8 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
 
-      - name: Install NSIS
-        run: choco install nsis -y --no-progress
+      - name: Install packaging tools
+        run: choco install nsis upx -y --no-progress
 
       - name: Patch GPUI checkout
         run: cargo xtask patch-gpui

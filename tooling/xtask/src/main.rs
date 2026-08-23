@@ -145,9 +145,25 @@ fn build_release() -> Result<()> {
             shipping_exe.display()
         )
     })?;
+    compress_release_executable(&shipping_exe)?;
     sync_release_resources()?;
 
     println!("Release binary ready at {}", shipping_exe.display());
+    Ok(())
+}
+
+fn compress_release_executable(executable: &Path) -> Result<()> {
+    let original_size = fs::metadata(executable)?.len();
+    let status = Command::new("upx")
+        .args(["--best", "--lzma", "--"])
+        .arg(executable)
+        .status()
+        .context("Failed to run UPX. Install it before building distributions")?;
+    if !status.success() {
+        bail!("UPX failed with exit code {:?}", status.code());
+    }
+    let compressed_size = fs::metadata(executable)?.len();
+    println!("UPX: {original_size} -> {compressed_size} bytes");
     Ok(())
 }
 
