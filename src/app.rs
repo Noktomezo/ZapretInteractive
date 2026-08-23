@@ -20,10 +20,6 @@ const SIDEBAR_MOTION: Duration = Duration::from_millis(250);
 const SIDEBAR_EXPANDED_WIDTH: f32 = 182.4;
 const SIDEBAR_COLLAPSED_WIDTH: f32 = 40.0;
 
-fn shell_surface_alpha(acrylic_progress: f32) -> f32 {
-    (1.0 - 0.5 * acrylic_progress).clamp(0.5, 1.0)
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Route {
     Home,
@@ -126,7 +122,7 @@ impl Render for AppView {
         let is_home = matches!(self.route, Route::Home);
         let breadcrumb = self.breadcrumb(cx);
         let page = page_transition(self.render_page(cx), self.page_revision);
-        let canvas_opacity = (1.0 - 0.50 * acrylic_progress).clamp(0.50, 1.0);
+        let shell_opacity = (1.0 - 0.50 * acrylic_progress).clamp(0.50, 1.0);
 
         let editor_closing_progress = if self.editor.is_some() {
             Some(None)
@@ -192,7 +188,7 @@ impl Render for AppView {
         div()
             .size_full()
             .font_family("IBM Plex Sans")
-            .bg(background().opacity(canvas_opacity))
+            .bg(card_color().opacity(shell_opacity))
             .text_color(foreground())
             .flex()
             .flex_col()
@@ -414,7 +410,7 @@ impl AppView {
                 "icons/info.svg",
             ),
         ];
-        let bar_alpha = shell_surface_alpha(acrylic_progress);
+        let bar_alpha = (1.0 - acrylic_progress).clamp(0.0, 1.0);
         div()
             .h_full()
             .w(px(SIDEBAR_COLLAPSED_WIDTH
@@ -617,7 +613,7 @@ fn titlebar(
     let update_button =
         titlebar_update_button(app_update, is_updating, update_progress, state.clone(), cx);
 
-    let bar_alpha = shell_surface_alpha(acrylic_progress);
+    let bar_alpha = (1.0 - acrylic_progress).clamp(0.0, 1.0);
     div()
         .id("titlebar")
         .h(px(SIDEBAR_COLLAPSED_WIDTH))
@@ -939,7 +935,7 @@ fn page_transition(content: AnyElement, revision: u64) -> AnyElement {
 
 #[cfg(test)]
 mod tests {
-    use super::{acrylic_motion, shell_surface_alpha, sidebar_motion};
+    use super::{acrylic_motion, sidebar_motion};
 
     #[test]
     fn sidebar_starts_expanded() {
@@ -951,11 +947,5 @@ mod tests {
     fn acrylic_motion_samples_correctly() {
         assert_eq!(acrylic_motion(true).sample(), (1., false));
         assert_eq!(acrylic_motion(false).sample(), (0., false));
-    }
-
-    #[test]
-    fn acrylic_shell_keeps_half_of_its_surface_tint() {
-        assert_eq!(shell_surface_alpha(0.0), 1.0);
-        assert_eq!(shell_surface_alpha(1.0), 0.5);
     }
 }
