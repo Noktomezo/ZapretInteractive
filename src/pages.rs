@@ -15,7 +15,7 @@ use crate::ui::components::text_input::TextInput;
 use crate::ui::components::toggle_switch::{animate_toggle, switch};
 use crate::ui::foundation::colors::{
     self, accent_foreground, background, border, card as card_color, destructive as danger,
-    foreground, input, muted_foreground, success, warning, yellow as accent,
+    foreground, muted_foreground, success, warning, yellow as accent,
 };
 use crate::ui::foundation::element_ext::ElementPrepaintExt as _;
 use crate::ui::foundation::motion::mix_color;

@@ -3,13 +3,14 @@ use gpui::*;
 
 use crate::ui::components::text_input::{TextInput, TextInputState};
 use crate::ui::foundation::colors::{self, border, input, muted_foreground};
-use crate::ui::foundation::control_style::CONTROL_HEIGHT;
+use crate::ui::foundation::control_style::{CONTROL_HEIGHT, ControlTypography};
 
 /// Container styles for styled text inputs.
 pub fn form_input_container() -> Div {
     div()
         .h(CONTROL_HEIGHT)
         .px_3()
+        .control_text()
         .rounded_md()
         .border_1()
         .border_color(border().opacity(0.8))
@@ -21,6 +22,7 @@ pub struct FormInput {
     state: Entity<TextInputState>,
     width: Option<Pixels>,
     height: Option<Pixels>,
+    trailing: Option<AnyElement>,
 }
 
 impl FormInput {
@@ -29,6 +31,7 @@ impl FormInput {
             state: state.clone(),
             width: None,
             height: None,
+            trailing: None,
         }
     }
 
@@ -41,6 +44,11 @@ impl FormInput {
         self.height = Some(height);
         self
     }
+
+    pub fn trailing(mut self, action: impl IntoElement) -> Self {
+        self.trailing = Some(action.into_any_element());
+        self
+    }
 }
 
 impl IntoElement for FormInput {
@@ -48,13 +56,28 @@ impl IntoElement for FormInput {
 
     fn into_element(self) -> Self::Element {
         let mut el = form_input_container();
-        if let Some(w) = self.width {
-            el = el.w(w).flex_none();
-        }
         if let Some(h) = self.height {
             el = el.h(h);
         }
-        el.child(TextInput::new(&self.state)).into_any_element()
+        let Some(trailing) = self.trailing else {
+            if let Some(w) = self.width {
+                el = el.w(w).flex_none();
+            }
+            return el.child(TextInput::new(&self.state)).into_any_element();
+        };
+
+        let mut wrapper = div().relative().h(self.height.unwrap_or(CONTROL_HEIGHT));
+        if let Some(w) = self.width {
+            wrapper = wrapper.w(w).flex_none();
+        }
+        wrapper
+            .child(
+                el.w_full()
+                    .pr(CONTROL_HEIGHT + px(4.0))
+                    .child(TextInput::new(&self.state)),
+            )
+            .child(div().absolute().top_0().right_0().child(trailing))
+            .into_any_element()
     }
 }
 
