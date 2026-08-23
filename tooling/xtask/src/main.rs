@@ -410,9 +410,9 @@ fn generate_manifest(args: &[String]) -> Result<()> {
 
 fn latest_manifest(version: &str, signature: String, pub_date: String) -> LatestManifest {
     let setup_name = format!("Zapret Interactive_{version}_x64-setup.exe");
-    let encoded_setup_name = setup_name.replace(' ', "%20");
+    let release_setup_name = setup_name.replace(' ', ".");
     let url = format!(
-        "https://github.com/Noktomezo/ZapretInteractive/releases/download/v{version}/{encoded_setup_name}"
+        "https://github.com/Noktomezo/ZapretInteractive/releases/download/v{version}/{release_setup_name}"
     );
     let target = PlatformTarget { signature, url };
     LatestManifest {
@@ -502,7 +502,7 @@ mod manifest_tests {
         );
         assert_eq!(
             json["platforms"]["windows-x86_64"]["url"],
-            "https://github.com/Noktomezo/ZapretInteractive/releases/download/v1.7.0/Zapret%20Interactive_1.7.0_x64-setup.exe"
+            "https://github.com/Noktomezo/ZapretInteractive/releases/download/v1.7.0/Zapret.Interactive_1.7.0_x64-setup.exe"
         );
     }
 }
