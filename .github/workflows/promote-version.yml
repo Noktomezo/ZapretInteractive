@@ -140,7 +140,7 @@ jobs:
           VERSION: ${{ steps.release.outputs.version }}
         run: |
           set -euo pipefail
-          mv "dist/Zapret-Interactive-pr-${PR_NUMBER}-windows-x86_64-setup.exe" "dist/Zapret Interactive_${VERSION}_x64-setup.exe"
+          mv "dist/Zapret-Interactive-pr-${PR_NUMBER}-windows-x86_64-setup.exe" "dist/Zapret Interactive_${VERSION}_x64-installer.exe"
           mv "dist/Zapret-Interactive-pr-${PR_NUMBER}-windows-x86_64-portable.zip" "dist/Zapret Interactive_${VERSION}_x64-portable.zip"
 
       - name: Install Rust
@@ -192,7 +192,7 @@ jobs:
             sha256sum -- *.exe *.zip > SHA256SUMS
           )
 
-          installer="dist/Zapret Interactive_${VERSION}_x64-setup.exe"
+          installer="dist/Zapret Interactive_${VERSION}_x64-installer.exe"
           key_file="$(mktemp)"
           signature_file="$(mktemp)"
           trap 'rm -f "$key_file" "$signature_file"' EXIT

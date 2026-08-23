@@ -56,11 +56,9 @@ pub async fn check_app_update(
                 let remote_tag = tag.trim_start_matches('v');
                 if let Ok(remote_semver) = Version::parse(remote_tag) {
                     if remote_semver > current_semver {
-                        let download_url = fetch_asset_from_api(client, tag).await.unwrap_or_else(|| {
-                            format!(
-                                "https://github.com/Noktomezo/ZapretInteractive/releases/download/{tag}/ZapretInteractive.exe"
-                            )
-                        });
+                        let download_url = fetch_asset_from_api(client, tag)
+                            .await
+                            .unwrap_or_else(|| fallback_installer_url(tag));
                         return Ok(Some(AppUpdateInfo {
                             new_version: tag.to_string(),
                             release_url: final_url,
@@ -98,14 +96,7 @@ pub async fn check_app_update(
     };
 
     if remote_semver > current_semver {
-        let download_url = release
-            .assets
-            .into_iter()
-            .find(|asset| {
-                let name = asset.name.to_ascii_lowercase();
-                name.ends_with(".exe") || name.ends_with(".msi") || name.ends_with(".zip")
-            })
-            .map(|asset| asset.browser_download_url);
+        let download_url = installer_asset_url(release.assets);
 
         Ok(Some(AppUpdateInfo {
             new_version: release.tag_name,
@@ -132,14 +123,24 @@ async fn fetch_asset_from_api(client: &Client, tag: &str) -> Option<String> {
     }
 
     let release: GitHubReleaseResponse = response.json().await.ok()?;
-    release
-        .assets
+    installer_asset_url(release.assets)
+}
+
+fn installer_asset_url(assets: Vec<GitHubReleaseAsset>) -> Option<String> {
+    assets
         .into_iter()
         .find(|asset| {
             let name = asset.name.to_ascii_lowercase();
-            name.ends_with(".exe") || name.ends_with(".msi") || name.ends_with(".zip")
+            name.ends_with("-installer.exe") || name.ends_with("-setup.exe")
         })
         .map(|asset| asset.browser_download_url)
+}
+
+fn fallback_installer_url(tag: &str) -> String {
+    let version = tag.trim_start_matches('v');
+    format!(
+        "https://github.com/Noktomezo/ZapretInteractive/releases/download/{tag}/Zapret.Interactive_{version}_x64-installer.exe"
+    )
 }
 
 pub async fn download_and_install_app_update<F>(
@@ -163,6 +164,8 @@ where
 
     let total_size = response.content_length().unwrap_or(0);
     let mut downloaded: u64 = 0;
+    let mut executable_header = [0_u8; 2];
+    let mut header_len = 0;
 
     let temp_dir = std::env::temp_dir();
     let installer_path: PathBuf = temp_dir.join(format!(
@@ -182,6 +185,10 @@ where
 
     while let Some(chunk_res) = stream.next().await {
         let chunk = chunk_res.context("error reading download stream")?;
+        let header_bytes = (executable_header.len() - header_len).min(chunk.len());
+        executable_header[header_len..header_len + header_bytes]
+            .copy_from_slice(&chunk[..header_bytes]);
+        header_len += header_bytes;
         file.write_all(&chunk)
             .await
             .context("error writing update chunk to file")?;
@@ -190,6 +197,13 @@ where
             let progress = (downloaded as f32 / total_size as f32).clamp(0.0, 1.0);
             on_progress(progress);
         }
+    }
+
+    if total_size > 0 && downloaded != total_size {
+        bail!("update download ended at {downloaded} of {total_size} bytes");
+    }
+    if header_len != executable_header.len() || executable_header != *b"MZ" {
+        bail!("downloaded update is not a Windows executable");
     }
 
     file.flush().await.context("error flushing update file")?;
@@ -234,23 +248,26 @@ mod tests {
     #[test]
     fn test_release_response_deserialization() {
         let json_payload = r#"{
-            "tag_name": "v1.7.0",
-            "html_url": "https://github.com/Noktomezo/ZapretInteractive/releases/tag/v1.7.0",
+            "tag_name": "v2.0.1",
+            "html_url": "https://github.com/Noktomezo/ZapretInteractive/releases/tag/v2.0.1",
             "assets": [
                 {
-                    "name": "ZapretInteractive.exe",
-                    "browser_download_url": "https://github.com/Noktomezo/ZapretInteractive/releases/download/v1.7.0/ZapretInteractive.exe"
+                    "name": "Zapret.Interactive_2.0.1_x64-portable.zip",
+                    "browser_download_url": "https://example.invalid/portable.zip"
+                },
+                {
+                    "name": "Zapret.Interactive_2.0.1_x64-installer.exe",
+                    "browser_download_url": "https://example.invalid/installer.exe"
                 }
             ]
         }"#;
 
         let release: GitHubReleaseResponse = serde_json::from_str(json_payload).unwrap();
-        assert_eq!(release.tag_name, "v1.7.0");
-        assert_eq!(release.assets.len(), 1);
-        assert_eq!(release.assets[0].name, "ZapretInteractive.exe");
+        assert_eq!(release.tag_name, "v2.0.1");
+        assert_eq!(release.assets.len(), 2);
         assert_eq!(
-            release.assets[0].browser_download_url,
-            "https://github.com/Noktomezo/ZapretInteractive/releases/download/v1.7.0/ZapretInteractive.exe"
+            installer_asset_url(release.assets).as_deref(),
+            Some("https://example.invalid/installer.exe")
         );
     }
 }
