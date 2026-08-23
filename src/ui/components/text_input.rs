@@ -229,24 +229,6 @@ impl RenderOnce for TextInput {
                 if focus_handle.is_focused(window) {
                     window.blur();
                 }
-            })
-            .on_mouse_up(MouseButton::Left, {
-                let state = state.clone();
-                move |event, window, cx| {
-                    state.update(cx, |state, cx| state.mouse_up(event, window, cx));
-                }
-            })
-            .on_mouse_up_out(MouseButton::Left, {
-                let state = state.clone();
-                move |event, window, cx| {
-                    state.update(cx, |state, cx| state.mouse_up(event, window, cx));
-                }
-            })
-            .on_mouse_move({
-                let state = state.clone();
-                move |event, window, cx| {
-                    state.update(cx, |state, cx| state.mouse_move(event, window, cx));
-                }
             });
 
         if focused {

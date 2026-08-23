@@ -19,6 +19,26 @@ impl TextElement {
             caret_opacity,
         }
     }
+
+    fn paint_selection_listeners(&self, window: &mut Window) {
+        window.on_mouse_event({
+            let input = self.input.clone();
+            move |event: &MouseMoveEvent, _, window, cx| {
+                if event.pressed_button == Some(MouseButton::Left) {
+                    input.update(cx, |input, cx| input.mouse_move(event, window, cx));
+                }
+            }
+        });
+
+        window.on_mouse_event({
+            let input = self.input.clone();
+            move |event: &MouseUpEvent, phase, window, cx| {
+                if phase.bubble() && event.button == MouseButton::Left {
+                    input.update(cx, |input, cx| input.mouse_up(event, window, cx));
+                }
+            }
+        });
+    }
 }
 
 pub(super) struct PrepaintState {
@@ -138,6 +158,7 @@ impl Element for TextElement {
         window: &mut Window,
         cx: &mut App,
     ) {
+        self.paint_selection_listeners(window);
         let focus_handle = self.input.read(cx).focus_handle.clone();
         window.handle_input(
             &focus_handle,

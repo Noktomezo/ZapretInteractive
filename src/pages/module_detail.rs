@@ -104,7 +104,7 @@ pub(super) fn module_power_button(
     div()
         .id(id)
         .h(crate::ui::foundation::control_style::CONTROL_HEIGHT)
-        .px(px(14.))
+        .px(px(10.))
         .flex()
         .items_center()
         .gap_2()
@@ -287,15 +287,9 @@ pub(super) fn input_control(
     state: &Entity<crate::ui::components::text_input::TextInputState>,
     width: Pixels,
 ) -> Div {
-    div()
+    crate::ui::components::form_field::form_input_container()
         .w(width)
-        .h(crate::ui::foundation::control_style::CONTROL_HEIGHT)
-        .px_3()
         .flex_none()
-        .rounded_md()
-        .border_1()
-        .border_color(border())
-        .bg(input().opacity(0.3))
         .child(TextInput::new(state))
 }
 
@@ -321,17 +315,9 @@ pub(super) fn secret_control(
         });
     });
 
-    div()
-        .relative()
-        .w(px(384.))
-        .child(input_control(secret, px(384.)).pr(px(36.)))
-        .child(
-            div()
-                .absolute()
-                .right(px(4.))
-                .top(px(4.))
-                .child(refresh_btn),
-        )
+    crate::ui::components::form_field::FormInput::new(secret)
+        .width(px(384.))
+        .trailing(refresh_btn)
         .into_any_element()
 }
 

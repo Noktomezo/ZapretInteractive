@@ -239,7 +239,6 @@ fn update_actions(
                 cx,
             )
             .orange()
-            .small()
             .icon_prefix("icons/cloud-download.svg")
             .on_click(move |_, _, cx| {
                 update_state.update(cx, |state, cx| state.trigger_app_update(cx));
@@ -255,7 +254,6 @@ fn update_actions(
                 cx,
             )
             .outline()
-            .small()
             .loading(checking_app_update)
             .disabled(is_updating)
             .tooltip(t!("settings.btn_check_version"))
