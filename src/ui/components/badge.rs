@@ -45,6 +45,7 @@ pub struct Badge {
     pulse_id: Option<SharedString>,
     fade_id: Option<SharedString>,
     spinner_id: Option<SharedString>,
+    progress: Option<f32>,
 }
 
 impl Badge {
@@ -58,6 +59,7 @@ impl Badge {
             pulse_id: None,
             fade_id: None,
             spinner_id: None,
+            progress: None,
         }
     }
 
@@ -150,6 +152,11 @@ impl Badge {
         self.spinner_id = Some(anim_id.into());
         self
     }
+
+    pub fn progress(mut self, progress: f32) -> Self {
+        self.progress = Some(progress.clamp(0.0, 1.0));
+        self
+    }
 }
 
 impl IntoElement for Badge {
@@ -221,7 +228,9 @@ impl IntoElement for Badge {
             el = el.font_family("IBM Plex Mono");
         }
 
-        if let Some(spin_id) = self.spinner_id {
+        if let Some(progress) = self.progress {
+            el = el.child(progress_ring_sized(progress, icon_sz));
+        } else if let Some(spin_id) = self.spinner_id {
             el = el.child(
                 svg()
                     .path("icons/refresh-cw.svg")
@@ -278,29 +287,17 @@ pub fn loading_badge(text: impl Into<SharedString>) -> AnyElement {
 }
 
 pub fn progress_badge(text: impl Into<SharedString>, progress: f32) -> AnyElement {
-    let foreground = colors::accent();
-    div()
-        .flex_none()
-        .flex()
-        .items_center()
-        .justify_center()
-        .gap(px(5.))
-        .px(px(6.))
-        .py(px(2.))
-        .rounded(px(4.))
-        .border_1()
-        .border_color(foreground.opacity(0.4))
-        .bg(foreground.opacity(0.12))
-        .text_size(px(11.))
-        .line_height(px(12.))
-        .font_weight(FontWeight::MEDIUM)
-        .text_color(foreground)
-        .child(progress_ring(progress))
-        .child(text.into())
+    Badge::new(text)
+        .accent()
+        .progress(progress)
         .into_any_element()
 }
 
 pub fn progress_ring(progress: f32) -> AnyElement {
+    progress_ring_sized(progress, px(16.))
+}
+
+fn progress_ring_sized(progress: f32, size: Pixels) -> AnyElement {
     let progress = progress.clamp(0.0, 1.0);
     canvas(
         |_, _, _| {},
@@ -309,12 +306,12 @@ pub fn progress_ring(progress: f32) -> AnyElement {
                 bounds.origin.x + bounds.size.width / 2.0,
                 bounds.origin.y + bounds.size.height / 2.0,
             );
-            let radius = px(6.0);
+            let radius = bounds.size.width / 2.0 - px(1.0);
             let top = point(center.x, center.y - radius);
             let bottom = point(center.x, center.y + radius);
             let radii = point(radius, radius);
 
-            let mut track = PathBuilder::stroke(px(2.0));
+            let mut track = PathBuilder::stroke(px(1.5));
             track.move_to(top);
             track.arc_to(radii, px(0.0), false, true, bottom);
             track.arc_to(radii, px(0.0), false, true, top);
@@ -326,7 +323,7 @@ pub fn progress_ring(progress: f32) -> AnyElement {
                 return;
             }
 
-            let mut arc = PathBuilder::stroke(px(2.0));
+            let mut arc = PathBuilder::stroke(px(1.5));
             arc.move_to(top);
             if progress >= 1.0 - f32::EPSILON {
                 arc.arc_to(radii, px(0.0), false, true, bottom);
@@ -344,6 +341,6 @@ pub fn progress_ring(progress: f32) -> AnyElement {
             }
         },
     )
-    .size_4()
+    .size(size)
     .into_any_element()
 }

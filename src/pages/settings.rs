@@ -153,11 +153,7 @@ fn updates_card(
         )))
     } else if is_updating {
         Some(update_download_progress.map_or_else(
-            || {
-                crate::ui::components::badge::loading_badge(t!(
-                    "settings.update_downloading_indeterminate"
-                ))
-            },
+            || crate::ui::components::badge::loading_badge(t!("settings.update_restarting")),
             |progress| {
                 let percent = (progress.clamp(0.0, 1.0) * 100.0).round() as u32;
                 crate::ui::components::badge::progress_badge(
