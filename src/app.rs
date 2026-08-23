@@ -768,8 +768,8 @@ fn titlebar_update_button(
         t!("titlebar.update_app")
     };
 
-    let hover_key = SharedString::from("titlebar-button-titlebar-update-btn");
-    let button = titlebar_button("titlebar-update-btn", false, cx)
+    let (button, hover_key) = titlebar_button_base("titlebar-update-btn", false, cx);
+    let button = button
         .when(is_updating, |button| button.cursor_default())
         .when(!is_updating, |button| {
             button
@@ -795,9 +795,20 @@ fn titlebar_update_button(
 }
 
 fn titlebar_button(id: &'static str, is_destructive: bool, cx: &App) -> Stateful<Div> {
+    let (button, hover_key) = titlebar_button_base(id, is_destructive, cx);
+    button.on_hover(move |hovered, window, cx| {
+        crate::ui::foundation::hover_motion::set_hovered(hover_key.clone(), *hovered, window, cx);
+    })
+}
+
+fn titlebar_button_base(
+    id: &'static str,
+    is_destructive: bool,
+    cx: &App,
+) -> (Stateful<Div>, SharedString) {
     let hover_key = SharedString::from(format!("titlebar-button-{id}"));
     let hover = crate::ui::foundation::hover_motion::progress(&hover_key, cx);
-    div()
+    let button = div()
         .id(id)
         .when(is_destructive, |btn| btn.group("titlebar-destructive"))
         .size(px(32.))
@@ -826,15 +837,8 @@ fn titlebar_button(id: &'static str, is_destructive: bool, cx: &App) -> Stateful
             } else {
                 style.bg(secondary().opacity(0.95)).text_color(foreground())
             }
-        })
-        .on_hover(move |hovered, window, cx| {
-            crate::ui::foundation::hover_motion::set_hovered(
-                hover_key.clone(),
-                *hovered,
-                window,
-                cx,
-            );
-        })
+        });
+    (button, hover_key)
 }
 
 fn titlebar_icon(path: &'static str) -> Svg {
