@@ -3,9 +3,7 @@ use gpui::*;
 use std::time::Duration;
 
 use crate::ui::foundation::colors;
-use crate::ui::foundation::control_style::{
-    CONTROL_HEIGHT, LARGE_CONTROL_HEIGHT, SMALL_CONTROL_HEIGHT,
-};
+use crate::ui::foundation::control_style::CONTROL_HEIGHT;
 use crate::ui::foundation::hover_motion;
 use crate::ui::foundation::motion::{mix_color, refresh_rotation};
 
@@ -182,9 +180,9 @@ impl IntoElement for Button {
 
     fn into_element(self) -> Self::Element {
         let (height, px_pad, text_sz, icon_sz, gap_sz) = match self.size {
-            ButtonSize::Sm => (SMALL_CONTROL_HEIGHT, px(10.), px(12.), px(13.), px(5.)),
-            ButtonSize::Md => (CONTROL_HEIGHT, px(14.), px(13.), px(14.), px(6.)),
-            ButtonSize::Lg => (LARGE_CONTROL_HEIGHT, px(18.), px(14.), px(16.), px(8.)),
+            ButtonSize::Sm => (CONTROL_HEIGHT, px(8.), px(12.), px(13.), px(5.)),
+            ButtonSize::Md => (CONTROL_HEIGHT, px(10.), px(13.), px(14.), px(6.)),
+            ButtonSize::Lg => (CONTROL_HEIGHT, px(12.), px(14.), px(16.), px(8.)),
         };
 
         let is_dark = colors::is_dark();
@@ -461,9 +459,9 @@ impl IntoElement for IconButton {
 
     fn into_element(self) -> Self::Element {
         let (box_size, icon_sz) = match self.size {
-            IconButtonSize::Sm => (SMALL_CONTROL_HEIGHT, px(13.)),
+            IconButtonSize::Sm => (CONTROL_HEIGHT, px(13.)),
             IconButtonSize::Md => (CONTROL_HEIGHT, px(14.)),
-            IconButtonSize::Lg => (LARGE_CONTROL_HEIGHT, px(16.)),
+            IconButtonSize::Lg => (CONTROL_HEIGHT, px(16.)),
         };
 
         let is_dark = colors::is_dark();

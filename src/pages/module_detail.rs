@@ -104,7 +104,7 @@ pub(super) fn module_power_button(
     div()
         .id(id)
         .h(crate::ui::foundation::control_style::CONTROL_HEIGHT)
-        .px(px(14.))
+        .px(px(10.))
         .flex()
         .items_center()
         .gap_2()

@@ -9,7 +9,7 @@ use crate::ui::foundation::control_style::{CONTROL_HEIGHT, ControlTypography};
 pub fn form_input_container() -> Div {
     div()
         .h(CONTROL_HEIGHT)
-        .px_3()
+        .px(px(10.0))
         .control_text()
         .rounded_md()
         .border_1()
