@@ -323,6 +323,7 @@ fn spawn_winws(resources: &Path, config: &AppConfig) -> Result<duct::Handle> {
         .dir(resources)
         .stdout_null()
         .stderr_null()
+        .unchecked()
         .start()
         .with_context(|| format!("не удалось запустить {}", binary.display()))
 }
@@ -361,6 +362,7 @@ fn spawn_tg_proxy(resources: &Path, config: &AppConfig, runtime: &Path) -> Resul
     .dir(binary_dir)
     .stdout_null()
     .stderr_null()
+    .unchecked()
     .start()
     .context("не удалось запустить TG-прокси")
 }
