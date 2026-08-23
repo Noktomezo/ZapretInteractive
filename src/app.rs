@@ -11,7 +11,7 @@ use crate::ui::foundation::colors::{
     accent_foreground, background, border, card as card_color, destructive, foreground, green,
     muted_foreground, orange, secondary, yellow as accent,
 };
-use crate::ui::foundation::control_style::CONTROL_HEIGHT;
+use crate::ui::foundation::control_style::SMALL_CONTROL_HEIGHT;
 use crate::ui::foundation::motion::{DropdownMotion, ScalarTransition, mix_color};
 
 mod setup;
@@ -520,7 +520,7 @@ impl AppView {
         div()
             .id(SharedString::from(format!("nav-{label}")))
             .relative()
-            .h(CONTROL_HEIGHT)
+            .h(SMALL_CONTROL_HEIGHT)
             .w_full()
             .flex()
             .items_center()

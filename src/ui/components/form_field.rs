@@ -76,7 +76,16 @@ impl IntoElement for FormInput {
                     .pr(CONTROL_HEIGHT + px(4.0))
                     .child(TextInput::new(&self.state)),
             )
-            .child(div().absolute().top_0().right_0().child(trailing))
+            .child(
+                div()
+                    .absolute()
+                    .top_0()
+                    .right_0()
+                    .bottom_0()
+                    .flex()
+                    .items_center()
+                    .child(trailing),
+            )
             .into_any_element()
     }
 }
