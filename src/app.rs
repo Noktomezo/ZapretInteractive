@@ -9,9 +9,9 @@ use crate::ui::components::dropdown::{DropdownChoice, DropdownEvent, DropdownSta
 use crate::ui::components::text_input::{TextInputEvent, TextInputState};
 use crate::ui::foundation::colors::{
     accent_foreground, background, border, card as card_color, destructive, foreground, green,
-    muted_foreground, orange, secondary, yellow as accent,
+    muted_foreground, paper, secondary, yellow as accent,
 };
-use crate::ui::foundation::control_style::CONTROL_HEIGHT;
+use crate::ui::foundation::control_style::{SHELL_CONTROL_SIZE, SHELL_SPACING};
 use crate::ui::foundation::motion::{DropdownMotion, ScalarTransition, mix_color};
 
 mod setup;
@@ -19,6 +19,10 @@ mod setup;
 const SIDEBAR_MOTION: Duration = Duration::from_millis(250);
 const SIDEBAR_EXPANDED_WIDTH: f32 = 182.4;
 const SIDEBAR_COLLAPSED_WIDTH: f32 = 40.0;
+
+fn shell_surface_alpha(acrylic_progress: f32) -> f32 {
+    (1.0 - 0.5 * acrylic_progress).clamp(0.5, 1.0)
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Route {
@@ -410,7 +414,7 @@ impl AppView {
                 "icons/info.svg",
             ),
         ];
-        let bar_alpha = (1.0 - acrylic_progress).clamp(0.0, 1.0);
+        let bar_alpha = shell_surface_alpha(acrylic_progress);
         div()
             .h_full()
             .w(px(SIDEBAR_COLLAPSED_WIDTH
@@ -425,22 +429,22 @@ impl AppView {
             .overflow_hidden()
             .child(
                 div()
-                    .p(px(4.))
+                    .p(SHELL_SPACING)
                     .flex()
                     .flex_col()
-                    .gap(px(4.))
+                    .gap(SHELL_SPACING)
                     .children(main.into_iter().map(|(route, label, icon)| {
                         self.nav_item(route, label, icon, progress, window, cx)
                     })),
             )
             .child(
                 div()
-                    .p(px(4.))
+                    .p(SHELL_SPACING)
                     .border_t_1()
                     .border_color(border().opacity(0.8))
                     .flex()
                     .flex_col()
-                    .gap(px(4.))
+                    .gap(SHELL_SPACING)
                     .children(footer.into_iter().map(|(route, label, icon)| {
                         self.nav_item(route, label, icon, progress, window, cx)
                     })),
@@ -521,11 +525,10 @@ impl AppView {
         div()
             .id(SharedString::from(format!("nav-{label}")))
             .relative()
-            .h(CONTROL_HEIGHT)
+            .h(SHELL_CONTROL_SIZE)
             .w_full()
             .flex()
             .items_center()
-            .px(px(3.))
             .rounded_md()
             .cursor_pointer()
             .when(selected_alpha > 0.001, |this| {
@@ -571,7 +574,7 @@ impl AppView {
             }))
             .child(
                 div()
-                    .size(px(24.))
+                    .size(SHELL_CONTROL_SIZE)
                     .flex_shrink_0()
                     .flex()
                     .items_center()
@@ -584,7 +587,7 @@ impl AppView {
                     .text_size(px(13.))
                     .font_weight(FontWeight::MEDIUM)
                     .text_color(icon_color.opacity(progress))
-                    .ml(px(6. * progress))
+                    .ml(px(2. * progress))
                     .truncate()
                     .child(item_label),
             )
@@ -614,10 +617,10 @@ fn titlebar(
     let update_button =
         titlebar_update_button(app_update, is_updating, update_progress, state.clone(), cx);
 
-    let bar_alpha = (1.0 - acrylic_progress).clamp(0.0, 1.0);
+    let bar_alpha = shell_surface_alpha(acrylic_progress);
     div()
         .id("titlebar")
-        .h(px(40.))
+        .h(px(SIDEBAR_COLLAPSED_WIDTH))
         .w_full()
         .bg(card_color().opacity(bar_alpha))
         .flex()
@@ -627,7 +630,7 @@ fn titlebar(
         .relative()
         .child(
             div()
-                .size(px(40.))
+                .size(px(SIDEBAR_COLLAPSED_WIDTH))
                 .flex()
                 .items_center()
                 .justify_center()
@@ -662,8 +665,8 @@ fn titlebar(
             div()
                 .flex()
                 .items_center()
-                .gap_0()
-                .pr(px(4.))
+                .gap(SHELL_SPACING)
+                .pr(SHELL_SPACING)
                 .flex_shrink_0()
                 .children(update_button)
                 .child(
@@ -739,7 +742,7 @@ fn titlebar_update_button(
         svg()
             .path("icons/refresh-cw.svg")
             .size_4()
-            .text_color(orange())
+            .text_color(accent())
             .with_animation(
                 "titlebar-update-downloading",
                 Animation::new(Duration::from_millis(850)).repeat(),
@@ -816,7 +819,7 @@ fn titlebar_button_base(
     let button = div()
         .id(id)
         .when(is_destructive, |btn| btn.group("titlebar-destructive"))
-        .size(px(32.))
+        .size(SHELL_CONTROL_SIZE)
         .flex()
         .items_center()
         .justify_center()
@@ -838,7 +841,7 @@ fn titlebar_button_base(
         ))
         .active(move |style| {
             if is_destructive {
-                style.bg(destructive()).text_color(accent_foreground())
+                style.bg(destructive()).text_color(paper())
             } else {
                 style.bg(secondary().opacity(0.95)).text_color(foreground())
             }
@@ -895,7 +898,7 @@ fn destructive_titlebar_icon(path: &'static str, cx: &App) -> Div {
                 .inset_0()
                 .invisible()
                 .group_active("titlebar-destructive", |style| style.visible())
-                .child(svg().path(path).size_4().text_color(accent_foreground())),
+                .child(svg().path(path).size_4().text_color(paper())),
         )
 }
 fn sidebar_icon(progress: f32) -> Div {
@@ -936,7 +939,7 @@ fn page_transition(content: AnyElement, revision: u64) -> AnyElement {
 
 #[cfg(test)]
 mod tests {
-    use super::{acrylic_motion, sidebar_motion};
+    use super::{acrylic_motion, shell_surface_alpha, sidebar_motion};
 
     #[test]
     fn sidebar_starts_expanded() {
@@ -948,5 +951,11 @@ mod tests {
     fn acrylic_motion_samples_correctly() {
         assert_eq!(acrylic_motion(true).sample(), (1., false));
         assert_eq!(acrylic_motion(false).sample(), (0., false));
+    }
+
+    #[test]
+    fn acrylic_shell_keeps_half_of_its_surface_tint() {
+        assert_eq!(shell_surface_alpha(0.0), 1.0);
+        assert_eq!(shell_surface_alpha(1.0), 0.5);
     }
 }

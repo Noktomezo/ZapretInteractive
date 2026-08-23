@@ -2,6 +2,8 @@ use gpui::{FontWeight, Pixels, Styled, px};
 
 pub const CONTROL_FONT_FAMILY: &str = "IBM Plex Sans";
 pub const CONTROL_HEIGHT: Pixels = px(30.0);
+pub const SHELL_CONTROL_SIZE: Pixels = px(32.0);
+pub const SHELL_SPACING: Pixels = px(4.0);
 pub const DROPDOWN_CONTROL_WIDTH: Pixels = px(160.0);
 pub const DROPDOWN_LABEL_WIDTH: Pixels = px(113.0);
 pub const DROPDOWN_ICON_LABEL_WIDTH: Pixels = px(89.0);

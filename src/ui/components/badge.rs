@@ -278,7 +278,7 @@ pub fn loading_badge(text: impl Into<SharedString>) -> AnyElement {
 }
 
 pub fn progress_badge(text: impl Into<SharedString>, progress: f32) -> AnyElement {
-    let foreground = colors::orange();
+    let foreground = colors::accent();
     div()
         .flex_none()
         .flex()
@@ -319,7 +319,7 @@ pub fn progress_ring(progress: f32) -> AnyElement {
             track.arc_to(radii, px(0.0), false, true, bottom);
             track.arc_to(radii, px(0.0), false, true, top);
             if let Ok(track) = track.build() {
-                window.paint_path(track, colors::orange().opacity(0.25));
+                window.paint_path(track, colors::accent().opacity(0.25));
             }
 
             if progress <= f32::EPSILON {
@@ -340,7 +340,7 @@ pub fn progress_ring(progress: f32) -> AnyElement {
                 arc.arc_to(radii, px(0.0), progress > 0.5, true, end);
             }
             if let Ok(arc) = arc.build() {
-                window.paint_path(arc, colors::orange());
+                window.paint_path(arc, colors::accent());
             }
         },
     )

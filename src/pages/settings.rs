@@ -173,7 +173,7 @@ fn updates_card(
                 t!("settings.badge_update_available"),
                 update.new_version.trim_start_matches('v')
             ))
-            .orange()
+            .accent()
             .pulse("settings-update-available-pulse")
             .into_any_element(),
         )
@@ -211,7 +211,7 @@ fn updates_card(
 
     module_card(
         module_header_custom(
-            ("icons/cloud-download.svg", colors::green()),
+            ("icons/cloud-download.svg", colors::accent()),
             title_element,
             t!("settings.updates_desc"),
             Some(actions),
@@ -238,7 +238,7 @@ fn update_actions(
                 t!("settings.btn_update_and_restart"),
                 cx,
             )
-            .orange()
+            .primary()
             .icon_prefix("icons/cloud-download.svg")
             .on_click(move |_, _, cx| {
                 update_state.update(cx, |state, cx| state.trigger_app_update(cx));
