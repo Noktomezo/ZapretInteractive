@@ -216,6 +216,12 @@ float4 gpu_canvas_fragment(GpuCanvasFragmentInput input): SV_Target {
     GpuCanvasPrimitive canvas = gpu_canvases[input.canvas_id];
     TerminalParams terminal = terminal_params(canvas);
     float2 local = input.position.xy - canvas.bounds.origin;
+    float2 mask_local = input.position.xy - canvas.content_mask.origin;
+    float corner_radius = 8.0 * canvas.scale_factor;
+    if (mask_local.x < corner_radius && mask_local.y < corner_radius
+        && distance(mask_local, float2(corner_radius, corner_radius)) > corner_radius) {
+        discard;
+    }
     float2 uv = float2(
         local.x / canvas.bounds.size.x,
         1.0 - local.y / canvas.bounds.size.y

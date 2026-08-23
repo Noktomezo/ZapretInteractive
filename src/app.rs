@@ -117,6 +117,7 @@ impl Render for AppView {
         let status = self.state.read(cx).status;
         self.faulty_terminal.update(cx, |terminal, _| {
             terminal.set_status(status);
+            terminal.set_dark_theme(crate::ui::foundation::colors::is_dark());
         });
         let is_home = matches!(self.route, Route::Home);
         let breadcrumb = self.breadcrumb(cx);
@@ -424,7 +425,7 @@ impl AppView {
             .overflow_hidden()
             .child(
                 div()
-                    .p(px(5.))
+                    .p(px(4.))
                     .flex()
                     .flex_col()
                     .gap(px(4.))
@@ -434,7 +435,7 @@ impl AppView {
             )
             .child(
                 div()
-                    .p(px(5.))
+                    .p(px(4.))
                     .border_t_1()
                     .border_color(border().opacity(0.8))
                     .flex()
@@ -699,10 +700,14 @@ fn titlebar(
                 .child(
                     titlebar_button("close", true, cx)
                         .window_control_area(WindowControlArea::Close)
-                        .on_mouse_down(MouseButton::Left, move |_, window, cx| {
+                        .on_mouse_down(MouseButton::Left, |_, window, cx| {
                             window.prevent_default();
                             cx.stop_propagation();
+                        })
+                        .on_click(move |_, window, cx| {
                             if minimize_on_close {
+                                crate::ui::foundation::hover_motion::clear_all_hovers_app(cx);
+                                window.refresh();
                                 #[cfg(windows)]
                                 crate::tray::hide_main_window();
                                 #[cfg(not(windows))]

@@ -24,19 +24,31 @@ struct TerminalStyle {
 }
 
 impl TerminalStyle {
-    fn for_status(status: ConnectionStatus) -> Self {
-        let tint = match status {
-            ConnectionStatus::Connected => [0.5059, 0.6863, 0.4235, 1.0],
-            ConnectionStatus::Connecting | ConnectionStatus::Disconnecting => {
-                [0.9294, 0.7059, 0.2863, 1.0]
+    fn for_status(status: ConnectionStatus, dark: bool) -> Self {
+        let tint = match (status, dark) {
+            (ConnectionStatus::Connected, true) => [0.5059, 0.6863, 0.4235, 1.0],
+            (ConnectionStatus::Connected, false) => [0.4000, 0.5020, 0.0431, 1.0],
+            (ConnectionStatus::Connecting | ConnectionStatus::Disconnecting, _) => {
+                if dark {
+                    [0.9294, 0.7059, 0.2863, 1.0]
+                } else {
+                    [0.6745, 0.4902, 0.0588, 1.0]
+                }
             }
-            ConnectionStatus::Disconnected | ConnectionStatus::Error => {
+            (ConnectionStatus::Disconnected | ConnectionStatus::Error, true) => {
                 [0.8510, 0.5255, 0.4706, 1.0]
+            }
+            (ConnectionStatus::Disconnected | ConnectionStatus::Error, false) => {
+                [0.6863, 0.1882, 0.1608, 1.0]
             }
         };
         Self {
             tint,
-            background: [0.0824, 0.0745, 0.0745, 1.0],
+            background: if dark {
+                [0.0824, 0.0745, 0.0745, 1.0]
+            } else {
+                [0.9843, 0.9569, 0.9020, 1.0]
+            },
             flicker: f32::from(!matches!(status, ConnectionStatus::Connected)),
             curvature: f32::from(!matches!(
                 status,
@@ -61,6 +73,8 @@ impl TerminalStyle {
 
 pub struct FaultyTerminal {
     active: bool,
+    status: ConnectionStatus,
+    dark: bool,
     started_at: Instant,
     mouse: [f32; 2],
     canvas_size: [f32; 2],
@@ -70,9 +84,13 @@ pub struct FaultyTerminal {
 
 impl FaultyTerminal {
     pub fn new(window: &mut Window, _cx: &mut Context<Self>) -> Self {
-        let style = TerminalStyle::for_status(ConnectionStatus::Disconnected);
+        let status = ConnectionStatus::Disconnected;
+        let dark = crate::ui::foundation::colors::is_dark();
+        let style = TerminalStyle::for_status(status, dark);
         Self {
             active: true,
+            status,
+            dark,
             started_at: Instant::now(),
             mouse: [0.5, 0.5],
             canvas_size: canvas_size(window.viewport_size()),
@@ -86,7 +104,20 @@ impl FaultyTerminal {
     }
 
     pub fn set_status(&mut self, status: ConnectionStatus) {
-        let target = TerminalStyle::for_status(status);
+        self.status = status;
+        self.update_target_style();
+    }
+
+    pub fn set_dark_theme(&mut self, dark: bool) {
+        if self.dark == dark {
+            return;
+        }
+        self.dark = dark;
+        self.update_target_style();
+    }
+
+    fn update_target_style(&mut self) {
+        let target = TerminalStyle::for_status(self.status, self.dark);
         if self.target_style == target {
             return;
         }
@@ -169,14 +200,21 @@ mod tests {
 
     #[test]
     fn style_damping_moves_toward_target_without_overshooting() {
-        let mut current = TerminalStyle::for_status(ConnectionStatus::Disconnected);
-        let target = TerminalStyle::for_status(ConnectionStatus::Connected);
+        let mut current = TerminalStyle::for_status(ConnectionStatus::Disconnected, true);
+        let target = TerminalStyle::for_status(ConnectionStatus::Connected, true);
 
         current.approach(target, 0.1);
 
         assert!(current.tint[0] < 0.8510 && current.tint[0] > target.tint[0]);
         assert!(current.curvature < 0.1 && current.curvature > target.curvature);
         assert_eq!(current.flicker, target.flicker);
+    }
+
+    #[test]
+    fn light_theme_uses_a_light_canvas() {
+        let style = TerminalStyle::for_status(ConnectionStatus::Disconnected, false);
+        assert!(style.background[0] > 0.9);
+        assert!(style.tint[0] < style.background[0]);
     }
 
     #[test]
