@@ -327,7 +327,7 @@ pub fn paper() -> Rgba {
 /// Foreground for controls with a solid semantic accent background.
 #[inline(always)]
 pub fn accent_foreground() -> Rgba {
-    rgba(0x100f0fff)
+    if is_dark() { rgba(0x100f0fff) } else { paper() }
 }
 
 // Flexoki Accent Colors
