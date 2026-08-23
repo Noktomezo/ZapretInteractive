@@ -1,0 +1,16 @@
+id = "discord-media-v3"
+name = "v3"
+category = "Discord Media"
+categoryId = "preset-discord-media"
+categoryOrder = 6
+order = 3
+content = """
+--filter-tcp=2053,2083,2087,2096,8443
+--hostlist-domains=discord.media
+--dpi-desync=fake
+--dpi-desync-repeats=6
+--dpi-desync-fooling=ts
+--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}
+--dpi-desync-fake-tls-mod=none"""
+active = false
+system = true

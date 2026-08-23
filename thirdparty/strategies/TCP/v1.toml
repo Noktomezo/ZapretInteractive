@@ -1,0 +1,21 @@
+id = "tcp-v1"
+name = "v1"
+category = "TCP"
+categoryId = "preset-tcp"
+categoryOrder = 3
+order = 1
+content = """
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=split2
+--dpi-desync-split-seqovl=681
+--dpi-desync-split-seqovl-pattern={{STUN}}"""
+active = true
+system = true
+systemBaseName = "v1"
+systemBaseContent = """
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=split2
+--dpi-desync-split-seqovl=681
+--dpi-desync-split-seqovl-pattern={{STUN}}"""

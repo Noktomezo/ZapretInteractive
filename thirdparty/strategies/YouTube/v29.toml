@@ -1,0 +1,16 @@
+id = "youtube-v29"
+name = "v29"
+category = "YouTube"
+categoryId = "preset-youtube"
+categoryOrder = 2
+order = 29
+content = """
+--filter-l7=tls
+--hostlist={{HOSTS_GOOGLE}}
+--ip-id=zero
+--dpi-desync=fake
+--dpi-desync-repeats=6
+--dpi-desync-fooling=ts
+--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}"""
+active = false
+system = true

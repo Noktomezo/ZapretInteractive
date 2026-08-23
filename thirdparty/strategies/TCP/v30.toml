@@ -1,0 +1,20 @@
+id = "tcp-v30"
+name = "v30"
+category = "TCP"
+categoryId = "preset-tcp"
+categoryOrder = 3
+order = 30
+content = """
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=fake,multisplit
+--dpi-desync-split-seqovl=681
+--dpi-desync-split-pos=1
+--dpi-desync-fooling=badseq
+--dpi-desync-badseq-increment=10000000
+--dpi-desync-repeats=8
+--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}
+--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com
+--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}"""
+active = false
+system = true

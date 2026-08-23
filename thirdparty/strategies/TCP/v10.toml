@@ -1,0 +1,18 @@
+id = "tcp-v10"
+name = "v10"
+category = "TCP"
+categoryId = "preset-tcp"
+categoryOrder = 3
+order = 10
+content = """
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=fake,multisplit
+--dpi-desync-split-seqovl=681
+--dpi-desync-split-pos=1
+--dpi-desync-fooling=ts
+--dpi-desync-repeats=8
+--dpi-desync-split-seqovl-pattern={{STUN}}
+--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com"""
+active = false
+system = true

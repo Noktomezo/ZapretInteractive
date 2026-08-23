@@ -1,0 +1,13 @@
+id = "youtube-v26"
+name = "v26"
+category = "YouTube"
+categoryId = "preset-youtube"
+categoryOrder = 2
+order = 26
+content = """
+--filter-l7=tls
+--hostlist={{HOSTS_GOOGLE}}
+--dpi-desync=multidisorder
+--dpi-desync-split-pos=1,sniext+1,host+1,midsld-2,midsld,midsld+2,endhost-1"""
+active = false
+system = true

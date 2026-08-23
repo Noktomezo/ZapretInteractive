@@ -1,0 +1,21 @@
+id = "preset-http-1"
+name = "v1"
+category = "HTTP"
+categoryId = "preset-http"
+categoryOrder = 1
+order = 1
+content = """
+--filter-l7=http
+<LIST_MODE>
+--dpi-desync=fake
+--dpi-desync-autottl=2
+--dpi-desync-fooling=md5sig"""
+active = true
+system = true
+systemBaseName = "v1"
+systemBaseContent = """
+--filter-l7=http
+<LIST_MODE>
+--dpi-desync=fake
+--dpi-desync-autottl=2
+--dpi-desync-fooling=md5sig"""

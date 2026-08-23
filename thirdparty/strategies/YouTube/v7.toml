@@ -1,0 +1,16 @@
+id = "youtube-v07"
+name = "v7"
+category = "YouTube"
+categoryId = "preset-youtube"
+categoryOrder = 2
+order = 7
+content = """
+--filter-l7=tls
+--hostlist={{HOSTS_GOOGLE}}
+--dpi-desync=multidisorder
+--dpi-desync-split-pos=1,midsld,endhost-1
+--dpi-desync-repeats=2
+--dpi-desync-fooling=md5sig
+--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com"""
+active = false
+system = true

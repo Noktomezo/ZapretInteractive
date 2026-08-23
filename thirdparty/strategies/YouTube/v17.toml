@@ -1,0 +1,17 @@
+id = "youtube-v17"
+name = "v17"
+category = "YouTube"
+categoryId = "preset-youtube"
+categoryOrder = 2
+order = 17
+content = """
+--filter-l7=tls
+--hostlist={{HOSTS_GOOGLE}}
+--dpi-desync=fakeddisorder
+--dpi-desync-fooling=md5sig
+--dup=1
+--dup-cutoff=n2
+--dup-fooling=md5sig
+--dpi-desync-split-pos=method+2"""
+active = false
+system = true

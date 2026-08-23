@@ -1,0 +1,15 @@
+id = "tcp-v4"
+name = "v4"
+category = "TCP"
+categoryId = "preset-tcp"
+categoryOrder = 3
+order = 4
+content = """
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=multisplit
+--dpi-desync-split-seqovl=582
+--dpi-desync-split-pos=1
+--dpi-desync-split-seqovl-pattern={{STUN}}"""
+active = false
+system = true

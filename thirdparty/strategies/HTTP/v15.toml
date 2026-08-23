@@ -1,0 +1,15 @@
+id = "preset-http-v15"
+name = "v15"
+category = "HTTP"
+categoryId = "preset-http"
+categoryOrder = 1
+order = 15
+content = """
+--filter-l7=http
+<LIST_MODE>
+--dpi-desync=hostfakesplit
+--dpi-desync-repeats=4
+--dpi-desync-fooling=ts,md5sig
+--dpi-desync-hostfakesplit-mod=host=ozon.ru"""
+active = false
+system = true

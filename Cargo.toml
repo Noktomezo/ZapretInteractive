@@ -1,0 +1,56 @@
+[package]
+name = "zapret-interactive"
+version = "1.6.2"
+edition = "2024"
+description = "GUI-wrapper for zapret-win-bundle by bol-van"
+authors = ["Noktomezo <noktomezo@duck.com>"]
+license = "MIT"
+repository = "https://github.com/Noktomezo/ZapretInteractive"
+
+[[bin]]
+name = "ZapretInteractive"
+path = "src/main.rs"
+
+[workspace]
+resolver = "3"
+members = [".", "tooling/xtask"]
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[dependencies]
+anyhow = "1"
+# System-local log timestamps without unsafe platform calls.
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+discord-presence = "3.2.0"
+dnsstamps = "0.1.10"
+duct = "0.13"
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+gpui = { git = "https://github.com/zed-industries/zed" }
+gpui_platform = { git = "https://github.com/zed-industries/zed", features = ["font-kit"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
+notify = "8.2.0"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
+rust-embed = { version = "8.7", features = ["include-exclude"] }
+rust-i18n = "3.1"
+semver = "1.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+surge-ping = "0.8.4"
+tokio = { version = "1", features = ["net", "rt", "rt-multi-thread", "time", "sync", "fs", "io-util"] }
+toml = "1"
+unicode-segmentation = "1"
+url = "2"
+uuid = { version = "1", features = ["v4"] }
+
+[target.'cfg(windows)'.dependencies]
+tray-icon = "0.21"
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_System_Threading", "Win32_Security", "Win32_System_ProcessStatus"] }
+
+[build-dependencies]
+winres = "0.1.12"

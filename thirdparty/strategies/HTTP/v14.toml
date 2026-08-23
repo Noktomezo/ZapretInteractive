@@ -1,0 +1,17 @@
+id = "preset-http-v14"
+name = "v14"
+category = "HTTP"
+categoryId = "preset-http"
+categoryOrder = 1
+order = 14
+content = """
+--filter-l7=http
+<LIST_MODE>
+--dpi-desync=fake
+--dpi-desync-fake-tls-mod=none
+--dpi-desync-repeats=6
+--dpi-desync-fooling=badseq
+--dpi-desync-badseq-increment=2
+--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}"""
+active = false
+system = true

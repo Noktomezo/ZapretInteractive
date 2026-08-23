@@ -1,0 +1,15 @@
+id = "tcp-v26"
+name = "v26"
+category = "TCP"
+categoryId = "preset-tcp"
+categoryOrder = 3
+order = 26
+content = """
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=hostfakesplit
+--dpi-desync-repeats=4
+--dpi-desync-fooling=ts
+--dpi-desync-hostfakesplit-mod=host=ozon.ru"""
+active = false
+system = true

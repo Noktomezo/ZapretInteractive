@@ -1,0 +1,17 @@
+id = "preset-unknown-tcp-v9"
+name = "v9"
+category = "Game TCP"
+categoryId = "preset-unknown-tcp"
+categoryOrder = 7
+order = 9
+content = """
+--filter-tcp=1024-65535
+--filter-l7=unknown
+--dpi-desync=multisplit
+--dpi-desync-any-protocol=1
+--dpi-desync-cutoff=n3
+--dpi-desync-split-seqovl=681
+--dpi-desync-split-pos=1
+--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOOGLE}}"""
+active = false
+system = true

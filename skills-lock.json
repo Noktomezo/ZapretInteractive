@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "skills": {
+    "gpui": {
+      "source": "longbridge/gpui-component",
+      "sourceType": "github",
+      "skillPath": "skills/gpui/SKILL.md",
+      "computedHash": "123346a2eb877e8221889611f20025eb742f87913dfa2a5a4f4958cbbbc12bab"
+    },
+    "gpui-actions": {
+      "source": "cnwzhu/gpui-skills",
+      "sourceType": "github",
+      "skillPath": "gpui-actions/SKILL.md",
+      "computedHash": "2f6e9623e123c09c67caab4c321081bd4be96ef3d3c6808e1a2673a871174c49"
+    },
+    "gpui-async": {
+      "source": "cnwzhu/gpui-skills",
+      "sourceType": "github",
+      "skillPath": "gpui-async/SKILL.md",
+      "computedHash": "80f0d1a95d1b7f8804942e8051aaf4666eafdd3157d2da9d2993b61c1290765d"
+    },
+    "gpui-code-quality": {
+      "source": "cnwzhu/gpui-skills",
+      "sourceType": "github",
+      "skillPath": "gpui-code-quality/SKILL.md",
+      "computedHash": "f98d5f9d39e35b6d0ce1a5ebac1522de6a9a9bf5bde24021a64d17d316bbd633"
+    },
+    "gpui-component": {
+      "source": "longbridge/gpui-component",
+      "sourceType": "github",
+      "skillPath": "skills/gpui-component/SKILL.md",
+      "computedHash": "dd0ca0c399d583c40ba9c7b1d488432a481a7aacfaf121f8ab5760f5ce290a09"
+    },
+    "gpui-elements": {
+      "source": "cnwzhu/gpui-skills",
+      "sourceType": "github",
+      "skillPath": "gpui-elements/SKILL.md",
+      "computedHash": "ad9d4794415efdb7ba43a3b383aeb761111a410b7d37ddf1b8b27fd0d62bb8c8"
+    },
+    "gpui-entities": {
+      "source": "cnwzhu/gpui-skills",
+      "sourceType": "github",
+      "skillPath": "gpui-entities/SKILL.md",
+      "computedHash": "28041ff417b8e41796c86241f4204882214b473ebb08fa073c2b50d9bb69b623"
+    },
+    "gpui-fundamentals": {
+      "source": "cnwzhu/gpui-skills",
+      "sourceType": "github",
+      "skillPath": "gpui-fundamentals/SKILL.md",
+      "computedHash": "e81bda79a8bbb2d78d55a5c07498c0d59a1c73b5f12f232a69e7083a7ee9927d"
+    },
+    "gpui-init": {
+      "source": "cnwzhu/gpui-skills",
+      "sourceType": "github",
+      "skillPath": "gpui-init/SKILL.md",
+      "computedHash": "ebc6bebf0c7faf3328e000cfb217caeff2b4887f1c6263ce1edb0b6230540bf6"
+    },
+    "gpui-patterns": {
+      "source": "cnwzhu/gpui-skills",
+      "sourceType": "github",
+      "skillPath": "gpui-patterns/SKILL.md",
+      "computedHash": "84d751bd2500bf088c8ba6041f1b94287091f78916fc05a606eb70dd43587b43"
+    },
+    "gpui-styling": {
+      "source": "cnwzhu/gpui-skills",
+      "sourceType": "github",
+      "skillPath": "gpui-styling/SKILL.md",
+      "computedHash": "7679edd0e9cdfd2d7193c13ecb61f7b1a3e6e151a6dac611c4e26a1860374af8"
+    },
+    "gpui-testing": {
+      "source": "cnwzhu/gpui-skills",
+      "sourceType": "github",
+      "skillPath": "gpui-testing/SKILL.md",
+      "computedHash": "a9419def949ac4493f79c46020d5e4b9e86b936a5e13cd338ea6ea15fecb7efc"
+    },
+    "gpui-troubleshooting": {
+      "source": "cnwzhu/gpui-skills",
+      "sourceType": "github",
+      "skillPath": "gpui-troubleshooting/SKILL.md",
+      "computedHash": "80da49e9a0a4c5688eaef09709d3005acd8689ac4ef084be60e4a2d35b5bcf97"
+    }
+  }
+}

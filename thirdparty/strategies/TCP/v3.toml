@@ -1,0 +1,22 @@
+id = "tcp-v3"
+name = "v3"
+category = "TCP"
+categoryId = "preset-tcp"
+categoryOrder = 3
+order = 3
+content = """
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=fake,fakeddisorder
+--dpi-desync-split-pos=10,midsld
+--dpi-desync-fake-tls={{T2}}
+--dpi-desync-fake-tls-mod=rnd,dupsid,sni=m.ok.ru
+--dpi-desync-fake-tls=0x0F0F0F0F
+--dpi-desync-fake-tls-mod=none
+--dpi-desync-fakedsplit-pattern={{TLS_CLIENTHELLO_VK}}
+--dpi-desync-split-seqovl=336
+--dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_GOSUSLUGI}}
+--dpi-desync-fooling=badseq,badsum
+--dpi-desync-badseq-increment=0"""
+active = false
+system = true

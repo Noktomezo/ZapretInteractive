@@ -1,0 +1,17 @@
+id = "discord-media-v11"
+name = "v11"
+category = "Discord Media"
+categoryId = "preset-discord-media"
+categoryOrder = 6
+order = 11
+content = """
+--filter-tcp=2053,2083,2087,2096,8443
+--hostlist-domains=discord.media
+--dpi-desync=fake,fakedsplit
+--dpi-desync-split-pos=1
+--dpi-desync-fooling=badseq
+--dpi-desync-badseq-increment=2
+--dpi-desync-repeats=8
+--dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com"""
+active = false
+system = true
