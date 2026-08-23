@@ -1,3 +1,6 @@
+thirdparty/fake/*.bin binary
 thirdparty/filters/*.txt text eol=lf
+thirdparty/hashes.json text eol=lf
 thirdparty/lists/*.txt text eol=lf
+thirdparty/strategies/*/*.toml text eol=lf
 *.patch text eol=lf whitespace=-blank-at-eol
