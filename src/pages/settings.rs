@@ -171,9 +171,9 @@ fn updates_card(
             crate::ui::components::badge::Badge::new(format!(
                 "{} · v{}",
                 t!("settings.badge_update_available"),
-                update.new_version
+                update.new_version.trim_start_matches('v')
             ))
-            .warning()
+            .orange()
             .pulse("settings-update-available-pulse")
             .into_any_element(),
         )
@@ -211,7 +211,7 @@ fn updates_card(
 
     module_card(
         module_header_custom(
-            ("icons/download.svg", colors::cyan()),
+            ("icons/cloud-download.svg", colors::green()),
             title_element,
             t!("settings.updates_desc"),
             Some(actions),
@@ -238,7 +238,7 @@ fn update_actions(
                 t!("settings.btn_update_and_restart"),
                 cx,
             )
-            .primary()
+            .orange()
             .small()
             .icon_prefix("icons/cloud-download.svg")
             .on_click(move |_, _, cx| {

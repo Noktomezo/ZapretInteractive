@@ -180,7 +180,7 @@ impl RenderOnce for SmoothVerticalScroll {
                             div()
                                 .id(scroll_btn_id)
                                 .flex_none()
-                                .h(px(32.))
+                                .h(crate::ui::foundation::control_style::CONTROL_HEIGHT)
                                 .pl(px(10.))
                                 .pr(px(12.))
                                 .flex()

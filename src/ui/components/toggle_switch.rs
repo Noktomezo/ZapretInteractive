@@ -2,10 +2,11 @@ use gpui::prelude::*;
 use gpui::*;
 
 use crate::ui::foundation::colors;
+use crate::ui::foundation::control_style::CONTROL_HEIGHT;
 use crate::ui::foundation::hover_motion;
 use crate::ui::foundation::motion::mix_color;
 
-const SWITCH_TRAVEL: Pixels = px(16.0);
+const SWITCH_TRAVEL: Pixels = px(18.0);
 type ToggleHandler = Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
 
 /// Unified interactive Switch (toggle) component.
@@ -79,9 +80,9 @@ impl IntoElement for Switch {
 
         let mut track = div()
             .id(source_id.clone())
-            .w(px(38.0))
-            .h(px(22.0))
-            .p(px(2.0))
+            .w(px(46.0))
+            .h(CONTROL_HEIGHT)
+            .p(px(3.0))
             .flex_none()
             .flex()
             .items_center()
@@ -99,7 +100,7 @@ impl IntoElement for Switch {
             ))
             .child(
                 div()
-                    .size(px(16.0))
+                    .size(px(22.0))
                     .ml(SWITCH_TRAVEL * self.progress)
                     .rounded(px(5.0))
                     .bg(colors::black())

@@ -3,11 +3,12 @@ use gpui::*;
 
 use crate::ui::components::text_input::{TextInput, TextInputState};
 use crate::ui::foundation::colors::{self, border, input, muted_foreground};
+use crate::ui::foundation::control_style::CONTROL_HEIGHT;
 
 /// Container styles for styled text inputs.
 pub fn form_input_container() -> Div {
     div()
-        .h(px(36.))
+        .h(CONTROL_HEIGHT)
         .px_3()
         .rounded_md()
         .border_1()
