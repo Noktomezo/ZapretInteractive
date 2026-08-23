@@ -6,7 +6,9 @@ use gpui::*;
 
 use crate::ui::components::backdrop_blur::backdrop_blur;
 use crate::ui::components::dashed_outline::dashed_outline;
-use crate::ui::foundation::colors::{accent, card};
+use crate::ui::foundation::colors::{
+    accent, card, destructive, foreground, muted_foreground, success, warning,
+};
 
 const DEFAULT_FRAME_BUDGET: Duration = Duration::from_nanos(16_666_667); // 60Hz
 const DEFAULT_CAPACITY: usize = 120;
@@ -16,7 +18,7 @@ const HUD_WIDTH: Pixels = px(208.0);
 const HUD_HEIGHT: Pixels = px(154.0);
 const HUD_MARGIN: Pixels = px(16.0);
 const HUD_TOP: Pixels = px(56.0);
-const TEXT_SIZE: Pixels = px(10.0);
+const TEXT_SIZE: Pixels = px(11.0);
 const TRACE_OPACITY: f32 = 0.35;
 const CHART_HEIGHT: Pixels = px(42.0);
 const READOUT_INTERVAL: Duration = Duration::from_millis(500);
@@ -37,12 +39,12 @@ pub struct FpsStyle {
 impl Default for FpsStyle {
     fn default() -> Self {
         Self {
-            background: hsla(0.0, 0.0, 0.04, 0.92),
-            foreground: hsla(0.0, 0.0, 0.98, 1.0),
-            muted: hsla(0.0, 0.0, 0.62, 1.0),
-            good: hsla(0.41, 0.95, 0.56, 1.0),
-            warn: hsla(0.11, 0.95, 0.60, 1.0),
-            bad: hsla(0.99, 0.90, 0.62, 1.0),
+            background: card().into(),
+            foreground: foreground().into(),
+            muted: muted_foreground().into(),
+            good: success().into(),
+            warn: warning().into(),
+            bad: destructive().into(),
         }
     }
 }
@@ -309,7 +311,6 @@ pub struct FpsMonitor {
     sampler: FrameSampler,
     readout: Readout,
     readout_at: Option<Instant>,
-    style: FpsStyle,
     frame_budget: Duration,
     continuous: bool,
     show_resources: bool,
@@ -334,7 +335,6 @@ impl FpsMonitor {
             sampler: FrameSampler::new(DEFAULT_CAPACITY),
             readout: Readout::default(),
             readout_at: None,
-            style: FpsStyle::default(),
             frame_budget,
             continuous: true,
             show_resources: true,
@@ -434,8 +434,7 @@ impl FpsMonitor {
         };
     }
 
-    fn render_chart(&self) -> impl IntoElement {
-        let style = self.style;
+    fn render_chart(&self, style: FpsStyle) -> impl IntoElement {
         let budget = self.frame_budget.as_secs_f32();
         let axis_max = self.axis_max.max(f32::EPSILON);
         let capacity = self.sampler.capacity();
@@ -489,15 +488,15 @@ impl FpsMonitor {
         .inset_0()
     }
 
-    fn render_chart_panel(&self) -> Div {
+    fn render_chart_panel(&self, style: FpsStyle) -> Div {
         div()
             .relative()
             .overflow_hidden()
             .w_full()
             .h(CHART_HEIGHT)
             .rounded(px(4.0))
-            .bg(self.style.background.opacity(0.55))
-            .child(self.render_chart())
+            .bg(style.background.opacity(0.72))
+            .child(self.render_chart(style))
     }
 }
 
@@ -511,7 +510,7 @@ impl Render for FpsMonitor {
             window.request_animation_frame();
         }
 
-        let style = self.style;
+        let style = FpsStyle::default();
         let budget = self.frame_budget;
         let Readout {
             fps,
@@ -611,11 +610,12 @@ impl Render for FpsMonitor {
                     .flex()
                     .w_full()
                     .justify_between()
+                    .font_weight(FontWeight::SEMIBOLD)
                     .text_color(style.foreground)
                     .child("PERFORMANCE")
                     .child(if dragging { "MOVING" } else { "DRAG" }),
             )
-            .child(self.render_chart_panel())
+            .child(self.render_chart_panel(style))
             .child(reading("FPS", format!("{fps:.0}"), fps_color, style))
             .child(reading(
                 "FRAME",
@@ -672,7 +672,12 @@ fn reading(label: &'static str, value: String, value_color: Hsla, style: FpsStyl
         .gap_2()
         .py(px(1.0))
         .child(div().text_color(style.muted).child(label))
-        .child(div().text_color(value_color).child(value))
+        .child(
+            div()
+                .font_weight(FontWeight::MEDIUM)
+                .text_color(value_color)
+                .child(value),
+        )
 }
 
 fn default_hud_position(viewport: Size<Pixels>) -> Point<Pixels> {
