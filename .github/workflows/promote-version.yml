@@ -141,6 +141,8 @@ jobs:
         run: |
           set -euo pipefail
           mv "dist/Zapret-Interactive-pr-${PR_NUMBER}-windows-x86_64-setup.exe" "dist/Zapret Interactive_${VERSION}_x64-installer.exe"
+          # Fallback URL hard-coded in GPUI 2.0.0.
+          cp "dist/Zapret Interactive_${VERSION}_x64-installer.exe" "dist/ZapretInteractive.exe"
           mv "dist/Zapret-Interactive-pr-${PR_NUMBER}-windows-x86_64-portable.zip" "dist/Zapret Interactive_${VERSION}_x64-portable.zip"
 
       - name: Install Rust
