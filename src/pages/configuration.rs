@@ -22,15 +22,14 @@ impl AppView {
             }
         });
         let bootstrap_control = dropdown("dns-bootstrap", &self.dns_dropdown, cx);
-        let accelerator =
-            switch("dns-accelerator", config.dns_accelerator_enabled, cx).on_toggle({
-                let state = self.state.clone();
-                move |_, _, cx| {
-                    state.update(cx, |state, cx| {
-                        state.set_dns_accelerator(!state.config.dns_accelerator_enabled, cx);
-                    })
-                }
-            });
+        let multiqueue = switch("dns-accelerator", config.dns_accelerator_enabled, cx).on_toggle({
+            let state = self.state.clone();
+            move |_, _, cx| {
+                state.update(cx, |state, cx| {
+                    state.set_dns_multiqueue(!state.config.dns_accelerator_enabled, cx);
+                })
+            }
+        });
         let parameters = module_card(
             module_header(
                 ("icons/shield-check.svg", colors::green()),
@@ -49,7 +48,7 @@ impl AppView {
                     .child(module_row(
                         t!("modules.dns_accelerator"),
                         t!("modules.dns_accelerator_desc"),
-                        accelerator,
+                        multiqueue,
                     )),
             ),
         );
@@ -59,6 +58,7 @@ impl AppView {
                 name,
                 url,
                 config.dns_preset_id == id,
+                config.dns_accelerator_enabled,
                 latencies.get(id).copied(),
                 checking,
                 self.state.clone(),

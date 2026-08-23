@@ -182,6 +182,7 @@ pub(super) fn dns_provider_card(
     name: &'static str,
     url: &'static str,
     selected: bool,
+    multiqueue: bool,
     latency: Option<Option<u128>>,
     checking: bool,
     state: Entity<crate::app_state::AppState>,
@@ -223,11 +224,73 @@ pub(super) fn dns_provider_card(
         None
     };
 
+    let selected = selected || multiqueue;
     let variant = if selected {
         crate::ui::components::card::CardVariant::Success
     } else {
         crate::ui::components::card::CardVariant::Interactive
     };
+
+    let content = div()
+        .p_4()
+        .flex()
+        .items_center()
+        .justify_between()
+        .gap_3()
+        .child(
+            div()
+                .min_w_0()
+                .flex_1()
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_2()
+                        .child(div().text_sm().font_weight(FontWeight::MEDIUM).child(name))
+                        .children(latency_element),
+                )
+                .child(
+                    div()
+                        .mt_1()
+                        .text_xs()
+                        .font_family("IBM Plex Mono")
+                        .text_color(muted_foreground())
+                        .child(url),
+                ),
+        )
+        .when(selected, |card| {
+            card.child(
+                svg()
+                    .path("icons/check.svg")
+                    .size_4()
+                    .text_color(success())
+                    .with_animation(
+                        SharedString::from(format!("dns-check-fade-{id}")),
+                        Animation::new(std::time::Duration::from_millis(200)),
+                        |icon, delta| icon.opacity(delta),
+                    ),
+            )
+        });
+
+    if multiqueue {
+        let tooltip_id: ElementId = format!("dns-multiqueue-tooltip-{id}").into();
+        let card = crate::ui::components::card::Card::new()
+            .id(format!("dns-{id}"))
+            .variant(variant)
+            .rounded_lg()
+            .min_h(px(72.))
+            .child(content);
+        return crate::ui::components::cursor_tooltip::attach(
+            div()
+                .id(tooltip_id.clone())
+                .opacity(0.55)
+                .cursor_not_allowed()
+                .child(card),
+            tooltip_id,
+            t!("modules.dns_multiqueue_locked"),
+        )
+        .into_any_element();
+    }
 
     crate::ui::components::card::Card::interactive(format!("dns-{id}"), cx)
         .variant(variant)
@@ -238,48 +301,7 @@ pub(super) fn dns_provider_card(
                 state.set_dns_preset(id, cx);
             })
         })
-        .child(
-            div()
-                .p_4()
-                .flex()
-                .items_center()
-                .justify_between()
-                .gap_3()
-                .child(
-                    div()
-                        .min_w_0()
-                        .flex_1()
-                        .child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .gap_2()
-                                .child(div().text_sm().font_weight(FontWeight::MEDIUM).child(name))
-                                .children(latency_element),
-                        )
-                        .child(
-                            div()
-                                .mt_1()
-                                .text_xs()
-                                .font_family("IBM Plex Mono")
-                                .text_color(muted_foreground())
-                                .child(url),
-                        ),
-                )
-                .when(selected, |card| {
-                    card.child(
-                        svg()
-                            .path("icons/check.svg")
-                            .size_4()
-                            .text_color(success())
-                            .with_animation(
-                                SharedString::from(format!("dns-check-fade-{id}")),
-                                Animation::new(std::time::Duration::from_millis(200)),
-                                |icon, delta| icon.opacity(delta),
-                            ),
-                    )
-                }),
-        )
+        .child(content)
         .into_element()
 }
 

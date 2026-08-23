@@ -187,7 +187,7 @@ impl AppState {
     }
 
     pub fn set_dns_preset(&mut self, preset_id: &str, cx: &mut Context<Self>) {
-        if self.config.dns_preset_id == preset_id {
+        if self.config.dns_accelerator_enabled || self.config.dns_preset_id == preset_id {
             return;
         }
         self.config.dns_preset_id = preset_id.to_owned();
@@ -218,7 +218,7 @@ impl AppState {
         self.apply_module(ManagedModule::TgProxy, cx);
     }
 
-    pub fn set_dns_accelerator(&mut self, enabled: bool, cx: &mut Context<Self>) {
+    pub fn set_dns_multiqueue(&mut self, enabled: bool, cx: &mut Context<Self>) {
         if self.config.dns_accelerator_enabled == enabled {
             return;
         }

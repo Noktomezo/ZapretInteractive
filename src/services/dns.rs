@@ -101,12 +101,7 @@ impl DnsRuntime {
             bail!("dnscrypt-proxy уже запущен вне управления приложения");
         }
         fs::create_dir_all(&self.runtime_dir).context("не удалось создать runtime DNS")?;
-        let endpoint = PRESETS
-            .iter()
-            .find(|preset| preset.0 == preset_id)
-            .unwrap_or(&PRESETS[0])
-            .2;
-        let endpoint = accelerate(endpoint, accelerator);
+        let endpoint = dns_endpoint(preset_id, accelerator);
         let config = write_config(&self.runtime_dir, &endpoint, bootstrap)?;
         if let Err(error) = backup_and_apply_dns(&self.runtime_dir) {
             return match restore_dns(&self.runtime_dir) {
@@ -189,20 +184,26 @@ fn format_optional_error(error: Option<impl std::fmt::Display>) -> String {
     error.map_or_else(|| "успешно".to_owned(), |error| format!("{error:#}"))
 }
 
-fn accelerate(endpoint: &str, enabled: bool) -> String {
-    if !enabled {
-        return endpoint.to_owned();
+fn dns_endpoint(preset_id: &str, multiqueue: bool) -> String {
+    let selected = PRESETS
+        .iter()
+        .find(|preset| preset.0 == preset_id)
+        .unwrap_or(&PRESETS[0])
+        .2;
+    if !multiqueue {
+        return selected.to_owned();
     }
-    Url::parse(endpoint)
-        .ok()
-        .and_then(|url| {
-            Some(format!(
-                "https://v.recipes/dns/{}{}",
-                url.host_str()?,
-                url.path()
-            ))
+    let upstreams = PRESETS
+        .iter()
+        .map(|preset| {
+            preset
+                .2
+                .split_once("://")
+                .map_or(preset.2, |(_, upstream)| upstream)
         })
-        .unwrap_or_else(|| endpoint.to_owned())
+        .collect::<Vec<_>>()
+        .join("/mq/");
+    format!("https://v.recipes/mq/{upstreams}")
 }
 
 fn write_config(runtime_dir: &Path, endpoint: &str, bootstrap: &[String]) -> Result<PathBuf> {
@@ -295,14 +296,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn accelerator_preserves_endpoint_shape() {
+    fn multiqueue_uses_every_preset() {
+        let endpoint = dns_endpoint(PRESETS[0].0, true);
+        assert_eq!(endpoint.matches("/mq/").count(), PRESETS.len());
+        for (_, _, upstream) in PRESETS {
+            assert!(endpoint.contains(upstream.trim_start_matches("https://")));
+        }
+    }
+
+    #[test]
+    fn single_mode_uses_selected_preset() {
         assert_eq!(
-            accelerate("https://dns.example/dns-query", true),
-            "https://v.recipes/dns/dns.example/dns-query"
-        );
-        assert_eq!(
-            accelerate("https://dns.example/dns-query", false),
-            "https://dns.example/dns-query"
+            dns_endpoint("xbox-dns-ru", false),
+            "https://xbox-dns.ru/dns-query"
         );
     }
 
