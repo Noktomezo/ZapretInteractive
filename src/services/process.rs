@@ -372,9 +372,15 @@ fn stop_child(child: &mut Option<duct::Handle>, name: &str) -> Result<()> {
             .with_context(|| format!("не удалось проверить {name}"))?
             .is_none()
     {
-        running
-            .kill()
-            .with_context(|| format!("не удалось остановить {name}"))?;
+        if let Some(pid) = running.pids().into_iter().next() {
+            hidden_cmd("taskkill.exe", ["/F", "/PID", &pid.to_string(), "/T"])
+                .run()
+                .with_context(|| format!("не удалось остановить {name}, PID {pid}"))?;
+        } else {
+            running
+                .kill()
+                .with_context(|| format!("не удалось остановить {name}"))?;
+        }
     }
     Ok(())
 }
