@@ -124,22 +124,6 @@ impl RenderOnce for SmoothVerticalScroll {
             })
             .read(cx)
             .clone();
-        let is_scrolled = handle.offset().y < -px(160.0);
-        let scroll_btn_id = (self.id.clone(), "scroll-to-top-btn");
-        let hover_key = SharedString::from(format!("{}-scroll-to-top-btn", self.id));
-        let hover = hover_motion::progress(&hover_key, cx);
-        let border_color = mix_color(
-            colors::border().opacity(0.8),
-            colors::accent().opacity(0.7),
-            hover,
-        );
-        let bg_color = mix_color(
-            colors::card().opacity(0.94),
-            colors::secondary().opacity(0.96),
-            hover,
-        );
-        let text_color = mix_color(colors::foreground(), colors::accent(), hover);
-        let icon_color = mix_color(colors::muted_foreground(), colors::accent(), hover);
 
         let area = div()
             .id((self.id.clone(), "area"))
@@ -157,98 +141,14 @@ impl RenderOnce for SmoothVerticalScroll {
             wheel_enabled: self.wheel_enabled,
         };
 
-        let scroll_to_top_handle = handle.clone();
-        let scroll_to_top_state = state.clone();
-
-        div()
+        let container = div()
             .id(self.id.clone())
             .relative()
             .size_full()
             .child(captured)
-            .child(PageScrollbar::new(self.id, handle))
-            .when(self.scroll_to_top && is_scrolled, |container| {
-                let hk = hover_key.clone();
-                container.child(
-                    div()
-                        .absolute()
-                        .bottom(px(20.))
-                        .left_0()
-                        .right_0()
-                        .flex()
-                        .justify_center()
-                        .child(
-                            div()
-                                .id(scroll_btn_id)
-                                .flex_none()
-                                .h(crate::ui::foundation::control_style::CONTROL_HEIGHT)
-                                .pl(px(10.))
-                                .pr(px(12.))
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .gap(px(6.))
-                                .rounded_md()
-                                .border_1()
-                                .border_color(border_color)
-                                .bg(bg_color)
-                                .shadow_lg()
-                                .text_size(px(13.))
-                                .font_weight(FontWeight::MEDIUM)
-                                .text_color(text_color)
-                                .cursor_pointer()
-                                .active(|style| style.opacity(0.85))
-                                .on_hover(move |hovered, window, cx| {
-                                    hover_motion::set_hovered(hk.clone(), *hovered, window, cx);
-                                })
-                                .on_mouse_down(MouseButton::Left, |_, window, cx| {
-                                    window.prevent_default();
-                                    cx.stop_propagation();
-                                })
-                                .on_click(move |_, window, cx| {
-                                    let reduce_motion = cx.reduce_motion();
-                                    let should_schedule =
-                                        scroll_to_top_state.update(cx, |state, _| {
-                                            let applied_offset = scroll_to_top_handle.offset();
-                                            state.target_y = Pixels::ZERO;
-                                            if reduce_motion {
-                                                scroll_to_top_handle.set_offset(point(
-                                                    applied_offset.x,
-                                                    Pixels::ZERO,
-                                                ));
-                                                state.running = false;
-                                                false
-                                            } else {
-                                                state.running = true;
-                                                state.last_frame = Instant::now();
-                                                true
-                                            }
-                                        });
+            .child(PageScrollbar::new(self.id.clone(), handle.clone()));
 
-                                    window.refresh();
-                                    if should_schedule {
-                                        schedule_list_frame(
-                                            scroll_to_top_state.clone(),
-                                            scroll_to_top_handle.clone(),
-                                            window,
-                                        );
-                                    }
-                                })
-                                .child(
-                                    svg()
-                                        .path("icons/arrow-up.svg")
-                                        .size(px(14.))
-                                        .flex_none()
-                                        .text_color(icon_color),
-                                )
-                                .child(
-                                    div()
-                                        .whitespace_nowrap()
-                                        .flex_none()
-                                        .child(t!("common.scroll_to_top")),
-                                ),
-                        ),
-                )
-            })
+        with_scroll_to_top(container, self.id, state, handle, self.scroll_to_top, cx)
     }
 }
 
@@ -259,6 +159,7 @@ pub struct SmoothUniformListScroll {
     handle: UniformListScrollHandle,
     child: AnyElement,
     wheel_enabled: bool,
+    scroll_to_top: bool,
 }
 
 impl SmoothUniformListScroll {
@@ -272,11 +173,17 @@ impl SmoothUniformListScroll {
             handle,
             child: child.into_any_element(),
             wheel_enabled: true,
+            scroll_to_top: false,
         }
     }
 
     pub fn wheel_enabled(mut self, enabled: bool) -> Self {
         self.wheel_enabled = enabled;
+        self
+    }
+
+    pub fn scroll_to_top(mut self, enabled: bool) -> Self {
+        self.scroll_to_top = enabled;
         self
     }
 }
@@ -289,16 +196,25 @@ impl RenderOnce for SmoothUniformListScroll {
             })
             .clone();
 
-        CaptureListWheel {
+        let handle = UniformScrollHandle(self.handle);
+        let captured = CaptureListWheel {
             child: div()
-                .id(self.id)
+                .id((self.id.clone(), "area"))
                 .size_full()
                 .child(self.child)
                 .into_any_element(),
-            state,
-            handle: UniformScrollHandle(self.handle),
+            state: state.clone(),
+            handle: handle.clone(),
             wheel_enabled: self.wheel_enabled,
-        }
+        };
+
+        let container = div()
+            .id(self.id.clone())
+            .relative()
+            .size_full()
+            .child(captured);
+
+        with_scroll_to_top(container, self.id, state, handle, self.scroll_to_top, cx)
     }
 }
 
@@ -393,6 +309,7 @@ pub struct SmoothListScroll {
     state: ListState,
     child: AnyElement,
     wheel_enabled: bool,
+    scroll_to_top: bool,
 }
 
 impl SmoothListScroll {
@@ -402,11 +319,17 @@ impl SmoothListScroll {
             state,
             child: child.into_any_element(),
             wheel_enabled: true,
+            scroll_to_top: false,
         }
     }
 
     pub fn wheel_enabled(mut self, enabled: bool) -> Self {
         self.wheel_enabled = enabled;
+        self
+    }
+
+    pub fn scroll_to_top(mut self, enabled: bool) -> Self {
+        self.scroll_to_top = enabled;
         self
     }
 }
@@ -419,18 +342,27 @@ impl RenderOnce for SmoothListScroll {
             })
             .clone();
 
-        CaptureListWheel {
+        let handle = self.state;
+        let captured = CaptureListWheel {
             child: div()
-                .id(self.id)
+                .id((self.id.clone(), "area"))
                 .size_full()
                 .flex()
                 .flex_col()
                 .child(self.child)
                 .into_any_element(),
-            state,
-            handle: self.state,
+            state: state.clone(),
+            handle: handle.clone(),
             wheel_enabled: self.wheel_enabled,
-        }
+        };
+
+        let container = div()
+            .id(self.id.clone())
+            .relative()
+            .size_full()
+            .child(captured);
+
+        with_scroll_to_top(container, self.id, state, handle, self.scroll_to_top, cx)
     }
 }
 
@@ -483,6 +415,119 @@ impl SmoothVirtualHandle for UniformScrollHandle {
     fn set_offset(&self, offset: Point<Pixels>) {
         self.0.0.borrow().base_handle.set_offset(offset);
     }
+}
+
+fn with_scroll_to_top<H: SmoothVirtualHandle>(
+    container: Stateful<Div>,
+    id: ElementId,
+    state: Entity<SmoothListState>,
+    handle: H,
+    enabled: bool,
+    cx: &mut App,
+) -> Stateful<Div> {
+    if !enabled || handle.offset().y >= -px(160.0) {
+        return container;
+    }
+
+    let hover_key = SharedString::from(format!("{id}-scroll-to-top-btn"));
+    let hover = hover_motion::progress(&hover_key, cx);
+    let border_color = mix_color(
+        colors::border().opacity(0.8),
+        colors::accent().opacity(0.7),
+        hover,
+    );
+    let background_color = mix_color(
+        colors::card().opacity(0.94),
+        colors::secondary().opacity(0.96),
+        hover,
+    );
+    let text_color = mix_color(colors::foreground(), colors::accent(), hover);
+    let icon_color = mix_color(colors::muted_foreground(), colors::accent(), hover);
+    let scroll_handle = handle.clone();
+    let scroll_state = state.clone();
+    let hover_key_for_event = hover_key.clone();
+
+    container.child(
+        div()
+            .absolute()
+            .bottom(px(20.))
+            .left_0()
+            .right_0()
+            .flex()
+            .justify_center()
+            .child(
+                div()
+                    .id((id, "scroll-to-top-btn"))
+                    .flex_none()
+                    .h(crate::ui::foundation::control_style::CONTROL_HEIGHT)
+                    .pl(px(10.))
+                    .pr(px(12.))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .gap(px(6.))
+                    .rounded_md()
+                    .border_1()
+                    .border_color(border_color)
+                    .bg(background_color)
+                    .shadow_lg()
+                    .text_size(px(13.))
+                    .font_weight(FontWeight::MEDIUM)
+                    .text_color(text_color)
+                    .cursor_pointer()
+                    .active(|style| style.opacity(0.85))
+                    .on_hover(move |hovered, window, cx| {
+                        hover_motion::set_hovered(
+                            hover_key_for_event.clone(),
+                            *hovered,
+                            window,
+                            cx,
+                        );
+                    })
+                    .on_mouse_down(MouseButton::Left, |_, window, cx| {
+                        window.prevent_default();
+                        cx.stop_propagation();
+                    })
+                    .on_click(move |_, window, cx| {
+                        let reduce_motion = cx.reduce_motion();
+                        let should_schedule = scroll_state.update(cx, |state, _| {
+                            let applied_offset = scroll_handle.offset();
+                            state.target_y = Pixels::ZERO;
+                            if reduce_motion {
+                                scroll_handle.set_offset(point(applied_offset.x, Pixels::ZERO));
+                                state.running = false;
+                                false
+                            } else {
+                                state.running = true;
+                                state.last_frame = Instant::now();
+                                true
+                            }
+                        });
+
+                        window.refresh();
+                        if should_schedule {
+                            schedule_list_frame(
+                                scroll_state.clone(),
+                                scroll_handle.clone(),
+                                window,
+                            );
+                        }
+                    })
+                    .child(
+                        svg()
+                            .path("icons/arrow-up.svg")
+                            .size(px(14.))
+                            .flex_none()
+                            .text_color(icon_color),
+                    )
+                    .child(
+                        div()
+                            .whitespace_nowrap()
+                            .flex_none()
+                            .child(t!("common.scroll_to_top")),
+                    ),
+            ),
+    )
 }
 
 fn handle_list_wheel(

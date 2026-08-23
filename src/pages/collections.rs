@@ -37,8 +37,9 @@ impl AppView {
         let active_strategy = category
             .strategies
             .iter()
-            .find(|strategy| strategy.active)
-            .map(|strategy| strategy.name.clone());
+            .enumerate()
+            .find(|(_, strategy)| strategy.active)
+            .map(|(index, strategy)| (index + 1, strategy.name.clone()));
         let page_category_id = category.id.clone();
         let strategies = category.strategies.clone();
 
@@ -60,6 +61,7 @@ impl AppView {
         let cat_for_list = category.clone();
         let builtin_for_list = builtin.clone();
         let strategies_for_list = strategies.clone();
+        let scroll_to_active_state = list_state.clone();
 
         let list_element = list(list_state.clone(), move |ix, _window, cx| {
             if ix == 0 {
@@ -125,32 +127,45 @@ impl AppView {
                                                 cat_for_list.system,
                                                 px(12.),
                                             ))
-                                            .when_some(active_strategy.clone(), |title, active| {
-                                                let tooltip_text = t!(
-                                                    "strategies.active_tooltip",
-                                                    name = active.as_str()
-                                                );
-                                                let active_elem_id = SharedString::from(format!(
-                                                    "header-active-{}",
-                                                    cat_for_list.id
-                                                ));
-                                                title.child(cursor_tooltip::attach(
-                                                    div()
-                                                        .id(active_elem_id.clone())
-                                                        .flex()
-                                                        .items_center()
-                                                        .child(pulsing_label(
-                                                            SharedString::from(format!(
-                                                                "detail-active-{}",
-                                                                cat_for_list.id
+                                            .when_some(
+                                                active_strategy.clone(),
+                                                |title, (active_index, active)| {
+                                                    let tooltip_text = t!(
+                                                        "strategies.active_tooltip",
+                                                        name = active.as_str()
+                                                    );
+                                                    let active_elem_id =
+                                                        SharedString::from(format!(
+                                                            "header-active-{}",
+                                                            cat_for_list.id
+                                                        ));
+                                                    let scroll_state =
+                                                        scroll_to_active_state.clone();
+                                                    title.child(cursor_tooltip::attach(
+                                                        div()
+                                                            .id(active_elem_id.clone())
+                                                            .flex()
+                                                            .items_center()
+                                                            .cursor_pointer()
+                                                            .on_click(move |_, window, _| {
+                                                                scroll_state.scroll_to_reveal_item(
+                                                                    active_index,
+                                                                );
+                                                                window.refresh();
+                                                            })
+                                                            .child(pulsing_label(
+                                                                SharedString::from(format!(
+                                                                    "detail-active-{}",
+                                                                    cat_for_list.id
+                                                                )),
+                                                                active,
+                                                                success(),
                                                             )),
-                                                            active,
-                                                            success(),
-                                                        )),
-                                                    ElementId::from(active_elem_id),
-                                                    tooltip_text,
-                                                ))
-                                            })
+                                                        ElementId::from(active_elem_id),
+                                                        tooltip_text,
+                                                    ))
+                                                },
+                                            )
                                             .when(!category_has_active, |title| {
                                                 let tooltip_text =
                                                     t!("strategies.inactive_tooltip");
@@ -347,11 +362,14 @@ impl AppView {
             .size_full()
             .relative()
             .overflow_hidden()
-            .child(SmoothListScroll::new(
-                format!("category-page-{}", page_category_id),
-                list_state.clone(),
-                list_element.size_full(),
-            ))
+            .child(
+                SmoothListScroll::new(
+                    format!("category-page-{}", page_category_id),
+                    list_state.clone(),
+                    list_element.size_full(),
+                )
+                .scroll_to_top(true),
+            )
             .child(PageScrollbar::new(
                 SharedString::from(format!("scrollbar-category-{page_category_id}")),
                 list_state,
