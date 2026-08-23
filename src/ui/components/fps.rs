@@ -586,6 +586,7 @@ impl Render for FpsMonitor {
             .text_size(TEXT_SIZE)
             .text_color(style.muted)
             .cursor_pointer()
+            .occlude()
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(|this, event: &MouseDownEvent, window, cx| {
