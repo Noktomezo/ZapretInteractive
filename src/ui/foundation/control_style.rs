@@ -1,7 +1,7 @@
 use gpui::{FontWeight, Pixels, Styled, px};
 
 pub const CONTROL_FONT_FAMILY: &str = "IBM Plex Sans";
-pub const CONTROL_HEIGHT: Pixels = px(30.0);
+pub const CONTROL_HEIGHT: Pixels = px(36.0);
 pub const DROPDOWN_CONTROL_WIDTH: Pixels = px(160.0);
 pub const DROPDOWN_LABEL_WIDTH: Pixels = px(113.0);
 pub const DROPDOWN_ICON_LABEL_WIDTH: Pixels = px(89.0);
@@ -30,7 +30,7 @@ mod tests {
 
     #[test]
     fn dropdown_gutter_keeps_fades_clear_of_trailing_icons() {
-        assert_eq!(CONTROL_HEIGHT, px(30.0));
+        assert_eq!(CONTROL_HEIGHT, px(36.0));
         let horizontal_padding = px(16.0);
         let trailing_icon = px(16.0);
         let leading_icon_and_gap = px(24.0);
