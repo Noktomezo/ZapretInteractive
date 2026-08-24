@@ -132,6 +132,7 @@ impl AppView {
                 placeholders_scroll_handle: UniformListScrollHandle::new(),
                 category_strategies_list_state: ListState::new(0, ListAlignment::Top, px(240.0))
                     .measure_all(),
+                probe_results_list_states: HashMap::new(),
                 current_viewed_category: None,
                 closing_editor: None,
                 closing_confirm: None,

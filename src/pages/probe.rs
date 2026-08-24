@@ -1,7 +1,6 @@
 use super::*;
 use crate::app_state::StrategyProbeState;
 use crate::services::probe::{ProbeMode, ProbePhase};
-use crate::ui::components::badge::Badge;
 
 const SUPPORTED_CATEGORIES: [&str; 4] = ["HTTP", "YouTube", "TCP", "QUIC"];
 
@@ -149,8 +148,9 @@ impl AppView {
             forced_open || self.probe_expanded_category.as_deref() == Some(category.id.as_str());
         let reveal = disclosure_progress(&disclosure_id, expanded, cx);
 
-        let (description, status) = if let Some(progress) = progress {
-            (
+        let description = if let Some(progress) = progress {
+            format!(
+                "{} · {}",
                 t!(
                     "probe.progress_summary",
                     category = progress.category_index.saturating_add(1),
@@ -158,14 +158,8 @@ impl AppView {
                     strategy = progress.candidate_name.as_str(),
                     current = progress.candidate_index.saturating_add(1),
                     total = progress.candidate_total
-                )
-                .to_string(),
-                Some(
-                    Badge::new(phase_label(progress.phase))
-                        .warning()
-                        .spinner(format!("probe-header-{}", category.id))
-                        .into_any_element(),
                 ),
+                phase_label(progress.phase)
             )
         } else if let Some((report, recommendations)) = report {
             let (passed, total) = super::probe_results::category_counts(report);
@@ -182,34 +176,19 @@ impl AppView {
                     )
                 },
             );
-            let badge = Badge::new(format!("{passed}/{total}"))
-                .fade_in(format!("probe-result-{}", category.id));
-            (
+            format!(
+                "{} · {}",
                 description,
-                Some(if recommendation.is_some() {
-                    badge.success().into_any_element()
-                } else {
-                    badge.destructive().into_any_element()
-                }),
+                t!("probe.category_summary", passed = passed, total = total)
             )
         } else if let Some(message) = error {
-            (
-                message.to_owned(),
-                Some(
-                    Badge::new(t!("probe.outcome_fail"))
-                        .destructive()
-                        .into_any_element(),
-                ),
-            )
+            message.to_owned()
         } else {
-            (
-                if supported {
-                    t!("probe.supported").to_string()
-                } else {
-                    t!("probe.unsupported").to_string()
-                },
-                None,
-            )
+            if supported {
+                t!("probe.supported").to_string()
+            } else {
+                t!("probe.unsupported").to_string()
+            }
         };
 
         let category_id = category.id.clone();
@@ -228,12 +207,7 @@ impl AppView {
             });
         });
 
-        let mut header_actions = div()
-            .flex()
-            .items_center()
-            .gap_2()
-            .children(status)
-            .child(quick);
+        let mut header_actions = div().flex().items_center().gap_2().child(quick);
         if has_body {
             let category_id = category.id.clone();
             header_actions = header_actions.child(
@@ -252,9 +226,21 @@ impl AppView {
 
         let body = (has_body && reveal > 0.001).then(|| {
             let body = if let Some(progress) = progress {
-                super::probe_results::progress_body(progress)
+                super::probe_results::progress_body(progress, &category.strategies)
             } else if let Some((report, recommendations)) = report {
-                super::probe_results::category_report_body(report, recommendations)
+                let candidates = super::probe_results::category_counts(report).1;
+                let list_state = self
+                    .probe_results_list_states
+                    .entry(category.id.clone())
+                    .or_insert_with(|| {
+                        ListState::new(candidates, ListAlignment::Top, px(240.)).measure_all()
+                    })
+                    .clone();
+                if list_state.item_count() != candidates {
+                    list_state.reset(candidates);
+                    let _measurement_task = list_state.clone().measure_all();
+                }
+                super::probe_results::category_report_body(report, recommendations, list_state)
             } else {
                 super::probe_results::error_body(error.unwrap_or_default())
             };

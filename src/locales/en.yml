@@ -96,6 +96,7 @@ strategies:
 
 probe:
   title: "Strategy Selection"
+  desc: "Test strategies against targets and select a working option for each category"
   open: "Select"
   quick: "Quick test"
   full: "Full selection"

@@ -34,6 +34,7 @@ mod logs;
 mod module_detail;
 mod probe;
 mod probe_results;
+mod probe_timeline;
 mod resources;
 mod settings;
 mod strategies;
@@ -220,6 +221,8 @@ fn page_description(title: &str) -> Option<std::borrow::Cow<'static, str>> {
         Some(t!("modules.dns_desc"))
     } else if title == t!("modules.tg_proxy_title") {
         Some(t!("modules.tg_proxy_desc"))
+    } else if title == t!("probe.title") {
+        Some(t!("probe.desc"))
     } else {
         None
     }
