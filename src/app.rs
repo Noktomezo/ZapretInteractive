@@ -289,17 +289,12 @@ impl AppView {
                     );
                 self.two_level_breadcrumb(t!("nav.strategies"), Route::Strategies, name, cx)
             }
-            Route::StrategyProbe => self.two_level_breadcrumb(
-                t!("nav.strategies"),
-                Route::Strategies,
-                t!("probe.title"),
-                cx,
-            ),
             route => {
                 let label: SharedString = match route {
                     Route::Home => t!("nav.home").into(),
                     Route::Modules => t!("nav.modules").into(),
                     Route::Strategies => t!("nav.strategies").into(),
+                    Route::StrategyProbe => t!("nav.probe").into(),
                     Route::Filters => t!("nav.filters").into(),
                     Route::Placeholders => t!("nav.placeholders").into(),
                     Route::Logs => t!("nav.logs").into(),
@@ -385,6 +380,11 @@ impl AppView {
                 Route::Strategies,
                 SharedString::from(t!("nav.strategies")),
                 "icons/layers.svg",
+            ),
+            (
+                Route::StrategyProbe,
+                SharedString::from(t!("nav.probe")),
+                "icons/flask-conical.svg",
             ),
             (
                 Route::Filters,

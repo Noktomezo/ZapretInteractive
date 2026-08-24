@@ -5,6 +5,7 @@ nav:
   home: "Home"
   modules: "Modules"
   strategies: "Strategies"
+  probe: "Strategy Selection"
   filters: "Filters"
   placeholders: "Placeholders"
   logs: "Logs"
