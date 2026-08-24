@@ -6,7 +6,6 @@ categoryOrder = 5
 order = 5
 content = """
 --filter-udp=19294-19344,50000-50100
---filter-l7=discord,stun,unknown
 --dpi-desync=fake
 --dpi-desync-any-protocol=1
 --dpi-desync-fake-discord={{QUIC_INITIAL_GOOGLE}}

@@ -5,7 +5,6 @@ categoryId = "preset-youtube"
 categoryOrder = 2
 order = 8
 content = """
---filter-l7=tls
 --hostlist={{HOSTS_GOOGLE}}
 --dpi-desync=fake,multisplit
 --dpi-desync-fake-tls=0x00000000

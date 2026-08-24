@@ -5,7 +5,6 @@ categoryId = "preset-quic"
 categoryOrder = 4
 order = 8
 content = """
---filter-l7=quic
 --dpi-desync=fake
 --dpi-desync-fake-quic={{QUIC_INITIAL_GOOGLE}}
 --dpi-desync-fooling=badsum

@@ -6,7 +6,6 @@ categoryOrder = 8
 order = 6
 content = """
 --filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535
---filter-l7=unknown
 --dpi-desync=fake
 --dpi-desync-repeats=12
 --dpi-desync-any-protocol=1

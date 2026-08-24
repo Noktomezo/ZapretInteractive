@@ -5,7 +5,6 @@ categoryId = "preset-tcp"
 categoryOrder = 3
 order = 38
 content = """
---filter-l7=tls
 <LIST_MODE>
 --dpi-desync=fake
 --dpi-desync-fooling=datanoack
