@@ -103,7 +103,7 @@ probe:
   cancel: "Stop"
   running: "Strategy selection is running"
   failed: "Selection did not finish"
-  supported: "HTTP probe available"
+  supported: "Strategy selection available"
   unsupported: "Specialized probe unavailable; add probe.toml"
   result: "Recommended set"
   apply: "Apply set"
