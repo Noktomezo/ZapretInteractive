@@ -15,7 +15,7 @@ name = "RuTracker"
 url = "https://rutracker.org/"
 role = "auto"
 tier = "smoke"
-minBytes = 34816
+minBytes = 8192
 
 [[targets]]
 id = "discord"
