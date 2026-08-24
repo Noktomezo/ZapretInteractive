@@ -5,6 +5,7 @@ nav:
   home: "Главная"
   modules: "Модули"
   strategies: "Стратегии"
+  probe: "Подбор стратегий"
   filters: "Фильтры"
   placeholders: "Плейсхолдеры"
   logs: "Логи"
