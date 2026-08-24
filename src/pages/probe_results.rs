@@ -1,9 +1,10 @@
 use super::*;
-use crate::app_state::AppState;
 use crate::domain::{
     ProbeCandidateResult, ProbeOutcome, ProbeProtocol, ProbeRole, ProbeTargetResult,
 };
-use crate::services::probe::{ProbeCategoryReport, ProbeRecommendation, ProbeReport};
+use crate::services::probe::{
+    ProbeCategoryReport, ProbeProgress, ProbeRecommendation, ProbeTargetProgress,
+};
 use crate::ui::components::badge::{Badge, BadgeVariant};
 
 struct TargetSummary {
@@ -22,164 +23,140 @@ struct TargetSummary {
     error: Option<String>,
 }
 
-pub(super) fn probe_report_card(
-    report: ProbeReport,
-    state: Entity<AppState>,
-    cx: &App,
-) -> AnyElement {
-    let total = report
-        .categories
-        .iter()
-        .map(|category| strategy_candidates(category).count())
-        .sum::<usize>();
-    let passed = report
-        .categories
-        .iter()
-        .flat_map(strategy_candidates)
-        .filter(|candidate| candidate_passed(candidate))
-        .count();
-    let verification_urls = report.verification_urls.clone();
-    let can_apply = !report.recommendations.is_empty();
-    let recommendations = report.recommendations.clone();
-    let details = div()
-        .p_4()
-        .border_t_1()
-        .border_color(border())
-        .flex()
-        .flex_col()
-        .gap_3()
-        .children(
-            report
-                .categories
-                .iter()
-                .map(|category| category_results(category, &recommendations)),
-        );
-
-    module_card(
-        div()
-            .min_h(px(72.))
-            .px_4()
-            .flex()
-            .items_center()
-            .justify_between()
-            .gap_3()
-            .child(
-                div()
-                    .min_w_0()
-                    .flex()
-                    .flex_col()
-                    .gap_1()
-                    .child(
-                        div()
-                            .font_weight(FontWeight::MEDIUM)
-                            .child(t!("probe.result")),
-                    )
-                    .child(div().text_xs().text_color(muted_foreground()).child(t!(
-                        "probe.result_summary",
-                        passed = passed,
-                        total = total
-                    ))),
-            )
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap_2()
-                    .child(
-                        Button::new("verify-probe", t!("probe.verify_browser"), cx)
-                            .outline()
-                            .icon_prefix("icons/external-link.svg")
-                            .disabled(verification_urls.is_empty())
-                            .on_click({
-                                let state = state.clone();
-                                move |_, _, cx| {
-                                    state.update(cx, |state, cx| {
-                                        state.open_probe_verification_urls(&verification_urls, cx)
-                                    });
-                                }
-                            }),
-                    )
-                    .child(
-                        Button::new("apply-probe", t!("probe.apply"), cx)
-                            .primary()
-                            .icon_prefix("icons/check.svg")
-                            .disabled(!can_apply)
-                            .on_click(move |_, _, cx| {
-                                state.update(cx, |state, cx| state.apply_strategy_probe_report(cx));
-                            }),
-                    ),
-            ),
-        Some(details),
-    )
-    .into_any_element()
-}
-
-fn category_results(
-    category: &ProbeCategoryReport,
-    recommendations: &[ProbeRecommendation],
-) -> AnyElement {
+pub(super) fn category_counts(category: &ProbeCategoryReport) -> (usize, usize) {
     let candidates = strategy_candidates(category).collect::<Vec<_>>();
     let passed = candidates
         .iter()
         .filter(|candidate| candidate_passed(candidate))
         .count();
-    let recommendation = recommendations
-        .iter()
-        .find(|recommendation| recommendation.category_id == category.category_id);
+    (passed, candidates.len())
+}
 
+pub(super) fn category_report_body(
+    category: &ProbeCategoryReport,
+    recommendations: &[ProbeRecommendation],
+) -> Div {
+    let candidates = strategy_candidates(category).collect::<Vec<_>>();
     div()
-        .rounded(px(8.))
-        .border_1()
-        .border_color(border())
-        .overflow_hidden()
+        .p_3()
+        .flex()
+        .flex_col()
+        .gap_2()
+        .when_some(
+            recommendations
+                .iter()
+                .find(|recommendation| recommendation.category_id == category.category_id),
+            |body, recommendation| {
+                body.child(
+                    div().pb_1().child(
+                        Badge::new(format!(
+                            "{}: {}",
+                            t!("probe.recommendation"),
+                            recommendation.strategy_name
+                        ))
+                        .success(),
+                    ),
+                )
+            },
+        )
+        .children(candidates.into_iter().map(candidate_results))
+}
+
+pub(super) fn progress_body(progress: &ProbeProgress) -> Div {
+    div()
+        .p_3()
+        .flex()
+        .flex_col()
+        .gap_2()
         .child(
             div()
-                .px_4()
-                .py_3()
+                .px_3()
+                .py_2()
+                .rounded(px(8.))
+                .border_1()
+                .border_color(border())
                 .flex()
                 .items_center()
                 .justify_between()
-                .gap_3()
+                .gap_2()
                 .child(
                     div()
                         .min_w_0()
-                        .flex()
-                        .flex_col()
-                        .gap_1()
-                        .child(
-                            div()
-                                .text_sm()
-                                .font_weight(FontWeight::MEDIUM)
-                                .child(category.category_name.clone()),
-                        )
-                        .child(div().text_xs().text_color(muted_foreground()).child(t!(
-                            "probe.category_summary",
-                            passed = passed,
-                            total = candidates.len()
-                        ))),
+                        .text_sm()
+                        .font_weight(FontWeight::MEDIUM)
+                        .child(progress.candidate_name.clone()),
                 )
-                .child(match recommendation {
-                    Some(recommendation) => Badge::new(format!(
-                        "{}: {}",
-                        t!("probe.recommendation"),
-                        recommendation.strategy_name
-                    ))
-                    .success()
-                    .into_any_element(),
-                    None => Badge::new(t!("probe.no_recommendation"))
-                        .destructive()
-                        .into_any_element(),
-                }),
+                .child(
+                    Badge::new(super::probe::phase_label(progress.phase))
+                        .warning()
+                        .spinner(format!("probe-phase-{}", progress.category_name)),
+                ),
+        )
+        .children(
+            progress
+                .targets
+                .iter()
+                .enumerate()
+                .map(|(index, target)| progress_target(target, index)),
+        )
+}
+
+pub(super) fn error_body(message: &str) -> Div {
+    div()
+        .p_4()
+        .text_xs()
+        .text_color(danger())
+        .whitespace_normal()
+        .child(message.to_owned())
+}
+
+fn progress_target(target: &ProbeTargetProgress, index: usize) -> AnyElement {
+    let (label, variant) = match target.result.as_ref().map(|result| result.outcome) {
+        Some(ProbeOutcome::Pass) => (t!("probe.outcome_pass"), BadgeVariant::Success),
+        Some(ProbeOutcome::Degraded) => (t!("probe.outcome_degraded"), BadgeVariant::Warning),
+        Some(ProbeOutcome::Fail) => (t!("probe.outcome_fail"), BadgeVariant::Destructive),
+        None => (t!("probe.outcome_testing"), BadgeVariant::Warning),
+    };
+    let status = Badge::new(label).variant(variant);
+    let status = if target.result.is_none() {
+        status.spinner(format!("probe-target-{}-{index}", target.target_id))
+    } else {
+        status
+    };
+    div()
+        .px_3()
+        .py_2()
+        .rounded(px(8.))
+        .border_1()
+        .border_color(border())
+        .flex()
+        .items_center()
+        .justify_between()
+        .gap_3()
+        .child(
+            div()
+                .min_w_0()
+                .flex_1()
+                .flex()
+                .flex_col()
+                .gap_1()
+                .child(div().text_xs().child(target.target_name.clone()))
+                .child(
+                    div()
+                        .truncate()
+                        .text_xs()
+                        .text_color(muted_foreground())
+                        .child(target.target_url.clone()),
+                ),
         )
         .child(
             div()
-                .border_t_1()
-                .border_color(border())
-                .p_3()
+                .flex_none()
                 .flex()
-                .flex_col()
-                .gap_2()
-                .children(candidates.into_iter().map(candidate_results)),
+                .items_center()
+                .gap_1()
+                .child(Badge::new(protocol_label(target.expected_protocol)).outline())
+                .child(status),
         )
         .into_any_element()
 }
