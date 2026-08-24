@@ -150,7 +150,7 @@ settings:
   hashes_restored: "hashes.json recalculated"
   update_available: "New version of Zapret Interactive %{version} is available"
   update_downloading: "Downloading update: %{percent}%"
-  update_downloading_indeterminate: "Downloading update..."
+  update_restarting: "Restarting..."
   update_failed: "Failed to update the application: %{error}"
   update_action_hint: "Click the button to automatically update and restart"
   btn_update_and_restart: "Update and Restart"

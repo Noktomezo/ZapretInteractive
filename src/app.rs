@@ -8,7 +8,7 @@ use crate::faulty_terminal::FaultyTerminal;
 use crate::ui::components::dropdown::{DropdownChoice, DropdownEvent, DropdownState};
 use crate::ui::components::text_input::{TextInputEvent, TextInputState};
 use crate::ui::foundation::colors::{
-    accent_foreground, background, border, card as card_color, destructive, foreground, green,
+    accent_foreground, background, border, card as card_color, destructive, foreground,
     muted_foreground, paper, secondary, yellow as accent,
 };
 use crate::ui::foundation::control_style::{SHELL_CONTROL_SIZE, SHELL_SPACING};
@@ -749,7 +749,7 @@ fn titlebar_update_button(
         svg()
             .path("icons/cloud-download.svg")
             .size_4()
-            .text_color(green())
+            .text_color(accent())
             .with_animation(
                 "titlebar-update-available-pulse",
                 Animation::new(crate::ui::foundation::motion::UPDATE_PULSE_MOTION).repeat(),

@@ -65,11 +65,14 @@ fn virtual_page_container(
         .on_prepaint(|bounds, _, cx| {
             category_drag::set_list_bounds(bounds, cx);
         })
-        .child(SmoothUniformListScroll::new(
-            SharedString::from(format!("smooth-virtual-{id}")),
-            handle.clone(),
-            list.size_full(),
-        ))
+        .child(
+            SmoothUniformListScroll::new(
+                SharedString::from(format!("smooth-virtual-{id}")),
+                handle.clone(),
+                list.size_full(),
+            )
+            .scroll_to_top(true),
+        )
         .child(PageScrollbar::new(
             SharedString::from(format!("scrollbar-virtual-{id}")),
             handle,

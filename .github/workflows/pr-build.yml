@@ -22,6 +22,14 @@ jobs:
       - name: Checkout pull request
         uses: actions/checkout@v4
 
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.12'
+
+      - name: Verify Windows checkout hashes
+        run: uv run scripts/verify-thirdparty-hashes.py
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
