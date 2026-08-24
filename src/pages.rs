@@ -169,10 +169,13 @@ fn page_with_actions(
                     .child(
                         div()
                             .flex()
-                            .items_center()
-                            .justify_between()
+                            .flex_wrap()
+                            .items_start()
+                            .gap_3()
                             .child(
                                 div()
+                                    .min_w_0()
+                                    .flex_1()
                                     .flex()
                                     .flex_col()
                                     .child(
@@ -193,7 +196,7 @@ fn page_with_actions(
                                         )
                                     }),
                             )
-                            .child(actions),
+                            .child(div().ml_auto().max_w_full().flex_none().child(actions)),
                     )
                     .child(content),
             )

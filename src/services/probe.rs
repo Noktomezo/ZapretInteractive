@@ -88,8 +88,6 @@ pub struct ProbeReport {
     pub mode: ProbeMode,
     pub recommendations: Vec<ProbeRecommendation>,
     pub categories: Vec<ProbeCategoryReport>,
-    #[serde(default)]
-    pub verification_urls: Vec<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -166,7 +164,6 @@ fn run_probe_inner(
     working.discord_presence_enabled = false;
     let mut recommendations = Vec::new();
     let mut category_reports = Vec::new();
-    let mut verification_urls = Vec::new();
 
     for (category_index, category_id) in request.category_ids.iter().enumerate() {
         ensure_not_cancelled(cancelled)?;
@@ -216,11 +213,6 @@ fn run_probe_inner(
             on_progress,
         )?;
         cache_baseline_addresses(&mut profile, &baseline_full);
-        for target in &profile.targets {
-            if !verification_urls.contains(&target.url) {
-                verification_urls.push(target.url.clone());
-            }
-        }
 
         let mut candidate_ids = Vec::with_capacity(category.strategies.len() + 1);
         candidate_ids.push(None);
@@ -427,6 +419,5 @@ fn run_probe_inner(
         mode: request.mode,
         recommendations,
         categories: category_reports,
-        verification_urls,
     })
 }

@@ -1,4 +1,5 @@
 use super::*;
+use crate::AppState;
 use crate::domain::{ProbeCandidateResult, ProbeOutcome, ProbeProtocol, ProbeTargetResult};
 use crate::services::probe::{
     ProbeCategoryReport, ProbeProgress, ProbeRecommendation, ProbeTargetProgress,
@@ -34,6 +35,7 @@ pub(super) fn category_report_body(
     category: &ProbeCategoryReport,
     recommendations: &[ProbeRecommendation],
     list_state: ListState,
+    state: Entity<AppState>,
 ) -> Div {
     let candidates = strategy_candidates(category).cloned().collect::<Vec<_>>();
     let item_count = candidates.len();
@@ -44,7 +46,8 @@ pub(super) fn category_report_body(
     let list_id: SharedString = format!("probe-results-{}", category.category_id).into();
     let scrollbar_id: SharedString =
         format!("probe-results-scrollbar-{}", category.category_id).into();
-    let list_element = list(list_state.clone(), move |index, _, _| {
+    let category_id = category.category_id.clone();
+    let list_element = list(list_state.clone(), move |index, _, cx| {
         let candidate = &candidates[index];
         div()
             .w_full()
@@ -52,6 +55,9 @@ pub(super) fn category_report_body(
             .child(candidate_results(
                 candidate,
                 recommended_strategy.as_deref() == candidate.strategy_id.as_deref(),
+                state.clone(),
+                category_id.clone(),
+                cx,
             ))
             .into_any_element()
     });
@@ -154,13 +160,36 @@ fn progress_target(target: &ProbeTargetProgress, index: usize) -> AnyElement {
         .into_any_element()
 }
 
-fn candidate_results(candidate: &ProbeCandidateResult, recommended: bool) -> AnyElement {
+fn candidate_results(
+    candidate: &ProbeCandidateResult,
+    recommended: bool,
+    state: Entity<AppState>,
+    category_id: String,
+    cx: &App,
+) -> AnyElement {
     let targets = summarize_targets(candidate);
     let passed = targets
         .iter()
         .filter(|target| target.outcome == ProbeOutcome::Pass)
         .count();
     let candidate_passed = !targets.is_empty() && passed == targets.len();
+    let strategy_id = candidate.strategy_id.clone();
+    let apply_button = Button::new(
+        SharedString::from(format!(
+            "apply-probe-candidate-{}-{}",
+            category_id,
+            strategy_id.as_deref().unwrap_or("none")
+        )),
+        t!("probe.apply_strategy"),
+        cx,
+    )
+    .outline()
+    .icon_prefix("icons/check.svg")
+    .on_click(move |_, _, cx| {
+        state.update(cx, |state, cx| {
+            state.apply_strategy_probe_choice(&category_id, strategy_id.as_deref(), cx);
+        });
+    });
 
     div()
         .rounded(px(8.))
@@ -196,7 +225,8 @@ fn candidate_results(candidate: &ProbeCandidateResult, recommended: bool) -> Any
                     } else {
                         BadgeVariant::Destructive
                     }),
-                ),
+                )
+                .child(div().ml_auto().flex_none().child(apply_button)),
         )
         .child(
             div()

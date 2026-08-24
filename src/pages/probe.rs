@@ -50,41 +50,22 @@ impl AppView {
         };
 
         let state = self.state.clone();
-        let mut actions = div().flex().items_center().gap_2().child(
-            Button::new("probe-profiles", t!("probe.profiles"), cx)
-                .outline()
-                .icon_prefix("icons/folder-open.svg")
-                .disabled(running)
-                .on_click(move |_, _, cx| {
-                    state.update(cx, |state, cx| state.open_probe_profiles_directory(cx));
-                }),
-        );
-        if let StrategyProbeState::Complete(report) = &probe_state {
-            let verification_urls = report.verification_urls.clone();
-            let state = self.state.clone();
-            actions = actions.child(
-                Button::new("verify-probe", t!("probe.verify_browser"), cx)
+        let actions = div()
+            .flex()
+            .flex_wrap()
+            .items_center()
+            .justify_end()
+            .gap_2()
+            .child(
+                Button::new("probe-profiles", t!("probe.profiles"), cx)
                     .outline()
-                    .icon_prefix("icons/external-link.svg")
-                    .disabled(verification_urls.is_empty())
+                    .icon_prefix("icons/folder-open.svg")
+                    .disabled(running)
                     .on_click(move |_, _, cx| {
-                        state.update(cx, |state, cx| {
-                            state.open_probe_verification_urls(&verification_urls, cx)
-                        });
+                        state.update(cx, |state, cx| state.open_probe_profiles_directory(cx));
                     }),
             );
-            let state = self.state.clone();
-            actions = actions.child(
-                Button::new("apply-probe", t!("probe.apply"), cx)
-                    .primary()
-                    .icon_prefix("icons/check.svg")
-                    .disabled(report.recommendations.is_empty())
-                    .on_click(move |_, _, cx| {
-                        state.update(cx, |state, cx| state.apply_strategy_probe_report(cx));
-                    }),
-            );
-        }
-        actions = actions.child(primary_action);
+        let actions = actions.child(primary_action);
 
         let mut content = div().flex().flex_col().gap_3();
         for category in &categories {
@@ -208,6 +189,29 @@ impl AppView {
         });
 
         let mut header_actions = div().flex().items_center().gap_2().child(quick);
+        if let Some((_, recommendations)) = report
+            && let Some(recommendation) = recommendations
+                .iter()
+                .find(|recommendation| recommendation.category_id == category.id)
+        {
+            let category_id = category.id.clone();
+            let strategy_id = recommendation.strategy_id.clone();
+            let state = self.state.clone();
+            header_actions = header_actions.child(
+                Button::new(
+                    SharedString::from(format!("apply-best-probe-{}", category.id)),
+                    t!("probe.apply_best"),
+                    cx,
+                )
+                .primary()
+                .icon_prefix("icons/check.svg")
+                .on_click(move |_, _, cx| {
+                    state.update(cx, |state, cx| {
+                        state.apply_strategy_probe_choice(&category_id, strategy_id.as_deref(), cx);
+                    });
+                }),
+            );
+        }
         if has_body {
             let category_id = category.id.clone();
             header_actions = header_actions.child(
@@ -240,7 +244,12 @@ impl AppView {
                     list_state.reset(candidates);
                     let _measurement_task = list_state.clone().measure_all();
                 }
-                super::probe_results::category_report_body(report, recommendations, list_state)
+                super::probe_results::category_report_body(
+                    report,
+                    recommendations,
+                    list_state,
+                    self.state.clone(),
+                )
             } else {
                 super::probe_results::error_body(error.unwrap_or_default())
             };
