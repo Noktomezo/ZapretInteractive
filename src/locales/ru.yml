@@ -171,7 +171,7 @@ settings:
   hashes_restored: "hashes.json пересчитан"
   update_available: "Доступна новая версия Zapret Interactive %{version}"
   update_downloading: "Загрузка обновления: %{percent}%"
-  update_downloading_indeterminate: "Загрузка обновления..."
+  update_restarting: "Перезапуск..."
   update_failed: "Не удалось обновить приложение: %{error}"
   update_action_hint: "Нажмите кнопку для автоматического обновления и перезапуска"
   btn_update_and_restart: "Обновить и перезапустить"

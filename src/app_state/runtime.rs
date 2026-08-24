@@ -552,12 +552,16 @@ impl AppState {
         let client = self.http_client.clone();
         cx.spawn(async move |entity, cx| {
             let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+            let progress_tx = tx.clone();
             let update_task = crate::services::spawn_tokio(async move {
                 crate::services::updater::download_and_install_app_update(
                     &client,
                     &download_url,
                     move |progress| {
-                        let _send_result = tx.send(progress);
+                        let _send_result = progress_tx.send(Some(progress));
+                    },
+                    move || {
+                        let _send_result = tx.send(None);
                     },
                 )
                 .await
@@ -565,7 +569,7 @@ impl AppState {
 
             while let Some(progress) = rx.recv().await {
                 let _update_result = entity.update(cx, |state, cx| {
-                    state.update_download_progress = Some(progress);
+                    state.update_download_progress = progress;
                     cx.notify();
                 });
             }

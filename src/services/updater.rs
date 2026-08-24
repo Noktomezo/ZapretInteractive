@@ -4,7 +4,7 @@ use reqwest::Client;
 use reqwest::header::USER_AGENT;
 use semver::Version;
 use serde::Deserialize;
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Duration};
 use tokio::io::AsyncWriteExt;
 
 const LATEST_RELEASE_WEB: &str = "https://github.com/Noktomezo/ZapretInteractive/releases/latest";
@@ -143,13 +143,15 @@ fn fallback_installer_url(tag: &str) -> String {
     )
 }
 
-pub async fn download_and_install_app_update<F>(
+pub async fn download_and_install_app_update<F, G>(
     client: &Client,
     download_url: &str,
     mut on_progress: F,
+    mut on_restarting: G,
 ) -> Result<()>
 where
     F: FnMut(f32) + Send + 'static,
+    G: FnMut() + Send + 'static,
 {
     let response = client
         .get(download_url)
@@ -208,6 +210,9 @@ where
 
     file.flush().await.context("error flushing update file")?;
     drop(file);
+
+    on_restarting();
+    tokio::time::sleep(Duration::from_millis(300)).await;
 
     #[cfg(windows)]
     {
