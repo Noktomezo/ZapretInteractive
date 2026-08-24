@@ -17,7 +17,10 @@ use crate::ui::foundation::colors::{self, ThemeMode};
 mod collections;
 mod filters;
 mod managed_files;
+mod probe;
 mod runtime;
+
+pub use probe::StrategyProbeState;
 
 const MAX_LOGS: usize = 500;
 
@@ -39,7 +42,11 @@ pub struct AppState {
     pub update_download_progress: Option<f32>,
     pub checking_app_update: bool,
     pub checking_files: bool,
+    pub strategy_probe: StrategyProbeState,
     pending_restart: bool,
+    probe_reconnect_pending: bool,
+    probe_cancel: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+    quit_after_probe: bool,
     pub confirm: Option<ConfirmTarget>,
     pub http_client: Client,
     repository: ConfigRepository,
@@ -81,6 +88,23 @@ impl AppState {
         }
         initial_logs.push("Загружаю конфигурацию".to_owned());
         let config = repository.load_or_create()?;
+        let mut recovery =
+            match crate::services::probe::load_recovery_journal(repository.runtime_dir()) {
+                Ok(recovery) => recovery,
+                Err(error) => {
+                    initial_logs.push(format!("Не удалось прочитать журнал подбора: {error:#}"));
+                    let _clear_result =
+                        crate::services::probe::clear_recovery_journal(repository.runtime_dir());
+                    None
+                }
+            };
+        if recovery
+            .as_ref()
+            .is_some_and(|journal| !journal.was_connected)
+        {
+            crate::services::probe::clear_recovery_journal(repository.runtime_dir())?;
+            recovery = None;
+        }
         let restored_filters = repository.repair_filter_files(&config)?;
         if !restored_filters.is_empty() {
             initial_logs.push(format!(
@@ -125,7 +149,13 @@ impl AppState {
             update_download_progress: None,
             checking_app_update: false,
             checking_files: false,
+            strategy_probe: StrategyProbeState::Idle,
             pending_restart: false,
+            probe_reconnect_pending: recovery
+                .as_ref()
+                .is_some_and(|journal| journal.was_connected),
+            probe_cancel: None,
+            quit_after_probe: false,
             confirm: None,
             http_client,
             repository,
@@ -142,6 +172,9 @@ impl AppState {
             }
         }
         state.log("Инициализация приложения завершена");
+        if recovery.is_some() {
+            state.log("Обнаружен незавершённый подбор стратегий; подключение будет восстановлено");
+        }
         Ok(state)
     }
 

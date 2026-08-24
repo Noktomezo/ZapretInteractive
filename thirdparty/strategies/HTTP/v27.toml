@@ -1,0 +1,15 @@
+id = "preset-http-27"
+name = "v27"
+category = "HTTP"
+categoryId = "preset-http"
+categoryOrder = 1
+order = 27
+content = """
+--filter-l7=http
+<LIST_MODE>
+--dpi-desync=fakeddisorder
+--dpi-desync-split-pos=midsld
+--dpi-desync-fooling=badsum
+--dpi-desync-fakedsplit-pattern={{TLS_CLIENTHELLO_MAX}}"""
+active = false
+system = true

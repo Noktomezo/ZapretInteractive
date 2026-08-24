@@ -49,6 +49,10 @@ impl ConfigRepository {
         self.runtime_dir.join("config.json")
     }
 
+    pub fn runtime_dir(&self) -> &Path {
+        &self.runtime_dir
+    }
+
     pub fn filters_dir(&self) -> PathBuf {
         self.resources_dir.join("filters")
     }

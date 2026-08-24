@@ -68,6 +68,9 @@ impl AppState {
                         ConnectionStatus::Disconnected
                     };
                     state.log(&message);
+                    if connecting {
+                        state.finish_probe_recovery();
+                    }
                     for error in module_errors {
                         state.log(&format!("Ошибка модуля: {error}"));
                     }
@@ -95,6 +98,10 @@ impl AppState {
     }
 
     pub fn apply_connected(&mut self, cx: &mut Context<Self>) {
+        if self.probe_cancel.is_some() {
+            self.pending_restart = true;
+            return;
+        }
         if matches!(
             self.status,
             ConnectionStatus::Connecting | ConnectionStatus::Disconnecting

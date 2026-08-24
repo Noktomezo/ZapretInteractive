@@ -1,0 +1,14 @@
+id = "discord-stun-v7"
+name = "v7"
+category = "Discord + Stun"
+categoryId = "preset-discord-stun"
+categoryOrder = 5
+order = 7
+content = """
+--filter-udp=19294-19344,50000-50100
+--filter-l7=discord,stun
+--dpi-desync=udplen
+--dpi-desync-udplen-increment=64
+--dpi-desync-udplen-pattern={{ACTIVE_DISCORD_UDP}}"""
+active = false
+system = true

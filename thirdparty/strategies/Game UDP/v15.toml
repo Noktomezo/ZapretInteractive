@@ -1,0 +1,15 @@
+id = "unknown-udp-v15"
+name = "v15"
+category = "Game UDP"
+categoryId = "preset-unknown-udp"
+categoryOrder = 8
+order = 15
+content = """
+--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535
+--filter-l7=unknown
+--dpi-desync=fake
+--dpi-desync-fake-unknown-udp={{ACTIVE_GAME_UDP}}
+--dpi-desync-fooling=badsum
+--dpi-desync-repeats=4"""
+active = false
+system = true

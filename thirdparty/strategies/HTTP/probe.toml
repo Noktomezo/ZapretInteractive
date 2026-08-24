@@ -1,0 +1,34 @@
+version = 1
+protocols = ["http/1.1"]
+startupDelayMs = 350
+timeoutMs = 5000
+parallelTargets = 4
+downloadBytes = 69632
+verificationRepeats = 2
+followRedirects = true
+impersonate = "chrome150"
+dohUrl = "https://cloudflare-dns.com/dns-query"
+
+[[targets]]
+id = "rutracker-http"
+name = "RuTracker HTTP"
+url = "http://rutracker.org/"
+role = "auto"
+tier = "smoke"
+minBytes = 34816
+
+[[targets]]
+id = "rutor-http"
+name = "Rutor HTTP"
+url = "http://rutor.info/"
+role = "auto"
+tier = "full"
+minBytes = 34816
+
+[[targets]]
+id = "example-http"
+name = "Example control"
+url = "http://example.com/"
+role = "control"
+tier = "smoke"
+minBytes = 512

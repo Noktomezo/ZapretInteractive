@@ -3,6 +3,7 @@ pub mod binaries;
 mod discord;
 pub mod dns;
 pub mod file_watcher;
+pub mod probe;
 pub mod process;
 pub mod single_instance;
 pub mod updater;

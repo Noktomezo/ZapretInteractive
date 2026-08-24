@@ -1,0 +1,14 @@
+id = "quic-v8"
+name = "v8"
+category = "QUIC"
+categoryId = "preset-quic"
+categoryOrder = 4
+order = 8
+content = """
+--filter-l7=quic
+--dpi-desync=fake
+--dpi-desync-fake-quic={{QUIC_INITIAL_GOOGLE}}
+--dpi-desync-fooling=badsum
+--dpi-desync-repeats=4"""
+active = false
+system = true

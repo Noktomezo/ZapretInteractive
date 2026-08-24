@@ -106,6 +106,20 @@ impl RuntimeServices {
         combine_results([stop_result, pid_result, tg_pid_result, driver_result])
     }
 
+    pub fn winws_running(&self) -> Result<bool> {
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| anyhow::anyhow!("runtime lock poisoned"))?;
+        let Some(child) = state.winws.as_mut() else {
+            return Ok(false);
+        };
+        child
+            .try_wait()
+            .context("не удалось проверить тестовый winws")
+            .map(|status| status.is_none())
+    }
+
     pub fn sync_dns(&self, config: &AppConfig) -> Result<()> {
         let mut state = self
             .state
@@ -159,6 +173,29 @@ impl RuntimeServices {
 
     pub fn open_placeholders_directory(&self) -> Result<()> {
         open_directory(self.repository.resources_dir())
+    }
+
+    pub fn open_probe_profiles_directory(&self) -> Result<()> {
+        let directory = self.runtime_dir()?.join("probe-profiles");
+        std::fs::create_dir_all(&directory)
+            .with_context(|| format!("не удалось создать {}", directory.display()))?;
+        let readme = directory.join("README.txt");
+        if !readme.is_file() {
+            std::fs::write(
+                &readme,
+                concat!(
+                    "Custom strategy probe profiles\r\n\r\n",
+                    "Create <category name>\\probe.toml to replace the bundled profile.\r\n",
+                    "Copy a bundled profile from resources\\strategies\\<category>\\probe.toml ",
+                    "and edit its targets.\r\n\r\n",
+                    "Target roles: auto, required, optional, control.\r\n",
+                    "Protocols: auto, http/1.1, h2, h3.\r\n",
+                    "Use minBytes > 16384 for targets that must detect 16 KiB blocking.\r\n",
+                ),
+            )
+            .with_context(|| format!("не удалось записать {}", readme.display()))?;
+        }
+        open_directory(&directory)
     }
 
     #[cfg(windows)]

@@ -93,6 +93,27 @@ strategies:
   active_tooltip: "Выбрана стратегия: %{name}"
   inactive_tooltip: "Стратегия не выбрана"
 
+probe:
+  title: "Подбор стратегий"
+  open: "Подобрать"
+  quick: "Быстрый тест"
+  full: "Полный подбор"
+  profiles: "Свои цели"
+  cancel: "Остановить"
+  running: "Идёт подбор стратегий"
+  failed: "Подбор не завершён"
+  supported: "HTTP-проба доступна"
+  unsupported: "Специализированная проба недоступна; добавьте probe.toml"
+  result: "Рекомендованный набор"
+  apply: "Применить набор"
+  verify_browser: "Проверить в браузере"
+  phase_preparing: "Подготовка"
+  phase_baseline: "Базовая проверка"
+  phase_smoke: "Быстрый раунд"
+  phase_finalists: "Финальный раунд"
+  phase_verifying: "Контроль победителя"
+  phase_restoring: "Восстановление подключения"
+
 filters:
   title: "Фильтры"
   desc: "WinDivert фильтры для отсечения полезной нагрузки"
