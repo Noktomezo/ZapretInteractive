@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use gpui::prelude::*;
@@ -92,6 +93,7 @@ pub struct AppView {
     pub filters_scroll_handle: UniformListScrollHandle,
     pub placeholders_scroll_handle: UniformListScrollHandle,
     pub category_strategies_list_state: ListState,
+    pub(crate) probe_results_list_states: HashMap<String, ListState>,
     pub(crate) current_viewed_category: Option<String>,
     pub(crate) closing_editor: Option<(EditorTarget, Instant)>,
     pub(crate) closing_confirm: Option<(

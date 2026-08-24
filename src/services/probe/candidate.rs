@@ -8,7 +8,7 @@ use super::http::run_targets;
 use super::support::{ensure_not_cancelled, failed_candidate, set_category_strategy};
 use super::{ProbeProgress, ProbeTargetProgress};
 use crate::domain::{
-    AppConfig, ProbeCandidateResult, ProbeOutcome, ProbeProfile, ProbeRole, ProbeTargetResult,
+    AppConfig, ProbeCandidateResult, ProbeOutcome, ProbeProfile, ProbeTargetResult,
 };
 use crate::services::RuntimeServices;
 
@@ -79,11 +79,11 @@ pub(super) fn test_candidate(
         ensure_not_cancelled(cancelled)?;
         let mut current = run_targets(curl, profile, full, cancelled, &publish_results);
         ensure_not_cancelled(cancelled)?;
-        let all_required_failed = current
-            .iter()
-            .filter(|result| result.role == ProbeRole::Required)
-            .all(|result| result.outcome == ProbeOutcome::Fail);
-        if all_required_failed && !cancelled.load(Ordering::Relaxed) {
+        let all_targets_failed = !current.is_empty()
+            && current
+                .iter()
+                .all(|result| result.outcome == ProbeOutcome::Fail);
+        if all_targets_failed && !cancelled.load(Ordering::Relaxed) {
             std::thread::sleep(Duration::from_millis(650));
             current = run_targets(curl, profile, full, cancelled, &publish_results);
             ensure_not_cancelled(cancelled)?;

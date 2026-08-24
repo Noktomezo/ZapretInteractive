@@ -277,6 +277,8 @@ impl<H: SmoothVirtualHandle> Element for CaptureListWheel<H> {
         window: &mut Window,
         cx: &mut App,
     ) {
+        // Children register first, so capture dispatch reaches the innermost smooth
+        // scroll area before its ancestors. Native scroll handlers ignore capture.
         self.child.paint(window, cx);
 
         if !self.wheel_enabled {
@@ -286,7 +288,7 @@ impl<H: SmoothVirtualHandle> Element for CaptureListWheel<H> {
         let state = self.state.clone();
         let handle = self.handle.clone();
         window.on_mouse_event(move |event: &ScrollWheelEvent, phase, window, cx| {
-            if phase != DispatchPhase::Bubble || !bounds.contains(&event.position) {
+            if phase != DispatchPhase::Capture || !bounds.contains(&event.position) {
                 return;
             }
 

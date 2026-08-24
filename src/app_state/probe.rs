@@ -33,15 +33,6 @@ impl AppState {
         }
     }
 
-    pub fn open_probe_verification_urls(&mut self, urls: &[String], cx: &mut Context<Self>) {
-        for url in urls {
-            if let Err(error) = self.runtime.open_external(url) {
-                self.set_error(error, cx);
-                return;
-            }
-        }
-    }
-
     pub fn start_strategy_probe(
         &mut self,
         category_ids: Vec<String>,
@@ -163,48 +154,56 @@ impl AppState {
         true
     }
 
-    pub fn apply_strategy_probe_report(&mut self, cx: &mut Context<Self>) {
-        let StrategyProbeState::Complete(report) = &self.strategy_probe else {
+    pub fn apply_strategy_probe_choice(
+        &mut self,
+        category_id: &str,
+        strategy_id: Option<&str>,
+        cx: &mut Context<Self>,
+    ) {
+        let mut config = self.config.clone();
+        let Some(category) = config
+            .categories
+            .iter_mut()
+            .find(|category| category.id == category_id)
+        else {
+            self.set_error(anyhow::anyhow!("Категория {category_id} не найдена"), cx);
             return;
         };
-        let mut config = self.config.clone();
-        for recommendation in &report.recommendations {
-            let Some(category) = config
-                .categories
-                .iter_mut()
-                .find(|category| category.id == recommendation.category_id)
-            else {
-                self.set_error(
-                    anyhow::anyhow!(
-                        "Категория {} больше не существует",
-                        recommendation.category_name
-                    ),
-                    cx,
-                );
-                return;
-            };
-            for strategy in &mut category.strategies {
-                strategy.active = recommendation
-                    .strategy_id
-                    .as_ref()
-                    .is_some_and(|id| strategy.id == *id);
+        let selected_name = match strategy_id {
+            Some(strategy_id) => {
+                let Some(strategy) = category
+                    .strategies
+                    .iter()
+                    .find(|strategy| strategy.id == strategy_id)
+                else {
+                    self.set_error(
+                        anyhow::anyhow!("Стратегия {strategy_id} больше не существует"),
+                        cx,
+                    );
+                    return;
+                };
+                strategy.name.clone()
             }
+            None => "Без стратегии".to_owned(),
+        };
+        for strategy in &mut category.strategies {
+            strategy.active = strategy_id.is_some_and(|id| strategy.id == id);
         }
-        for strategy in config
-            .categories
-            .iter()
-            .flat_map(|category| &category.strategies)
-        {
+        let category_name = category.name.clone();
+        let strategies = category.strategies.clone();
+        for strategy in &strategies {
             if let Err(error) = self.repository.save_strategy(strategy) {
                 self.set_error(
-                    anyhow::anyhow!("Не удалось применить подбор: {error:#}"),
+                    anyhow::anyhow!("Не удалось применить стратегию: {error:#}"),
                     cx,
                 );
                 return;
             }
         }
         self.config = config;
-        self.log("Рекомендованный набор стратегий применён");
+        self.log(&format!(
+            "Для категории {category_name} применено: {selected_name}"
+        ));
         self.apply_connected(cx);
         cx.notify();
     }

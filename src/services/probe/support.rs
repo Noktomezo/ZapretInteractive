@@ -4,8 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use anyhow::{Context as _, Result, bail};
 
 use crate::domain::{
-    AppConfig, Category, ProbeCandidateResult, ProbeOutcome, ProbeProfile, ProbeRole,
-    ProbeTargetResult,
+    AppConfig, Category, ProbeCandidateResult, ProbeOutcome, ProbeProfile, ProbeTargetResult,
 };
 
 pub(super) fn failed_candidate(
@@ -25,7 +24,6 @@ pub(super) fn failed_candidate(
                     target_id: target.id.clone(),
                     target_name: target.name.clone(),
                     target_url: target.url.clone(),
-                    role: target.role,
                     expected_protocol: *protocol,
                     outcome: ProbeOutcome::Fail,
                     protocol: None,
@@ -44,7 +42,7 @@ pub(super) fn failed_candidate(
     }
 }
 
-pub(super) fn classify_profile_from_baseline(
+pub(super) fn cache_baseline_addresses(
     profile: &mut ProbeProfile,
     baseline: &ProbeCandidateResult,
 ) {
@@ -54,17 +52,6 @@ pub(super) fn classify_profile_from_baseline(
             .iter()
             .filter(|attempt| attempt.target_id == target.id)
             .collect::<Vec<_>>();
-        if target.role == ProbeRole::Auto {
-            target.role = if !attempts.is_empty()
-                && attempts
-                    .iter()
-                    .all(|attempt| attempt.outcome == ProbeOutcome::Pass)
-            {
-                ProbeRole::Control
-            } else {
-                ProbeRole::Required
-            };
-        }
         if target.connect_ip.is_none() {
             target.connect_ip = attempts
                 .iter()
@@ -72,22 +59,6 @@ pub(super) fn classify_profile_from_baseline(
                 .and_then(|attempt| attempt.remote_ip.clone());
         }
     }
-}
-
-pub(super) fn reclassify_candidate(
-    mut candidate: ProbeCandidateResult,
-    profile: &ProbeProfile,
-) -> ProbeCandidateResult {
-    for attempt in &mut candidate.attempts {
-        if let Some(target) = profile
-            .targets
-            .iter()
-            .find(|target| target.id == attempt.target_id)
-        {
-            attempt.role = target.role;
-        }
-    }
-    candidate
 }
 
 pub(super) fn set_category_strategy(
@@ -172,7 +143,6 @@ mod tests {
             target_id: id.to_owned(),
             target_name: id.to_owned(),
             target_url: format!("https://{id}.example"),
-            role: ProbeRole::Auto,
             expected_protocol: ProbeProtocol::Auto,
             outcome,
             protocol: Some("2".to_owned()),
@@ -185,7 +155,7 @@ mod tests {
     }
 
     #[test]
-    fn baseline_classifies_auto_targets_and_caches_working_ip() {
+    fn baseline_caches_working_ip() {
         let mut profile = ProbeProfile {
             version: 1,
             protocols: vec![ProbeProtocol::Auto],
@@ -203,7 +173,7 @@ mod tests {
                     id: "open".to_owned(),
                     name: "Open".to_owned(),
                     url: "https://example.com".to_owned(),
-                    role: ProbeRole::Auto,
+                    _legacy_role: None,
                     tier: ProbeTier::Smoke,
                     min_bytes: 0,
                     connect_ip: None,
@@ -212,7 +182,7 @@ mod tests {
                     id: "blocked".to_owned(),
                     name: "Blocked".to_owned(),
                     url: "https://blocked.example".to_owned(),
-                    role: ProbeRole::Auto,
+                    _legacy_role: None,
                     tier: ProbeTier::Smoke,
                     min_bytes: 0,
                     connect_ip: None,
@@ -228,10 +198,9 @@ mod tests {
             ],
         };
 
-        classify_profile_from_baseline(&mut profile, &baseline);
+        cache_baseline_addresses(&mut profile, &baseline);
 
-        assert_eq!(profile.targets[0].role, ProbeRole::Control);
         assert_eq!(profile.targets[0].connect_ip.as_deref(), Some("192.0.2.1"));
-        assert_eq!(profile.targets[1].role, ProbeRole::Required);
+        assert_eq!(profile.targets[1].connect_ip, None);
     }
 }

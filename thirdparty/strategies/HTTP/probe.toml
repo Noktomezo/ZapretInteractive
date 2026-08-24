@@ -13,7 +13,6 @@ dohUrl = "https://1.1.1.1/dns-query"
 id = "rutracker-http"
 name = "RuTracker HTTP"
 url = "http://rutracker.org/"
-role = "auto"
 tier = "smoke"
 minBytes = 8192
 
@@ -21,14 +20,12 @@ minBytes = 8192
 id = "rutor-http"
 name = "Rutor HTTP"
 url = "http://rutor.info/"
-role = "auto"
 tier = "full"
 minBytes = 34816
 
 [[targets]]
 id = "example-http"
-name = "Example control"
+name = "Example"
 url = "http://example.com/"
-role = "control"
 tier = "smoke"
 minBytes = 512

@@ -14,7 +14,6 @@ discoverYoutubeGgc = true
 id = "youtube"
 name = "YouTube"
 url = "https://www.youtube.com/generate_204"
-role = "auto"
 tier = "smoke"
 minBytes = 0
 
@@ -22,14 +21,12 @@ minBytes = 0
 id = "googlevideo"
 name = "Google Video"
 url = "https://redirector.googlevideo.com/report_mapping"
-role = "auto"
 tier = "full"
 minBytes = 0
 
 [[targets]]
 id = "google"
-name = "Google control"
+name = "Google"
 url = "https://www.google.com/generate_204"
-role = "control"
 tier = "smoke"
 minBytes = 0

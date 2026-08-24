@@ -34,6 +34,7 @@ mod logs;
 mod module_detail;
 mod probe;
 mod probe_results;
+mod probe_timeline;
 mod resources;
 mod settings;
 mod strategies;
@@ -168,10 +169,13 @@ fn page_with_actions(
                     .child(
                         div()
                             .flex()
-                            .items_center()
-                            .justify_between()
+                            .flex_wrap()
+                            .items_start()
+                            .gap_3()
                             .child(
                                 div()
+                                    .min_w_0()
+                                    .flex_1()
                                     .flex()
                                     .flex_col()
                                     .child(
@@ -192,7 +196,7 @@ fn page_with_actions(
                                         )
                                     }),
                             )
-                            .child(actions),
+                            .child(div().ml_auto().max_w_full().flex_none().child(actions)),
                     )
                     .child(content),
             )
@@ -220,6 +224,8 @@ fn page_description(title: &str) -> Option<std::borrow::Cow<'static, str>> {
         Some(t!("modules.dns_desc"))
     } else if title == t!("modules.tg_proxy_title") {
         Some(t!("modules.tg_proxy_desc"))
+    } else if title == t!("probe.title") {
+        Some(t!("probe.desc"))
     } else {
         None
     }

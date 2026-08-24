@@ -1,17 +1,16 @@
 use super::*;
-use crate::domain::{
-    ProbeCandidateResult, ProbeOutcome, ProbeProtocol, ProbeRole, ProbeTargetResult,
-};
+use crate::AppState;
+use crate::domain::{ProbeCandidateResult, ProbeOutcome, ProbeProtocol, ProbeTargetResult};
 use crate::services::probe::{
     ProbeCategoryReport, ProbeProgress, ProbeRecommendation, ProbeTargetProgress,
 };
 use crate::ui::components::badge::{Badge, BadgeVariant};
+use crate::ui::components::smooth_scroll::{PageScrollbar, SmoothListScroll};
 
 struct TargetSummary {
     target_id: String,
     target_name: String,
     target_url: String,
-    role: ProbeRole,
     protocol: ProbeProtocol,
     outcome: ProbeOutcome,
     passed_attempts: usize,
@@ -35,63 +34,61 @@ pub(super) fn category_counts(category: &ProbeCategoryReport) -> (usize, usize) 
 pub(super) fn category_report_body(
     category: &ProbeCategoryReport,
     recommendations: &[ProbeRecommendation],
+    list_state: ListState,
+    state: Entity<AppState>,
 ) -> Div {
-    let candidates = strategy_candidates(category).collect::<Vec<_>>();
-    div()
-        .p_3()
-        .flex()
-        .flex_col()
-        .gap_2()
-        .when_some(
-            recommendations
-                .iter()
-                .find(|recommendation| recommendation.category_id == category.category_id),
-            |body, recommendation| {
-                body.child(
-                    div().pb_1().child(
-                        Badge::new(format!(
-                            "{}: {}",
-                            t!("probe.recommendation"),
-                            recommendation.strategy_name
-                        ))
-                        .success(),
-                    ),
-                )
-            },
-        )
-        .children(candidates.into_iter().map(candidate_results))
+    let candidates = strategy_candidates(category).cloned().collect::<Vec<_>>();
+    let item_count = candidates.len();
+    let recommended_strategy = recommendations
+        .iter()
+        .find(|recommendation| recommendation.category_id == category.category_id)
+        .and_then(|recommendation| recommendation.strategy_id.clone());
+    let list_id: SharedString = format!("probe-results-{}", category.category_id).into();
+    let scrollbar_id: SharedString =
+        format!("probe-results-scrollbar-{}", category.category_id).into();
+    let category_id = category.category_id.clone();
+    let list_element = list(list_state.clone(), move |index, _, cx| {
+        let candidate = &candidates[index];
+        div()
+            .w_full()
+            .pb_2()
+            .child(candidate_results(
+                candidate,
+                recommended_strategy.as_deref() == candidate.strategy_id.as_deref(),
+                state.clone(),
+                category_id.clone(),
+                cx,
+            ))
+            .into_any_element()
+    });
+    let list_height = px((item_count as f32 * 190.).clamp(190., 420.));
+    div().p_3().child(
+        div()
+            .relative()
+            .w_full()
+            .h(list_height)
+            .overflow_hidden()
+            .child(SmoothListScroll::new(
+                list_id,
+                list_state.clone(),
+                list_element.size_full(),
+            ))
+            .child(PageScrollbar::new(scrollbar_id, list_state)),
+    )
 }
 
-pub(super) fn progress_body(progress: &ProbeProgress) -> Div {
+pub(super) fn progress_body(
+    progress: &ProbeProgress,
+    strategies: &[crate::domain::Strategy],
+) -> Div {
     div()
         .p_3()
         .flex()
         .flex_col()
         .gap_2()
-        .child(
-            div()
-                .px_3()
-                .py_2()
-                .rounded(px(8.))
-                .border_1()
-                .border_color(border())
-                .flex()
-                .items_center()
-                .justify_between()
-                .gap_2()
-                .child(
-                    div()
-                        .min_w_0()
-                        .text_sm()
-                        .font_weight(FontWeight::MEDIUM)
-                        .child(progress.candidate_name.clone()),
-                )
-                .child(
-                    Badge::new(super::probe::phase_label(progress.phase))
-                        .warning()
-                        .spinner(format!("probe-phase-{}", progress.category_name)),
-                ),
-        )
+        .child(super::probe_timeline::strategy_timeline(
+            strategies, progress,
+        ))
         .children(
             progress
                 .targets
@@ -140,38 +137,59 @@ fn progress_target(target: &ProbeTargetProgress, index: usize) -> AnyElement {
                 .flex()
                 .flex_col()
                 .gap_1()
-                .child(div().text_xs().child(target.target_name.clone()))
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_1()
+                        .child(div().text_xs().child(target.target_name.clone()))
+                        .child(status),
+                )
                 .child(
                     div()
                         .truncate()
                         .text_xs()
                         .text_color(muted_foreground())
-                        .child(target.target_url.clone()),
+                        .child(format!(
+                            "{} · {}",
+                            protocol_label(target.expected_protocol),
+                            target.target_url
+                        )),
                 ),
-        )
-        .child(
-            div()
-                .flex_none()
-                .flex()
-                .items_center()
-                .gap_1()
-                .child(Badge::new(protocol_label(target.expected_protocol)).outline())
-                .child(status),
         )
         .into_any_element()
 }
 
-fn candidate_results(candidate: &ProbeCandidateResult) -> AnyElement {
+fn candidate_results(
+    candidate: &ProbeCandidateResult,
+    recommended: bool,
+    state: Entity<AppState>,
+    category_id: String,
+    cx: &App,
+) -> AnyElement {
     let targets = summarize_targets(candidate);
-    let required = targets
-        .iter()
-        .filter(|target| target.role == ProbeRole::Required)
-        .collect::<Vec<_>>();
-    let passed = required
+    let passed = targets
         .iter()
         .filter(|target| target.outcome == ProbeOutcome::Pass)
         .count();
-    let candidate_passed = !required.is_empty() && passed == required.len();
+    let candidate_passed = !targets.is_empty() && passed == targets.len();
+    let strategy_id = candidate.strategy_id.clone();
+    let apply_button = Button::new(
+        SharedString::from(format!(
+            "apply-probe-candidate-{}-{}",
+            category_id,
+            strategy_id.as_deref().unwrap_or("none")
+        )),
+        t!("probe.apply_strategy"),
+        cx,
+    )
+    .outline()
+    .icon_prefix("icons/check.svg")
+    .on_click(move |_, _, cx| {
+        state.update(cx, |state, cx| {
+            state.apply_strategy_probe_choice(&category_id, strategy_id.as_deref(), cx);
+        });
+    });
 
     div()
         .rounded(px(8.))
@@ -184,8 +202,8 @@ fn candidate_results(candidate: &ProbeCandidateResult) -> AnyElement {
                 .py_2()
                 .flex()
                 .items_center()
-                .justify_between()
-                .gap_2()
+                .flex_wrap()
+                .gap_1()
                 .child(
                     div()
                         .min_w_0()
@@ -193,18 +211,22 @@ fn candidate_results(candidate: &ProbeCandidateResult) -> AnyElement {
                         .font_weight(FontWeight::MEDIUM)
                         .child(candidate.strategy_name.clone()),
                 )
+                .when(recommended, |header| {
+                    header.child(Badge::new(t!("probe.recommendation")).success())
+                })
                 .child(
                     Badge::new(t!(
-                        "probe.required_summary",
+                        "probe.targets_summary",
                         passed = passed,
-                        total = required.len()
+                        total = targets.len()
                     ))
                     .variant(if candidate_passed {
                         BadgeVariant::Success
                     } else {
                         BadgeVariant::Destructive
                     }),
-                ),
+                )
+                .child(div().ml_auto().flex_none().child(apply_button)),
         )
         .child(
             div()
@@ -233,18 +255,28 @@ fn target_result(target: TargetSummary) -> AnyElement {
                 .flex()
                 .flex_col()
                 .gap_1()
-                .child(div().text_xs().child(if target.target_name.is_empty() {
-                    target.target_id.clone()
-                } else {
-                    target.target_name.clone()
-                }))
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_1()
+                        .child(div().text_xs().child(if target.target_name.is_empty() {
+                            target.target_id.clone()
+                        } else {
+                            target.target_name.clone()
+                        }))
+                        .child(
+                            Badge::new(outcome_label(target.outcome))
+                                .variant(outcome_variant(target.outcome)),
+                        ),
+                )
                 .when(!target.target_url.is_empty(), |this| {
                     this.child(
                         div()
                             .text_xs()
                             .text_color(muted_foreground())
                             .whitespace_normal()
-                            .child(target.target_url.clone()),
+                            .child(format!("{} · {}", details, target.target_url)),
                     )
                 })
                 .when_some(target.error.clone(), |this, error| {
@@ -256,19 +288,6 @@ fn target_result(target: TargetSummary) -> AnyElement {
                             .child(error),
                     )
                 }),
-        )
-        .child(
-            div()
-                .flex_shrink_0()
-                .flex()
-                .items_center()
-                .gap_1()
-                .child(Badge::new(role_label(target.role)).outline())
-                .child(Badge::new(details).outline().monospace())
-                .child(
-                    Badge::new(outcome_label(target.outcome))
-                        .variant(outcome_variant(target.outcome)),
-                ),
         )
         .into_any_element()
 }
@@ -283,12 +302,9 @@ fn strategy_candidates(
 }
 
 fn candidate_passed(candidate: &ProbeCandidateResult) -> bool {
-    let required = summarize_targets(candidate)
-        .into_iter()
-        .filter(|target| target.role == ProbeRole::Required)
-        .collect::<Vec<_>>();
-    !required.is_empty()
-        && required
+    let targets = summarize_targets(candidate);
+    !targets.is_empty()
+        && targets
             .iter()
             .all(|target| target.outcome == ProbeOutcome::Pass)
 }
@@ -305,7 +321,6 @@ fn summarize_targets(candidate: &ProbeCandidateResult) -> Vec<TargetSummary> {
                 target_id: attempt.target_id.clone(),
                 target_name: attempt.target_name.clone(),
                 target_url: attempt.target_url.clone(),
-                role: attempt.role,
                 protocol: attempt.expected_protocol,
                 outcome: attempt.outcome,
                 passed_attempts: usize::from(attempt.outcome == ProbeOutcome::Pass),
@@ -369,16 +384,6 @@ fn protocol_label(protocol: ProbeProtocol) -> &'static str {
     }
 }
 
-fn role_label(role: ProbeRole) -> SharedString {
-    match role {
-        ProbeRole::Auto => t!("probe.role_auto"),
-        ProbeRole::Required => t!("probe.role_required"),
-        ProbeRole::Optional => t!("probe.role_optional"),
-        ProbeRole::Control => t!("probe.role_control"),
-    }
-    .into()
-}
-
 fn outcome_label(outcome: ProbeOutcome) -> SharedString {
     match outcome {
         ProbeOutcome::Pass => t!("probe.outcome_pass"),
@@ -399,9 +404,7 @@ fn outcome_variant(outcome: ProbeOutcome) -> BadgeVariant {
 #[cfg(test)]
 mod tests {
     use super::summarize_targets;
-    use crate::domain::{
-        ProbeCandidateResult, ProbeOutcome, ProbeProtocol, ProbeRole, ProbeTargetResult,
-    };
+    use crate::domain::{ProbeCandidateResult, ProbeOutcome, ProbeProtocol, ProbeTargetResult};
 
     #[test]
     fn repeated_target_uses_worst_outcome() {
@@ -414,7 +417,6 @@ mod tests {
                     target_id: "example".to_owned(),
                     target_name: "Example".to_owned(),
                     target_url: "https://example.com".to_owned(),
-                    role: ProbeRole::Required,
                     expected_protocol: ProbeProtocol::Http3,
                     outcome,
                     protocol: Some("3".to_owned()),

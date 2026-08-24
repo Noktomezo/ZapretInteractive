@@ -1,7 +1,6 @@
 use super::*;
 use crate::app_state::StrategyProbeState;
 use crate::services::probe::{ProbeMode, ProbePhase};
-use crate::ui::components::badge::Badge;
 
 const SUPPORTED_CATEGORIES: [&str; 4] = ["HTTP", "YouTube", "TCP", "QUIC"];
 
@@ -51,41 +50,22 @@ impl AppView {
         };
 
         let state = self.state.clone();
-        let mut actions = div().flex().items_center().gap_2().child(
-            Button::new("probe-profiles", t!("probe.profiles"), cx)
-                .outline()
-                .icon_prefix("icons/folder-open.svg")
-                .disabled(running)
-                .on_click(move |_, _, cx| {
-                    state.update(cx, |state, cx| state.open_probe_profiles_directory(cx));
-                }),
-        );
-        if let StrategyProbeState::Complete(report) = &probe_state {
-            let verification_urls = report.verification_urls.clone();
-            let state = self.state.clone();
-            actions = actions.child(
-                Button::new("verify-probe", t!("probe.verify_browser"), cx)
+        let actions = div()
+            .flex()
+            .flex_wrap()
+            .items_center()
+            .justify_end()
+            .gap_2()
+            .child(
+                Button::new("probe-profiles", t!("probe.profiles"), cx)
                     .outline()
-                    .icon_prefix("icons/external-link.svg")
-                    .disabled(verification_urls.is_empty())
+                    .icon_prefix("icons/folder-open.svg")
+                    .disabled(running)
                     .on_click(move |_, _, cx| {
-                        state.update(cx, |state, cx| {
-                            state.open_probe_verification_urls(&verification_urls, cx)
-                        });
+                        state.update(cx, |state, cx| state.open_probe_profiles_directory(cx));
                     }),
             );
-            let state = self.state.clone();
-            actions = actions.child(
-                Button::new("apply-probe", t!("probe.apply"), cx)
-                    .primary()
-                    .icon_prefix("icons/check.svg")
-                    .disabled(report.recommendations.is_empty())
-                    .on_click(move |_, _, cx| {
-                        state.update(cx, |state, cx| state.apply_strategy_probe_report(cx));
-                    }),
-            );
-        }
-        actions = actions.child(primary_action);
+        let actions = actions.child(primary_action);
 
         let mut content = div().flex().flex_col().gap_3();
         for category in &categories {
@@ -149,8 +129,9 @@ impl AppView {
             forced_open || self.probe_expanded_category.as_deref() == Some(category.id.as_str());
         let reveal = disclosure_progress(&disclosure_id, expanded, cx);
 
-        let (description, status) = if let Some(progress) = progress {
-            (
+        let description = if let Some(progress) = progress {
+            format!(
+                "{} · {}",
                 t!(
                     "probe.progress_summary",
                     category = progress.category_index.saturating_add(1),
@@ -158,14 +139,8 @@ impl AppView {
                     strategy = progress.candidate_name.as_str(),
                     current = progress.candidate_index.saturating_add(1),
                     total = progress.candidate_total
-                )
-                .to_string(),
-                Some(
-                    Badge::new(phase_label(progress.phase))
-                        .warning()
-                        .spinner(format!("probe-header-{}", category.id))
-                        .into_any_element(),
                 ),
+                phase_label(progress.phase)
             )
         } else if let Some((report, recommendations)) = report {
             let (passed, total) = super::probe_results::category_counts(report);
@@ -182,34 +157,19 @@ impl AppView {
                     )
                 },
             );
-            let badge = Badge::new(format!("{passed}/{total}"))
-                .fade_in(format!("probe-result-{}", category.id));
-            (
+            format!(
+                "{} · {}",
                 description,
-                Some(if recommendation.is_some() {
-                    badge.success().into_any_element()
-                } else {
-                    badge.destructive().into_any_element()
-                }),
+                t!("probe.category_summary", passed = passed, total = total)
             )
         } else if let Some(message) = error {
-            (
-                message.to_owned(),
-                Some(
-                    Badge::new(t!("probe.outcome_fail"))
-                        .destructive()
-                        .into_any_element(),
-                ),
-            )
+            message.to_owned()
         } else {
-            (
-                if supported {
-                    t!("probe.supported").to_string()
-                } else {
-                    t!("probe.unsupported").to_string()
-                },
-                None,
-            )
+            if supported {
+                t!("probe.supported").to_string()
+            } else {
+                t!("probe.unsupported").to_string()
+            }
         };
 
         let category_id = category.id.clone();
@@ -228,12 +188,30 @@ impl AppView {
             });
         });
 
-        let mut header_actions = div()
-            .flex()
-            .items_center()
-            .gap_2()
-            .children(status)
-            .child(quick);
+        let mut header_actions = div().flex().items_center().gap_2().child(quick);
+        if let Some((_, recommendations)) = report
+            && let Some(recommendation) = recommendations
+                .iter()
+                .find(|recommendation| recommendation.category_id == category.id)
+        {
+            let category_id = category.id.clone();
+            let strategy_id = recommendation.strategy_id.clone();
+            let state = self.state.clone();
+            header_actions = header_actions.child(
+                Button::new(
+                    SharedString::from(format!("apply-best-probe-{}", category.id)),
+                    t!("probe.apply_best"),
+                    cx,
+                )
+                .primary()
+                .icon_prefix("icons/check.svg")
+                .on_click(move |_, _, cx| {
+                    state.update(cx, |state, cx| {
+                        state.apply_strategy_probe_choice(&category_id, strategy_id.as_deref(), cx);
+                    });
+                }),
+            );
+        }
         if has_body {
             let category_id = category.id.clone();
             header_actions = header_actions.child(
@@ -252,9 +230,26 @@ impl AppView {
 
         let body = (has_body && reveal > 0.001).then(|| {
             let body = if let Some(progress) = progress {
-                super::probe_results::progress_body(progress)
+                super::probe_results::progress_body(progress, &category.strategies)
             } else if let Some((report, recommendations)) = report {
-                super::probe_results::category_report_body(report, recommendations)
+                let candidates = super::probe_results::category_counts(report).1;
+                let list_state = self
+                    .probe_results_list_states
+                    .entry(category.id.clone())
+                    .or_insert_with(|| {
+                        ListState::new(candidates, ListAlignment::Top, px(240.)).measure_all()
+                    })
+                    .clone();
+                if list_state.item_count() != candidates {
+                    list_state.reset(candidates);
+                    let _measurement_task = list_state.clone().measure_all();
+                }
+                super::probe_results::category_report_body(
+                    report,
+                    recommendations,
+                    list_state,
+                    self.state.clone(),
+                )
             } else {
                 super::probe_results::error_body(error.unwrap_or_default())
             };
