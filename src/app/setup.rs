@@ -115,6 +115,7 @@ impl AppView {
                 faulty_terminal,
                 sidebar_collapsed: config.sidebar_collapsed,
                 tg_info_expanded: false,
+                probe_expanded_category: None,
                 sidebar_motion: sidebar_motion(config.sidebar_collapsed),
                 acrylic_motion: acrylic_motion(config.acrylic_material),
                 page_revision: 0,

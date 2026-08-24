@@ -6,6 +6,7 @@ pub mod card;
 pub mod confirm_dialog;
 pub mod cursor_tooltip;
 pub mod dashed_outline;
+pub mod disclosure;
 pub mod dropdown;
 pub mod dropdown_overlay;
 pub mod form_field;

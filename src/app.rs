@@ -76,6 +76,7 @@ pub struct AppView {
     pub(crate) faulty_terminal: Entity<FaultyTerminal>,
     sidebar_collapsed: bool,
     pub(crate) tg_info_expanded: bool,
+    pub(crate) probe_expanded_category: Option<String>,
     sidebar_motion: ScalarTransition,
     acrylic_motion: ScalarTransition,
     page_revision: u64,

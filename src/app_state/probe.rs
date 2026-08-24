@@ -15,7 +15,10 @@ pub enum StrategyProbeState {
     Idle,
     Running(ProbeProgress),
     Complete(ProbeReport),
-    Error(String),
+    Error {
+        message: String,
+        progress: ProbeProgress,
+    },
 }
 
 enum ProbeEvent {
@@ -115,7 +118,12 @@ impl AppState {
                             Err(error) => {
                                 let message = format!("Подбор стратегий: {error:#}");
                                 state.log(&message);
-                                state.strategy_probe = StrategyProbeState::Error(message);
+                                let progress = match &state.strategy_probe {
+                                    StrategyProbeState::Running(progress) => progress.clone(),
+                                    _ => ProbeProgress::default(),
+                                };
+                                state.strategy_probe =
+                                    StrategyProbeState::Error { message, progress };
                             }
                         }
                         if was_connected && state.pending_restart && !state.quit_after_probe {

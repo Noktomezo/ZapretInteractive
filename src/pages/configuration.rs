@@ -143,50 +143,18 @@ impl AppView {
             config.tg_ws_proxy_port, config.tg_ws_proxy_secret
         );
         let chevron_id: SharedString = "tg-info-chevron".into();
-        let chevron_progress = crate::ui::foundation::hover_motion::state_progress(
-            &chevron_id,
-            self.tg_info_expanded,
-            cx,
-        );
-        let chevron_hover_key: SharedString = "tg-info-chevron-hover".into();
-        let chevron_hover = crate::ui::foundation::hover_motion::progress(&chevron_hover_key, cx);
-        let chevron_color = mix_color(muted_foreground(), foreground(), chevron_hover);
+        let chevron_progress = disclosure_progress(&chevron_id, self.tg_info_expanded, cx);
         let connection_action = div()
             .flex()
             .items_center()
             .gap_2()
             .child(
-                div()
-                    .id("toggle-tg-info")
-                    .size(crate::ui::foundation::control_style::CONTROL_HEIGHT)
-                    .flex_none()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .cursor_pointer()
-                    .text_color(chevron_color)
-                    .on_hover(move |hovered, window, cx| {
-                        crate::ui::foundation::hover_motion::set_hovered(
-                            chevron_hover_key.clone(),
-                            *hovered,
-                            window,
-                            cx,
-                        );
-                    })
-                    .on_click(cx.listener(move |this, _, window, cx| {
+                DisclosureChevron::new(chevron_id, self.tg_info_expanded, cx).on_click(
+                    cx.listener(move |this, _, _, cx| {
                         this.tg_info_expanded = !this.tg_info_expanded;
-                        animate_toggle(chevron_id.clone(), this.tg_info_expanded, window, cx);
                         cx.notify();
-                    }))
-                    .child(
-                        svg()
-                            .path("icons/chevron-down.svg")
-                            .size_4()
-                            .text_color(chevron_color)
-                            .with_transformation(Transformation::rotate(Radians(
-                                std::f32::consts::PI * chevron_progress,
-                            ))),
-                    ),
+                    }),
+                ),
             )
             .child(primary_button(
                 "open-tg-link",

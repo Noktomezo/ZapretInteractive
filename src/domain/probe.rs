@@ -217,6 +217,10 @@ pub enum ProbeOutcome {
 #[serde(rename_all = "camelCase")]
 pub struct ProbeTargetResult {
     pub target_id: String,
+    #[serde(default)]
+    pub target_name: String,
+    #[serde(default)]
+    pub target_url: String,
     pub role: ProbeRole,
     #[serde(default)]
     pub expected_protocol: ProbeProtocol,
@@ -404,6 +408,8 @@ mod tests {
                     } else {
                         format!("target-{index}")
                     },
+                    target_name: format!("Target {index}"),
+                    target_url: format!("https://target-{index}.example"),
                     role: *role,
                     expected_protocol: ProbeProtocol::Auto,
                     outcome: *outcome,

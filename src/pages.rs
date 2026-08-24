@@ -7,9 +7,10 @@ use crate::services::dns::PRESETS;
 use crate::ui::components::backdrop_blur::backdrop_blur;
 use crate::ui::components::button::{Button, IconButtonVariant, icon_button};
 use crate::ui::components::card::{
-    card_icon, interactive_module_card, module_card, virtual_list_card,
+    card_icon, interactive_module_card, module_card, module_header, virtual_list_card,
 };
 use crate::ui::components::cursor_tooltip;
+use crate::ui::components::disclosure::{DisclosureChevron, disclosure_progress};
 use crate::ui::components::smooth_scroll::{
     PageScrollbar, SmoothUniformListScroll, SmoothVerticalScroll,
 };
@@ -32,6 +33,7 @@ mod editor;
 mod logs;
 mod module_detail;
 mod probe;
+mod probe_results;
 mod resources;
 mod settings;
 mod strategies;
