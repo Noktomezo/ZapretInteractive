@@ -5,6 +5,7 @@ categoryId = "preset-tcp"
 categoryOrder = 3
 order = 28
 content = """
+--filter-tcp=443
 <LIST_MODE>
 --hostlist-exclude-domains=fonts.googleapis.com
 --dpi-desync=fake,multisplit

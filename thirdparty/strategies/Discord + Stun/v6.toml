@@ -5,6 +5,7 @@ categoryId = "preset-discord-stun"
 categoryOrder = 5
 order = 6
 content = """
+--filter-l7=discord,stun
 --filter-udp=19294-19344,50000-50100
 --dpi-desync=ipfrag2
 --dpi-desync-ipfrag-pos-udp=32"""

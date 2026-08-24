@@ -5,6 +5,7 @@ categoryId = "preset-http"
 categoryOrder = 1
 order = 29
 content = """
+--filter-tcp=80
 <LIST_MODE>
 --dpi-desync=fake
 --dpi-desync-fooling=datanoack

@@ -5,6 +5,7 @@ categoryId = "preset-quic"
 categoryOrder = 4
 order = 2
 content = """
+--filter-udp=443
 --dpi-desync=fake
 --dpi-desync-repeats=6
 --dpi-desync-fake-quic={{QUIC_INITIAL_GOOGLE}}"""

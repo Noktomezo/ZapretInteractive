@@ -5,6 +5,7 @@ categoryId = "preset-tcp"
 categoryOrder = 3
 order = 37
 content = """
+--filter-tcp=443
 <LIST_MODE>
 --dpi-desync=ipfrag2
 --dpi-desync-ipfrag-pos-tcp=8"""

@@ -5,6 +5,7 @@ categoryId = "preset-tcp"
 categoryOrder = 3
 order = 18
 content = """
+--filter-tcp=443
 <LIST_MODE>
 --dpi-desync=fake,hostfakesplit
 --dpi-desync-fake-tls-mod=rnd,dupsid,sni=ya.ru

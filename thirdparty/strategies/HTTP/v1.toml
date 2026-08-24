@@ -5,6 +5,7 @@ categoryId = "preset-http"
 categoryOrder = 1
 order = 1
 content = """
+--filter-tcp=80
 <LIST_MODE>
 --dpi-desync=fake
 --dpi-desync-autottl=2
@@ -13,6 +14,7 @@ active = true
 system = true
 systemBaseName = "v1"
 systemBaseContent = """
+--filter-tcp=80
 <LIST_MODE>
 --dpi-desync=fake
 --dpi-desync-autottl=2

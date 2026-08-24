@@ -5,6 +5,7 @@ categoryId = "preset-tcp"
 categoryOrder = 3
 order = 5
 content = """
+--filter-tcp=443
 <LIST_MODE>
 --dpi-desync=fake,fakeddisorder
 --dpi-desync-split-pos=1

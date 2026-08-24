@@ -5,6 +5,7 @@ categoryId = "preset-http"
 categoryOrder = 1
 order = 10
 content = """
+--filter-tcp=80
 --filter-l3=ipv4
 <LIST_MODE>,2053,2083,2087,2096,8443
 --dpi-desync=syndata,multidisorder"""

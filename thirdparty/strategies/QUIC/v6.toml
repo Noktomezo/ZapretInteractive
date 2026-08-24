@@ -5,6 +5,7 @@ categoryId = "preset-quic"
 categoryOrder = 4
 order = 6
 content = """
+--filter-udp=443
 --dpi-desync=ipfrag2
 --dpi-desync-ipfrag-pos-udp=32"""
 active = false
