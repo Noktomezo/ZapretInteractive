@@ -137,80 +137,10 @@ impl AppView {
         }
 
         if let StrategyProbeState::Complete(report) = probe_state {
-            let state = self.state.clone();
-            let verification_urls = report.verification_urls.clone();
-            let mut recommendations = div().flex().flex_col().gap_2();
-            for recommendation in report.recommendations {
-                recommendations = recommendations.child(
-                    div()
-                        .px_4()
-                        .py_3()
-                        .rounded(px(8.))
-                        .border_1()
-                        .border_color(border())
-                        .flex()
-                        .items_center()
-                        .justify_between()
-                        .child(recommendation.category_name)
-                        .child(
-                            div()
-                                .text_color(success())
-                                .child(recommendation.strategy_name),
-                        ),
-                );
-            }
-            content = content.child(module_card(
-                div()
-                    .px_4()
-                    .py_3()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .child(
-                        div()
-                            .font_weight(FontWeight::MEDIUM)
-                            .child(t!("probe.result")),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_2()
-                            .child(
-                                Button::new("verify-probe", t!("probe.verify_browser"), cx)
-                                    .outline()
-                                    .icon_prefix("icons/external-link.svg")
-                                    .disabled(verification_urls.is_empty())
-                                    .on_click({
-                                        let state = self.state.clone();
-                                        move |_, _, cx| {
-                                            state.update(cx, |state, cx| {
-                                                state.open_probe_verification_urls(
-                                                    &verification_urls,
-                                                    cx,
-                                                )
-                                            });
-                                        }
-                                    }),
-                            )
-                            .child(
-                                Button::new("apply-probe", t!("probe.apply"), cx)
-                                    .primary()
-                                    .icon_prefix("icons/check.svg")
-                                    .on_click(move |_, _, cx| {
-                                        state.update(cx, |state, cx| {
-                                            state.apply_strategy_probe_report(cx)
-                                        });
-                                    }),
-                            ),
-                    ),
-                Some(
-                    div()
-                        .p_4()
-                        .border_t_1()
-                        .border_color(border())
-                        .child(recommendations),
-                ),
+            content = content.child(super::probe_results::probe_report_card(
+                report,
+                self.state.clone(),
+                cx,
             ));
         }
 

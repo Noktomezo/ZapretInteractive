@@ -228,6 +228,8 @@ fn run_curl(
     };
     ProbeTargetResult {
         target_id: target.id.clone(),
+        target_name: target.name.clone(),
+        target_url: target.url.clone(),
         role: target.role,
         expected_protocol,
         outcome,
@@ -248,6 +250,8 @@ fn run_curl(
 fn failed_result(message: &str) -> ProbeTargetResult {
     ProbeTargetResult {
         target_id: "worker".to_owned(),
+        target_name: "Worker".to_owned(),
+        target_url: String::new(),
         role: ProbeRole::Required,
         expected_protocol: ProbeProtocol::Auto,
         outcome: ProbeOutcome::Fail,
@@ -268,6 +272,8 @@ fn target_failure(
 ) -> ProbeTargetResult {
     ProbeTargetResult {
         target_id: target.id.clone(),
+        target_name: target.name.clone(),
+        target_url: target.url.clone(),
         role: target.role,
         expected_protocol,
         outcome: ProbeOutcome::Fail,

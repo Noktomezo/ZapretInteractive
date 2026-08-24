@@ -23,6 +23,8 @@ pub(super) fn failed_candidate(
                 .iter()
                 .map(move |protocol| ProbeTargetResult {
                     target_id: target.id.clone(),
+                    target_name: target.name.clone(),
+                    target_url: target.url.clone(),
                     role: target.role,
                     expected_protocol: *protocol,
                     outcome: ProbeOutcome::Fail,
@@ -168,6 +170,8 @@ mod tests {
     fn attempt(id: &str, outcome: ProbeOutcome, remote_ip: Option<&str>) -> ProbeTargetResult {
         ProbeTargetResult {
             target_id: id.to_owned(),
+            target_name: id.to_owned(),
+            target_url: format!("https://{id}.example"),
             role: ProbeRole::Auto,
             expected_protocol: ProbeProtocol::Auto,
             outcome,

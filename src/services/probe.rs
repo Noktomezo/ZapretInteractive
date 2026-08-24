@@ -269,10 +269,12 @@ fn run_probe_inner(
         let ranked = rank_candidates(&smoke_results, &baseline_controls);
         let finalist_count = ranked.len().min(3);
         if finalist_count == 0 {
-            bail!(
-                "{}: ни одна стратегия не прошла все обязательные цели",
-                category.name
-            );
+            category_reports.push(ProbeCategoryReport {
+                category_id: category_id.clone(),
+                category_name: category.name,
+                candidates: smoke_results,
+            });
+            continue;
         }
         let finalist_controls = if request.mode == ProbeMode::Full {
             passing_baseline_controls(&baseline_full)
@@ -310,9 +312,14 @@ fn run_probe_inner(
         }
 
         let ranked_finalists = rank_candidates(&finalists, &finalist_controls);
-        let winner_index = *ranked_finalists
-            .first()
-            .context("не удалось выбрать стратегию")?;
+        let Some(&winner_index) = ranked_finalists.first() else {
+            category_reports.push(ProbeCategoryReport {
+                category_id: category_id.clone(),
+                category_name: category.name,
+                candidates: smoke_results,
+            });
+            continue;
+        };
         let winner = finalists[winner_index].clone();
         on_progress(ProbeProgress {
             category_name: category.name.clone(),
@@ -342,14 +349,6 @@ fn run_probe_inner(
             strategy_name: winner.strategy_name.clone(),
             attempts: verified.attempts.clone(),
         };
-        if !candidate_is_valid(&verify_controls, &finalist_controls) {
-            bail!(
-                "финальная проверка {} не прошла все обязательные или контрольные цели",
-                winner.strategy_name
-            );
-        }
-
-        set_category_strategy(&mut working, category_id, winner.strategy_id.as_deref())?;
         for finalist in finalists {
             if let Some(candidate) = smoke_results
                 .iter_mut()
@@ -361,12 +360,22 @@ fn run_probe_inner(
                 }
             }
         }
+        if !candidate_is_valid(&verify_controls, &finalist_controls) {
+            category_reports.push(ProbeCategoryReport {
+                category_id: category_id.clone(),
+                category_name: category.name,
+                candidates: smoke_results,
+            });
+            continue;
+        }
+
+        set_category_strategy(&mut working, category_id, winner.strategy_id.as_deref())?;
         let recommendation = ProbeRecommendation {
             category_id: category_id.clone(),
             category_name: category.name.clone(),
             strategy_id: winner.strategy_id.clone(),
             strategy_name: winner.strategy_name.clone(),
-            candidates_tested: candidate_ids.len(),
+            candidates_tested: category.strategies.len(),
         };
         recommendations.push(recommendation);
         category_reports.push(ProbeCategoryReport {

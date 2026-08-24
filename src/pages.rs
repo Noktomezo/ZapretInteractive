@@ -32,6 +32,7 @@ mod editor;
 mod logs;
 mod module_detail;
 mod probe;
+mod probe_results;
 mod resources;
 mod settings;
 mod strategies;
