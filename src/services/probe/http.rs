@@ -67,6 +67,8 @@ pub(super) fn discover_youtube_ggc(curl: &Path, profile: &ProbeProfile) -> Optio
             "--ipv4".to_owned(),
             "--impersonate".to_owned(),
             profile.impersonate.as_curl_target().to_owned(),
+            "--ech".to_owned(),
+            "false".to_owned(),
             "--max-time".to_owned(),
             timeout_seconds.clone(),
         ];
@@ -146,6 +148,8 @@ fn run_curl(
         "--ipv4".to_owned(),
         "--impersonate".to_owned(),
         profile.impersonate.as_curl_target().to_owned(),
+        "--ech".to_owned(),
+        "false".to_owned(),
     ];
     if let Some(protocol_flag) = protocol_flag {
         args.push(protocol_flag.to_owned());

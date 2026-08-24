@@ -15,7 +15,7 @@ name = "RuTracker HTTP"
 url = "http://rutracker.org/"
 role = "auto"
 tier = "smoke"
-minBytes = 34816
+minBytes = 8192
 
 [[targets]]
 id = "rutor-http"
