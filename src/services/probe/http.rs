@@ -3,9 +3,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
-use crate::domain::{
-    ProbeOutcome, ProbeProfile, ProbeProtocol, ProbeRole, ProbeTarget, ProbeTargetResult,
-};
+use crate::domain::{ProbeOutcome, ProbeProfile, ProbeProtocol, ProbeTarget, ProbeTargetResult};
 use crate::services::hidden_cmd;
 
 const GGC_REDIRECTORS: [&str; 4] = [
@@ -103,7 +101,7 @@ pub(super) fn discover_youtube_ggc(curl: &Path, profile: &ProbeProfile) -> Optio
             id: "youtube-local-ggc".to_owned(),
             name: "Local YouTube GGC".to_owned(),
             url: format!("https://{host}/generate_204"),
-            role: ProbeRole::Required,
+            _legacy_role: None,
             tier: crate::domain::ProbeTier::Full,
             min_bytes: 0,
             connect_ip: Some(connect_ip),
@@ -237,7 +235,6 @@ fn run_curl(
         target_id: target.id.clone(),
         target_name: target.name.clone(),
         target_url: target.url.clone(),
-        role: target.role,
         expected_protocol,
         outcome,
         protocol: Some(protocol),
@@ -259,7 +256,6 @@ fn failed_result(message: &str) -> ProbeTargetResult {
         target_id: "worker".to_owned(),
         target_name: "Worker".to_owned(),
         target_url: String::new(),
-        role: ProbeRole::Required,
         expected_protocol: ProbeProtocol::Auto,
         outcome: ProbeOutcome::Fail,
         protocol: None,
@@ -281,7 +277,6 @@ fn target_failure(
         target_id: target.id.clone(),
         target_name: target.name.clone(),
         target_url: target.url.clone(),
-        role: target.role,
         expected_protocol,
         outcome: ProbeOutcome::Fail,
         protocol: None,

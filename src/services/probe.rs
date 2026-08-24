@@ -6,8 +6,8 @@ use anyhow::{Context as _, Result, bail};
 use serde::{Deserialize, Serialize};
 
 use crate::domain::{
-    AppConfig, ProbeCandidateResult, ProbeProfile, ProbeRole, ProbeTargetResult,
-    candidate_is_valid, passing_baseline_controls, rank_candidates,
+    AppConfig, ProbeCandidateResult, ProbeProfile, ProbeTargetResult, candidate_is_valid,
+    rank_candidates,
 };
 use crate::services::RuntimeServices;
 
@@ -20,8 +20,8 @@ use http::discover_youtube_ggc;
 pub use storage::{clear_recovery_journal, load_recovery_journal, report_path};
 use storage::{write_journal, write_json_replace};
 use support::{
-    candidate_name, category_profile_path, classify_profile_from_baseline, ensure_not_cancelled,
-    reclassify_candidate, resolve_strategies_dir, set_category_strategy,
+    cache_baseline_addresses, candidate_name, category_profile_path, ensure_not_cancelled,
+    resolve_strategies_dir, set_category_strategy,
 };
 
 const CURL_RELATIVE_PATH: &str = "modules/curl-impersonate/curl-impersonate.exe";
@@ -215,13 +215,8 @@ fn run_probe_inner(
             baseline_progress,
             on_progress,
         )?;
-        classify_profile_from_baseline(&mut profile, &baseline_full);
-        let baseline_full = reclassify_candidate(baseline_full, &profile);
-        for target in profile
-            .targets
-            .iter()
-            .filter(|target| target.role == ProbeRole::Required)
-        {
+        cache_baseline_addresses(&mut profile, &baseline_full);
+        for target in &profile.targets {
             if !verification_urls.contains(&target.url) {
                 verification_urls.push(target.url.clone());
             }
@@ -250,22 +245,19 @@ fn run_probe_inner(
                     targets: Vec::new(),
                 },
             );
-            reclassify_candidate(
-                test_candidate(
-                    &curl,
-                    runtime,
-                    &working,
-                    &profile,
-                    category_id,
-                    None,
-                    false,
-                    1,
-                    cancelled,
-                    progress,
-                    on_progress,
-                )?,
+            test_candidate(
+                &curl,
+                runtime,
+                &working,
                 &profile,
-            )
+                category_id,
+                None,
+                false,
+                1,
+                cancelled,
+                progress,
+                on_progress,
+            )?
         } else {
             baseline_full.clone()
         };
@@ -303,11 +295,10 @@ fn run_probe_inner(
             )?;
             result.strategy_name = name;
             result.strategy_id.clone_from(strategy_id);
-            smoke_results.push(reclassify_candidate(result, &profile));
+            smoke_results.push(result);
         }
 
-        let baseline_controls = passing_baseline_controls(&smoke_results[0]);
-        let ranked = rank_candidates(&smoke_results, &baseline_controls);
+        let ranked = rank_candidates(&smoke_results);
         let finalist_count = ranked.len().min(3);
         if finalist_count == 0 {
             category_reports.push(ProbeCategoryReport {
@@ -317,11 +308,6 @@ fn run_probe_inner(
             });
             continue;
         }
-        let finalist_controls = if request.mode == ProbeMode::Full {
-            passing_baseline_controls(&baseline_full)
-        } else {
-            baseline_controls.clone()
-        };
         let mut finalists = Vec::with_capacity(finalist_count);
         for (finalist_index, smoke_index) in ranked.into_iter().take(finalist_count).enumerate() {
             ensure_not_cancelled(cancelled)?;
@@ -356,10 +342,10 @@ fn run_probe_inner(
             )?;
             result.strategy_name = name;
             result.strategy_id = strategy_id.map(str::to_owned);
-            finalists.push(reclassify_candidate(result, &profile));
+            finalists.push(result);
         }
 
-        let ranked_finalists = rank_candidates(&finalists, &finalist_controls);
+        let ranked_finalists = rank_candidates(&finalists);
         let Some(&winner_index) = ranked_finalists.first() else {
             category_reports.push(ProbeCategoryReport {
                 category_id: category_id.clone(),
@@ -383,23 +369,20 @@ fn run_probe_inner(
                 targets: Vec::new(),
             },
         );
-        let verified = reclassify_candidate(
-            test_candidate(
-                &curl,
-                runtime,
-                &working,
-                &profile,
-                category_id,
-                winner.strategy_id.as_deref(),
-                request.mode == ProbeMode::Full,
-                profile.verification_repeats,
-                cancelled,
-                progress,
-                on_progress,
-            )?,
+        let verified = test_candidate(
+            &curl,
+            runtime,
+            &working,
             &profile,
-        );
-        let verify_controls = ProbeCandidateResult {
+            category_id,
+            winner.strategy_id.as_deref(),
+            request.mode == ProbeMode::Full,
+            profile.verification_repeats,
+            cancelled,
+            progress,
+            on_progress,
+        )?;
+        let verification_result = ProbeCandidateResult {
             strategy_id: winner.strategy_id.clone(),
             strategy_name: winner.strategy_name.clone(),
             attempts: verified.attempts.clone(),
@@ -415,7 +398,7 @@ fn run_probe_inner(
                 }
             }
         }
-        if !candidate_is_valid(&verify_controls, &finalist_controls) {
+        if !candidate_is_valid(&verification_result) {
             category_reports.push(ProbeCategoryReport {
                 category_id: category_id.clone(),
                 category_name: category.name,

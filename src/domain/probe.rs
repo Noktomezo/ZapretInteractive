@@ -67,15 +67,6 @@ impl ProbeImpersonation {
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
-pub enum ProbeRole {
-    Auto,
-    Required,
-    Optional,
-    Control,
-}
-
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "lowercase")]
 pub enum ProbeTier {
     Smoke,
     Full,
@@ -113,7 +104,8 @@ pub struct ProbeTarget {
     pub id: String,
     pub name: String,
     pub url: String,
-    pub role: ProbeRole,
+    #[serde(default, rename = "role", skip_serializing)]
+    pub(crate) _legacy_role: Option<String>,
     pub tier: ProbeTier,
     #[serde(default)]
     pub min_bytes: u64,
@@ -188,13 +180,6 @@ impl ProbeProfile {
                     .with_context(|| format!("некорректный connectIp цели {}", target.id))?;
             }
         }
-        if !self
-            .targets
-            .iter()
-            .any(|target| matches!(target.role, ProbeRole::Required | ProbeRole::Auto))
-        {
-            bail!("probe.toml должен содержать хотя бы одну required- или auto-цель");
-        }
         Ok(())
     }
 
@@ -221,7 +206,6 @@ pub struct ProbeTargetResult {
     pub target_name: String,
     #[serde(default)]
     pub target_url: String,
-    pub role: ProbeRole,
     #[serde(default)]
     pub expected_protocol: ProbeProtocol,
     pub outcome: ProbeOutcome,
@@ -243,27 +227,19 @@ pub struct ProbeCandidateResult {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ProbeCandidateScore {
-    pub controls_ok: bool,
-    pub stable_required: usize,
-    pub optional_passes: usize,
-    pub unstable_attempts: usize,
+    pub passed_targets: usize,
+    pub failed_attempts: usize,
     pub median_latency_ms: u128,
 }
 
 impl ProbeCandidateScore {
-    fn for_candidate(
-        candidate: &ProbeCandidateResult,
-        baseline_controls: &BTreeSet<String>,
-    ) -> Self {
-        let controls_ok = candidate_preserves_controls(candidate, baseline_controls);
-
-        let required_ids = candidate
+    fn for_candidate(candidate: &ProbeCandidateResult) -> Self {
+        let target_ids = candidate
             .attempts
             .iter()
-            .filter(|attempt| attempt.role == ProbeRole::Required)
             .map(|attempt| attempt.target_id.as_str())
             .collect::<BTreeSet<_>>();
-        let stable_required = required_ids
+        let passed_targets = target_ids
             .iter()
             .filter(|id| {
                 candidate
@@ -273,19 +249,10 @@ impl ProbeCandidateScore {
                     .all(|attempt| attempt.outcome == ProbeOutcome::Pass)
             })
             .count();
-        let optional_passes = candidate
+        let failed_attempts = candidate
             .attempts
             .iter()
-            .filter(|attempt| {
-                attempt.role == ProbeRole::Optional && attempt.outcome == ProbeOutcome::Pass
-            })
-            .count();
-        let unstable_attempts = candidate
-            .attempts
-            .iter()
-            .filter(|attempt| {
-                attempt.role != ProbeRole::Control && attempt.outcome != ProbeOutcome::Pass
-            })
+            .filter(|attempt| attempt.outcome != ProbeOutcome::Pass)
             .count();
         let mut latencies = candidate
             .attempts
@@ -300,79 +267,24 @@ impl ProbeCandidateScore {
             .unwrap_or(u128::MAX);
 
         Self {
-            controls_ok,
-            stable_required,
-            optional_passes,
-            unstable_attempts,
+            passed_targets,
+            failed_attempts,
             median_latency_ms,
         }
     }
 }
 
-pub fn candidate_preserves_controls(
-    candidate: &ProbeCandidateResult,
-    baseline_controls: &BTreeSet<String>,
-) -> bool {
-    baseline_controls.iter().all(|id| {
-        let attempts = candidate
-            .attempts
-            .iter()
-            .filter(|attempt| attempt.target_id == *id)
-            .collect::<Vec<_>>();
-        !attempts.is_empty()
-            && attempts
-                .iter()
-                .all(|attempt| attempt.outcome == ProbeOutcome::Pass)
-    })
+pub fn candidate_is_valid(candidate: &ProbeCandidateResult) -> bool {
+    ProbeCandidateScore::for_candidate(candidate).passed_targets > 0
 }
 
-pub fn candidate_passes_required(candidate: &ProbeCandidateResult) -> bool {
-    candidate
-        .attempts
-        .iter()
-        .filter(|attempt| attempt.role == ProbeRole::Required)
-        .all(|attempt| attempt.outcome == ProbeOutcome::Pass)
-}
-
-pub fn candidate_is_valid(
-    candidate: &ProbeCandidateResult,
-    baseline_controls: &BTreeSet<String>,
-) -> bool {
-    candidate_preserves_controls(candidate, baseline_controls)
-        && candidate_passes_required(candidate)
-}
-
-pub fn passing_baseline_controls(candidate: &ProbeCandidateResult) -> BTreeSet<String> {
-    let control_ids = candidate
-        .attempts
-        .iter()
-        .filter(|attempt| attempt.role == ProbeRole::Control)
-        .map(|attempt| attempt.target_id.as_str())
-        .collect::<BTreeSet<_>>();
-    control_ids
-        .into_iter()
-        .filter(|id| {
-            candidate
-                .attempts
-                .iter()
-                .filter(|attempt| attempt.target_id == **id)
-                .all(|attempt| attempt.outcome == ProbeOutcome::Pass)
-        })
-        .map(str::to_owned)
-        .collect()
-}
-
-pub fn rank_candidates(
-    candidates: &[ProbeCandidateResult],
-    baseline_controls: &BTreeSet<String>,
-) -> Vec<usize> {
+pub fn rank_candidates(candidates: &[ProbeCandidateResult]) -> Vec<usize> {
     let mut indices = (0..candidates.len())
-        .filter(|index| candidate_is_valid(&candidates[*index], baseline_controls))
+        .filter(|index| candidate_is_valid(&candidates[*index]))
         .collect::<Vec<_>>();
     indices.sort_by(|left, right| {
-        let left_score = ProbeCandidateScore::for_candidate(&candidates[*left], baseline_controls);
-        let right_score =
-            ProbeCandidateScore::for_candidate(&candidates[*right], baseline_controls);
+        let left_score = ProbeCandidateScore::for_candidate(&candidates[*left]);
+        let right_score = ProbeCandidateScore::for_candidate(&candidates[*right]);
         compare_scores(right_score, left_score).then_with(|| {
             candidates[*left]
                 .strategy_name
@@ -383,11 +295,9 @@ pub fn rank_candidates(
 }
 
 fn compare_scores(left: ProbeCandidateScore, right: ProbeCandidateScore) -> Ordering {
-    left.controls_ok
-        .cmp(&right.controls_ok)
-        .then(left.stable_required.cmp(&right.stable_required))
-        .then(left.optional_passes.cmp(&right.optional_passes))
-        .then_with(|| right.unstable_attempts.cmp(&left.unstable_attempts))
+    left.passed_targets
+        .cmp(&right.passed_targets)
+        .then_with(|| right.failed_attempts.cmp(&left.failed_attempts))
         .then_with(|| right.median_latency_ms.cmp(&left.median_latency_ms))
 }
 
@@ -395,104 +305,87 @@ fn compare_scores(left: ProbeCandidateScore, right: ProbeCandidateScore) -> Orde
 mod tests {
     use super::*;
 
-    fn result(name: &str, attempts: &[(ProbeRole, ProbeOutcome, u128)]) -> ProbeCandidateResult {
+    fn result(name: &str, attempts: &[(&str, ProbeOutcome, u128)]) -> ProbeCandidateResult {
         ProbeCandidateResult {
             strategy_id: Some(name.to_owned()),
             strategy_name: name.to_owned(),
             attempts: attempts
                 .iter()
                 .enumerate()
-                .map(|(index, (role, outcome, latency_ms))| ProbeTargetResult {
-                    target_id: if *role == ProbeRole::Control {
-                        "control".to_owned()
-                    } else {
-                        format!("target-{index}")
+                .map(
+                    |(index, (target_id, outcome, latency_ms))| ProbeTargetResult {
+                        target_id: (*target_id).to_owned(),
+                        target_name: format!("Target {index}"),
+                        target_url: format!("https://target-{index}.example"),
+                        expected_protocol: ProbeProtocol::Auto,
+                        outcome: *outcome,
+                        protocol: Some("2".to_owned()),
+                        status_code: Some(200),
+                        bytes: 1,
+                        remote_ip: None,
+                        latency_ms: *latency_ms,
+                        error: None,
                     },
-                    target_name: format!("Target {index}"),
-                    target_url: format!("https://target-{index}.example"),
-                    role: *role,
-                    expected_protocol: ProbeProtocol::Auto,
-                    outcome: *outcome,
-                    protocol: Some("2".to_owned()),
-                    status_code: Some(200),
-                    bytes: 1,
-                    remote_ip: None,
-                    latency_ms: *latency_ms,
-                    error: None,
-                })
+                )
                 .collect(),
         }
     }
 
     #[test]
-    fn controls_and_required_stability_dominate_latency() {
-        let baseline = BTreeSet::from(["control".to_owned()]);
+    fn more_passing_domains_dominate_latency() {
         let candidates = vec![
             result(
-                "fast-but-breaks-control",
+                "fast-partial",
                 &[
-                    (ProbeRole::Control, ProbeOutcome::Fail, 1),
-                    (ProbeRole::Required, ProbeOutcome::Pass, 1),
+                    ("one", ProbeOutcome::Pass, 1),
+                    ("two", ProbeOutcome::Fail, 1),
                 ],
             ),
             result(
-                "stable",
+                "complete",
                 &[
-                    (ProbeRole::Control, ProbeOutcome::Pass, 50),
-                    (ProbeRole::Required, ProbeOutcome::Pass, 50),
+                    ("one", ProbeOutcome::Pass, 50),
+                    ("two", ProbeOutcome::Pass, 50),
                 ],
             ),
         ];
-        assert_eq!(rank_candidates(&candidates, &baseline), vec![1]);
+        assert_eq!(rank_candidates(&candidates), vec![1, 0]);
     }
 
     #[test]
     fn no_strategy_can_win_as_a_normal_candidate() {
-        let baseline = BTreeSet::new();
-        let mut no_strategy = result(
-            "Без стратегии",
-            &[(ProbeRole::Required, ProbeOutcome::Pass, 10)],
-        );
+        let mut no_strategy = result("Без стратегии", &[("domain", ProbeOutcome::Pass, 10)]);
         no_strategy.strategy_id = None;
         let candidates = vec![
-            result("v1", &[(ProbeRole::Required, ProbeOutcome::Degraded, 5)]),
+            result("v1", &[("domain", ProbeOutcome::Degraded, 5)]),
             no_strategy,
         ];
-        assert_eq!(rank_candidates(&candidates, &baseline), vec![1]);
+        assert_eq!(rank_candidates(&candidates), vec![1]);
     }
 
     #[test]
-    fn invalid_candidate_is_not_ranked() {
-        let baseline = BTreeSet::from(["control".to_owned()]);
+    fn candidate_without_a_passing_domain_is_not_ranked() {
         let candidates = vec![
-            result(
-                "partial",
-                &[
-                    (ProbeRole::Control, ProbeOutcome::Pass, 1),
-                    (ProbeRole::Required, ProbeOutcome::Degraded, 1),
-                ],
-            ),
-            result(
-                "valid",
-                &[
-                    (ProbeRole::Control, ProbeOutcome::Pass, 10),
-                    (ProbeRole::Required, ProbeOutcome::Pass, 10),
-                ],
-            ),
+            result("failed", &[("domain", ProbeOutcome::Fail, 1)]),
+            result("working", &[("domain", ProbeOutcome::Pass, 10)]),
         ];
-        assert_eq!(rank_candidates(&candidates, &baseline), vec![1]);
+        assert_eq!(rank_candidates(&candidates), vec![1]);
     }
 
     #[test]
-    fn partially_passing_control_is_not_part_of_the_baseline() {
-        let baseline = result(
-            "baseline",
-            &[
-                (ProbeRole::Control, ProbeOutcome::Pass, 1),
-                (ProbeRole::Control, ProbeOutcome::Fail, 1),
-            ],
+    fn legacy_roles_are_accepted_but_not_serialized() {
+        let source = include_str!("../../thirdparty/strategies/HTTP/probe.toml").replacen(
+            "tier =",
+            "role = \"required\"\ntier =",
+            1,
         );
-        assert!(passing_baseline_controls(&baseline).is_empty());
+        let profile: ProbeProfile = toml::from_str(&source).expect("legacy profile parses");
+        assert_eq!(profile.targets[0]._legacy_role.as_deref(), Some("required"));
+        assert!(
+            !toml::to_string(&profile)
+                .expect("profile serializes")
+                .contains("role =")
+        );
     }
 
     #[test]

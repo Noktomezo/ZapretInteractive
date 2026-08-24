@@ -13,15 +13,13 @@ dohUrl = "https://1.1.1.1/dns-query"
 id = "youtube-h3"
 name = "YouTube HTTP/3"
 url = "https://www.youtube.com/generate_204"
-role = "auto"
 tier = "smoke"
 minBytes = 0
 
 [[targets]]
 id = "google-h3"
-name = "Google HTTP/3 control"
+name = "Google HTTP/3"
 url = "https://www.google.com/generate_204"
-role = "control"
 tier = "smoke"
 minBytes = 0
 
@@ -29,6 +27,5 @@ minBytes = 0
 id = "cloudflare-h3"
 name = "Cloudflare HTTP/3"
 url = "https://cloudflare.com/cdn-cgi/trace"
-role = "optional"
 tier = "full"
 minBytes = 64

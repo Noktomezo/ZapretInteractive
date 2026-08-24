@@ -13,7 +13,6 @@ dohUrl = "https://1.1.1.1/dns-query"
 id = "rutracker"
 name = "RuTracker"
 url = "https://rutracker.org/"
-role = "auto"
 tier = "smoke"
 minBytes = 8192
 
@@ -21,7 +20,6 @@ minBytes = 8192
 id = "discord"
 name = "Discord"
 url = "https://discord.com/"
-role = "auto"
 tier = "smoke"
 minBytes = 16385
 
@@ -29,7 +27,6 @@ minBytes = 16385
 id = "instagram"
 name = "Instagram"
 url = "https://instagram.com/"
-role = "optional"
 tier = "full"
 minBytes = 16385
 
@@ -37,23 +34,20 @@ minBytes = 16385
 id = "x"
 name = "X"
 url = "https://x.com/"
-role = "optional"
 tier = "full"
 minBytes = 16385
 
 [[targets]]
 id = "gosuslugi"
-name = "Gosuslugi control"
+name = "Gosuslugi"
 url = "https://www.gosuslugi.ru/"
-role = "control"
 tier = "smoke"
 minBytes = 0
 
 [[targets]]
 id = "nalog"
-name = "Nalog control"
+name = "Nalog"
 url = "https://nalog.ru/"
-role = "control"
 tier = "full"
 minBytes = 0
 
@@ -63,7 +57,6 @@ minBytes = 0
 id = "suite-us-gh-hprn"
 name = "Self check"
 url = "https://hyperion-cs.github.io/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -71,7 +64,6 @@ minBytes = 0
 id = "suite-pl-akm-01"
 name = "Akamai PL"
 url = "https://www.mobil.com.se/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -79,7 +71,6 @@ minBytes = 0
 id = "suite-se-akm-01"
 name = "Akamai SE"
 url = "https://cdn.apple-mapkit.com/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -87,7 +78,6 @@ minBytes = 0
 id = "suite-de-aws-01"
 name = "AWS DE"
 url = "https://amplifon.com/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -95,7 +85,6 @@ minBytes = 0
 id = "suite-us-aws-01"
 name = "AWS US"
 url = "https://optout.aboutads.info/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -103,7 +92,6 @@ minBytes = 0
 id = "suite-us-cdn77-01"
 name = "CDN77"
 url = "https://cdn.eso.org/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -111,7 +99,6 @@ minBytes = 0
 id = "suite-ca-cf-01"
 name = "Cloudflare CA 1"
 url = "https://go.coveo.com/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -119,7 +106,6 @@ minBytes = 0
 id = "suite-ca-cf-02"
 name = "Cloudflare CA 2"
 url = "https://justice.gov/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -127,7 +113,6 @@ minBytes = 0
 id = "suite-us-cf-01"
 name = "Cloudflare US 1"
 url = "https://img.wzstats.gg/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -135,7 +120,6 @@ minBytes = 0
 id = "suite-us-cf-02"
 name = "Cloudflare US 2"
 url = "https://esm.sh/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -143,7 +127,6 @@ minBytes = 0
 id = "suite-fr-cntb-01"
 name = "Contabo 1"
 url = "https://antoniotartaglia.it/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -151,7 +134,6 @@ minBytes = 0
 id = "suite-fr-cntb-02"
 name = "Contabo 2"
 url = "https://status.moow.info/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -159,7 +141,6 @@ minBytes = 0
 id = "suite-de-do-01"
 name = "DigitalOcean DE"
 url = "https://ui-arts.com/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -167,7 +148,6 @@ minBytes = 0
 id = "suite-uk-do-01"
 name = "DigitalOcean UK 1"
 url = "https://app.thecuriositylibrary.com/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -175,7 +155,6 @@ minBytes = 0
 id = "suite-uk-do-02"
 name = "DigitalOcean UK 2"
 url = "https://admin.survey54.com/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -183,7 +162,6 @@ minBytes = 0
 id = "suite-ca-fst-01"
 name = "Fastly CA"
 url = "https://ssl.p.jwpcdn.com/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -191,7 +169,6 @@ minBytes = 0
 id = "suite-us-fst-01"
 name = "Fastly US"
 url = "https://www.jetblue.com/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -199,7 +176,6 @@ minBytes = 0
 id = "suite-us-ftbvm-01"
 name = "BuyVM 1"
 url = "https://buyvm.net/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -207,7 +183,6 @@ minBytes = 0
 id = "suite-us-ftbvm-02"
 name = "BuyVM 2"
 url = "https://dmvideo.download/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -215,7 +190,6 @@ minBytes = 0
 id = "suite-lu-gcore-01"
 name = "Gcore"
 url = "https://gcore.com/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -223,7 +197,6 @@ minBytes = 0
 id = "suite-us-gc-01"
 name = "Google Cloud 1"
 url = "https://api.usercentrics.eu/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -231,7 +204,6 @@ minBytes = 0
 id = "suite-us-gc-02"
 name = "Google Cloud 2"
 url = "https://widgets.reputation.com/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -239,7 +211,6 @@ minBytes = 0
 id = "suite-de-he-01"
 name = "Hetzner DE 1"
 url = "https://king.hr/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -247,7 +218,6 @@ minBytes = 0
 id = "suite-de-he-02"
 name = "Hetzner DE 2"
 url = "https://mail.server.apaone.com/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -255,7 +225,6 @@ minBytes = 0
 id = "suite-fi-he-01"
 name = "Hetzner FI 1"
 url = "https://nioges.com/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -263,7 +232,6 @@ minBytes = 0
 id = "suite-fi-he-02"
 name = "Hetzner FI 2"
 url = "https://5fd8bdae.nip.io/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -271,7 +239,6 @@ minBytes = 0
 id = "suite-fi-he-03"
 name = "Hetzner FI 3"
 url = "https://net4u.de/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -279,7 +246,6 @@ minBytes = 0
 id = "suite-us-mbcom-01"
 name = "Melbicom"
 url = "https://elecane.com/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -287,7 +253,6 @@ minBytes = 0
 id = "suite-nl-ms-01"
 name = "Microsoft Azure"
 url = "https://store.takeda.com/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -295,7 +260,6 @@ minBytes = 0
 id = "suite-es-or-01"
 name = "Oracle ES"
 url = "https://sh00065.hostgator.com/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -303,7 +267,6 @@ minBytes = 0
 id = "suite-sg-or-01"
 name = "Oracle SG"
 url = "https://ged.com.sg/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -311,7 +274,6 @@ minBytes = 0
 id = "suite-fr-ovh-01"
 name = "OVH 1"
 url = "https://www.adwin.fr/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -319,7 +281,6 @@ minBytes = 0
 id = "suite-fr-ovh-02"
 name = "OVH 2"
 url = "https://www.emca.be/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -327,7 +288,6 @@ minBytes = 0
 id = "suite-nl-sw-01"
 name = "Scaleway"
 url = "https://www.velivole.fr/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -335,7 +295,6 @@ minBytes = 0
 id = "suite-de-vltr-01"
 name = "Vultr DE"
 url = "https://askit-app.de/"
-role = "auto"
 tier = "full"
 minBytes = 0
 
@@ -343,6 +302,5 @@ minBytes = 0
 id = "suite-us-vltr-01"
 name = "Vultr US"
 url = "https://us.rudder.qntmnet.com/"
-role = "auto"
 tier = "full"
 minBytes = 0

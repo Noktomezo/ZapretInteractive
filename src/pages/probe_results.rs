@@ -1,7 +1,5 @@
 use super::*;
-use crate::domain::{
-    ProbeCandidateResult, ProbeOutcome, ProbeProtocol, ProbeRole, ProbeTargetResult,
-};
+use crate::domain::{ProbeCandidateResult, ProbeOutcome, ProbeProtocol, ProbeTargetResult};
 use crate::services::probe::{
     ProbeCategoryReport, ProbeProgress, ProbeRecommendation, ProbeTargetProgress,
 };
@@ -12,7 +10,6 @@ struct TargetSummary {
     target_id: String,
     target_name: String,
     target_url: String,
-    role: ProbeRole,
     protocol: ProbeProtocol,
     outcome: ProbeOutcome,
     passed_attempts: usize,
@@ -159,15 +156,11 @@ fn progress_target(target: &ProbeTargetProgress, index: usize) -> AnyElement {
 
 fn candidate_results(candidate: &ProbeCandidateResult, recommended: bool) -> AnyElement {
     let targets = summarize_targets(candidate);
-    let required = targets
-        .iter()
-        .filter(|target| target.role == ProbeRole::Required)
-        .collect::<Vec<_>>();
-    let passed = required
+    let passed = targets
         .iter()
         .filter(|target| target.outcome == ProbeOutcome::Pass)
         .count();
-    let candidate_passed = !required.is_empty() && passed == required.len();
+    let candidate_passed = !targets.is_empty() && passed == targets.len();
 
     div()
         .rounded(px(8.))
@@ -194,9 +187,9 @@ fn candidate_results(candidate: &ProbeCandidateResult, recommended: bool) -> Any
                 })
                 .child(
                     Badge::new(t!(
-                        "probe.required_summary",
+                        "probe.targets_summary",
                         passed = passed,
-                        total = required.len()
+                        total = targets.len()
                     ))
                     .variant(if candidate_passed {
                         BadgeVariant::Success
@@ -253,12 +246,7 @@ fn target_result(target: TargetSummary) -> AnyElement {
                             .text_xs()
                             .text_color(muted_foreground())
                             .whitespace_normal()
-                            .child(format!(
-                                "{} · {} · {}",
-                                role_label(target.role),
-                                details,
-                                target.target_url
-                            )),
+                            .child(format!("{} · {}", details, target.target_url)),
                     )
                 })
                 .when_some(target.error.clone(), |this, error| {
@@ -284,12 +272,9 @@ fn strategy_candidates(
 }
 
 fn candidate_passed(candidate: &ProbeCandidateResult) -> bool {
-    let required = summarize_targets(candidate)
-        .into_iter()
-        .filter(|target| target.role == ProbeRole::Required)
-        .collect::<Vec<_>>();
-    !required.is_empty()
-        && required
+    let targets = summarize_targets(candidate);
+    !targets.is_empty()
+        && targets
             .iter()
             .all(|target| target.outcome == ProbeOutcome::Pass)
 }
@@ -306,7 +291,6 @@ fn summarize_targets(candidate: &ProbeCandidateResult) -> Vec<TargetSummary> {
                 target_id: attempt.target_id.clone(),
                 target_name: attempt.target_name.clone(),
                 target_url: attempt.target_url.clone(),
-                role: attempt.role,
                 protocol: attempt.expected_protocol,
                 outcome: attempt.outcome,
                 passed_attempts: usize::from(attempt.outcome == ProbeOutcome::Pass),
@@ -370,16 +354,6 @@ fn protocol_label(protocol: ProbeProtocol) -> &'static str {
     }
 }
 
-fn role_label(role: ProbeRole) -> SharedString {
-    match role {
-        ProbeRole::Auto => t!("probe.role_auto"),
-        ProbeRole::Required => t!("probe.role_required"),
-        ProbeRole::Optional => t!("probe.role_optional"),
-        ProbeRole::Control => t!("probe.role_control"),
-    }
-    .into()
-}
-
 fn outcome_label(outcome: ProbeOutcome) -> SharedString {
     match outcome {
         ProbeOutcome::Pass => t!("probe.outcome_pass"),
@@ -400,9 +374,7 @@ fn outcome_variant(outcome: ProbeOutcome) -> BadgeVariant {
 #[cfg(test)]
 mod tests {
     use super::summarize_targets;
-    use crate::domain::{
-        ProbeCandidateResult, ProbeOutcome, ProbeProtocol, ProbeRole, ProbeTargetResult,
-    };
+    use crate::domain::{ProbeCandidateResult, ProbeOutcome, ProbeProtocol, ProbeTargetResult};
 
     #[test]
     fn repeated_target_uses_worst_outcome() {
@@ -415,7 +387,6 @@ mod tests {
                     target_id: "example".to_owned(),
                     target_name: "Example".to_owned(),
                     target_url: "https://example.com".to_owned(),
-                    role: ProbeRole::Required,
                     expected_protocol: ProbeProtocol::Http3,
                     outcome,
                     protocol: Some("3".to_owned()),
