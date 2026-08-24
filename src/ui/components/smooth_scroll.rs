@@ -277,28 +277,30 @@ impl<H: SmoothVirtualHandle> Element for CaptureListWheel<H> {
         window: &mut Window,
         cx: &mut App,
     ) {
-        if self.wheel_enabled {
-            let state = self.state.clone();
-            let handle = self.handle.clone();
-            window.on_mouse_event(move |event: &ScrollWheelEvent, phase, window, cx| {
-                if phase != DispatchPhase::Bubble || !bounds.contains(&event.position) {
-                    return;
-                }
+        // Children register first, so capture dispatch reaches the innermost smooth
+        // scroll area before its ancestors. Native scroll handlers ignore capture.
+        self.child.paint(window, cx);
 
-                let delta = event.delta.pixel_delta(px(20.0));
-                let delta_y = if delta.y.is_zero() { delta.x } else { delta.y };
-                if delta_y.is_zero() {
-                    return;
-                }
-
-                handle_list_wheel(&state, &handle, delta_y, window, cx);
-                cx.stop_propagation();
-            });
+        if !self.wheel_enabled {
+            return;
         }
 
-        // Register outer handlers before painting children so nested scroll areas
-        // receive bubble-phase wheel events first.
-        self.child.paint(window, cx);
+        let state = self.state.clone();
+        let handle = self.handle.clone();
+        window.on_mouse_event(move |event: &ScrollWheelEvent, phase, window, cx| {
+            if phase != DispatchPhase::Capture || !bounds.contains(&event.position) {
+                return;
+            }
+
+            let delta = event.delta.pixel_delta(px(20.0));
+            let delta_y = if delta.y.is_zero() { delta.x } else { delta.y };
+            if delta_y.is_zero() {
+                return;
+            }
+
+            handle_list_wheel(&state, &handle, delta_y, window, cx);
+            cx.stop_propagation();
+        });
     }
 }
 
