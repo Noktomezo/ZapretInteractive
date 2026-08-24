@@ -1,0 +1,12 @@
+id = "quic-v6"
+name = "v6"
+category = "QUIC"
+categoryId = "preset-quic"
+categoryOrder = 4
+order = 6
+content = """
+--filter-l7=quic
+--dpi-desync=ipfrag2
+--dpi-desync-ipfrag-pos-udp=32"""
+active = false
+system = true

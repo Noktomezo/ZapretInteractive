@@ -1,0 +1,13 @@
+id = "unknown-udp-v13"
+name = "v13"
+category = "Game UDP"
+categoryId = "preset-unknown-udp"
+categoryOrder = 8
+order = 13
+content = """
+--filter-udp=88,1024-2407,2409-4499,4501-19293,19345-49999,50101-65535
+--filter-l7=unknown
+--dpi-desync=ipfrag2
+--dpi-desync-ipfrag-pos-udp=32"""
+active = false
+system = true

@@ -1,22 +1,30 @@
 version = 1
-protocols = ["http/1.1", "h2"]
+protocols = ["auto"]
 startupDelayMs = 350
 timeoutMs = 5000
 parallelTargets = 4
+downloadBytes = 69632
+verificationRepeats = 2
+followRedirects = true
+impersonate = "chrome150"
+dohUrl = "https://cloudflare-dns.com/dns-query"
+discoverYoutubeGgc = true
 
 [[targets]]
 id = "youtube"
 name = "YouTube"
 url = "https://www.youtube.com/generate_204"
-role = "required"
+role = "auto"
 tier = "smoke"
+minBytes = 0
 
 [[targets]]
 id = "googlevideo"
 name = "Google Video"
 url = "https://redirector.googlevideo.com/report_mapping"
-role = "required"
+role = "auto"
 tier = "full"
+minBytes = 0
 
 [[targets]]
 id = "google"
@@ -24,3 +32,4 @@ name = "Google control"
 url = "https://www.google.com/generate_204"
 role = "control"
 tier = "smoke"
+minBytes = 0

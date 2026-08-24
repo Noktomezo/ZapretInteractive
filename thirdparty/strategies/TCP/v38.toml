@@ -1,0 +1,14 @@
+id = "tcp-v38"
+name = "v38"
+category = "TCP"
+categoryId = "preset-tcp"
+categoryOrder = 3
+order = 38
+content = """
+--filter-l7=tls
+<LIST_MODE>
+--dpi-desync=fake
+--dpi-desync-fooling=datanoack
+--dpi-desync-fake-tls={{TLS_CLIENTHELLO_GOOGLE}}"""
+active = false
+system = true

@@ -1,0 +1,14 @@
+id = "preset-http-29"
+name = "v29"
+category = "HTTP"
+categoryId = "preset-http"
+categoryOrder = 1
+order = 29
+content = """
+--filter-l7=http
+<LIST_MODE>
+--dpi-desync=fake
+--dpi-desync-fooling=datanoack
+--dpi-desync-fake-http={{TLS_CLIENTHELLO_MAX}}"""
+active = false
+system = true

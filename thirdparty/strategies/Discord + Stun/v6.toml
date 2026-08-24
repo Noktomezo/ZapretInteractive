@@ -1,0 +1,13 @@
+id = "discord-stun-v6"
+name = "v6"
+category = "Discord + Stun"
+categoryId = "preset-discord-stun"
+categoryOrder = 5
+order = 6
+content = """
+--filter-udp=19294-19344,50000-50100
+--filter-l7=discord,stun
+--dpi-desync=ipfrag2
+--dpi-desync-ipfrag-pos-udp=32"""
+active = false
+system = true

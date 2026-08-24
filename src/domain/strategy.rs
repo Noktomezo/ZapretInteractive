@@ -328,7 +328,7 @@ mod tests {
         sync_builtin_strategies(&temp_dir, &categories).unwrap();
 
         let loaded = load_strategies_from_dir(&temp_dir).unwrap();
-        assert_eq!(loaded.len(), 161);
+        assert_eq!(loaded.len(), 176);
         assert!(temp_dir.join("HTTP").join("v1.toml").is_file());
         assert!(
             fs::read_dir(&temp_dir)
@@ -367,7 +367,7 @@ mod tests {
                     .all(|strategy| strategy.category == category_name)
             );
         }
-        assert_eq!(bundled.len(), 161);
+        assert_eq!(bundled.len(), 176);
         assert!(
             group_strategies_into_categories(&bundled)
                 .iter()

@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashSet};
+use std::net::IpAddr;
 use std::path::Path;
 
 use anyhow::{Context as _, Result, bail};
@@ -18,8 +19,27 @@ fn default_parallel_targets() -> usize {
     4
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
+fn default_download_bytes() -> u64 {
+    69_632
+}
+
+fn default_verification_repeats() -> usize {
+    1
+}
+
+fn default_follow_redirects() -> bool {
+    true
+}
+
+fn default_impersonation() -> ProbeImpersonation {
+    ProbeImpersonation::Chrome150
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
 pub enum ProbeProtocol {
+    #[serde(rename = "auto")]
+    #[default]
+    Auto,
     #[serde(rename = "http/1.1")]
     Http11,
     #[serde(rename = "h2")]
@@ -29,8 +49,26 @@ pub enum ProbeProtocol {
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
+pub enum ProbeImpersonation {
+    #[serde(rename = "chrome150")]
+    Chrome150,
+    #[serde(rename = "firefox147")]
+    Firefox147,
+}
+
+impl ProbeImpersonation {
+    pub fn as_curl_target(self) -> &'static str {
+        match self {
+            Self::Chrome150 => "chrome150",
+            Self::Firefox147 => "firefox147",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ProbeRole {
+    Auto,
     Required,
     Optional,
     Control,
@@ -54,17 +92,33 @@ pub struct ProbeProfile {
     pub timeout_ms: u64,
     #[serde(default = "default_parallel_targets")]
     pub parallel_targets: usize,
+    #[serde(default = "default_download_bytes")]
+    pub download_bytes: u64,
+    #[serde(default = "default_verification_repeats")]
+    pub verification_repeats: usize,
+    #[serde(default = "default_follow_redirects")]
+    pub follow_redirects: bool,
+    #[serde(default = "default_impersonation")]
+    pub impersonate: ProbeImpersonation,
+    #[serde(default)]
+    pub doh_url: Option<String>,
+    #[serde(default)]
+    pub discover_youtube_ggc: bool,
     pub targets: Vec<ProbeTarget>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProbeTarget {
     pub id: String,
     pub name: String,
     pub url: String,
     pub role: ProbeRole,
     pub tier: ProbeTier,
+    #[serde(default)]
+    pub min_bytes: u64,
+    #[serde(default)]
+    pub connect_ip: Option<String>,
 }
 
 impl ProbeProfile {
@@ -90,8 +144,20 @@ impl ProbeProfile {
         if !(500..=60_000).contains(&self.timeout_ms) {
             bail!("timeoutMs должен быть в диапазоне 500..=60000");
         }
+        if !(1_024..=16 * 1_024 * 1_024).contains(&self.download_bytes) {
+            bail!("downloadBytes должен быть в диапазоне 1024..=16777216");
+        }
+        if !(1..=5).contains(&self.verification_repeats) {
+            bail!("verificationRepeats должен быть в диапазоне 1..=5");
+        }
         if self.targets.is_empty() {
             bail!("probe.toml не содержит targets");
+        }
+        if let Some(doh_url) = &self.doh_url {
+            let url = Url::parse(doh_url).context("некорректный dohUrl")?;
+            if url.scheme() != "https" || url.host_str().is_none() {
+                bail!("dohUrl должен быть абсолютным HTTPS URL");
+            }
         }
 
         let mut ids = HashSet::new();
@@ -111,13 +177,23 @@ impl ProbeProfile {
             {
                 bail!("недопустимый URL цели {}", target.id);
             }
+            if target.min_bytes > self.download_bytes {
+                bail!(
+                    "minBytes цели {} превышает downloadBytes профиля",
+                    target.id
+                );
+            }
+            if let Some(ip) = &target.connect_ip {
+                ip.parse::<IpAddr>()
+                    .with_context(|| format!("некорректный connectIp цели {}", target.id))?;
+            }
         }
         if !self
             .targets
             .iter()
-            .any(|target| target.role == ProbeRole::Required)
+            .any(|target| matches!(target.role, ProbeRole::Required | ProbeRole::Auto))
         {
-            bail!("probe.toml должен содержать хотя бы одну required-цель");
+            bail!("probe.toml должен содержать хотя бы одну required- или auto-цель");
         }
         Ok(())
     }
@@ -142,10 +218,13 @@ pub enum ProbeOutcome {
 pub struct ProbeTargetResult {
     pub target_id: String,
     pub role: ProbeRole,
+    #[serde(default)]
+    pub expected_protocol: ProbeProtocol,
     pub outcome: ProbeOutcome,
     pub protocol: Option<String>,
     pub status_code: Option<u16>,
     pub bytes: u64,
+    pub remote_ip: Option<String>,
     pub latency_ms: u128,
     pub error: Option<String>,
 }
@@ -243,14 +322,39 @@ pub fn candidate_preserves_controls(
     })
 }
 
-pub fn passing_baseline_controls(candidate: &ProbeCandidateResult) -> BTreeSet<String> {
+pub fn candidate_passes_required(candidate: &ProbeCandidateResult) -> bool {
     candidate
         .attempts
         .iter()
-        .filter(|attempt| {
-            attempt.role == ProbeRole::Control && attempt.outcome == ProbeOutcome::Pass
+        .filter(|attempt| attempt.role == ProbeRole::Required)
+        .all(|attempt| attempt.outcome == ProbeOutcome::Pass)
+}
+
+pub fn candidate_is_valid(
+    candidate: &ProbeCandidateResult,
+    baseline_controls: &BTreeSet<String>,
+) -> bool {
+    candidate_preserves_controls(candidate, baseline_controls)
+        && candidate_passes_required(candidate)
+}
+
+pub fn passing_baseline_controls(candidate: &ProbeCandidateResult) -> BTreeSet<String> {
+    let control_ids = candidate
+        .attempts
+        .iter()
+        .filter(|attempt| attempt.role == ProbeRole::Control)
+        .map(|attempt| attempt.target_id.as_str())
+        .collect::<BTreeSet<_>>();
+    control_ids
+        .into_iter()
+        .filter(|id| {
+            candidate
+                .attempts
+                .iter()
+                .filter(|attempt| attempt.target_id == **id)
+                .all(|attempt| attempt.outcome == ProbeOutcome::Pass)
         })
-        .map(|attempt| attempt.target_id.clone())
+        .map(str::to_owned)
         .collect()
 }
 
@@ -258,7 +362,9 @@ pub fn rank_candidates(
     candidates: &[ProbeCandidateResult],
     baseline_controls: &BTreeSet<String>,
 ) -> Vec<usize> {
-    let mut indices = (0..candidates.len()).collect::<Vec<_>>();
+    let mut indices = (0..candidates.len())
+        .filter(|index| candidate_is_valid(&candidates[*index], baseline_controls))
+        .collect::<Vec<_>>();
     indices.sort_by(|left, right| {
         let left_score = ProbeCandidateScore::for_candidate(&candidates[*left], baseline_controls);
         let right_score =
@@ -299,10 +405,12 @@ mod tests {
                         format!("target-{index}")
                     },
                     role: *role,
+                    expected_protocol: ProbeProtocol::Auto,
                     outcome: *outcome,
                     protocol: Some("2".to_owned()),
                     status_code: Some(200),
                     bytes: 1,
+                    remote_ip: None,
                     latency_ms: *latency_ms,
                     error: None,
                 })
@@ -329,7 +437,7 @@ mod tests {
                 ],
             ),
         ];
-        assert_eq!(rank_candidates(&candidates, &baseline), vec![1, 0]);
+        assert_eq!(rank_candidates(&candidates, &baseline), vec![1]);
     }
 
     #[test]
@@ -344,7 +452,41 @@ mod tests {
             result("v1", &[(ProbeRole::Required, ProbeOutcome::Degraded, 5)]),
             no_strategy,
         ];
-        assert_eq!(rank_candidates(&candidates, &baseline), vec![1, 0]);
+        assert_eq!(rank_candidates(&candidates, &baseline), vec![1]);
+    }
+
+    #[test]
+    fn invalid_candidate_is_not_ranked() {
+        let baseline = BTreeSet::from(["control".to_owned()]);
+        let candidates = vec![
+            result(
+                "partial",
+                &[
+                    (ProbeRole::Control, ProbeOutcome::Pass, 1),
+                    (ProbeRole::Required, ProbeOutcome::Degraded, 1),
+                ],
+            ),
+            result(
+                "valid",
+                &[
+                    (ProbeRole::Control, ProbeOutcome::Pass, 10),
+                    (ProbeRole::Required, ProbeOutcome::Pass, 10),
+                ],
+            ),
+        ];
+        assert_eq!(rank_candidates(&candidates, &baseline), vec![1]);
+    }
+
+    #[test]
+    fn partially_passing_control_is_not_part_of_the_baseline() {
+        let baseline = result(
+            "baseline",
+            &[
+                (ProbeRole::Control, ProbeOutcome::Pass, 1),
+                (ProbeRole::Control, ProbeOutcome::Fail, 1),
+            ],
+        );
+        assert!(passing_baseline_controls(&baseline).is_empty());
     }
 
     #[test]

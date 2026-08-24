@@ -24,7 +24,7 @@ impl AppView {
             })
             .collect::<Vec<_>>();
 
-        let actions = if running {
+        let primary_action = if running {
             let state = self.state.clone();
             Button::new("cancel-probe", t!("probe.cancel"), cx)
                 .destructive()
@@ -46,6 +46,21 @@ impl AppView {
                 })
                 .into_any_element()
         };
+        let state = self.state.clone();
+        let actions = div()
+            .flex()
+            .items_center()
+            .gap_2()
+            .child(
+                Button::new("probe-profiles", t!("probe.profiles"), cx)
+                    .outline()
+                    .icon_prefix("icons/folder-open.svg")
+                    .disabled(running)
+                    .on_click(move |_, _, cx| {
+                        state.update(cx, |state, cx| state.open_probe_profiles_directory(cx));
+                    }),
+            )
+            .child(primary_action);
 
         let mut content = div().flex().flex_col().gap_3();
         if let StrategyProbeState::Running(progress) = &probe_state {
@@ -123,6 +138,7 @@ impl AppView {
 
         if let StrategyProbeState::Complete(report) = probe_state {
             let state = self.state.clone();
+            let verification_urls = report.verification_urls.clone();
             let mut recommendations = div().flex().flex_col().gap_2();
             for recommendation in report.recommendations {
                 recommendations = recommendations.child(
@@ -156,12 +172,37 @@ impl AppView {
                             .child(t!("probe.result")),
                     )
                     .child(
-                        Button::new("apply-probe", t!("probe.apply"), cx)
-                            .primary()
-                            .icon_prefix("icons/check.svg")
-                            .on_click(move |_, _, cx| {
-                                state.update(cx, |state, cx| state.apply_strategy_probe_report(cx));
-                            }),
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .child(
+                                Button::new("verify-probe", t!("probe.verify_browser"), cx)
+                                    .outline()
+                                    .icon_prefix("icons/external-link.svg")
+                                    .disabled(verification_urls.is_empty())
+                                    .on_click({
+                                        let state = self.state.clone();
+                                        move |_, _, cx| {
+                                            state.update(cx, |state, cx| {
+                                                state.open_probe_verification_urls(
+                                                    &verification_urls,
+                                                    cx,
+                                                )
+                                            });
+                                        }
+                                    }),
+                            )
+                            .child(
+                                Button::new("apply-probe", t!("probe.apply"), cx)
+                                    .primary()
+                                    .icon_prefix("icons/check.svg")
+                                    .on_click(move |_, _, cx| {
+                                        state.update(cx, |state, cx| {
+                                            state.apply_strategy_probe_report(cx)
+                                        });
+                                    }),
+                            ),
                     ),
                 Some(
                     div()

@@ -175,6 +175,29 @@ impl RuntimeServices {
         open_directory(self.repository.resources_dir())
     }
 
+    pub fn open_probe_profiles_directory(&self) -> Result<()> {
+        let directory = self.runtime_dir()?.join("probe-profiles");
+        std::fs::create_dir_all(&directory)
+            .with_context(|| format!("не удалось создать {}", directory.display()))?;
+        let readme = directory.join("README.txt");
+        if !readme.is_file() {
+            std::fs::write(
+                &readme,
+                concat!(
+                    "Custom strategy probe profiles\r\n\r\n",
+                    "Create <category name>\\probe.toml to replace the bundled profile.\r\n",
+                    "Copy a bundled profile from resources\\strategies\\<category>\\probe.toml ",
+                    "and edit its targets.\r\n\r\n",
+                    "Target roles: auto, required, optional, control.\r\n",
+                    "Protocols: auto, http/1.1, h2, h3.\r\n",
+                    "Use minBytes > 16384 for targets that must detect 16 KiB blocking.\r\n",
+                ),
+            )
+            .with_context(|| format!("не удалось записать {}", readme.display()))?;
+        }
+        open_directory(&directory)
+    }
+
     #[cfg(windows)]
     pub fn open_external(&self, url: &str) -> Result<()> {
         hidden_cmd("rundll32.exe", ["url.dll,FileProtocolHandler", url])

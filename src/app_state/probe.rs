@@ -24,6 +24,21 @@ enum ProbeEvent {
 }
 
 impl AppState {
+    pub fn open_probe_profiles_directory(&mut self, cx: &mut Context<Self>) {
+        if let Err(error) = self.runtime.open_probe_profiles_directory() {
+            self.set_error(error, cx);
+        }
+    }
+
+    pub fn open_probe_verification_urls(&mut self, urls: &[String], cx: &mut Context<Self>) {
+        for url in urls {
+            if let Err(error) = self.runtime.open_external(url) {
+                self.set_error(error, cx);
+                return;
+            }
+        }
+    }
+
     pub fn start_strategy_probe(
         &mut self,
         category_ids: Vec<String>,

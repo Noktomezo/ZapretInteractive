@@ -40,6 +40,10 @@ update-thirdparty:
 verify-thirdparty:
     uv run scripts/verify-thirdparty-hashes.py
 
+# Compare the curated corpus with zapret-Checker strategy families
+audit-strategies:
+    uv run scripts/audit-strategy-coverage.py
+
 # Clean build artifacts
 clean:
     cargo clean
