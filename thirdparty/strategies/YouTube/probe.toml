@@ -1,0 +1,26 @@
+version = 1
+protocols = ["http/1.1", "h2"]
+startupDelayMs = 350
+timeoutMs = 5000
+parallelTargets = 4
+
+[[targets]]
+id = "youtube"
+name = "YouTube"
+url = "https://www.youtube.com/generate_204"
+role = "required"
+tier = "smoke"
+
+[[targets]]
+id = "googlevideo"
+name = "Google Video"
+url = "https://redirector.googlevideo.com/report_mapping"
+role = "required"
+tier = "full"
+
+[[targets]]
+id = "google"
+name = "Google control"
+url = "https://www.google.com/generate_204"
+role = "control"
+tier = "smoke"

@@ -1,0 +1,26 @@
+version = 1
+protocols = ["http/1.1"]
+startupDelayMs = 350
+timeoutMs = 5000
+parallelTargets = 4
+
+[[targets]]
+id = "rutracker-http"
+name = "RuTracker HTTP"
+url = "http://rutracker.org/"
+role = "required"
+tier = "smoke"
+
+[[targets]]
+id = "rutor-http"
+name = "Rutor HTTP"
+url = "http://rutor.info/"
+role = "required"
+tier = "full"
+
+[[targets]]
+id = "example-http"
+name = "Example control"
+url = "http://example.com/"
+role = "control"
+tier = "smoke"

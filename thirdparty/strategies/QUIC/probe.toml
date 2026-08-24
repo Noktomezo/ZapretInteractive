@@ -1,0 +1,26 @@
+version = 1
+protocols = ["h3"]
+startupDelayMs = 350
+timeoutMs = 5000
+parallelTargets = 4
+
+[[targets]]
+id = "youtube-h3"
+name = "YouTube HTTP/3"
+url = "https://www.youtube.com/generate_204"
+role = "required"
+tier = "smoke"
+
+[[targets]]
+id = "google-h3"
+name = "Google HTTP/3 control"
+url = "https://www.google.com/generate_204"
+role = "control"
+tier = "smoke"
+
+[[targets]]
+id = "cloudflare-h3"
+name = "Cloudflare HTTP/3"
+url = "https://cloudflare.com/cdn-cgi/trace"
+role = "optional"
+tier = "full"

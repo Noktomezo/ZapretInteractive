@@ -5,6 +5,7 @@ use gpui::*;
 
 use crate::app_state::AppState;
 use crate::faulty_terminal::FaultyTerminal;
+use crate::ui::components::button::Button;
 use crate::ui::components::dropdown::{DropdownChoice, DropdownEvent, DropdownState};
 use crate::ui::components::text_input::{TextInputEvent, TextInputState};
 use crate::ui::foundation::colors::{
@@ -27,6 +28,7 @@ pub enum Route {
     Dns,
     TgProxy,
     Strategies,
+    StrategyProbe,
     Category(String),
     Filters,
     Placeholders,
@@ -287,6 +289,12 @@ impl AppView {
                     );
                 self.two_level_breadcrumb(t!("nav.strategies"), Route::Strategies, name, cx)
             }
+            Route::StrategyProbe => self.two_level_breadcrumb(
+                t!("nav.strategies"),
+                Route::Strategies,
+                t!("probe.title"),
+                cx,
+            ),
             route => {
                 let label: SharedString = match route {
                     Route::Home => t!("nav.home").into(),
@@ -608,6 +616,7 @@ fn titlebar(
     };
     let update_button =
         titlebar_update_button(app_update, is_updating, update_progress, state.clone(), cx);
+    let probe_button = titlebar_probe_button(state.clone(), cx);
 
     let bar_alpha = (1.0 - acrylic_progress).clamp(0.0, 1.0);
     div()
@@ -660,6 +669,7 @@ fn titlebar(
                 .gap(SHELL_SPACING)
                 .pr(SHELL_SPACING)
                 .flex_shrink_0()
+                .children(probe_button)
                 .children(update_button)
                 .child(
                     titlebar_button("minimize", false, cx)
@@ -708,13 +718,46 @@ fn titlebar(
                                 #[cfg(not(windows))]
                                 window.minimize_window();
                             } else {
-                                cx.quit();
+                                let deferred =
+                                    state.update(cx, |state, cx| state.defer_quit_for_probe(cx));
+                                if !deferred {
+                                    cx.quit();
+                                }
                             }
                         })
                         .child(destructive_titlebar_icon("icons/window-close.svg", cx)),
                 ),
         )
         .into_any_element()
+}
+
+fn titlebar_probe_button(state: Entity<AppState>, cx: &App) -> Option<AnyElement> {
+    let crate::app_state::StrategyProbeState::Running(progress) =
+        state.read(cx).strategy_probe.clone()
+    else {
+        return None;
+    };
+    let label = if progress.category_name.is_empty() {
+        t!("probe.running").to_string()
+    } else {
+        format!(
+            "{} {}/{}",
+            progress.category_name,
+            progress.candidate_index + 1,
+            progress.candidate_total
+        )
+    };
+    Some(
+        Button::new("titlebar-probe", label, cx)
+            .secondary()
+            .small()
+            .icon_prefix("icons/square-stop.svg")
+            .tooltip(t!("probe.cancel"))
+            .on_click(move |_, _, cx| {
+                state.update(cx, |state, cx| state.cancel_strategy_probe(cx));
+            })
+            .into_any_element(),
+    )
 }
 
 fn titlebar_update_button(

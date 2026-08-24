@@ -18,6 +18,7 @@ const MODULE_FILES: &[&str] = &[
     "modules/dnscrypt-proxy/dnscrypt-proxy.exe",
     "modules/tg-ws-proxy-rs/tg-ws-proxy.exe",
 ];
+const TOOL_FILES: &[&str] = &["modules/curl-impersonate/curl-impersonate.exe"];
 
 const FAKE_FILES: &[&str] = &[
     "4pda.bin",
@@ -127,6 +128,16 @@ fn tracked_paths() -> impl Iterator<Item = String> {
         .iter()
         .map(|path| (*path).to_owned())
         .chain(MODULE_FILES.iter().map(|path| (*path).to_owned()))
+        .chain(TOOL_FILES.iter().map(|path| (*path).to_owned()))
+        .chain(FAKE_FILES.iter().map(|path| format!("fake/{path}")))
+        .chain(LISTS.iter().map(|path| (*path).to_owned()))
+}
+
+fn critical_paths() -> impl Iterator<Item = String> {
+    BINARIES
+        .iter()
+        .map(|path| (*path).to_owned())
+        .chain(MODULE_FILES.iter().map(|path| (*path).to_owned()))
         .chain(FAKE_FILES.iter().map(|path| format!("fake/{path}")))
         .chain(LISTS.iter().map(|path| (*path).to_owned()))
 }
@@ -168,7 +179,7 @@ pub fn check_local_health(resources_dir: &Path) -> AppHealthSnapshot {
     let mut missing_critical = Vec::new();
 
     let stored_hashes = load_stored_hashes(resources_dir).unwrap_or_default();
-    for rel in tracked_paths() {
+    for rel in critical_paths() {
         let full = resources_dir.join(&rel);
         if !full.is_file() {
             missing_critical.push(rel);

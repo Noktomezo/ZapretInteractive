@@ -52,6 +52,7 @@ impl AppView {
             Route::Dns => self.dns_page(cx),
             Route::TgProxy => self.tg_page(cx),
             Route::Strategies => self.strategies_page(cx),
+            Route::StrategyProbe => self.strategy_probe_page(cx),
             Route::Category(id) => self.category_page(&id, cx),
             Route::Filters => self.filters_page(cx),
             Route::Placeholders => self.placeholders_page(cx),

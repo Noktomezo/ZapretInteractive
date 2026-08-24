@@ -35,14 +35,37 @@ impl AppView {
                     .map(|row| {
                         if row == 0 {
                             let view_add = view.clone();
-                            let actions =
-                                Button::new("add-category", t!("strategies.btn_add_category"), cx)
+                            let view_probe = view.clone();
+                            let actions = div()
+                                .flex()
+                                .items_center()
+                                .gap_2()
+                                .child(
+                                    Button::new("open-strategy-probe", t!("probe.open"), cx)
+                                        .outline()
+                                        .icon_prefix("icons/wand-sparkles.svg")
+                                        .on_click(move |_, _, cx| {
+                                            view_probe.update(cx, |this, cx| {
+                                                this.navigate(Route::StrategyProbe, cx)
+                                            });
+                                        }),
+                                )
+                                .child(
+                                    Button::new(
+                                        "add-category",
+                                        t!("strategies.btn_add_category"),
+                                        cx,
+                                    )
                                     .primary()
                                     .icon_suffix("icons/plus.svg")
-                                    .on_click(move |_, _, cx| {
-                                        view_add
-                                            .update(cx, |this, cx| this.open_category(None, cx));
-                                    });
+                                    .on_click(
+                                        move |_, _, cx| {
+                                            view_add.update(cx, |this, cx| {
+                                                this.open_category(None, cx)
+                                            });
+                                        },
+                                    ),
+                                );
                             return virtual_header_row(
                                 t!("strategies.title"),
                                 Some(t!("strategies.desc")),

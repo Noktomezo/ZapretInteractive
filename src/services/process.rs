@@ -106,6 +106,20 @@ impl RuntimeServices {
         combine_results([stop_result, pid_result, tg_pid_result, driver_result])
     }
 
+    pub fn winws_running(&self) -> Result<bool> {
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| anyhow::anyhow!("runtime lock poisoned"))?;
+        let Some(child) = state.winws.as_mut() else {
+            return Ok(false);
+        };
+        child
+            .try_wait()
+            .context("не удалось проверить тестовый winws")
+            .map(|status| status.is_none())
+    }
+
     pub fn sync_dns(&self, config: &AppConfig) -> Result<()> {
         let mut state = self
             .state

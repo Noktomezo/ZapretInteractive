@@ -1,0 +1,47 @@
+version = 1
+protocols = ["http/1.1", "h2"]
+startupDelayMs = 350
+timeoutMs = 5000
+parallelTargets = 4
+
+[[targets]]
+id = "rutracker"
+name = "RuTracker"
+url = "https://rutracker.org/"
+role = "required"
+tier = "smoke"
+
+[[targets]]
+id = "discord"
+name = "Discord"
+url = "https://discord.com/"
+role = "required"
+tier = "smoke"
+
+[[targets]]
+id = "instagram"
+name = "Instagram"
+url = "https://instagram.com/"
+role = "optional"
+tier = "full"
+
+[[targets]]
+id = "x"
+name = "X"
+url = "https://x.com/"
+role = "optional"
+tier = "full"
+
+[[targets]]
+id = "gosuslugi"
+name = "Gosuslugi control"
+url = "https://www.gosuslugi.ru/"
+role = "control"
+tier = "smoke"
+
+[[targets]]
+id = "nalog"
+name = "Nalog control"
+url = "https://nalog.ru/"
+role = "control"
+tier = "full"

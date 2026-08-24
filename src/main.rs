@@ -191,7 +191,9 @@ fn main() {
                 move |window, cx| {
                     window.set_window_title(APP_TITLE);
                     let config = state_for_window.read(cx).config.clone();
-                    if launched_from_autostart && config.connect_on_autostart {
+                    if state_for_window.read(cx).probe_reconnect_pending()
+                        || (launched_from_autostart && config.connect_on_autostart)
+                    {
                         state_for_window.update(cx, |state, cx| state.toggle_connection(cx));
                     }
                     AppView::new(state_for_window.clone(), window, cx)

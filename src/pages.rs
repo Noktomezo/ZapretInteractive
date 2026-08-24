@@ -5,8 +5,10 @@ use crate::app::{AppView, EditorTarget, Route};
 use crate::domain::{Category, Filter, ListMode, Placeholder};
 use crate::services::dns::PRESETS;
 use crate::ui::components::backdrop_blur::backdrop_blur;
-use crate::ui::components::button::{IconButtonVariant, icon_button};
-use crate::ui::components::card::{card_icon, interactive_module_card, virtual_list_card};
+use crate::ui::components::button::{Button, IconButtonVariant, icon_button};
+use crate::ui::components::card::{
+    card_icon, interactive_module_card, module_card, virtual_list_card,
+};
 use crate::ui::components::cursor_tooltip;
 use crate::ui::components::smooth_scroll::{
     PageScrollbar, SmoothUniformListScroll, SmoothVerticalScroll,
@@ -29,6 +31,7 @@ mod core;
 mod editor;
 mod logs;
 mod module_detail;
+mod probe;
 mod resources;
 mod settings;
 mod strategies;

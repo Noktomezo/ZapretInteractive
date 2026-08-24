@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 import os
+import tarfile
 import urllib.error
 import urllib.request
 from typing import Any
@@ -89,6 +90,7 @@ FILTER_FILES = [
 ]
 
 MODULE_FILES = [
+    "curl-impersonate/curl-impersonate.exe",
     "dnscrypt-proxy/dnscrypt-proxy.exe",
     "tg-ws-proxy-rs/tg-ws-proxy.exe",
 ]
@@ -132,6 +134,18 @@ GITHUB_RELEASE_ZIP_UPSTREAMS = [
         "asset_pattern": "tg-ws-proxy-x86_64-pc-windows-gnu.zip",
         "member_pattern": "tg-ws-proxy.exe",
         "destination": THIRDPARTY_DIR / "modules" / "tg-ws-proxy-rs" / "tg-ws-proxy.exe",
+    },
+]
+
+GITHUB_RELEASE_TARGZ_UPSTREAMS = [
+    {
+        "repo": "lexiforest/curl-impersonate",
+        "asset_pattern": "curl-impersonate-*.x86_64-win32.tar.gz",
+        "member_pattern": "*/curl-impersonate.exe",
+        "destination": THIRDPARTY_DIR
+        / "modules"
+        / "curl-impersonate"
+        / "curl-impersonate.exe",
     },
 ]
 
@@ -260,6 +274,24 @@ def extract_zip_member(data: bytes, member_pattern: str) -> bytes:
             return handle.read()
 
 
+def extract_targz_member(data: bytes, member_pattern: str) -> bytes:
+    with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as archive:
+        matches = [
+            member
+            for member in archive.getmembers()
+            if member.isfile() and fnmatch.fnmatch(member.name, member_pattern)
+        ]
+        if len(matches) != 1:
+            raise FileNotFoundError(
+                f"Tar member lookup with pattern {member_pattern!r} "
+                f"matched {len(matches)} files"
+            )
+        handle = archive.extractfile(matches[0])
+        if handle is None:
+            raise FileNotFoundError(f"Could not extract {matches[0].name!r}")
+        return handle.read()
+
+
 def normalize_download(destination: Path, data: bytes) -> bytes:
     if destination.name != "zapret-hosts-user-exclude.txt":
         return data
@@ -348,6 +380,20 @@ def main() -> None:
             upstream["asset_pattern"],
         )
         extracted_bytes = extract_zip_member(archive_bytes, upstream["member_pattern"])
+        if write_if_changed(upstream["destination"], extracted_bytes):
+            changed_paths.append(upstream["destination"].relative_to(REPO_ROOT).as_posix())
+
+    for upstream in GITHUB_RELEASE_TARGZ_UPSTREAMS:
+        print(
+            f"[update-thirdparty] fetching asset {upstream['asset_pattern']} "
+            f"from {upstream['repo']} latest release",
+            flush=True,
+        )
+        archive_bytes = fetch_latest_release_asset(
+            upstream["repo"],
+            upstream["asset_pattern"],
+        )
+        extracted_bytes = extract_targz_member(archive_bytes, upstream["member_pattern"])
         if write_if_changed(upstream["destination"], extracted_bytes):
             changed_paths.append(upstream["destination"].relative_to(REPO_ROOT).as_posix())
 

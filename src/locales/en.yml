@@ -93,6 +93,25 @@ strategies:
   active_tooltip: "Active strategy: %{name}"
   inactive_tooltip: "No strategy selected"
 
+probe:
+  title: "Strategy Selection"
+  open: "Select"
+  quick: "Quick test"
+  full: "Full selection"
+  cancel: "Stop"
+  running: "Strategy selection is running"
+  failed: "Selection did not finish"
+  supported: "HTTP probe available"
+  unsupported: "Specialized probe unavailable; add probe.toml"
+  result: "Recommended set"
+  apply: "Apply set"
+  phase_preparing: "Preparing"
+  phase_baseline: "Baseline"
+  phase_smoke: "Smoke round"
+  phase_finalists: "Final round"
+  phase_verifying: "Winner control"
+  phase_restoring: "Restoring connection"
+
 filters:
   title: "Filters"
   desc: "WinDivert filters for payload slicing"

@@ -6,6 +6,9 @@ use crate::domain::{Category, Placeholder, Strategy};
 
 impl AppState {
     pub fn save_category(&mut self, id: Option<&str>, name: String, cx: &mut Context<Self>) {
+        if self.strategy_edits_blocked(cx) {
+            return;
+        }
         if name.trim().is_empty()
             || self
                 .config
@@ -39,6 +42,9 @@ impl AppState {
     }
 
     pub fn delete_category(&mut self, id: &str, cx: &mut Context<Self>) {
+        if self.strategy_edits_blocked(cx) {
+            return;
+        }
         let mut removed_strategies = Vec::new();
         self.mutate(
             |config| {
@@ -62,6 +68,9 @@ impl AppState {
     }
 
     pub fn reorder_category(&mut self, id: &str, target: usize, cx: &mut Context<Self>) {
+        if self.strategy_edits_blocked(cx) {
+            return;
+        }
         self.mutate(
             |config| {
                 let Some(index) = config.categories.iter().position(|item| item.id == id) else {
@@ -77,6 +86,9 @@ impl AppState {
     }
 
     pub fn clear_category(&mut self, id: &str, cx: &mut Context<Self>) {
+        if self.strategy_edits_blocked(cx) {
+            return;
+        }
         let mut affected = Vec::new();
         self.mutate(
             |config| {
@@ -101,6 +113,9 @@ impl AppState {
     }
 
     pub fn restore_category(&mut self, id: &str, cx: &mut Context<Self>) {
+        if self.strategy_edits_blocked(cx) {
+            return;
+        }
         let Some(builtin) = self
             .builtin
             .categories
@@ -140,6 +155,9 @@ impl AppState {
         content: String,
         cx: &mut Context<Self>,
     ) {
+        if self.strategy_edits_blocked(cx) {
+            return;
+        }
         let duplicate = self
             .config
             .categories
@@ -215,6 +233,9 @@ impl AppState {
         strategy_id: &str,
         cx: &mut Context<Self>,
     ) {
+        if self.strategy_edits_blocked(cx) {
+            return;
+        }
         let mut affected: Vec<Strategy> = Vec::new();
         self.mutate(
             |config| {
@@ -253,6 +274,9 @@ impl AppState {
         strategy_id: &str,
         cx: &mut Context<Self>,
     ) {
+        if self.strategy_edits_blocked(cx) {
+            return;
+        }
         self.mutate(
             |config| {
                 if let Some(category) = config
@@ -287,6 +311,9 @@ impl AppState {
         strategy_id: &str,
         cx: &mut Context<Self>,
     ) {
+        if self.strategy_edits_blocked(cx) {
+            return;
+        }
         let Some(strategy) = self
             .builtin
             .categories

@@ -1,3 +1,4 @@
 thirdparty/filters/*.txt text eol=lf
 thirdparty/lists/*.txt text eol=lf
+*.bin binary
 *.patch text eol=lf whitespace=-blank-at-eol
