@@ -505,6 +505,17 @@ mod tests {
         ] {
             let profile: ProbeProfile = toml::from_str(source).expect("bundled profile parses");
             profile.validate().expect("bundled profile validates");
+            let doh_url = Url::parse(
+                profile
+                    .doh_url
+                    .as_deref()
+                    .expect("bundled probe has a DoH URL"),
+            )
+            .expect("bundled DoH URL parses");
+            assert!(matches!(
+                doh_url.host(),
+                Some(url::Host::Ipv4(_)) | Some(url::Host::Ipv6(_))
+            ));
         }
     }
 }

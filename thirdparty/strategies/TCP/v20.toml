@@ -5,8 +5,8 @@ categoryId = "preset-tcp"
 categoryOrder = 3
 order = 20
 content = """
+--filter-tcp=443
 --filter-l3=ipv4
---filter-l7=tls
 <LIST_MODE>,2053,2083,2087,2096,8443
 --dpi-desync=syndata,multidisorder"""
 active = false

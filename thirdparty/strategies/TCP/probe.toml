@@ -7,7 +7,7 @@ downloadBytes = 69632
 verificationRepeats = 2
 followRedirects = true
 impersonate = "chrome150"
-dohUrl = "https://cloudflare-dns.com/dns-query"
+dohUrl = "https://1.1.1.1/dns-query"
 
 [[targets]]
 id = "rutracker"

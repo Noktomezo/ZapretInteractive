@@ -6,7 +6,6 @@ categoryOrder = 7
 order = 9
 content = """
 --filter-tcp=1024-65535
---filter-l7=unknown
 --dpi-desync=multisplit
 --dpi-desync-any-protocol=1
 --dpi-desync-cutoff=n3

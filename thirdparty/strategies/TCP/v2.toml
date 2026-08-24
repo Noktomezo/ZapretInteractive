@@ -5,7 +5,7 @@ categoryId = "preset-tcp"
 categoryOrder = 3
 order = 2
 content = """
---filter-l7=tls
+--filter-tcp=443
 <LIST_MODE>
 --dpi-desync=fake,fakeddisorder
 --dpi-desync-split-pos=10,midsld
@@ -22,7 +22,7 @@ active = false
 system = true
 systemBaseName = "v2"
 systemBaseContent = """
---filter-l7=tls
+--filter-tcp=443
 <LIST_MODE>
 --dpi-desync=fake,fakeddisorder
 --dpi-desync-split-pos=10,midsld

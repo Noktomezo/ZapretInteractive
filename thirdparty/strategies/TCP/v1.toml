@@ -5,7 +5,7 @@ categoryId = "preset-tcp"
 categoryOrder = 3
 order = 1
 content = """
---filter-l7=tls
+--filter-tcp=443
 <LIST_MODE>
 --dpi-desync=split2
 --dpi-desync-split-seqovl=681
@@ -14,7 +14,7 @@ active = true
 system = true
 systemBaseName = "v1"
 systemBaseContent = """
---filter-l7=tls
+--filter-tcp=443
 <LIST_MODE>
 --dpi-desync=split2
 --dpi-desync-split-seqovl=681

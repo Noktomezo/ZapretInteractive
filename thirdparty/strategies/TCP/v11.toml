@@ -5,7 +5,7 @@ categoryId = "preset-tcp"
 categoryOrder = 3
 order = 11
 content = """
---filter-l7=tls
+--filter-tcp=443
 <LIST_MODE>
 --dpi-desync=hostfakesplit
 --dpi-desync-hostfakesplit-mod=host=ozon.ru
