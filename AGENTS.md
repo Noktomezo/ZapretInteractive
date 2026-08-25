@@ -59,14 +59,24 @@ These rules apply to **every** Rust change. No exceptions for “quick fix”, �
 
 ### 10. Git & Branching Workflow (STRICT)
 - **Feature branch from `main`**: Always branch from `origin/main` for each new task, fix, or feature (e.g., `feature/<name>`, `fix/<name>`). Never accumulate unrelated changes into long-lived omnibus branches (no 80k line monster PRs).
-- **PRs directly to `main`**: Open Pull Requests directly from the focused `feature/<name>` branch into `main` for clean review.
+- **PRs directly to `main` via `gh` CLI**: Automatically open Pull Requests directly from the focused `feature/<name>` branch into `main` using `gh pr create --base main --head feature/<name> ...` and verify CI checks with `gh pr checks`.
 - **Local sync**: Keep the user's local working copy updated with the feature changes (via worktree, direct branch switch, or cherry-pick/rebase) so changes are immediately testable locally.
 - **Minimal diff**: Change only what is required for the task. Do not reformat unrelated code, rename widely, or perform drive-by edits.
 - **No out-of-scope features**: Implement strictly what was requested.
 
-### 11. Before finishing any Rust task
-Checklist (mentally or explicitly):
-- [ ] Compiles with project’s standard `cargo check` / `cargo test` scope
+### 11. Mandatory Quality Gate — Full Verification Pipeline (EVERY TASK)
+Before marking any task complete, committing, or pushing, you MUST run this verification pipeline in order:
+
+1. **Format**: `cargo fmt --all` (format all source files to project standards).
+2. **Type Check**: `cargo check --all-targets` (verify compilation across all targets).
+3. **Clippy (Strict Zero-Warning Policy)**: `cargo clippy --all-targets -- -D warnings` (must pass with 0 warnings, fix any lints).
+4. **Tests**: `cargo test` (verify all unit and integration tests pass with 0 failures).
+
+Checklist before delivery:
+- [ ] `cargo fmt --all` executed
+- [ ] `cargo check --all-targets` succeeds
+- [ ] `cargo clippy --all-targets -- -D warnings` passes with 0 warnings
+- [ ] `cargo test` passes with 0 failures
 - [ ] No new unjustified `unwrap` / `unsafe` / deps
 - [ ] Errors propagated with context
 - [ ] Public API and ownership make sense

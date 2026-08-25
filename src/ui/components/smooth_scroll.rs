@@ -76,6 +76,12 @@ impl SmoothListState {
     }
 }
 
+impl Default for SmoothListState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 use crate::ui::foundation::colors;
 use crate::ui::foundation::hover_motion;
 use crate::ui::foundation::motion::mix_color;

@@ -594,7 +594,8 @@ impl Render for FpsMonitor {
                     if phase != DispatchPhase::Capture || event.button != MouseButton::Left {
                         return;
                     }
-                    let dragging = capture_monitor.read_with(cx, |monitor, _| monitor.drag.is_some());
+                    let dragging =
+                        capture_monitor.read_with(cx, |monitor, _| monitor.drag.is_some());
                     if dragging {
                         capture_monitor.update(cx, |monitor, cx| {
                             monitor.drag = None;
@@ -612,10 +613,10 @@ impl Render for FpsMonitor {
         let toggle_progress = hover_motion::progress(&toggle_hk, cx);
         let toggle_bg = mix_color(
             rgba(0x00000000),
-            muted_foreground().opacity(0.15).into(),
+            muted_foreground().opacity(0.15),
             toggle_progress,
         );
-        let toggle_fg = mix_color(style.muted.into(), foreground().into(), toggle_progress);
+        let toggle_fg = mix_color(style.muted.into(), foreground(), toggle_progress);
 
         let toggle_hk_click = toggle_hk.clone();
         let toggle_button = cursor_tooltip::attach_with_hover_motion(
@@ -671,18 +672,18 @@ impl Render for FpsMonitor {
         let drag_hk: SharedString = "fps-drag-handle-hk".into();
         let drag_progress = hover_motion::progress(&drag_hk, cx);
         let drag_bg = if dragging {
-            accent().opacity(0.18).into()
+            accent().opacity(0.18)
         } else {
             mix_color(
                 rgba(0x00000000),
-                muted_foreground().opacity(0.15).into(),
+                muted_foreground().opacity(0.15),
                 drag_progress,
             )
         };
         let drag_fg = if dragging {
-            accent().into()
+            accent()
         } else {
-            mix_color(style.muted.into(), foreground().into(), drag_progress)
+            mix_color(style.muted.into(), foreground(), drag_progress)
         };
 
         let drag_button = cursor_tooltip::attach_with_hover_motion(

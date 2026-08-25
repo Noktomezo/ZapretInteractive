@@ -156,12 +156,8 @@ impl AppView {
                 .find(|recommendation| recommendation.category_id == category.id);
             recommendation.map_or_else(
                 || {
-                    rust_i18n::t!(
-                        "probe.no_best_strategy",
-                        passed = passed,
-                        total = total
-                    )
-                    .to_string()
+                    rust_i18n::t!("probe.no_best_strategy", passed = passed, total = total)
+                        .to_string()
                 },
                 |recommendation| {
                     rust_i18n::t!(
