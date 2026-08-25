@@ -630,11 +630,13 @@ pub fn icon_button(
     id: impl Into<ElementId>,
     icon: &'static str,
     variant: IconButtonVariant,
+    tooltip: impl Into<SharedString>,
     click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
     cx: &App,
 ) -> AnyElement {
     IconButton::new(id, icon, cx)
         .variant(variant)
+        .tooltip(tooltip)
         .on_click(click)
         .into_element()
 }

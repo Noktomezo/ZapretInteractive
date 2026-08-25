@@ -61,7 +61,6 @@ impl AppView {
         let cat_for_list = category.clone();
         let builtin_for_list = builtin.clone();
         let strategies_for_list = strategies.clone();
-        let scroll_to_active_state = list_state.clone();
 
         let list_element = list(list_state.clone(), move |ix, _window, cx| {
             if ix == 0 {
@@ -74,7 +73,7 @@ impl AppView {
 
                 let header = div()
                     .w_full()
-                    .px_6()
+                    .px_4()
                     .pt(PAGE_TOP_PADDING)
                     .pb(PAGE_HEADER_GAP)
                     .flex()
@@ -95,6 +94,7 @@ impl AppView {
                                 )
                                 .ghost()
                                 .small()
+                                .tooltip(t!("common.back"))
                                 .on_click({
                                     let view = view.clone();
                                     move |_, _, cx| {
@@ -139,19 +139,21 @@ impl AppView {
                                                             "header-active-{}",
                                                             cat_for_list.id
                                                         ));
-                                                    let scroll_state =
-                                                        scroll_to_active_state.clone();
+                                                    let view_scroll = view.clone();
                                                     title.child(cursor_tooltip::attach(
                                                         div()
                                                             .id(active_elem_id.clone())
                                                             .flex()
                                                             .items_center()
                                                             .cursor_pointer()
-                                                            .on_click(move |_, window, _| {
-                                                                scroll_state.scroll_to_reveal_item(
-                                                                    active_index,
-                                                                );
-                                                                window.refresh();
+                                                            .on_click(move |_, window, cx| {
+                                                                view_scroll.update(cx, |this, cx| {
+                                                                    this.smooth_scroll_category_to_strategy(
+                                                                        active_index,
+                                                                        window,
+                                                                        cx,
+                                                                    );
+                                                                });
                                                             })
                                                             .child(pulsing_label(
                                                                 SharedString::from(format!(
@@ -226,6 +228,7 @@ impl AppView {
                                 "add-strategy",
                                 "icons/plus.svg",
                                 IconButtonVariant::Primary,
+                                t!("strategies.btn_add_strategy"),
                                 {
                                     let view = view.clone();
                                     move |_, _, cx| {
@@ -241,6 +244,7 @@ impl AppView {
                                 "rename-category",
                                 "icons/pencil.svg",
                                 IconButtonVariant::Outline,
+                                t!("common.edit"),
                                 {
                                     let view = view.clone();
                                     move |_, _, cx| {
@@ -256,8 +260,9 @@ impl AppView {
                                 let state = state.clone();
                                 actions.child(icon_button(
                                     "clear-category",
-                                    "icons/brush-cleaning.svg",
+                                    "icons/rotate-ccw.svg",
                                     IconButtonVariant::Warning,
+                                    t!("strategies.btn_clear_active"),
                                     move |_, _, cx| {
                                         let cat = clear_category_id.clone();
                                         state.update(cx, |state, cx| {
@@ -273,6 +278,7 @@ impl AppView {
                                     "restore-category",
                                     "icons/rotate-ccw.svg",
                                     IconButtonVariant::Warning,
+                                    t!("strategies.restore_tooltip"),
                                     move |_, _, cx| {
                                         let cat = restore_id.clone();
                                         state.update(cx, |state, cx| {
@@ -286,6 +292,7 @@ impl AppView {
                                 "delete-category",
                                 "icons/trash-2.svg",
                                 IconButtonVariant::Destructive,
+                                t!("dialog.delete_category"),
                                 {
                                     let state = state.clone();
                                     move |_, _, cx| {
@@ -317,7 +324,7 @@ impl AppView {
             if strategies_for_list.is_empty() {
                 return div()
                     .w_full()
-                    .px_6()
+                    .px_4()
                     .pb_4()
                     .child(
                         div()
@@ -355,7 +362,7 @@ impl AppView {
                 cx,
             );
 
-            div().w_full().px_6().pb_4().child(card).into_any_element()
+            div().w_full().px_4().pb_4().child(card).into_any_element()
         });
 
         div()
@@ -368,6 +375,7 @@ impl AppView {
                     list_state.clone(),
                     list_element.size_full(),
                 )
+                .with_smooth_state(self.category_strategies_smooth_state.clone())
                 .scroll_to_top(true),
             )
             .child(PageScrollbar::new(

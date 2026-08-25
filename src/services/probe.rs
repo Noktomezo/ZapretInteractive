@@ -14,6 +14,7 @@ use crate::services::RuntimeServices;
 mod candidate;
 mod http;
 mod storage;
+mod stun;
 mod support;
 use candidate::{candidate_progress, test_candidate};
 use http::discover_youtube_ggc;
@@ -185,9 +186,16 @@ fn run_probe_inner(
             profile.targets.push(target);
         }
 
+        let is_full = request.mode == ProbeMode::Full;
+        let test_phase = if is_full {
+            ProbePhase::Finalists
+        } else {
+            ProbePhase::Smoke
+        };
+
         let baseline_progress = candidate_progress(
             &profile,
-            request.mode == ProbeMode::Full,
+            is_full,
             ProbeProgress {
                 category_name: category.name.clone(),
                 candidate_name: candidate_name(&category, None),
@@ -199,20 +207,20 @@ fn run_probe_inner(
                 targets: Vec::new(),
             },
         );
-        let baseline_full = test_candidate(
+        let baseline = test_candidate(
             &curl,
             runtime,
             &working,
             &profile,
             category_id,
             None,
-            request.mode == ProbeMode::Full,
+            is_full,
             1,
             cancelled,
             baseline_progress,
             on_progress,
         )?;
-        cache_baseline_addresses(&mut profile, &baseline_full);
+        cache_baseline_addresses(&mut profile, &baseline);
 
         let mut candidate_ids = Vec::with_capacity(category.strategies.len() + 1);
         candidate_ids.push(None);
@@ -222,45 +230,16 @@ fn run_probe_inner(
                 .iter()
                 .map(|strategy| Some(strategy.id.clone())),
         );
-        let baseline_smoke = if request.mode == ProbeMode::Full {
-            let progress = candidate_progress(
-                &profile,
-                false,
-                ProbeProgress {
-                    category_name: category.name.clone(),
-                    candidate_name: candidate_name(&category, None),
-                    category_index,
-                    category_total: request.category_ids.len(),
-                    candidate_index: 0,
-                    candidate_total: candidate_ids.len(),
-                    phase: ProbePhase::Smoke,
-                    targets: Vec::new(),
-                },
-            );
-            test_candidate(
-                &curl,
-                runtime,
-                &working,
-                &profile,
-                category_id,
-                None,
-                false,
-                1,
-                cancelled,
-                progress,
-                on_progress,
-            )?
-        } else {
-            baseline_full.clone()
-        };
-        let mut smoke_results = Vec::with_capacity(candidate_ids.len());
-        smoke_results.push(baseline_smoke);
+
+        let mut candidate_results = Vec::with_capacity(candidate_ids.len());
+        candidate_results.push(baseline);
 
         for (candidate_index, strategy_id) in candidate_ids.iter().enumerate().skip(1) {
+            ensure_not_cancelled(cancelled)?;
             let name = candidate_name(&category, strategy_id.as_deref());
             let progress = candidate_progress(
                 &profile,
-                false,
+                is_full,
                 ProbeProgress {
                     category_name: category.name.clone(),
                     candidate_name: name.clone(),
@@ -268,7 +247,7 @@ fn run_probe_inner(
                     category_total: request.category_ids.len(),
                     candidate_index,
                     candidate_total: candidate_ids.len(),
-                    phase: ProbePhase::Smoke,
+                    phase: test_phase,
                     targets: Vec::new(),
                 },
             );
@@ -279,7 +258,7 @@ fn run_probe_inner(
                 &profile,
                 category_id,
                 strategy_id.as_deref(),
-                false,
+                is_full,
                 1,
                 cancelled,
                 progress,
@@ -287,69 +266,23 @@ fn run_probe_inner(
             )?;
             result.strategy_name = name;
             result.strategy_id.clone_from(strategy_id);
-            smoke_results.push(result);
+            candidate_results.push(result);
         }
 
-        let ranked = rank_candidates(&smoke_results);
-        let finalist_count = ranked.len().min(3);
-        if finalist_count == 0 {
+        let ranked = rank_candidates(&candidate_results);
+        let Some(&winner_index) = ranked.first() else {
             category_reports.push(ProbeCategoryReport {
                 category_id: category_id.clone(),
                 category_name: category.name,
-                candidates: smoke_results,
-            });
-            continue;
-        }
-        let mut finalists = Vec::with_capacity(finalist_count);
-        for (finalist_index, smoke_index) in ranked.into_iter().take(finalist_count).enumerate() {
-            ensure_not_cancelled(cancelled)?;
-            let strategy_id = candidate_ids[smoke_index].as_deref();
-            let name = candidate_name(&category, strategy_id);
-            let progress = candidate_progress(
-                &profile,
-                request.mode == ProbeMode::Full,
-                ProbeProgress {
-                    category_name: category.name.clone(),
-                    candidate_name: name.clone(),
-                    category_index,
-                    category_total: request.category_ids.len(),
-                    candidate_index: finalist_index,
-                    candidate_total: finalist_count,
-                    phase: ProbePhase::Finalists,
-                    targets: Vec::new(),
-                },
-            );
-            let mut result = test_candidate(
-                &curl,
-                runtime,
-                &working,
-                &profile,
-                category_id,
-                strategy_id,
-                request.mode == ProbeMode::Full,
-                3,
-                cancelled,
-                progress,
-                on_progress,
-            )?;
-            result.strategy_name = name;
-            result.strategy_id = strategy_id.map(str::to_owned);
-            finalists.push(result);
-        }
-
-        let ranked_finalists = rank_candidates(&finalists);
-        let Some(&winner_index) = ranked_finalists.first() else {
-            category_reports.push(ProbeCategoryReport {
-                category_id: category_id.clone(),
-                category_name: category.name,
-                candidates: smoke_results,
+                candidates: candidate_results,
             });
             continue;
         };
-        let winner = finalists[winner_index].clone();
+
+        let winner = candidate_results[winner_index].clone();
         let progress = candidate_progress(
             &profile,
-            request.mode == ProbeMode::Full,
+            is_full,
             ProbeProgress {
                 category_name: category.name.clone(),
                 candidate_name: winner.strategy_name.clone(),
@@ -368,7 +301,7 @@ fn run_probe_inner(
             &profile,
             category_id,
             winner.strategy_id.as_deref(),
-            request.mode == ProbeMode::Full,
+            is_full,
             profile.verification_repeats,
             cancelled,
             progress,
@@ -379,22 +312,17 @@ fn run_probe_inner(
             strategy_name: winner.strategy_name.clone(),
             attempts: verified.attempts.clone(),
         };
-        for finalist in finalists {
-            if let Some(candidate) = smoke_results
-                .iter_mut()
-                .find(|candidate| candidate.strategy_id == finalist.strategy_id)
-            {
-                candidate.attempts.extend(finalist.attempts);
-                if candidate.strategy_id == winner.strategy_id {
-                    candidate.attempts.extend(verified.attempts.clone());
-                }
-            }
+        if let Some(candidate) = candidate_results
+            .iter_mut()
+            .find(|candidate| candidate.strategy_id == winner.strategy_id)
+        {
+            candidate.attempts.extend(verified.attempts);
         }
         if !candidate_is_valid(&verification_result) {
             category_reports.push(ProbeCategoryReport {
                 category_id: category_id.clone(),
                 category_name: category.name,
-                candidates: smoke_results,
+                candidates: candidate_results,
             });
             continue;
         }
@@ -411,7 +339,7 @@ fn run_probe_inner(
         category_reports.push(ProbeCategoryReport {
             category_id: category_id.clone(),
             category_name: category.name,
-            candidates: smoke_results,
+            candidates: candidate_results,
         });
     }
 

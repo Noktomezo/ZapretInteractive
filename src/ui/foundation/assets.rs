@@ -74,6 +74,7 @@ mod tests {
             "icons/download.svg",
             "icons/shield.svg",
             "icons/grip-vertical.svg",
+            "icons/grip-horizontal.svg",
             "icons/user-round-plus.svg",
             "icons/pencil.svg",
             "icons/brush-cleaning.svg",

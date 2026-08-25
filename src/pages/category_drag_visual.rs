@@ -1,5 +1,6 @@
 use gpui::prelude::*;
 use gpui::*;
+use rust_i18n::t;
 
 use super::category_drag::DragPreviewLayout;
 use super::{pulsing_dot, pulsing_label, source_kind_icon, strategies_count};
@@ -16,7 +17,7 @@ pub(super) fn render_preview(preview: DragPreviewLayout, cx: &App) -> AnyElement
         .top(preview.top)
         .w_full()
         .h(preview.height)
-        .px_6()
+        .px_4()
         .opacity(0.98)
         .shadow_xl()
         .cursor_grabbing()
@@ -106,18 +107,21 @@ fn category_preview_visual(category: &Category, cx: &App) -> Div {
                 .child(
                     IconButton::new("preview-edit", "icons/pencil.svg", cx)
                         .variant(IconButtonVariant::Outline)
+                        .tooltip(t!("common.edit"))
                         .into_element(),
                 )
                 .when(has_active_strategy, |actions| {
                     actions.child(
-                        IconButton::new("preview-clear", "icons/brush-cleaning.svg", cx)
+                        IconButton::new("preview-clear", "icons/rotate-ccw.svg", cx)
                             .variant(IconButtonVariant::Warning)
+                            .tooltip(t!("strategies.btn_clear_active"))
                             .into_element(),
                     )
                 })
                 .child(
                     IconButton::new("preview-delete", "icons/trash-2.svg", cx)
                         .variant(IconButtonVariant::Destructive)
+                        .tooltip(t!("dialog.delete_category"))
                         .into_element(),
                 ),
         )

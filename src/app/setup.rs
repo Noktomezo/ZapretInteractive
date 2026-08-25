@@ -132,6 +132,8 @@ impl AppView {
                 placeholders_scroll_handle: UniformListScrollHandle::new(),
                 category_strategies_list_state: ListState::new(0, ListAlignment::Top, px(240.0))
                     .measure_all(),
+                category_strategies_smooth_state: cx
+                    .new(|_| crate::ui::components::smooth_scroll::SmoothListState::new()),
                 probe_results_list_states: HashMap::new(),
                 current_viewed_category: None,
                 closing_editor: None,

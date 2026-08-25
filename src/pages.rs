@@ -49,7 +49,7 @@ pub(crate) fn update_category_drag_mouse(position: Point<Pixels>, cx: &mut App) 
 }
 
 pub(crate) const VIRTUAL_ROW_HEIGHT: Pixels = px(88.0);
-const PAGE_TOP_PADDING: Pixels = px(20.0);
+const PAGE_TOP_PADDING: Pixels = px(16.0);
 const PAGE_HEADER_GAP: Pixels = px(12.0);
 
 fn page(title: impl Into<SharedString>, content: impl IntoElement) -> AnyElement {
@@ -91,7 +91,7 @@ fn virtual_list_row(child: impl IntoElement) -> Div {
     div()
         .w_full()
         .h(VIRTUAL_ROW_HEIGHT)
-        .px_6()
+        .px_4()
         .pb_4()
         .child(child)
 }
@@ -105,7 +105,7 @@ fn virtual_header_row(
     div()
         .w_full()
         .h(VIRTUAL_ROW_HEIGHT)
-        .px_6()
+        .px_4()
         .pt(PAGE_TOP_PADDING)
         .pb(PAGE_HEADER_GAP)
         .child(
@@ -159,9 +159,9 @@ fn page_with_actions(
                 SharedString::from(format!("page-{title}")),
                 div()
                     .min_h_full()
-                    .px_6()
+                    .px_4()
                     .pt(PAGE_TOP_PADDING)
-                    .pb_6()
+                    .pb_4()
                     .flex()
                     .flex_col()
                     .gap(PAGE_HEADER_GAP)

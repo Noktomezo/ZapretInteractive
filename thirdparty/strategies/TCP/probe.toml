@@ -1,6 +1,6 @@
 version = 1
 protocols = ["auto"]
-startupDelayMs = 350
+startupDelayMs = 650
 timeoutMs = 5000
 parallelTargets = 4
 downloadBytes = 69632
@@ -8,6 +8,8 @@ verificationRepeats = 2
 followRedirects = true
 impersonate = "chrome150"
 dohUrl = "https://1.1.1.1/dns-query"
+
+# === SMOKE TIER (Fast initial validation of main services) ===
 
 [[targets]]
 id = "rutracker"
@@ -24,18 +26,46 @@ tier = "smoke"
 minBytes = 16385
 
 [[targets]]
-id = "instagram"
-name = "Instagram"
-url = "https://instagram.com/"
-tier = "full"
+id = "x"
+name = "X (Twitter)"
+url = "https://x.com/"
+tier = "smoke"
 minBytes = 16385
 
 [[targets]]
-id = "x"
-name = "X"
-url = "https://x.com/"
-tier = "full"
+id = "instagram"
+name = "Instagram"
+url = "https://instagram.com/"
+tier = "smoke"
 minBytes = 16385
+
+[[targets]]
+id = "youtube"
+name = "YouTube"
+url = "https://www.youtube.com/generate_204"
+tier = "smoke"
+minBytes = 0
+
+[[targets]]
+id = "telegram-web"
+name = "Telegram Web"
+url = "https://web.telegram.org/"
+tier = "smoke"
+minBytes = 1024
+
+[[targets]]
+id = "anifap"
+name = "Anifap"
+url = "https://anifap.com/"
+tier = "smoke"
+minBytes = 16384
+
+[[targets]]
+id = "proton"
+name = "Proton"
+url = "https://proton.me/"
+tier = "smoke"
+minBytes = 16384
 
 [[targets]]
 id = "gosuslugi"
@@ -44,6 +74,155 @@ url = "https://www.gosuslugi.ru/"
 tier = "smoke"
 minBytes = 0
 
+# === FULL TIER: Service Subdomains, CDNs, Gateways & Blocked Sites ===
+
+[[targets]]
+id = "discord-gateway"
+name = "Discord Gateway"
+url = "https://gateway.discord.gg/"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "discord-media"
+name = "Discord Media"
+url = "https://media.discordapp.net/"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "discord-cdn"
+name = "Discord CDN"
+url = "https://cdn.discordapp.com/"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "x-api"
+name = "X (Twitter) API"
+url = "https://api.x.com/"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "x-media"
+name = "X (Twitter) Media"
+url = "https://pbs.twimg.com/"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "x-video"
+name = "X (Twitter) Video"
+url = "https://video.twimg.com/"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "instagram-cdn"
+name = "Instagram Static CDN"
+url = "https://static.cdninstagram.com/"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "instagram-scontent"
+name = "Instagram Content CDN"
+url = "https://scontent.cdninstagram.com/"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "facebook"
+name = "Facebook"
+url = "https://www.facebook.com/"
+tier = "full"
+minBytes = 16385
+
+[[targets]]
+id = "facebook-cdn"
+name = "Facebook CDN"
+url = "https://static.xx.fbcdn.net/"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "github-raw"
+name = "GitHub Raw"
+url = "https://raw.githubusercontent.com/"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "github-avatars"
+name = "GitHub Avatars"
+url = "https://avatars.githubusercontent.com/"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "github-assets"
+name = "GitHub Release Assets"
+url = "https://release-assets.githubusercontent.com/"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "nnmclub"
+name = "NNMClub"
+url = "https://nnmclub.to/"
+tier = "full"
+minBytes = 8192
+
+[[targets]]
+id = "flibusta"
+name = "Flibusta"
+url = "https://flibusta.is/"
+tier = "full"
+minBytes = 1024
+
+[[targets]]
+id = "annas-archive"
+name = "Anna's Archive"
+url = "https://annas-archive.gl/"
+tier = "full"
+minBytes = 1024
+
+[[targets]]
+id = "booktracker"
+name = "BookTracker"
+url = "https://booktracker.org/"
+tier = "full"
+minBytes = 1024
+
+[[targets]]
+id = "hdrezka"
+name = "HDRezka"
+url = "https://hdrezka.ag/"
+tier = "full"
+minBytes = 1024
+
+[[targets]]
+id = "amiunique"
+name = "AmiUnique Test"
+url = "https://amiunique.org/fingerprint"
+tier = "full"
+minBytes = 1024
+
+[[targets]]
+id = "cloudflare-connectivity"
+name = "Cloudflare Warp Connectivity"
+url = "https://connectivity.cloudflareclient.com/"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "cloudflare-trace"
+name = "Cloudflare Trace"
+url = "https://cloudflare.com/cdn-cgi/trace"
+tier = "full"
+minBytes = 64
+
 [[targets]]
 id = "nalog"
 name = "Nalog"
@@ -51,8 +230,8 @@ url = "https://nalog.ru/"
 tier = "full"
 minBytes = 0
 
-# Full TCP 16-20 suite used by Zapret-Manager.
-# https://github.com/hyperion-cs/dpi-checkers/blob/main/ru/tcp-16-20/suite.v2.json
+# === FULL TIER: Representative Foreign Hosting Providers (ASN Checks) ===
+
 [[targets]]
 id = "suite-us-gh-hprn"
 name = "Self check"
@@ -62,29 +241,15 @@ minBytes = 0
 
 [[targets]]
 id = "suite-pl-akm-01"
-name = "Akamai PL"
+name = "Akamai"
 url = "https://www.mobil.com.se/"
 tier = "full"
 minBytes = 0
 
 [[targets]]
-id = "suite-se-akm-01"
-name = "Akamai SE"
-url = "https://cdn.apple-mapkit.com/"
-tier = "full"
-minBytes = 0
-
-[[targets]]
 id = "suite-de-aws-01"
-name = "AWS DE"
+name = "AWS"
 url = "https://amplifon.com/"
-tier = "full"
-minBytes = 0
-
-[[targets]]
-id = "suite-us-aws-01"
-name = "AWS US"
-url = "https://optout.aboutads.info/"
 tier = "full"
 minBytes = 0
 
@@ -96,93 +261,37 @@ tier = "full"
 minBytes = 0
 
 [[targets]]
-id = "suite-ca-cf-01"
-name = "Cloudflare CA 1"
-url = "https://go.coveo.com/"
-tier = "full"
-minBytes = 0
-
-[[targets]]
 id = "suite-ca-cf-02"
-name = "Cloudflare CA 2"
+name = "Cloudflare CDN"
 url = "https://justice.gov/"
 tier = "full"
 minBytes = 0
 
 [[targets]]
-id = "suite-us-cf-01"
-name = "Cloudflare US 1"
-url = "https://img.wzstats.gg/"
-tier = "full"
-minBytes = 0
-
-[[targets]]
-id = "suite-us-cf-02"
-name = "Cloudflare US 2"
-url = "https://esm.sh/"
-tier = "full"
-minBytes = 0
-
-[[targets]]
 id = "suite-fr-cntb-01"
-name = "Contabo 1"
+name = "Contabo"
 url = "https://antoniotartaglia.it/"
 tier = "full"
 minBytes = 0
 
 [[targets]]
-id = "suite-fr-cntb-02"
-name = "Contabo 2"
-url = "https://status.moow.info/"
-tier = "full"
-minBytes = 0
-
-[[targets]]
 id = "suite-de-do-01"
-name = "DigitalOcean DE"
+name = "DigitalOcean"
 url = "https://ui-arts.com/"
 tier = "full"
 minBytes = 0
 
 [[targets]]
-id = "suite-uk-do-01"
-name = "DigitalOcean UK 1"
-url = "https://app.thecuriositylibrary.com/"
-tier = "full"
-minBytes = 0
-
-[[targets]]
-id = "suite-uk-do-02"
-name = "DigitalOcean UK 2"
-url = "https://admin.survey54.com/"
-tier = "full"
-minBytes = 0
-
-[[targets]]
-id = "suite-ca-fst-01"
-name = "Fastly CA"
-url = "https://ssl.p.jwpcdn.com/"
-tier = "full"
-minBytes = 0
-
-[[targets]]
 id = "suite-us-fst-01"
-name = "Fastly US"
+name = "Fastly"
 url = "https://www.jetblue.com/"
 tier = "full"
 minBytes = 0
 
 [[targets]]
 id = "suite-us-ftbvm-01"
-name = "BuyVM 1"
+name = "BuyVM"
 url = "https://buyvm.net/"
-tier = "full"
-minBytes = 0
-
-[[targets]]
-id = "suite-us-ftbvm-02"
-name = "BuyVM 2"
-url = "https://dmvideo.download/"
 tier = "full"
 minBytes = 0
 
@@ -194,51 +303,16 @@ tier = "full"
 minBytes = 0
 
 [[targets]]
-id = "suite-us-gc-01"
-name = "Google Cloud 1"
-url = "https://api.usercentrics.eu/"
-tier = "full"
-minBytes = 0
-
-[[targets]]
 id = "suite-us-gc-02"
-name = "Google Cloud 2"
+name = "Google Cloud"
 url = "https://widgets.reputation.com/"
 tier = "full"
 minBytes = 0
 
 [[targets]]
 id = "suite-de-he-01"
-name = "Hetzner DE 1"
+name = "Hetzner"
 url = "https://king.hr/"
-tier = "full"
-minBytes = 0
-
-[[targets]]
-id = "suite-de-he-02"
-name = "Hetzner DE 2"
-url = "https://mail.server.apaone.com/"
-tier = "full"
-minBytes = 0
-
-[[targets]]
-id = "suite-fi-he-01"
-name = "Hetzner FI 1"
-url = "https://nioges.com/"
-tier = "full"
-minBytes = 0
-
-[[targets]]
-id = "suite-fi-he-02"
-name = "Hetzner FI 2"
-url = "https://5fd8bdae.nip.io/"
-tier = "full"
-minBytes = 0
-
-[[targets]]
-id = "suite-fi-he-03"
-name = "Hetzner FI 3"
-url = "https://net4u.de/"
 tier = "full"
 minBytes = 0
 
@@ -258,29 +332,15 @@ minBytes = 0
 
 [[targets]]
 id = "suite-es-or-01"
-name = "Oracle ES"
+name = "Oracle Cloud"
 url = "https://sh00065.hostgator.com/"
 tier = "full"
 minBytes = 0
 
 [[targets]]
-id = "suite-sg-or-01"
-name = "Oracle SG"
-url = "https://ged.com.sg/"
-tier = "full"
-minBytes = 0
-
-[[targets]]
 id = "suite-fr-ovh-01"
-name = "OVH 1"
+name = "OVH"
 url = "https://www.adwin.fr/"
-tier = "full"
-minBytes = 0
-
-[[targets]]
-id = "suite-fr-ovh-02"
-name = "OVH 2"
-url = "https://www.emca.be/"
 tier = "full"
 minBytes = 0
 
@@ -293,14 +353,7 @@ minBytes = 0
 
 [[targets]]
 id = "suite-de-vltr-01"
-name = "Vultr DE"
+name = "Vultr"
 url = "https://askit-app.de/"
-tier = "full"
-minBytes = 0
-
-[[targets]]
-id = "suite-us-vltr-01"
-name = "Vultr US"
-url = "https://us.rudder.qntmnet.com/"
 tier = "full"
 minBytes = 0

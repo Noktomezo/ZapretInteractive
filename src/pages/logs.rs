@@ -43,9 +43,9 @@ impl AppView {
         div()
             .size_full()
             .min_h_0()
-            .px_6()
+            .px_4()
             .pt(PAGE_TOP_PADDING)
-            .pb_6()
+            .pb_4()
             .flex()
             .flex_col()
             .child(

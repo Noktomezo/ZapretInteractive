@@ -40,7 +40,13 @@ pub(super) fn run_targets(
             let handles = chunk
                 .iter()
                 .map(|(target, protocol)| {
-                    scope.spawn(move || run_curl(curl, target, *protocol, profile))
+                    scope.spawn(move || {
+                        if *protocol == ProbeProtocol::Stun || target.url.starts_with("stun://") {
+                            super::stun::run_stun(target, *protocol, profile)
+                        } else {
+                            run_curl(curl, target, *protocol, profile)
+                        }
+                    })
                 })
                 .collect::<Vec<_>>();
             for handle in handles {
@@ -102,7 +108,7 @@ pub(super) fn discover_youtube_ggc(curl: &Path, profile: &ProbeProfile) -> Optio
             name: "Local YouTube GGC".to_owned(),
             url: format!("https://{host}/generate_204"),
             _legacy_role: None,
-            tier: crate::domain::ProbeTier::Full,
+            tier: crate::domain::ProbeTier::Smoke,
             min_bytes: 0,
             connect_ip: Some(connect_ip),
         })
@@ -132,10 +138,17 @@ fn run_curl(
     let started = Instant::now();
     let timeout_seconds = profile.timeout_ms.div_ceil(1_000).max(1).to_string();
     let protocol_flag = match expected_protocol {
-        ProbeProtocol::Auto => None,
+        ProbeProtocol::Auto | ProbeProtocol::Stun => None,
         ProbeProtocol::Http11 => Some("--http1.1"),
         ProbeProtocol::Http2 => Some("--http2"),
         ProbeProtocol::Http3 => Some("--http3-only"),
+    };
+    let (target_url, is_ws) = if let Some(stripped) = target.url.strip_prefix("wss://") {
+        (format!("https://{stripped}"), true)
+    } else if let Some(stripped) = target.url.strip_prefix("ws://") {
+        (format!("http://{stripped}"), true)
+    } else {
+        (target.url.clone(), false)
     };
     let range = format!("0-{}", profile.download_bytes.saturating_sub(1));
     let mut args = vec![
@@ -151,6 +164,18 @@ fn run_curl(
     ];
     if let Some(protocol_flag) = protocol_flag {
         args.push(protocol_flag.to_owned());
+    }
+    if is_ws {
+        args.extend([
+            "-H".to_owned(),
+            "Upgrade: websocket".to_owned(),
+            "-H".to_owned(),
+            "Connection: Upgrade".to_owned(),
+            "-H".to_owned(),
+            "Sec-WebSocket-Version: 13".to_owned(),
+            "-H".to_owned(),
+            "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==".to_owned(),
+        ]);
     }
     args.extend([
         "--range".to_owned(),
@@ -169,7 +194,7 @@ fn run_curl(
         args.extend(["--doh-url".to_owned(), doh_url.clone()]);
     }
     if let Some(connect_ip) = &target.connect_ip
-        && let Ok(url) = url::Url::parse(&target.url)
+        && let Ok(url) = url::Url::parse(&target_url)
         && let Some(host) = url.host_str()
     {
         let port = url.port_or_known_default().unwrap_or(443);
@@ -183,7 +208,7 @@ fn run_curl(
         "NUL".to_owned(),
         "--write-out".to_owned(),
         "%{http_code}\t%{http_version}\t%{size_download}\t%{remote_ip}".to_owned(),
-        target.url.clone(),
+        target_url,
     ]);
     let output = hidden_cmd(curl, args)
         .unchecked()
@@ -220,15 +245,15 @@ fn run_curl(
     let bytes = fields[2].parse::<u64>().unwrap_or(0);
     let remote_ip = (!fields[3].is_empty()).then(|| fields[3].to_owned());
     let intended_protocol = match expected_protocol {
-        ProbeProtocol::Auto => matches!(protocol.as_str(), "1.1" | "2" | "3"),
+        ProbeProtocol::Auto | ProbeProtocol::Stun => matches!(protocol.as_str(), "1.1" | "2" | "3"),
         ProbeProtocol::Http11 => protocol == "1.1",
         ProbeProtocol::Http2 => protocol == "2",
         ProbeProtocol::Http3 => protocol == "3",
     };
     let enough_bytes = bytes >= target.min_bytes;
     let outcome = match status_code {
-        Some(200..=399) if intended_protocol && enough_bytes => ProbeOutcome::Pass,
-        Some(400..=599) if intended_protocol => ProbeOutcome::Degraded,
+        Some(100..=499) if intended_protocol && enough_bytes => ProbeOutcome::Pass,
+        Some(500..=599) if intended_protocol => ProbeOutcome::Degraded,
         _ => ProbeOutcome::Fail,
     };
     ProbeTargetResult {

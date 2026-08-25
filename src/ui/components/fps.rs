@@ -5,10 +5,14 @@ use gpui::prelude::*;
 use gpui::*;
 
 use crate::ui::components::backdrop_blur::backdrop_blur;
+use crate::ui::components::cursor_tooltip;
 use crate::ui::components::dashed_outline::dashed_outline;
 use crate::ui::foundation::colors::{
     accent, card, destructive, foreground, muted_foreground, success, warning,
 };
+use crate::ui::foundation::hover_motion;
+use crate::ui::foundation::i18n::t;
+use crate::ui::foundation::motion::{ScalarTransition, mix_color};
 
 const DEFAULT_FRAME_BUDGET: Duration = Duration::from_nanos(16_666_667); // 60Hz
 const DEFAULT_CAPACITY: usize = 120;
@@ -16,15 +20,20 @@ const DEFAULT_RESOURCE_INTERVAL: Duration = Duration::from_millis(500);
 const AXIS_DECAY: f32 = 0.04;
 const HUD_WIDTH: Pixels = px(208.0);
 const HUD_HEIGHT: Pixels = px(154.0);
+const HUD_COLLAPSED_WIDTH: Pixels = px(124.0);
+const HUD_COLLAPSED_HEIGHT: Pixels = px(28.0);
 const HUD_MARGIN: Pixels = px(16.0);
 const HUD_TOP: Pixels = px(56.0);
 const TEXT_SIZE: Pixels = px(11.0);
-const TRACE_OPACITY: f32 = 0.35;
+const TRACE_OPACITY: f32 = 1.0;
 const CHART_HEIGHT: Pixels = px(42.0);
+const CHART_LINE_WIDTH: Pixels = px(1.6);
+const CHART_SAMPLE_INTERVAL: Duration = Duration::from_millis(50);
 const READOUT_INTERVAL: Duration = Duration::from_millis(500);
 const FPS_TOLERANCE: f32 = 0.95;
 const FPS_WINDOW: Duration = Duration::from_secs(1);
 const DEFAULT_FONT: &str = "IBM Plex Mono";
+const MORPH_DURATION: Duration = Duration::from_millis(220);
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FpsStyle {
@@ -71,6 +80,9 @@ pub(crate) struct FrameSampler {
     frame_times: VecDeque<Instant>,
     capacity: usize,
     last_tick: Option<Instant>,
+    last_sample_tick: Option<Instant>,
+    accumulated_draw: Duration,
+    accumulated_count: u32,
 }
 
 impl FrameSampler {
@@ -81,6 +93,9 @@ impl FrameSampler {
             frame_times: VecDeque::new(),
             capacity,
             last_tick: None,
+            last_sample_tick: None,
+            accumulated_draw: Duration::ZERO,
+            accumulated_count: 0,
         }
     }
 
@@ -88,11 +103,27 @@ impl FrameSampler {
         let now = Instant::now();
         if let Some(last) = self.last_tick {
             let draw = now.duration_since(last);
-            if self.samples.len() == self.capacity {
-                self.samples.pop_front();
-            }
-            self.samples.push_back(FrameSample { draw });
             self.frame_times.push_back(now);
+            self.accumulated_draw += draw;
+            self.accumulated_count += 1;
+
+            let sample_due = self
+                .last_sample_tick
+                .is_none_or(|at| now.duration_since(at) >= CHART_SAMPLE_INTERVAL);
+            if sample_due {
+                let sample_draw = if self.accumulated_count > 0 {
+                    self.accumulated_draw / self.accumulated_count
+                } else {
+                    draw
+                };
+                if self.samples.len() == self.capacity {
+                    self.samples.pop_front();
+                }
+                self.samples.push_back(FrameSample { draw: sample_draw });
+                self.last_sample_tick = Some(now);
+                self.accumulated_draw = Duration::ZERO;
+                self.accumulated_count = 0;
+            }
         }
         self.last_tick = Some(now);
 
@@ -320,6 +351,8 @@ pub struct FpsMonitor {
     resource_task: Option<Task<()>>,
     position: Point<Pixels>,
     drag: Option<HudDrag>,
+    collapsed: bool,
+    collapse_motion: ScalarTransition,
 }
 
 #[derive(Clone, Copy)]
@@ -344,6 +377,8 @@ impl FpsMonitor {
             resource_task: None,
             position: default_hud_position(window.viewport_size()),
             drag: None,
+            collapsed: false,
+            collapse_motion: ScalarTransition::new(0.0, MORPH_DURATION),
         }
     }
 
@@ -468,7 +503,7 @@ impl FpsMonitor {
                 let mut start = 0;
                 while start + 1 < samples.len() {
                     let color = samples[start + 1].1;
-                    let mut path = PathBuilder::stroke(px(1.0));
+                    let mut path = PathBuilder::stroke(CHART_LINE_WIDTH);
                     path.move_to(sample_point(start, samples[start].0));
 
                     let mut end = start + 1;
@@ -495,7 +530,6 @@ impl FpsMonitor {
             .w_full()
             .h(CHART_HEIGHT)
             .rounded(px(4.0))
-            .bg(style.background.opacity(0.72))
             .child(self.render_chart(style))
     }
 }
@@ -506,7 +540,9 @@ impl Render for FpsMonitor {
         self.update_readout();
         self.update_axis();
         self.start_resource_sampling(cx);
-        if self.continuous {
+
+        let (collapse_t, is_animating) = self.collapse_motion.sample();
+        if self.continuous || is_animating {
             window.request_animation_frame();
         }
 
@@ -523,6 +559,9 @@ impl Render for FpsMonitor {
         let dragging = self.drag.is_some();
         let monitor = cx.entity().clone();
         let capture_monitor = monitor.clone();
+
+        let current_size = hud_morph_size(collapse_t);
+
         let capture = canvas(
             |_, _, _| (),
             move |_, _, window, _| {
@@ -532,18 +571,20 @@ impl Render for FpsMonitor {
                         if phase != DispatchPhase::Capture || !event.dragging() {
                             return;
                         }
-                        let drag = monitor.read_with(cx, |monitor, _| monitor.drag);
-                        let Some(drag) = drag else { return };
+                        let drag_state = monitor.read_with(cx, |m, _| {
+                            let (collapse_t, _) = m.collapse_motion.sample();
+                            (m.drag, hud_morph_size(collapse_t))
+                        });
+                        let (Some(drag), hud_size) = drag_state else { return };
                         let next = point(
                             drag.origin.x + event.position.x - drag.pointer.x,
                             drag.origin.y + event.position.y - drag.pointer.y,
                         );
-                        let position = clamp_hud_position(next, window.viewport_size());
+                        let position = clamp_hud_position(next, window.viewport_size(), hud_size);
                         monitor.update(cx, |monitor, cx| {
                             monitor.position = position;
                             cx.notify();
                         });
-                        cx.stop_propagation();
                         window.refresh();
                     }
                 });
@@ -551,14 +592,12 @@ impl Render for FpsMonitor {
                     if phase != DispatchPhase::Capture || event.button != MouseButton::Left {
                         return;
                     }
-                    let dragging =
-                        capture_monitor.read_with(cx, |monitor, _| monitor.drag.is_some());
+                    let dragging = capture_monitor.read_with(cx, |monitor, _| monitor.drag.is_some());
                     if dragging {
                         capture_monitor.update(cx, |monitor, cx| {
                             monitor.drag = None;
                             cx.notify();
                         });
-                        cx.stop_propagation();
                         window.refresh();
                     }
                 });
@@ -567,6 +606,183 @@ impl Render for FpsMonitor {
         .absolute()
         .inset_0();
 
+        let toggle_hk: SharedString = "fps-toggle-collapse-hk".into();
+        let toggle_progress = hover_motion::progress(&toggle_hk, cx);
+        let toggle_bg = mix_color(
+            rgba(0x00000000),
+            muted_foreground().opacity(0.15).into(),
+            toggle_progress,
+        );
+        let toggle_fg = mix_color(
+            style.muted.into(),
+            foreground().into(),
+            toggle_progress,
+        );
+
+        let toggle_hk_click = toggle_hk.clone();
+        let toggle_button = cursor_tooltip::attach_with_hover_motion(
+            div()
+                .id("fps-toggle-collapse")
+                .size(px(20.0))
+                .flex_none()
+                .flex()
+                .items_center()
+                .justify_center()
+                .rounded(px(4.0))
+                .cursor_pointer()
+                .bg(toggle_bg)
+                .active(|btn| btn.bg(accent().opacity(0.25)))
+                .on_mouse_down(MouseButton::Left, |_, window, cx| {
+                    window.prevent_default();
+                    cx.stop_propagation();
+                })
+                .on_click(cx.listener(move |this, _, window, cx| {
+                    hover_motion::clear_hover(&toggle_hk_click, window, cx);
+                    this.collapsed = !this.collapsed;
+                    this.collapse_motion
+                        .set_target(if this.collapsed { 1.0 } else { 0.0 });
+                    let target_size = if this.collapsed {
+                        size(HUD_COLLAPSED_WIDTH, HUD_COLLAPSED_HEIGHT)
+                    } else {
+                        size(HUD_WIDTH, HUD_HEIGHT)
+                    };
+                    this.position =
+                        clamp_hud_position(this.position, window.viewport_size(), target_size);
+                    cx.notify();
+                    window.refresh();
+                }))
+                .child(
+                    svg()
+                        .path(if self.collapsed {
+                            "icons/chevron-down.svg"
+                        } else {
+                            "icons/chevron-up.svg"
+                        })
+                        .size(px(13.0))
+                        .text_color(toggle_fg),
+                ),
+            ElementId::from("fps-toggle-collapse-tooltip"),
+            toggle_hk,
+            if self.collapsed {
+                t("fps.expand")
+            } else {
+                t("fps.collapse")
+            },
+        );
+
+        let drag_hk: SharedString = "fps-drag-handle-hk".into();
+        let drag_progress = hover_motion::progress(&drag_hk, cx);
+        let drag_bg = if dragging {
+            accent().opacity(0.18).into()
+        } else {
+            mix_color(
+                rgba(0x00000000),
+                muted_foreground().opacity(0.15).into(),
+                drag_progress,
+            )
+        };
+        let drag_fg = if dragging {
+            accent().into()
+        } else {
+            mix_color(
+                style.muted.into(),
+                foreground().into(),
+                drag_progress,
+            )
+        };
+
+        let drag_button = cursor_tooltip::attach_with_hover_motion(
+            div()
+                .id("fps-drag-handle")
+                .size(px(20.0))
+                .flex_none()
+                .flex()
+                .items_center()
+                .justify_center()
+                .rounded(px(4.0))
+                .cursor_grab()
+                .bg(drag_bg)
+                .when(dragging, |btn| {
+                    btn.cursor_grabbing()
+                })
+                .active(|btn| btn.bg(accent().opacity(0.25)))
+                .on_mouse_down(
+                    MouseButton::Left,
+                    cx.listener(|this, event: &MouseDownEvent, window, cx| {
+                        this.drag = Some(HudDrag {
+                            pointer: event.position,
+                            origin: this.position,
+                        });
+                        cx.notify();
+                        window.refresh();
+                    }),
+                )
+                .child(
+                    svg()
+                        .path("icons/grip-horizontal.svg")
+                        .size(px(14.0))
+                        .text_color(drag_fg),
+                ),
+            ElementId::from("fps-drag-handle-tooltip"),
+            drag_hk,
+            t("fps.drag_handle"),
+        );
+
+        let expanded_alpha = (1.0 - collapse_t * 1.5).clamp(0.0, 1.0);
+        let is_collapsed = collapse_t > 0.5;
+
+        let center_or_title = if is_collapsed {
+            div()
+                .flex_1()
+                .flex()
+                .items_center()
+                .justify_center()
+                .gap(px(3.0))
+                .font_weight(FontWeight::BOLD)
+                .text_size(px(11.0))
+                .child(
+                    div()
+                        .text_color(fps_color)
+                        .child(format!("{fps:.0}")),
+                )
+                .child(
+                    div()
+                        .text_size(px(9.0))
+                        .text_color(style.muted)
+                        .child(t("fps.fps")),
+                )
+                .into_any_element()
+        } else {
+            div()
+                .flex_1()
+                .flex()
+                .items_center()
+                .justify_center()
+                .child(
+                    div()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_color(style.foreground)
+                        .text_size(px(10.5))
+                        .opacity(expanded_alpha)
+                        .child(t("common.performance")),
+                )
+                .into_any_element()
+        };
+
+        let top_bar = div()
+            .flex()
+            .w_full()
+            .h(px(20.0))
+            .items_center()
+            .justify_between()
+            .gap_1()
+            .child(toggle_button)
+            .child(center_or_title)
+            .child(drag_button);
+
+        let details_opacity = (1.0 - collapse_t * 2.0).clamp(0.0, 1.0);
+        let show_details = collapse_t < 0.999;
+
         div()
             .id("gpui-fps-hud")
             .absolute()
@@ -574,30 +790,19 @@ impl Render for FpsMonitor {
             .top(position.y)
             .flex()
             .flex_col()
-            .w(HUD_WIDTH)
-            .h(HUD_HEIGHT)
+            .w(current_size.width)
+            .h(current_size.height)
             .px_2()
-            .py_1p5()
+            .py(px(3.0))
             .gap_0p5()
             .rounded(px(8.0))
             .shadow_lg()
             .font_family(DEFAULT_FONT)
             .text_size(TEXT_SIZE)
             .text_color(style.muted)
-            .cursor_pointer()
+            .cursor_default()
+            .overflow_hidden()
             .occlude()
-            .on_mouse_down(
-                MouseButton::Left,
-                cx.listener(|this, event: &MouseDownEvent, window, cx| {
-                    this.drag = Some(HudDrag {
-                        pointer: event.position,
-                        origin: this.position,
-                    });
-                    cx.notify();
-                    cx.stop_propagation();
-                    window.refresh();
-                }),
-            )
             .child(backdrop_blur(
                 card().opacity(0.5).into(),
                 px(20.0),
@@ -605,46 +810,48 @@ impl Render for FpsMonitor {
                 0.012,
             ))
             .child(capture)
-            .child(
-                div()
-                    .flex()
-                    .w_full()
-                    .justify_between()
-                    .font_weight(FontWeight::SEMIBOLD)
-                    .text_color(style.foreground)
-                    .child("PERFORMANCE")
-                    .child(if dragging { "MOVING" } else { "DRAG" }),
-            )
-            .child(self.render_chart_panel(style))
-            .child(reading("FPS", format!("{fps:.0}"), fps_color, style))
-            .child(reading(
-                "FRAME",
-                format!("{frame_millis:.1} ms"),
-                style.foreground,
-                style,
-            ))
-            .child(reading(
-                "DROP",
-                format!("{dropped:.1}%"),
-                style.level_color(if dropped > 0.0 { 1.0 } else { 0.0 }, 0.5),
-                style,
-            ))
-            .child(reading(
-                "CPU",
-                resources
-                    .map(|sample| format!("{:.1}%", sample.cpu_percent))
-                    .unwrap_or_else(|| "--".to_string()),
-                style.foreground,
-                style,
-            ))
-            .child(reading(
-                "MEMORY",
-                resources
-                    .map(|sample| format_bytes(sample.memory_bytes))
-                    .unwrap_or_else(|| "--".to_string()),
-                style.foreground,
-                style,
-            ))
+            .child(top_bar)
+            .when(show_details, |hud| {
+                hud.child(
+                    div()
+                        .w_full()
+                        .flex()
+                        .flex_col()
+                        .gap_0p5()
+                        .opacity(details_opacity)
+                        .child(self.render_chart_panel(style))
+                        .child(reading(&t("fps.fps"), format!("{fps:.0}"), fps_color, style))
+                        .child(reading(
+                            &t("fps.frame"),
+                            rust_i18n::t!("fps.unit_ms", value = format!("{frame_millis:.1}"))
+                                .to_string(),
+                            style.foreground,
+                            style,
+                        ))
+                        .child(reading(
+                            &t("fps.drop"),
+                            format!("{dropped:.1}%"),
+                            style.level_color(if dropped > 0.0 { 1.0 } else { 0.0 }, 0.5),
+                            style,
+                        ))
+                        .child(reading(
+                            &t("fps.cpu"),
+                            resources
+                                .map(|sample| format!("{:.1}%", sample.cpu_percent))
+                                .unwrap_or_else(|| "--".to_string()),
+                            style.foreground,
+                            style,
+                        ))
+                        .child(reading(
+                            &t("fps.memory"),
+                            resources
+                                .map(|sample| format_bytes(sample.memory_bytes))
+                                .unwrap_or_else(|| "--".to_string()),
+                            style.foreground,
+                            style,
+                        )),
+                )
+            })
             .child(dashed_outline(accent().opacity(0.7).into()))
     }
 }
@@ -664,14 +871,14 @@ fn fps_color(fps: f32, budget: Duration, style: FpsStyle) -> Hsla {
     }
 }
 
-fn reading(label: &'static str, value: String, value_color: Hsla, style: FpsStyle) -> Div {
+fn reading(label: &str, value: String, value_color: Hsla, style: FpsStyle) -> Div {
     div()
         .flex()
         .w_full()
         .justify_between()
         .gap_2()
         .py(px(1.0))
-        .child(div().text_color(style.muted).child(label))
+        .child(div().text_color(style.muted).child(label.to_string()))
         .child(
             div()
                 .font_weight(FontWeight::MEDIUM)
@@ -680,16 +887,28 @@ fn reading(label: &'static str, value: String, value_color: Hsla, style: FpsStyl
         )
 }
 
+fn hud_morph_size(collapse_t: f32) -> Size<Pixels> {
+    size(
+        HUD_WIDTH + (HUD_COLLAPSED_WIDTH - HUD_WIDTH) * collapse_t,
+        HUD_HEIGHT + (HUD_COLLAPSED_HEIGHT - HUD_HEIGHT) * collapse_t,
+    )
+}
+
 fn default_hud_position(viewport: Size<Pixels>) -> Point<Pixels> {
     clamp_hud_position(
         point(viewport.width - HUD_WIDTH - HUD_MARGIN, HUD_TOP),
         viewport,
+        size(HUD_WIDTH, HUD_HEIGHT),
     )
 }
 
-fn clamp_hud_position(position: Point<Pixels>, viewport: Size<Pixels>) -> Point<Pixels> {
-    let max_x = (viewport.width - HUD_WIDTH - HUD_MARGIN).max(HUD_MARGIN);
-    let max_y = (viewport.height - HUD_HEIGHT - HUD_MARGIN).max(HUD_TOP);
+fn clamp_hud_position(
+    position: Point<Pixels>,
+    viewport: Size<Pixels>,
+    hud_size: Size<Pixels>,
+) -> Point<Pixels> {
+    let max_x = (viewport.width - hud_size.width - HUD_MARGIN).max(HUD_MARGIN);
+    let max_y = (viewport.height - hud_size.height - HUD_MARGIN).max(HUD_TOP);
     point(
         position.x.clamp(HUD_MARGIN, max_x),
         position.y.clamp(HUD_TOP, max_y),
@@ -702,9 +921,11 @@ fn format_bytes(bytes: u64) -> String {
 
     let bytes = bytes as f64;
     if bytes >= GIB {
-        format!("{:.2} GB", bytes / GIB)
+        let val = format!("{:.2}", bytes / GIB);
+        rust_i18n::t!("fps.unit_gb", value = val).to_string()
     } else {
-        format!("{:.0} MB", bytes / MIB)
+        let val = format!("{:.0}", bytes / MIB);
+        rust_i18n::t!("fps.unit_mb", value = val).to_string()
     }
 }
 
@@ -755,13 +976,14 @@ pub fn fps_monitor(window: &mut Window, cx: &mut App) -> FpsOverlay {
 mod tests {
     use gpui::{point, px, size};
 
-    use super::{HUD_MARGIN, clamp_hud_position};
+    use super::{HUD_HEIGHT, HUD_MARGIN, HUD_WIDTH, clamp_hud_position};
 
     #[test]
     fn hud_position_stays_inside_viewport() {
         let viewport = size(px(900.0), px(700.0));
+        let hud_size = size(HUD_WIDTH, HUD_HEIGHT);
         assert_eq!(
-            clamp_hud_position(point(px(-20.0), px(900.0)), viewport),
+            clamp_hud_position(point(px(-20.0), px(900.0)), viewport, hud_size),
             point(HUD_MARGIN, px(530.0))
         );
     }
