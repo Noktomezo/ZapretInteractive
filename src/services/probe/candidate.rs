@@ -44,34 +44,46 @@ pub(super) fn test_candidate(
     };
     let mut config = base.clone();
     set_category_strategy(&mut config, category_id, strategy_id)?;
-    if let Err(error) = runtime.connect(&config) {
-        if strategy_id.is_none() {
-            return Err(error).context("не удалось запустить базовую проверку");
+    let has_active_strategies = config
+        .categories
+        .iter()
+        .flat_map(|category| &category.strategies)
+        .any(|strategy| strategy.active);
+
+    if has_active_strategies {
+        if let Err(error) = runtime.connect(&config) {
+            if strategy_id.is_none() {
+                return Err(error).context("не удалось запустить базовую проверку");
+            }
+            let failed = failed_candidate(
+                strategy_id,
+                profile,
+                full,
+                repeats,
+                &format!("winws не запустился: {error:#}"),
+            );
+            publish_results(&failed.attempts);
+            return Ok(failed);
         }
-        let failed = failed_candidate(
-            strategy_id,
-            profile,
-            full,
-            repeats,
-            &format!("winws не запустился: {error:#}"),
-        );
-        publish_results(&failed.attempts);
-        return Ok(failed);
-    }
-    std::thread::sleep(Duration::from_millis(profile.startup_delay_ms));
-    if !runtime.winws_running()? {
-        if strategy_id.is_none() {
-            bail!("winws завершился при запуске базовой проверки");
+        std::thread::sleep(Duration::from_millis(profile.startup_delay_ms));
+        if !runtime.winws_running()? {
+            if strategy_id.is_none() {
+                bail!("winws завершился при запуске базовой проверки");
+            }
+            let failed = failed_candidate(
+                strategy_id,
+                profile,
+                full,
+                repeats,
+                "winws завершился при запуске тестовой стратегии",
+            );
+            publish_results(&failed.attempts);
+            return Ok(failed);
         }
-        let failed = failed_candidate(
-            strategy_id,
-            profile,
-            full,
-            repeats,
-            "winws завершился при запуске тестовой стратегии",
-        );
-        publish_results(&failed.attempts);
-        return Ok(failed);
+    } else {
+        runtime
+            .disconnect()
+            .context("не удалось подготовить нативное подключение для базовой проверки")?;
     }
 
     let mut attempts = Vec::new();
