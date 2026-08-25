@@ -535,6 +535,11 @@ impl AppState {
             return;
         };
 
+        if self.repository.is_portable() {
+            self.open_external(&update.release_url, cx);
+            return;
+        }
+
         let Some(download_url) = update.download_url else {
             self.open_external(&update.release_url, cx);
             return;

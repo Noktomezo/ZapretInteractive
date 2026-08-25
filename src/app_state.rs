@@ -241,6 +241,10 @@ impl AppState {
         cx.notify();
     }
 
+    pub fn is_portable(&self) -> bool {
+        self.repository.is_portable()
+    }
+
     pub fn log(&mut self, message: &str) {
         self.logs.push_back(LogEntry {
             timestamp: std::time::SystemTime::now(),
