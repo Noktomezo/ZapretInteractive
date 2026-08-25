@@ -59,7 +59,7 @@ These rules apply to **every** Rust change. No exceptions for “quick fix”, �
 
 ### 10. Git & Branching Workflow (STRICT)
 - **Feature branch from `main`**: Always branch from `origin/main` for each new task, fix, or feature (e.g., `feature/<name>`, `fix/<name>`). Never accumulate unrelated changes into long-lived omnibus branches (no 80k line monster PRs).
-- **PRs directly to `main`**: Open Pull Requests directly from the focused `feature/<name>` branch into `main` for clean review.
+- **PRs directly to `main` via `gh` CLI**: Automatically open Pull Requests directly from the focused `feature/<name>` branch into `main` using `gh pr create --base main --head feature/<name> ...` and verify CI checks with `gh pr checks`.
 - **Local sync**: Keep the user's local working copy updated with the feature changes (via worktree, direct branch switch, or cherry-pick/rebase) so changes are immediately testable locally.
 - **Minimal diff**: Change only what is required for the task. Do not reformat unrelated code, rename widely, or perform drive-by edits.
 - **No out-of-scope features**: Implement strictly what was requested.
