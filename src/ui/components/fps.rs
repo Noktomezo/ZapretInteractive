@@ -575,7 +575,9 @@ impl Render for FpsMonitor {
                             let (collapse_t, _) = m.collapse_motion.sample();
                             (m.drag, hud_morph_size(collapse_t))
                         });
-                        let (Some(drag), hud_size) = drag_state else { return };
+                        let (Some(drag), hud_size) = drag_state else {
+                            return;
+                        };
                         let next = point(
                             drag.origin.x + event.position.x - drag.pointer.x,
                             drag.origin.y + event.position.y - drag.pointer.y,
@@ -613,11 +615,7 @@ impl Render for FpsMonitor {
             muted_foreground().opacity(0.15).into(),
             toggle_progress,
         );
-        let toggle_fg = mix_color(
-            style.muted.into(),
-            foreground().into(),
-            toggle_progress,
-        );
+        let toggle_fg = mix_color(style.muted.into(), foreground().into(), toggle_progress);
 
         let toggle_hk_click = toggle_hk.clone();
         let toggle_button = cursor_tooltip::attach_with_hover_motion(
@@ -684,11 +682,7 @@ impl Render for FpsMonitor {
         let drag_fg = if dragging {
             accent().into()
         } else {
-            mix_color(
-                style.muted.into(),
-                foreground().into(),
-                drag_progress,
-            )
+            mix_color(style.muted.into(), foreground().into(), drag_progress)
         };
 
         let drag_button = cursor_tooltip::attach_with_hover_motion(
@@ -702,9 +696,7 @@ impl Render for FpsMonitor {
                 .rounded(px(4.0))
                 .cursor_grab()
                 .bg(drag_bg)
-                .when(dragging, |btn| {
-                    btn.cursor_grabbing()
-                })
+                .when(dragging, |btn| btn.cursor_grabbing())
                 .active(|btn| btn.bg(accent().opacity(0.25)))
                 .on_mouse_down(
                     MouseButton::Left,
@@ -740,11 +732,7 @@ impl Render for FpsMonitor {
                 .gap(px(3.0))
                 .font_weight(FontWeight::BOLD)
                 .text_size(px(11.0))
-                .child(
-                    div()
-                        .text_color(fps_color)
-                        .child(format!("{fps:.0}")),
-                )
+                .child(div().text_color(fps_color).child(format!("{fps:.0}")))
                 .child(
                     div()
                         .text_size(px(9.0))
@@ -820,7 +808,12 @@ impl Render for FpsMonitor {
                         .gap_0p5()
                         .opacity(details_opacity)
                         .child(self.render_chart_panel(style))
-                        .child(reading(&t("fps.fps"), format!("{fps:.0}"), fps_color, style))
+                        .child(reading(
+                            &t("fps.fps"),
+                            format!("{fps:.0}"),
+                            fps_color,
+                            style,
+                        ))
                         .child(reading(
                             &t("fps.frame"),
                             rust_i18n::t!("fps.unit_ms", value = format!("{frame_millis:.1}"))

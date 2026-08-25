@@ -41,6 +41,10 @@ impl ConfigRepository {
         })
     }
 
+    pub fn is_portable(&self) -> bool {
+        !self.runtime_dir.join("uninstall.exe").is_file()
+    }
+
     pub fn resources_dir(&self) -> &Path {
         &self.resources_dir
     }

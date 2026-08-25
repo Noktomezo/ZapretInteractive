@@ -29,6 +29,7 @@ nav:
 
 titlebar:
   update_to: "Обновить до %{version}"
+  open_release_to: "Открыть релиз %{version}"
   updating: "Загрузка и установка обновления..."
   update_app: "Обновление приложения"
 
@@ -209,6 +210,7 @@ settings:
   update_failed: "Не удалось обновить приложение: %{error}"
   update_action_hint: "Нажмите кнопку для автоматического обновления и перезапуска"
   btn_update_and_restart: "Обновить и перезапустить"
+  btn_open_release: "Перейти к релизу"
   btn_installing: "Установка..."
   behavior_title: "Поведение"
   behavior_desc: "Настройки запуска и закрытия приложения"

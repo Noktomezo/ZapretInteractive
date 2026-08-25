@@ -91,6 +91,7 @@ fn updates_card(
         checking_app_update,
         is_updating,
         update_download_progress,
+        is_portable,
     ) = {
         let app_state = state.read(cx);
         (
@@ -100,6 +101,7 @@ fn updates_card(
             app_state.checking_app_update,
             app_state.is_updating,
             app_state.update_download_progress,
+            app_state.is_portable(),
         )
     };
     let mut body = module_body();
@@ -197,10 +199,13 @@ fn updates_card(
         .child(version_badge)
         .children(status_badge);
 
+    let release_url = app_update.as_ref().map(|u| u.release_url.clone());
     let actions = update_actions(
         app_update.is_some(),
         checking_app_update,
         is_updating,
+        is_portable,
+        release_url,
         state,
         cx,
     );
@@ -222,24 +227,44 @@ fn update_actions(
     has_update: bool,
     checking_app_update: bool,
     is_updating: bool,
+    is_portable: bool,
+    release_url: Option<String>,
     state: Entity<crate::app_state::AppState>,
     cx: &App,
 ) -> AnyElement {
     let mut actions = div().flex_none().flex().items_center().gap_2();
     if has_update && !checking_app_update && !is_updating {
         let update_state = state.clone();
-        actions = actions.child(
-            crate::ui::components::button::Button::new(
-                "btn-apply-update",
-                t!("settings.btn_update_and_restart"),
-                cx,
-            )
-            .primary()
-            .icon_prefix("icons/cloud-download.svg")
-            .on_click(move |_, _, cx| {
-                update_state.update(cx, |state, cx| state.trigger_app_update(cx));
-            }),
-        );
+        if is_portable {
+            let url = release_url.unwrap_or_else(|| {
+                "https://github.com/Noktomezo/ZapretInteractive/releases/latest".to_string()
+            });
+            actions = actions.child(
+                crate::ui::components::button::Button::new(
+                    "btn-open-release",
+                    t!("settings.btn_open_release"),
+                    cx,
+                )
+                .primary()
+                .icon_prefix("icons/external-link.svg")
+                .on_click(move |_, _, cx| {
+                    update_state.update(cx, |state, cx| state.open_external(&url, cx));
+                }),
+            );
+        } else {
+            actions = actions.child(
+                crate::ui::components::button::Button::new(
+                    "btn-apply-update",
+                    t!("settings.btn_update_and_restart"),
+                    cx,
+                )
+                .primary()
+                .icon_prefix("icons/cloud-download.svg")
+                .on_click(move |_, _, cx| {
+                    update_state.update(cx, |state, cx| state.trigger_app_update(cx));
+                }),
+            );
+        }
     }
 
     actions

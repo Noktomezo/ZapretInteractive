@@ -29,6 +29,7 @@ nav:
 
 titlebar:
   update_to: "Update to %{version}"
+  open_release_to: "Open release %{version}"
   updating: "Downloading and applying update..."
   update_app: "Application Update"
 
@@ -209,6 +210,7 @@ settings:
   update_failed: "Failed to update the application: %{error}"
   update_action_hint: "Click the button to automatically update and restart"
   btn_update_and_restart: "Update and Restart"
+  btn_open_release: "Open release page"
   btn_installing: "Installing..."
   behavior_title: "Behavior"
   behavior_desc: "Application startup and shutdown settings"

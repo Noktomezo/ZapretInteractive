@@ -640,16 +640,23 @@ fn titlebar(
     toggle: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
     cx: &App,
 ) -> AnyElement {
-    let (app_update, is_updating, update_progress) = {
+    let (app_update, is_updating, update_progress, is_portable) = {
         let s = state.read(cx);
         (
             s.app_update.clone(),
             s.is_updating,
             s.update_download_progress,
+            s.is_portable(),
         )
     };
-    let update_button =
-        titlebar_update_button(app_update, is_updating, update_progress, state.clone(), cx);
+    let update_button = titlebar_update_button(
+        app_update,
+        is_updating,
+        update_progress,
+        is_portable,
+        state.clone(),
+        cx,
+    );
     let probe_button = titlebar_probe_button(state.clone(), cx);
     let controls = titlebar_window_controls(is_maximized, minimize_on_close, state, cx);
 
@@ -855,6 +862,7 @@ fn titlebar_update_button(
     app_update: Option<crate::services::updater::AppUpdateInfo>,
     is_updating: bool,
     download_progress: Option<f32>,
+    is_portable: bool,
     state: Entity<AppState>,
     cx: &App,
 ) -> Option<AnyElement> {
@@ -897,12 +905,20 @@ fn titlebar_update_button(
     let tooltip_text = if is_updating {
         t!("titlebar.updating")
     } else if let Some(ref update) = app_update {
-        t!("titlebar.update_to", version = update.new_version.as_str())
+        if is_portable {
+            t!(
+                "titlebar.open_release_to",
+                version = update.new_version.as_str()
+            )
+        } else {
+            t!("titlebar.update_to", version = update.new_version.as_str())
+        }
     } else {
         t!("titlebar.update_app")
     };
 
     let (button, hover_key) = titlebar_button_base("titlebar-update-btn", false, cx);
+    let release_url = app_update.as_ref().map(|u| u.release_url.clone());
     let button = button
         .when(is_updating, |button| button.cursor_default())
         .when(!is_updating, |button| {
@@ -912,7 +928,15 @@ fn titlebar_update_button(
                     cx.stop_propagation();
                 })
                 .on_click(move |_, _, cx| {
-                    state.update(cx, |s, cx| s.trigger_app_update(cx));
+                    if is_portable {
+                        let url = release_url.clone().unwrap_or_else(|| {
+                            "https://github.com/Noktomezo/ZapretInteractive/releases/latest"
+                                .to_string()
+                        });
+                        state.update(cx, |s, cx| s.open_external(&url, cx));
+                    } else {
+                        state.update(cx, |s, cx| s.trigger_app_update(cx));
+                    }
                 })
         })
         .child(icon);
