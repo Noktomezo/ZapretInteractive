@@ -170,7 +170,7 @@ fn page_with_actions(
                         div()
                             .flex()
                             .flex_wrap()
-                            .items_start()
+                            .items_center()
                             .gap_3()
                             .child(
                                 div()
