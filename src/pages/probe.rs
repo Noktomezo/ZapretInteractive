@@ -156,12 +156,8 @@ impl AppView {
                 .find(|recommendation| recommendation.category_id == category.id);
             recommendation.map_or_else(
                 || {
-                    rust_i18n::t!(
-                        "probe.no_best_strategy",
-                        passed = passed,
-                        total = total
-                    )
-                    .to_string()
+                    rust_i18n::t!("probe.no_best_strategy", passed = passed, total = total)
+                        .to_string()
                 },
                 |recommendation| {
                     rust_i18n::t!(
@@ -215,10 +211,7 @@ impl AppView {
             });
         });
 
-        let mut header_actions = div()
-            .flex()
-            .items_center()
-            .gap_2();
+        let mut header_actions = div().flex().items_center().gap_2();
 
         if has_body {
             let category_id = category.id.clone();
@@ -236,9 +229,7 @@ impl AppView {
             );
         }
 
-        header_actions = header_actions
-            .child(quick)
-            .child(full);
+        header_actions = header_actions.child(quick).child(full);
 
         if let Some((_, recommendations)) = report
             && let Some(recommendation) = recommendations
