@@ -420,6 +420,7 @@ fn stop_child(child: &mut Option<duct::Handle>, name: &str) -> Result<()> {
                 .kill()
                 .with_context(|| format!("не удалось остановить {name}"))?;
         }
+        std::thread::sleep(std::time::Duration::from_millis(50));
     }
     Ok(())
 }

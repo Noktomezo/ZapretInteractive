@@ -2,7 +2,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
-use anyhow::{Context as _, Result, bail};
+use anyhow::{Context as _, Result};
 
 use super::http::run_targets;
 use super::support::{ensure_not_cancelled, failed_candidate, set_category_strategy};
@@ -42,19 +42,14 @@ pub(super) fn test_candidate(
         }
         on_progress(update);
     };
-    let mut config = base.clone();
-    set_category_strategy(&mut config, category_id, strategy_id)?;
-    let has_active_strategies = config
-        .categories
-        .iter()
-        .flat_map(|category| &category.strategies)
-        .any(|strategy| strategy.active);
-
-    if has_active_strategies {
+    if strategy_id.is_none() {
+        runtime
+            .disconnect()
+            .context("не удалось подготовить нативное подключение для базовой проверки")?;
+    } else {
+        let mut config = base.clone();
+        set_category_strategy(&mut config, category_id, strategy_id)?;
         if let Err(error) = runtime.connect(&config) {
-            if strategy_id.is_none() {
-                return Err(error).context("не удалось запустить базовую проверку");
-            }
             let failed = failed_candidate(
                 strategy_id,
                 profile,
@@ -67,9 +62,6 @@ pub(super) fn test_candidate(
         }
         std::thread::sleep(Duration::from_millis(profile.startup_delay_ms));
         if !runtime.winws_running()? {
-            if strategy_id.is_none() {
-                bail!("winws завершился при запуске базовой проверки");
-            }
             let failed = failed_candidate(
                 strategy_id,
                 profile,
@@ -80,10 +72,6 @@ pub(super) fn test_candidate(
             publish_results(&failed.attempts);
             return Ok(failed);
         }
-    } else {
-        runtime
-            .disconnect()
-            .context("не удалось подготовить нативное подключение для базовой проверки")?;
     }
 
     let mut attempts = Vec::new();
