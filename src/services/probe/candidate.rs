@@ -62,13 +62,13 @@ pub(super) fn test_candidate(
         }
         std::thread::sleep(Duration::from_millis(profile.startup_delay_ms));
         if !runtime.winws_running()? {
-            let failed = failed_candidate(
-                strategy_id,
-                profile,
-                full,
-                repeats,
-                "winws завершился при запуске тестовой стратегии",
-            );
+            let message = match runtime.read_winws_last_error() {
+                Some(error) => {
+                    format!("winws завершился при запуске тестовой стратегии: {error}")
+                }
+                None => "winws завершился при запуске тестовой стратегии".to_owned(),
+            };
+            let failed = failed_candidate(strategy_id, profile, full, repeats, &message);
             publish_results(&failed.attempts);
             return Ok(failed);
         }
