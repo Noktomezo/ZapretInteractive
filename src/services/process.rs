@@ -51,7 +51,8 @@ impl RuntimeServices {
             .map_err(|_| anyhow::anyhow!("runtime lock poisoned"))?;
         state.stop_all()?;
 
-        let child = spawn_winws(self.repository.resources_dir(), config)?;
+        let log_path = self.repository.runtime_dir().join("winws.log");
+        let child = spawn_winws(self.repository.resources_dir(), config, &log_path)?;
         let pid = child
             .pids()
             .into_iter()
@@ -118,6 +119,22 @@ impl RuntimeServices {
             .try_wait()
             .context("не удалось проверить тестовый winws")
             .map(|status| status.is_none())
+    }
+
+    pub fn read_winws_last_error(&self) -> Option<String> {
+        let log_path = self.repository.runtime_dir().join("winws.log");
+        let content = fs::read_to_string(log_path).ok()?;
+        let lines = content
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty())
+            .collect::<Vec<_>>();
+        if lines.is_empty() {
+            return None;
+        }
+        let take_count = lines.len().min(3);
+        let last_lines = &lines[lines.len() - take_count..];
+        Some(last_lines.join(" | "))
     }
 
     pub fn sync_dns(&self, config: &AppConfig) -> Result<()> {
@@ -349,20 +366,37 @@ fn start_tg_proxy(
     Ok(())
 }
 
-fn spawn_winws(resources: &Path, config: &AppConfig) -> Result<duct::Handle> {
+fn spawn_winws(resources: &Path, config: &AppConfig, log_path: &Path) -> Result<duct::Handle> {
     validate_port_spec(&config.global_ports.tcp).context("некорректные TCP-порты")?;
     validate_port_spec(&config.global_ports.udp).context("некорректные UDP-порты")?;
     let binary = resources.join("winws.exe");
     if !binary.is_file() {
         bail!("winws.exe не найден: {}", binary.display());
     }
+    ensure_list_files(resources);
     hidden_cmd(&binary, build_winws_args(config, resources))
         .dir(resources)
-        .stdout_null()
-        .stderr_null()
+        .stdout_path(log_path)
+        .stderr_to_stdout()
         .unchecked()
         .start()
         .with_context(|| format!("не удалось запустить {}", binary.display()))
+}
+
+fn ensure_list_files(resources: &Path) {
+    let lists_dir = resources.join("lists");
+    let _ = fs::create_dir_all(&lists_dir);
+    for name in [
+        "zapret-hosts-google.txt",
+        "zapret-hosts-user-exclude.txt",
+        "zapret-ip-user.txt",
+        "autohostlist.txt",
+    ] {
+        let path = lists_dir.join(name);
+        if !path.exists() {
+            let _ = fs::write(&path, "");
+        }
+    }
 }
 
 fn spawn_tg_proxy(resources: &Path, config: &AppConfig, runtime: &Path) -> Result<duct::Handle> {
@@ -420,7 +454,7 @@ fn stop_child(child: &mut Option<duct::Handle>, name: &str) -> Result<()> {
                 .kill()
                 .with_context(|| format!("не удалось остановить {name}"))?;
         }
-        std::thread::sleep(std::time::Duration::from_millis(50));
+        std::thread::sleep(std::time::Duration::from_millis(150));
     }
     Ok(())
 }

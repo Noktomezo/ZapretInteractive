@@ -79,8 +79,16 @@ pub(super) fn set_category_strategy(
     {
         bail!("стратегия {strategy_id} не найдена в {}", category.name);
     }
-    for strategy in &mut category.strategies {
-        strategy.active = strategy_id.is_some_and(|id| strategy.id == id);
+    for cat in &mut config.categories {
+        if cat.id == category_id {
+            for strategy in &mut cat.strategies {
+                strategy.active = strategy_id.is_some_and(|id| strategy.id == id);
+            }
+        } else {
+            for strategy in &mut cat.strategies {
+                strategy.active = false;
+            }
+        }
     }
     Ok(())
 }
@@ -202,5 +210,53 @@ mod tests {
 
         assert_eq!(profile.targets[0].connect_ip.as_deref(), Some("192.0.2.1"));
         assert_eq!(profile.targets[1].connect_ip, None);
+    }
+
+    #[test]
+    fn set_category_strategy_isolates_active_strategy() {
+        use crate::domain::Strategy;
+
+        let mut config: AppConfig =
+            serde_json::from_str(include_str!("../../../assets/default-config.json")).unwrap();
+        let make_strat = |id: &str, active: bool| Strategy {
+            id: id.to_owned(),
+            name: id.to_owned(),
+            category: "Test".to_owned(),
+            category_id: "test".to_owned(),
+            category_order: None,
+            order: None,
+            description: None,
+            content: String::new(),
+            active,
+            system: false,
+            system_base_name: None,
+            system_base_content: None,
+        };
+        config.categories = vec![
+            Category {
+                id: "cat1".to_owned(),
+                name: "Cat1".to_owned(),
+                strategies: vec![make_strat("cat1-s1", true), make_strat("cat1-s2", false)],
+                system: false,
+                system_base_name: None,
+            },
+            Category {
+                id: "cat2".to_owned(),
+                name: "Cat2".to_owned(),
+                strategies: vec![make_strat("cat2-s1", true)],
+                system: false,
+                system_base_name: None,
+            },
+        ];
+
+        set_category_strategy(&mut config, "cat1", Some("cat1-s2")).unwrap();
+        assert!(!config.categories[0].strategies[0].active);
+        assert!(config.categories[0].strategies[1].active);
+        assert!(!config.categories[1].strategies[0].active);
+
+        set_category_strategy(&mut config, "cat1", None).unwrap();
+        assert!(!config.categories[0].strategies[0].active);
+        assert!(!config.categories[0].strategies[1].active);
+        assert!(!config.categories[1].strategies[0].active);
     }
 }
