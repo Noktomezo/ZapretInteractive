@@ -44,6 +44,7 @@ impl AppView {
                                     "open-filters",
                                     "icons/folder-open.svg",
                                     IconButtonVariant::Outline,
+                                    t!("filters.btn_open_folder"),
                                     move |_, _, cx| {
                                         open_state_header.update(cx, |state, cx| state.open_filters_directory(cx))
                                     },
@@ -153,6 +154,7 @@ impl AppView {
                                                         SharedString::from(format!("edit-filter-{edit_id}")),
                                                         "icons/pencil.svg",
                                                         IconButtonVariant::Outline,
+                                                        t!("common.edit"),
                                                         move |_, _, cx| {
                                                             view_edit.update(cx, |this, cx| {
                                                                 this.open_filter(Some(edit_id.clone()), cx);
@@ -164,6 +166,7 @@ impl AppView {
                                                         SharedString::from(format!("delete-filter-{delete_id}")),
                                                         "icons/trash-2.svg",
                                                         IconButtonVariant::Destructive,
+                                                        t!("dialog.delete_filter"),
                                                         {
                                                             let name = title.clone();
                                                             let id = delete_id.clone();
@@ -237,6 +240,7 @@ impl AppView {
                                     "open-placeholders",
                                     "icons/folder-open.svg",
                                     IconButtonVariant::Outline,
+                                    t!("placeholders.btn_open_folder"),
                                     move |_, _, cx| {
                                         open_state_header.update(cx, |state, cx| {
                                             state.open_placeholders_directory(cx)
@@ -337,6 +341,7 @@ impl AppView {
                                                         SharedString::from(format!("edit-placeholder-{index}")),
                                                         "icons/pencil.svg",
                                                         IconButtonVariant::Outline,
+                                                        t!("common.edit"),
                                                         move |_, _, cx| {
                                                             view_edit.update(cx, |this, cx| {
                                                                 this.open_placeholder(Some(index), cx);
@@ -348,6 +353,7 @@ impl AppView {
                                                         SharedString::from(format!("delete-placeholder-{index}")),
                                                         "icons/trash-2.svg",
                                                         IconButtonVariant::Destructive,
+                                                        t!("dialog.delete_placeholder"),
                                                         {
                                                             let name = item.name.clone();
                                                             move |_, _, cx| {

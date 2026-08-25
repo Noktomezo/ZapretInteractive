@@ -1,6 +1,6 @@
 version = 1
 protocols = ["http/1.1"]
-startupDelayMs = 350
+startupDelayMs = 650
 timeoutMs = 5000
 parallelTargets = 4
 downloadBytes = 69632
@@ -17,15 +17,29 @@ tier = "smoke"
 minBytes = 8192
 
 [[targets]]
+id = "fast-torrent-http"
+name = "Fast-Torrent HTTP"
+url = "http://fast-torrent.ru/"
+tier = "smoke"
+minBytes = 8192
+
+[[targets]]
 id = "rutor-http"
 name = "Rutor HTTP"
 url = "http://rutor.info/"
 tier = "full"
-minBytes = 34816
+minBytes = 16384
 
 [[targets]]
-id = "example-http"
-name = "Example"
-url = "http://example.com/"
-tier = "smoke"
-minBytes = 512
+id = "cdnbase-http"
+name = "CDNBase Media HTTP"
+url = "http://media5.cdnbase.com/media/files/s3/bn/bs/follaut.jpg"
+tier = "full"
+minBytes = 32768
+
+[[targets]]
+id = "flibusta-http"
+name = "Flibusta HTTP"
+url = "http://flibusta.is/"
+tier = "full"
+minBytes = 1024

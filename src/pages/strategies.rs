@@ -293,6 +293,7 @@ impl AppView {
                                         SharedString::from(format!("edit-{edit_id}")),
                                         "icons/pencil.svg",
                                         IconButtonVariant::Outline,
+                                        t!("common.edit"),
                                         move |_, _, cx| {
                                             view_edit.update(cx, |this, cx| {
                                                 this.open_category(Some(edit_id.clone()), cx);
@@ -303,8 +304,9 @@ impl AppView {
                                     .when(has_active_strategy, |actions| {
                                         actions.child(icon_button(
                                             SharedString::from(format!("clear-{clear_id}")),
-                                            "icons/brush-cleaning.svg",
+                                            "icons/rotate-ccw.svg",
                                             IconButtonVariant::Warning,
+                                            t!("strategies.btn_clear_active"),
                                             move |_, _, cx| {
                                                 clear.update(cx, |state, cx| {
                                                     state.clear_category(&clear_id, cx)
@@ -317,6 +319,7 @@ impl AppView {
                                         SharedString::from(format!("delete-{delete_id}")),
                                         "icons/trash-2.svg",
                                         IconButtonVariant::Destructive,
+                                        t!("dialog.delete_category"),
                                         move |_, _, cx| {
                                             row_state.update(cx, |state, cx| {
                                                 state.delete_category(&delete_id, cx)

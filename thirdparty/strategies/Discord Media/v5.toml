@@ -11,5 +11,5 @@ content = """
 --dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com
 --dpi-desync-hostfakesplit-mod=host=www.google.com,altorder=1
 --dpi-desync-fooling=ts"""
-active = false
+active = true
 system = true

@@ -2,7 +2,14 @@ use super::*;
 use crate::app_state::StrategyProbeState;
 use crate::services::probe::{ProbeMode, ProbePhase};
 
-const SUPPORTED_CATEGORIES: [&str; 4] = ["HTTP", "YouTube", "TCP", "QUIC"];
+const SUPPORTED_CATEGORIES: [&str; 6] = [
+    "HTTP",
+    "YouTube",
+    "TCP",
+    "QUIC",
+    "Discord + Stun",
+    "Discord Media",
+];
 
 impl AppView {
     pub(crate) fn strategy_probe_page(&mut self, cx: &mut Context<Self>) -> AnyElement {
@@ -147,20 +154,24 @@ impl AppView {
             let recommendation = recommendations
                 .iter()
                 .find(|recommendation| recommendation.category_id == category.id);
-            let description = recommendation.map_or_else(
-                || t!("probe.no_recommendation").to_string(),
-                |recommendation| {
-                    format!(
-                        "{}: {}",
-                        t!("probe.recommendation"),
-                        recommendation.strategy_name
+            recommendation.map_or_else(
+                || {
+                    rust_i18n::t!(
+                        "probe.no_best_strategy",
+                        passed = passed,
+                        total = total
                     )
+                    .to_string()
                 },
-            );
-            format!(
-                "{} · {}",
-                description,
-                t!("probe.category_summary", passed = passed, total = total)
+                |recommendation| {
+                    rust_i18n::t!(
+                        "probe.best_strategy",
+                        name = recommendation.strategy_name.as_str(),
+                        passed = passed,
+                        total = total
+                    )
+                    .to_string()
+                },
             )
         } else if let Some(message) = error {
             message.to_owned()
@@ -172,10 +183,10 @@ impl AppView {
             }
         };
 
-        let category_id = category.id.clone();
-        let state = self.state.clone();
+        let category_id_quick = category.id.clone();
+        let state_quick = self.state.clone();
         let quick = Button::new(
-            SharedString::from(format!("probe-category-{}", category.id)),
+            SharedString::from(format!("probe-category-quick-{}", category.id)),
             t!("probe.quick"),
             cx,
         )
@@ -183,35 +194,32 @@ impl AppView {
         .icon_prefix("icons/flask-round.svg")
         .disabled(running || !supported)
         .on_click(move |_, _, cx| {
-            state.update(cx, |state, cx| {
-                state.start_strategy_probe(vec![category_id.clone()], ProbeMode::Quick, cx)
+            state_quick.update(cx, |state, cx| {
+                state.start_strategy_probe(vec![category_id_quick.clone()], ProbeMode::Quick, cx)
             });
         });
 
-        let mut header_actions = div().flex().items_center().gap_2().child(quick);
-        if let Some((_, recommendations)) = report
-            && let Some(recommendation) = recommendations
-                .iter()
-                .find(|recommendation| recommendation.category_id == category.id)
-        {
-            let category_id = category.id.clone();
-            let strategy_id = recommendation.strategy_id.clone();
-            let state = self.state.clone();
-            header_actions = header_actions.child(
-                Button::new(
-                    SharedString::from(format!("apply-best-probe-{}", category.id)),
-                    t!("probe.apply_best"),
-                    cx,
-                )
-                .primary()
-                .icon_prefix("icons/check.svg")
-                .on_click(move |_, _, cx| {
-                    state.update(cx, |state, cx| {
-                        state.apply_strategy_probe_choice(&category_id, strategy_id.as_deref(), cx);
-                    });
-                }),
-            );
-        }
+        let category_id_full = category.id.clone();
+        let state_full = self.state.clone();
+        let full = Button::new(
+            SharedString::from(format!("probe-category-full-{}", category.id)),
+            t!("probe.full_test"),
+            cx,
+        )
+        .outline()
+        .icon_prefix("icons/flask-conical.svg")
+        .disabled(running || !supported)
+        .on_click(move |_, _, cx| {
+            state_full.update(cx, |state, cx| {
+                state.start_strategy_probe(vec![category_id_full.clone()], ProbeMode::Full, cx)
+            });
+        });
+
+        let mut header_actions = div()
+            .flex()
+            .items_center()
+            .gap_2();
+
         if has_body {
             let category_id = category.id.clone();
             header_actions = header_actions.child(
@@ -226,6 +234,51 @@ impl AppView {
                     },
                 )),
             );
+        }
+
+        header_actions = header_actions
+            .child(quick)
+            .child(full);
+
+        if let Some((_, recommendations)) = report
+            && let Some(recommendation) = recommendations
+                .iter()
+                .find(|recommendation| recommendation.category_id == category.id)
+        {
+            let is_already_applied = category
+                .strategies
+                .iter()
+                .find(|strategy| strategy.active)
+                .map(|strategy| strategy.id.as_str())
+                == recommendation.strategy_id.as_deref();
+
+            let category_id = category.id.clone();
+            let strategy_id = recommendation.strategy_id.clone();
+            let state = self.state.clone();
+            let apply_best_btn = if is_already_applied {
+                Button::new(
+                    SharedString::from(format!("applied-best-probe-{}", category.id)),
+                    t!("probe.applied"),
+                    cx,
+                )
+                .secondary()
+                .disabled(true)
+                .icon_prefix("icons/check.svg")
+            } else {
+                Button::new(
+                    SharedString::from(format!("apply-best-probe-{}", category.id)),
+                    t!("probe.apply_best"),
+                    cx,
+                )
+                .primary()
+                .icon_prefix("icons/check.svg")
+                .on_click(move |_, _, cx| {
+                    state.update(cx, |state, cx| {
+                        state.apply_strategy_probe_choice(&category_id, strategy_id.as_deref(), cx);
+                    });
+                })
+            };
+            header_actions = header_actions.child(apply_best_btn);
         }
 
         let body = (has_body && reveal > 0.001).then(|| {

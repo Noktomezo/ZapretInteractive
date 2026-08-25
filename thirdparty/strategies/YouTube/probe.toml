@@ -1,6 +1,6 @@
 version = 1
 protocols = ["auto"]
-startupDelayMs = 350
+startupDelayMs = 650
 timeoutMs = 5000
 parallelTargets = 4
 downloadBytes = 69632
@@ -11,22 +11,85 @@ dohUrl = "https://1.1.1.1/dns-query"
 discoverYoutubeGgc = true
 
 [[targets]]
-id = "youtube"
+id = "youtube-main"
 name = "YouTube"
-url = "https://www.youtube.com/generate_204"
+url = "https://www.youtube.com/"
+tier = "smoke"
+minBytes = 16385
+
+[[targets]]
+id = "yt-images"
+name = "YouTube Images (ytimg)"
+url = "https://i.ytimg.com/generate_204"
 tier = "smoke"
 minBytes = 0
 
 [[targets]]
-id = "googlevideo"
-name = "Google Video"
+id = "googlevideo-redirector"
+name = "Google Video (googlevideo)"
 url = "https://redirector.googlevideo.com/report_mapping"
+tier = "smoke"
+minBytes = 0
+
+[[targets]]
+id = "googlevideo-manifest"
+name = "Google Video Manifest"
+url = "https://manifest.googlevideo.com/generate_204"
 tier = "full"
 minBytes = 0
 
 [[targets]]
-id = "google"
+id = "youtube-204"
+name = "YouTube 204"
+url = "https://www.youtube.com/generate_204"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "google-204"
 name = "Google"
 url = "https://www.google.com/generate_204"
-tier = "smoke"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "yt-thumbnails"
+name = "YouTube Thumbnails"
+url = "https://yt3.ggpht.com/generate_204"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "yt-music"
+name = "YouTube Music"
+url = "https://music.youtube.com/generate_204"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "google-usercontent"
+name = "Google User Content"
+url = "https://lh3.googleusercontent.com/generate_204"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "google-jnn"
+name = "Google JNN API"
+url = "https://jnn-pa.googleapis.com/generate_204"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "yt-accounts"
+name = "YouTube Accounts"
+url = "https://accounts.youtube.com/generate_204"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "yt4-thumbnails"
+name = "YouTube Thumbnails 4"
+url = "https://yt4.ggpht.com/generate_204"
+tier = "full"
 minBytes = 0

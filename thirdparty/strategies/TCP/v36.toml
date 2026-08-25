@@ -11,5 +11,5 @@ content = """
 --dpi-desync-split-seqovl=568
 --dpi-desync-split-pos=1
 --dpi-desync-split-seqovl-pattern={{TLS_CLIENTHELLO_4PDA}}"""
-active = false
+active = true
 system = true

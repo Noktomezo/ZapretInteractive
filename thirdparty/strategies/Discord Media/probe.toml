@@ -1,0 +1,45 @@
+version = 1
+protocols = ["auto"]
+startupDelayMs = 650
+timeoutMs = 5000
+parallelTargets = 4
+downloadBytes = 69632
+verificationRepeats = 2
+followRedirects = true
+impersonate = "chrome150"
+dohUrl = "https://1.1.1.1/dns-query"
+
+[[targets]]
+id = "discord-media-waw02-2087"
+name = "Discord Media WAW02 (2087)"
+url = "wss://c-waw02-13e5bc00.discord.media:2087/?v=9"
+tier = "smoke"
+minBytes = 0
+
+[[targets]]
+id = "discord-media-waw02-2053"
+name = "Discord Media WAW02 (2053)"
+url = "wss://c-waw02-0fa1a32a.discord.media:2053/?v=9"
+tier = "smoke"
+minBytes = 0
+
+[[targets]]
+id = "discord-media-waw04-2083"
+name = "Discord Media WAW04 (2083)"
+url = "wss://c-waw04-39958699.discord.media:2083/?v=9"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "discord-media-waw02-alt-2087"
+name = "Discord Media WAW02 Alt (2087)"
+url = "wss://c-waw02-01884b39.discord.media:2087/?v=9"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "discord-media-waw06-443"
+name = "Discord Media WAW06"
+url = "wss://c-waw06-5d01fb32.discord.media/?v=9"
+tier = "full"
+minBytes = 0

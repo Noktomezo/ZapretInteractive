@@ -8312,6 +8312,7 @@ dependencies = [
  "gpui_platform",
  "image",
  "notify",
+ "raw-window-handle",
  "reqwest",
  "rust-embed",
  "rust-i18n",

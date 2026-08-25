@@ -1,4 +1,5 @@
 use gpui::*;
+use rust_i18n::t;
 
 use crate::ui::foundation::motion::mix_color;
 use crate::ui::foundation::{colors, hover_motion};
@@ -12,6 +13,7 @@ pub struct DisclosureChevron {
     progress: f32,
     hover_key: SharedString,
     hover_progress: f32,
+    tooltip: Option<SharedString>,
     on_click: Option<ClickHandler>,
 }
 
@@ -25,8 +27,14 @@ impl DisclosureChevron {
             id,
             expanded,
             hover_key,
+            tooltip: None,
             on_click: None,
         }
+    }
+
+    pub fn tooltip(mut self, tooltip: impl Into<SharedString>) -> Self {
+        self.tooltip = Some(tooltip.into());
+        self
     }
 
     pub fn on_click(
@@ -48,6 +56,13 @@ impl RenderOnce for DisclosureChevron {
         let id = self.id.clone();
         let hover_key = self.hover_key.clone();
         let expanded = self.expanded;
+        let tooltip_text = self.tooltip.unwrap_or_else(|| {
+            if expanded {
+                t!("common.collapse").into()
+            } else {
+                t!("common.expand").into()
+            }
+        });
         let mut element = div()
             .id(self.id)
             .size(crate::ui::foundation::control_style::CONTROL_HEIGHT)
@@ -57,9 +72,6 @@ impl RenderOnce for DisclosureChevron {
             .justify_center()
             .cursor_pointer()
             .text_color(color)
-            .on_hover(move |hovered, window, cx| {
-                hover_motion::set_hovered(hover_key.clone(), *hovered, window, cx);
-            })
             .child(
                 svg()
                     .path("icons/chevron-down.svg")
@@ -76,7 +88,12 @@ impl RenderOnce for DisclosureChevron {
                 handler(event, window, cx);
             });
         }
-        element
+        crate::ui::components::cursor_tooltip::attach_with_hover_motion(
+            element,
+            ElementId::from(hover_key.clone()),
+            hover_key,
+            tooltip_text,
+        )
     }
 }
 

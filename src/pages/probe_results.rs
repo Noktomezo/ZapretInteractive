@@ -51,7 +51,8 @@ pub(super) fn category_report_body(
         let candidate = &candidates[index];
         div()
             .w_full()
-            .pb_2()
+            .px_4()
+            .pb_4()
             .child(candidate_results(
                 candidate,
                 recommended_strategy.as_deref() == candidate.strategy_id.as_deref(),
@@ -62,7 +63,7 @@ pub(super) fn category_report_body(
             .into_any_element()
     });
     let list_height = px((item_count as f32 * 190.).clamp(190., 420.));
-    div().p_3().child(
+    div().pb_4().pt_4().child(
         div()
             .relative()
             .w_full()
@@ -82,7 +83,9 @@ pub(super) fn progress_body(
     strategies: &[crate::domain::Strategy],
 ) -> Div {
     div()
-        .p_3()
+        .px_4()
+        .pb_4()
+        .pt_4()
         .flex()
         .flex_col()
         .gap_2()
@@ -173,23 +176,47 @@ fn candidate_results(
         .filter(|target| target.outcome == ProbeOutcome::Pass)
         .count();
     let candidate_passed = !targets.is_empty() && passed == targets.len();
+    let is_active = state
+        .read(cx)
+        .config
+        .categories
+        .iter()
+        .find(|category| category.id == category_id)
+        .and_then(|category| category.strategies.iter().find(|strategy| strategy.active))
+        .map(|strategy| strategy.id.as_str())
+        == candidate.strategy_id.as_deref();
     let strategy_id = candidate.strategy_id.clone();
-    let apply_button = Button::new(
-        SharedString::from(format!(
-            "apply-probe-candidate-{}-{}",
-            category_id,
-            strategy_id.as_deref().unwrap_or("none")
-        )),
-        t!("probe.apply_strategy"),
-        cx,
-    )
-    .outline()
-    .icon_prefix("icons/check.svg")
-    .on_click(move |_, _, cx| {
-        state.update(cx, |state, cx| {
-            state.apply_strategy_probe_choice(&category_id, strategy_id.as_deref(), cx);
-        });
-    });
+    let apply_button = if is_active {
+        Button::new(
+            SharedString::from(format!(
+                "applied-probe-candidate-{}-{}",
+                category_id,
+                strategy_id.as_deref().unwrap_or("none")
+            )),
+            t!("probe.applied"),
+            cx,
+        )
+        .secondary()
+        .disabled(true)
+        .icon_prefix("icons/check.svg")
+    } else {
+        Button::new(
+            SharedString::from(format!(
+                "apply-probe-candidate-{}-{}",
+                category_id,
+                strategy_id.as_deref().unwrap_or("none")
+            )),
+            t!("probe.apply_strategy"),
+            cx,
+        )
+        .outline()
+        .icon_prefix("icons/check.svg")
+        .on_click(move |_, _, cx| {
+            state.update(cx, |state, cx| {
+                state.apply_strategy_probe_choice(&category_id, strategy_id.as_deref(), cx);
+            });
+        })
+    };
 
     div()
         .rounded(px(8.))
@@ -365,7 +392,9 @@ fn target_metadata(target: &TargetSummary) -> String {
         parts.push(format!("HTTP {status_code}"));
     }
     if let Some(protocol) = &target.actual_protocol {
-        parts.push(format!("h{protocol}"));
+        if protocol != "STUN" && target.protocol != ProbeProtocol::Stun {
+            parts.push(format!("h{protocol}"));
+        }
     }
     parts.push(format!(
         "{} ms",
@@ -381,6 +410,7 @@ fn protocol_label(protocol: ProbeProtocol) -> &'static str {
         ProbeProtocol::Http11 => "HTTP/1.1",
         ProbeProtocol::Http2 => "HTTP/2",
         ProbeProtocol::Http3 => "HTTP/3",
+        ProbeProtocol::Stun => "STUN",
     }
 }
 

@@ -102,7 +102,7 @@ pub fn attach_with_hover_motion(
         .on_prepaint(move |_, _, cx| mark_source_painted(&source, cx))
 }
 
-fn mark_source_painted(source: &ElementId, cx: &mut App) {
+pub fn mark_source_painted(source: &ElementId, cx: &mut App) {
     let state = cx.global_mut::<CursorTooltipState>();
     if state.source.as_ref() == Some(source) {
         state.source_painted = true;

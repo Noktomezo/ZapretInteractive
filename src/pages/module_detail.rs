@@ -16,9 +16,9 @@ pub(super) fn module_detail_page(
             SharedString::from(format!("module-{title}")),
             div()
                 .min_h_full()
-                .px_6()
+                .px_4()
                 .pt(PAGE_TOP_PADDING)
-                .pb_6()
+                .pb_4()
                 .flex()
                 .flex_col()
                 .gap(PAGE_HEADER_GAP)
@@ -42,6 +42,7 @@ pub(super) fn module_detail_page(
                                     )
                                     .ghost()
                                     .small()
+                                    .tooltip(t!("common.back"))
                                     .on_click(back),
                                 )
                                 .child(
@@ -329,6 +330,7 @@ pub(super) fn secret_control(
     )
     .ghost()
     .small()
+    .tooltip(t!("modules.tg_proxy_secret_generate"))
     .on_click(move |_, _, cx| {
         let value = uuid::Uuid::new_v4().simple().to_string();
         secret_state.update(cx, |input, cx| input.set_value(value.clone(), cx));
@@ -351,6 +353,7 @@ pub(super) fn copy_card(label: impl Into<SharedString>, value: String, cx: &App)
     let copy_btn = crate::ui::components::button::IconButton::new(btn_id, "icons/copy.svg", cx)
         .ghost()
         .small()
+        .tooltip(t!("common.copy"))
         .on_click(move |_, _, cx| cx.write_to_clipboard(ClipboardItem::new_string(copy.clone())));
 
     crate::ui::components::card::Card::new()

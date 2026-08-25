@@ -3,7 +3,7 @@ default: check
 # Run with auto-reload on source and localization changes
 dev:
     CARGO_TARGET_DIR=target/dev CARGO_INCREMENTAL=0 cargo run --package xtask -- patch-gpui
-    CARGO_TARGET_DIR=target/dev CARGO_INCREMENTAL=0 watchexec -r -e rs,hlsl,yml,yaml -- cargo run
+    CARGO_TARGET_DIR=target/dev CARGO_INCREMENTAL=0 watchexec -r -w src -w Cargo.toml -e rs,hlsl,yml,yaml,toml -- cargo run
 
 # Apply the pinned GPUI D3D11 source patch idempotently
 patch-gpui:

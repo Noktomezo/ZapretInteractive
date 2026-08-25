@@ -101,6 +101,7 @@ pub(super) fn strategy_card(
                                 SharedString::from(format!("activate-strategy-{activate_id}")),
                                 "icons/check.svg",
                                 IconButtonVariant::Outline,
+                                t!("common.apply"),
                                 move |_, _, cx| {
                                     activate_state.update(cx, |state, cx| {
                                         state.select_strategy(&activate_category, &activate_id, cx)
@@ -113,6 +114,7 @@ pub(super) fn strategy_card(
                             SharedString::from(format!("edit-strategy-{strategy_id}")),
                             "icons/pencil.svg",
                             IconButtonVariant::Outline,
+                            t!("common.edit"),
                             edit,
                             cx,
                         ))
@@ -121,6 +123,7 @@ pub(super) fn strategy_card(
                                 SharedString::from(format!("restore-strategy-{restore_id}")),
                                 "icons/rotate-ccw.svg",
                                 IconButtonVariant::Warning,
+                                t!("strategies.restore_tooltip"),
                                 move |_, _, cx| {
                                     restore_state.update(cx, |state, cx| {
                                         state.restore_strategy(&restore_category, &restore_id, cx)
@@ -132,8 +135,9 @@ pub(super) fn strategy_card(
                         .when(active, |buttons| {
                             buttons.child(icon_button(
                                 SharedString::from(format!("clear-strategy-{clear_id}")),
-                                "icons/brush-cleaning.svg",
+                                "icons/rotate-ccw.svg",
                                 IconButtonVariant::Warning,
+                                t!("strategies.btn_clear_active"),
                                 move |_, _, cx| {
                                     clear_state.update(cx, |state, cx| {
                                         state.select_strategy(&clear_category, &clear_id, cx)
@@ -146,6 +150,7 @@ pub(super) fn strategy_card(
                             SharedString::from(format!("delete-strategy-{delete_id}")),
                             "icons/trash-2.svg",
                             IconButtonVariant::Destructive,
+                            t!("dialog.delete_strategy"),
                             {
                                 let strategy_name = strategy.name.clone();
                                 move |_, _, cx| {

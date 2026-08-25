@@ -1,6 +1,6 @@
 version = 1
 protocols = ["h3"]
-startupDelayMs = 350
+startupDelayMs = 650
 timeoutMs = 5000
 parallelTargets = 4
 downloadBytes = 69632
@@ -29,3 +29,10 @@ name = "Cloudflare HTTP/3"
 url = "https://cloudflare.com/cdn-cgi/trace"
 tier = "full"
 minBytes = 64
+
+[[targets]]
+id = "cloudflare-quic"
+name = "Cloudflare QUIC Stand"
+url = "https://cloudflare-quic.com/"
+tier = "full"
+minBytes = 512

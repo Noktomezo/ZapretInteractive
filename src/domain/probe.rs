@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 
 fn default_startup_delay_ms() -> u64 {
-    350
+    650
 }
 
 fn default_timeout_ms() -> u64 {
@@ -46,6 +46,8 @@ pub enum ProbeProtocol {
     Http2,
     #[serde(rename = "h3")]
     Http3,
+    #[serde(rename = "stun")]
+    Stun,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
@@ -162,7 +164,7 @@ impl ProbeProfile {
             }
             let url = Url::parse(&target.url)
                 .with_context(|| format!("некорректный URL цели {}", target.id))?;
-            if !matches!(url.scheme(), "http" | "https")
+            if !matches!(url.scheme(), "http" | "https" | "stun" | "ws" | "wss")
                 || !url.username().is_empty()
                 || url.password().is_some()
                 || url.host_str().is_none()
@@ -395,20 +397,18 @@ mod tests {
             include_str!("../../thirdparty/strategies/TCP/probe.toml"),
             include_str!("../../thirdparty/strategies/YouTube/probe.toml"),
             include_str!("../../thirdparty/strategies/QUIC/probe.toml"),
+            include_str!("../../thirdparty/strategies/Discord + Stun/probe.toml"),
+            include_str!("../../thirdparty/strategies/Discord Media/probe.toml"),
         ] {
             let profile: ProbeProfile = toml::from_str(source).expect("bundled profile parses");
             profile.validate().expect("bundled profile validates");
-            let doh_url = Url::parse(
-                profile
-                    .doh_url
-                    .as_deref()
-                    .expect("bundled probe has a DoH URL"),
-            )
-            .expect("bundled DoH URL parses");
-            assert!(matches!(
-                doh_url.host(),
-                Some(url::Host::Ipv4(_)) | Some(url::Host::Ipv6(_))
-            ));
+            if let Some(doh_str) = &profile.doh_url {
+                let doh_url = Url::parse(doh_str).expect("bundled DoH URL parses");
+                assert!(matches!(
+                    doh_url.host(),
+                    Some(url::Host::Ipv4(_)) | Some(url::Host::Ipv6(_))
+                ));
+            }
         }
     }
 }

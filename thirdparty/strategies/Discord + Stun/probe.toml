@@ -1,0 +1,45 @@
+version = 1
+protocols = ["stun"]
+startupDelayMs = 650
+timeoutMs = 3000
+parallelTargets = 4
+downloadBytes = 69632
+verificationRepeats = 2
+followRedirects = false
+impersonate = "chrome150"
+dohUrl = "https://1.1.1.1/dns-query"
+
+[[targets]]
+id = "stun-google"
+name = "Google STUN (19302)"
+url = "stun://stun.l.google.com:19302"
+tier = "smoke"
+minBytes = 0
+
+[[targets]]
+id = "stun-google-1"
+name = "Google STUN 1 (19302)"
+url = "stun://stun1.l.google.com:19302"
+tier = "smoke"
+minBytes = 0
+
+[[targets]]
+id = "stun-google-2"
+name = "Google STUN 2 (19302)"
+url = "stun://stun2.l.google.com:19302"
+tier = "smoke"
+minBytes = 0
+
+[[targets]]
+id = "stun-google-3"
+name = "Google STUN 3 (19302)"
+url = "stun://stun3.l.google.com:19302"
+tier = "full"
+minBytes = 0
+
+[[targets]]
+id = "stun-google-4"
+name = "Google STUN 4 (19302)"
+url = "stun://stun4.l.google.com:19302"
+tier = "full"
+minBytes = 0

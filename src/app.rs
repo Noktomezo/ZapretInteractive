@@ -7,6 +7,7 @@ use gpui::*;
 use crate::app_state::AppState;
 use crate::faulty_terminal::FaultyTerminal;
 use crate::ui::components::button::Button;
+use crate::ui::foundation::element_ext::ElementPrepaintExt as _;
 use crate::ui::components::dropdown::{DropdownChoice, DropdownEvent, DropdownState};
 use crate::ui::components::text_input::{TextInputEvent, TextInputState};
 use crate::ui::foundation::colors::{
@@ -93,6 +94,8 @@ pub struct AppView {
     pub filters_scroll_handle: UniformListScrollHandle,
     pub placeholders_scroll_handle: UniformListScrollHandle,
     pub category_strategies_list_state: ListState,
+    pub category_strategies_smooth_state:
+        Entity<crate::ui::components::smooth_scroll::SmoothListState>,
     pub(crate) probe_results_list_states: HashMap<String, ListState>,
     pub(crate) current_viewed_category: Option<String>,
     pub(crate) closing_editor: Option<(EditorTarget, Instant)>,
@@ -264,6 +267,21 @@ impl Render for AppView {
 }
 
 impl AppView {
+    pub fn smooth_scroll_category_to_strategy(
+        &self,
+        item_index: usize,
+        window: &mut Window,
+        cx: &mut App,
+    ) {
+        crate::ui::components::smooth_scroll::smooth_scroll_list_to_item(
+            &self.category_strategies_smooth_state,
+            &self.category_strategies_list_state,
+            item_index,
+            window,
+            cx,
+        );
+    }
+
     fn breadcrumb(&self, cx: &mut Context<Self>) -> AnyElement {
         match &self.route {
             Route::Dns => self.two_level_breadcrumb(
@@ -542,19 +560,21 @@ impl AppView {
             })
             .on_hover(cx.listener({
                 let route = route.clone();
+                let hover_source = hover_tooltip_source.clone();
+                let text = tooltip_label.clone();
                 move |this, is_hovered, window, cx| {
                     this.set_hovered_route(route.clone(), *is_hovered, cx);
                     if collapsed {
                         crate::ui::components::cursor_tooltip::set_hovered(
-                            hover_tooltip_source.clone(),
-                            tooltip_label.clone(),
+                            hover_source.clone(),
+                            text.clone(),
                             *is_hovered,
                             window,
                             cx,
                         );
                     } else {
                         crate::ui::components::cursor_tooltip::hide_source(
-                            &hover_tooltip_source,
+                            &hover_source,
                             window,
                             cx,
                         );
@@ -567,6 +587,17 @@ impl AppView {
                     window,
                     cx,
                 );
+            })
+            .on_prepaint({
+                let prepaint_source = tooltip_source.clone();
+                move |_, _, cx| {
+                    if collapsed {
+                        crate::ui::components::cursor_tooltip::mark_source_painted(
+                            &prepaint_source,
+                            cx,
+                        );
+                    }
+                }
             })
             .on_click(cx.listener({
                 let route = route.clone();
@@ -620,6 +651,61 @@ fn titlebar(
     let update_button =
         titlebar_update_button(app_update, is_updating, update_progress, state.clone(), cx);
     let probe_button = titlebar_probe_button(state.clone(), cx);
+    let controls = titlebar_window_controls(is_maximized, minimize_on_close, state, cx);
+
+    let sidebar_toggle = div()
+        .size(px(SIDEBAR_COLLAPSED_WIDTH))
+        .flex()
+        .items_center()
+        .justify_center()
+        .flex_shrink_0()
+        .child(titlebar_control_button(
+            "sidebar-toggle",
+            false,
+            if progress > 0.5 {
+                t!("common.collapse")
+            } else {
+                t!("common.expand")
+            },
+            None,
+            toggle,
+            sidebar_icon(progress),
+            cx,
+        ));
+
+    #[cfg(target_os = "macos")]
+    let left_section = div()
+        .flex()
+        .items_center()
+        .gap(SHELL_SPACING)
+        .pl(SHELL_SPACING)
+        .flex_shrink_0()
+        .children(controls)
+        .child(sidebar_toggle);
+
+    #[cfg(not(target_os = "macos"))]
+    let left_section = sidebar_toggle;
+
+    #[cfg(target_os = "macos")]
+    let right_section = div()
+        .flex()
+        .items_center()
+        .gap(SHELL_SPACING)
+        .pr(SHELL_SPACING)
+        .flex_shrink_0()
+        .children(probe_button)
+        .children(update_button);
+
+    #[cfg(not(target_os = "macos"))]
+    let right_section = div()
+        .flex()
+        .items_center()
+        .gap(SHELL_SPACING)
+        .pr(SHELL_SPACING)
+        .flex_shrink_0()
+        .children(probe_button)
+        .children(update_button)
+        .children(controls);
 
     let bar_alpha = (1.0 - acrylic_progress).clamp(0.0, 1.0);
     div()
@@ -632,23 +718,7 @@ fn titlebar(
         .justify_between()
         .window_control_area(WindowControlArea::Drag)
         .relative()
-        .child(
-            div()
-                .size(px(SIDEBAR_COLLAPSED_WIDTH))
-                .flex()
-                .items_center()
-                .justify_center()
-                .flex_shrink_0()
-                .child(
-                    titlebar_button("sidebar-toggle", false, cx)
-                        .on_mouse_down(MouseButton::Left, move |_, window, cx| {
-                            window.prevent_default();
-                            cx.stop_propagation();
-                        })
-                        .on_click(toggle)
-                        .child(sidebar_icon(progress)),
-                ),
-        )
+        .child(left_section)
         .child(
             div()
                 .absolute()
@@ -665,73 +735,91 @@ fn titlebar(
                 .h_full()
                 .window_control_area(WindowControlArea::Drag),
         )
-        .child(
-            div()
-                .flex()
-                .items_center()
-                .gap(SHELL_SPACING)
-                .pr(SHELL_SPACING)
-                .flex_shrink_0()
-                .children(probe_button)
-                .children(update_button)
-                .child(
-                    titlebar_button("minimize", false, cx)
-                        .window_control_area(WindowControlArea::Min)
-                        .on_mouse_down(MouseButton::Left, |_, window, cx| {
-                            window.prevent_default();
-                            cx.stop_propagation();
-                            window.minimize_window();
-                        })
-                        .child(titlebar_icon("icons/window-minimize.svg")),
-                )
-                .child(
-                    titlebar_button("maximize", false, cx)
-                        .window_control_area(WindowControlArea::Max)
-                        .on_mouse_down(MouseButton::Left, move |_, window, cx| {
-                            window.prevent_default();
-                            cx.stop_propagation();
-                            if is_maximized {
-                                #[cfg(windows)]
-                                crate::tray::restore_main_window();
-                                #[cfg(not(windows))]
-                                window.zoom_window();
-                            } else {
-                                window.zoom_window();
-                            }
-                        })
-                        .child(titlebar_icon(if is_maximized {
-                            "icons/window-restore.svg"
-                        } else {
-                            "icons/window-maximize.svg"
-                        })),
-                )
-                .child(
-                    titlebar_button("close", true, cx)
-                        .window_control_area(WindowControlArea::Close)
-                        .on_mouse_down(MouseButton::Left, |_, window, cx| {
-                            window.prevent_default();
-                            cx.stop_propagation();
-                        })
-                        .on_click(move |_, window, cx| {
-                            if minimize_on_close {
-                                crate::ui::foundation::hover_motion::clear_all_hovers_app(cx);
-                                window.refresh();
-                                #[cfg(windows)]
-                                crate::tray::hide_main_window();
-                                #[cfg(not(windows))]
-                                window.minimize_window();
-                            } else {
-                                let deferred =
-                                    state.update(cx, |state, cx| state.defer_quit_for_probe(cx));
-                                if !deferred {
-                                    cx.quit();
-                                }
-                            }
-                        })
-                        .child(destructive_titlebar_icon("icons/window-close.svg", cx)),
-                ),
-        )
+        .child(right_section)
         .into_any_element()
+}
+
+fn titlebar_window_controls(
+    is_maximized: bool,
+    minimize_on_close: bool,
+    state: Entity<AppState>,
+    cx: &App,
+) -> Vec<AnyElement> {
+    let min_btn = titlebar_control_button(
+        "minimize",
+        false,
+        t!("common.minimize"),
+        Some(WindowControlArea::Min),
+        |_, window, _| {
+            window.minimize_window();
+        },
+        titlebar_icon("icons/window-minimize.svg"),
+        cx,
+    );
+    let max_btn = titlebar_control_button(
+        "maximize",
+        false,
+        if is_maximized {
+            t!("common.restore")
+        } else {
+            t!("common.maximize")
+        },
+        Some(WindowControlArea::Max),
+        move |_, window, _| {
+            if is_maximized {
+                #[cfg(windows)]
+                crate::tray::restore_main_window();
+                #[cfg(not(windows))]
+                window.zoom_window();
+            } else {
+                window.zoom_window();
+            }
+        },
+        titlebar_icon(if is_maximized {
+            "icons/window-restore.svg"
+        } else {
+            "icons/window-maximize.svg"
+        }),
+        cx,
+    );
+    let state_close = state;
+    let close_btn = titlebar_control_button(
+        "close",
+        true,
+        if minimize_on_close {
+            t!("common.minimize_to_tray")
+        } else {
+            t!("common.close")
+        },
+        Some(WindowControlArea::Close),
+        move |_, window, cx| {
+            if minimize_on_close {
+                crate::ui::foundation::hover_motion::clear_all_hovers_app(cx);
+                window.refresh();
+                #[cfg(windows)]
+                crate::tray::hide_main_window();
+                #[cfg(not(windows))]
+                window.minimize_window();
+            } else {
+                let deferred =
+                    state_close.update(cx, |state, cx| state.defer_quit_for_probe(cx));
+                if !deferred {
+                    cx.quit();
+                }
+            }
+        },
+        destructive_titlebar_icon("icons/window-close.svg", cx),
+        cx,
+    );
+
+    #[cfg(target_os = "macos")]
+    {
+        vec![close_btn, min_btn, max_btn]
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        vec![min_btn, max_btn, close_btn]
+    }
 }
 
 fn titlebar_probe_button(state: Entity<AppState>, cx: &App) -> Option<AnyElement> {
@@ -840,11 +928,37 @@ fn titlebar_update_button(
     )
 }
 
-fn titlebar_button(id: &'static str, is_destructive: bool, cx: &App) -> Stateful<Div> {
-    let (button, hover_key) = titlebar_button_base(id, is_destructive, cx);
-    button.on_hover(move |hovered, window, cx| {
-        crate::ui::foundation::hover_motion::set_hovered(hover_key.clone(), *hovered, window, cx);
-    })
+fn titlebar_control_button(
+    id: &'static str,
+    is_destructive: bool,
+    tooltip: impl Into<SharedString>,
+    control_area: Option<WindowControlArea>,
+    on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+    icon: impl IntoElement,
+    cx: &App,
+) -> AnyElement {
+    let (mut button, hover_key) = titlebar_button_base(id, is_destructive, cx);
+    if let Some(area) = control_area {
+        button = button.window_control_area(area);
+    }
+    let button = button
+        .on_mouse_down(MouseButton::Left, |_, window, cx| {
+            window.prevent_default();
+            cx.stop_propagation();
+        })
+        .on_click(move |event, window, cx| {
+            crate::ui::components::cursor_tooltip::hide(window, cx);
+            on_click(event, window, cx);
+        })
+        .child(icon);
+
+    crate::ui::components::cursor_tooltip::attach_with_hover_motion(
+        button,
+        ElementId::Name(format!("titlebar-btn-tooltip-{id}").into()),
+        hover_key,
+        tooltip,
+    )
+    .into_any_element()
 }
 
 fn titlebar_button_base(

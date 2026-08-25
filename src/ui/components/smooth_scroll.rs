@@ -60,14 +60,14 @@ impl RenderOnce for ScrollableColumn {
     }
 }
 
-struct SmoothListState {
-    target_y: Pixels,
-    running: bool,
-    last_frame: Instant,
+pub struct SmoothListState {
+    pub(crate) target_y: Pixels,
+    pub(crate) running: bool,
+    pub(crate) last_frame: Instant,
 }
 
 impl SmoothListState {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             target_y: Pixels::ZERO,
             running: false,
@@ -312,6 +312,7 @@ pub struct SmoothListScroll {
     child: AnyElement,
     wheel_enabled: bool,
     scroll_to_top: bool,
+    smooth_state: Option<Entity<SmoothListState>>,
 }
 
 impl SmoothListScroll {
@@ -322,7 +323,13 @@ impl SmoothListScroll {
             child: child.into_any_element(),
             wheel_enabled: true,
             scroll_to_top: false,
+            smooth_state: None,
         }
+    }
+
+    pub fn with_smooth_state(mut self, smooth_state: Entity<SmoothListState>) -> Self {
+        self.smooth_state = Some(smooth_state);
+        self
     }
 
     pub fn wheel_enabled(mut self, enabled: bool) -> Self {
@@ -338,11 +345,13 @@ impl SmoothListScroll {
 
 impl RenderOnce for SmoothListScroll {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let state = window
-            .use_keyed_state((self.id.clone(), "smooth-list-state"), cx, |_, _| {
-                SmoothListState::new()
-            })
-            .clone();
+        let state = self.smooth_state.unwrap_or_else(|| {
+            window
+                .use_keyed_state((self.id.clone(), "smooth-list-state"), cx, |_, _| {
+                    SmoothListState::new()
+                })
+                .clone()
+        });
 
         let handle = self.state;
         let captured = CaptureListWheel {
@@ -368,7 +377,7 @@ impl RenderOnce for SmoothListScroll {
     }
 }
 
-trait SmoothVirtualHandle: Clone + 'static {
+pub trait SmoothVirtualHandle: Clone + 'static {
     fn offset(&self) -> Point<Pixels>;
     fn max_scroll_y(&self) -> Pixels;
     fn set_offset(&self, offset: Point<Pixels>);
@@ -491,29 +500,7 @@ fn with_scroll_to_top<H: SmoothVirtualHandle>(
                         cx.stop_propagation();
                     })
                     .on_click(move |_, window, cx| {
-                        let reduce_motion = cx.reduce_motion();
-                        let should_schedule = scroll_state.update(cx, |state, _| {
-                            let applied_offset = scroll_handle.offset();
-                            state.target_y = Pixels::ZERO;
-                            if reduce_motion {
-                                scroll_handle.set_offset(point(applied_offset.x, Pixels::ZERO));
-                                state.running = false;
-                                false
-                            } else {
-                                state.running = true;
-                                state.last_frame = Instant::now();
-                                true
-                            }
-                        });
-
-                        window.refresh();
-                        if should_schedule {
-                            schedule_list_frame(
-                                scroll_state.clone(),
-                                scroll_handle.clone(),
-                                window,
-                            );
-                        }
+                        smooth_scroll_to_top(&scroll_state, scroll_handle.clone(), window, cx);
                     })
                     .child(
                         svg()
@@ -530,6 +517,67 @@ fn with_scroll_to_top<H: SmoothVirtualHandle>(
                     ),
             ),
     )
+}
+
+pub fn smooth_scroll_to_top<H: SmoothVirtualHandle>(
+    scroll_state: &Entity<SmoothListState>,
+    handle: H,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    let reduce_motion = cx.reduce_motion();
+    let handle_clone = handle.clone();
+    let should_schedule = scroll_state.update(cx, |state, _| {
+        let applied_offset = handle_clone.offset();
+        state.target_y = Pixels::ZERO;
+        if reduce_motion {
+            handle_clone.set_offset(point(applied_offset.x, Pixels::ZERO));
+            state.running = false;
+            false
+        } else {
+            state.running = true;
+            state.last_frame = Instant::now();
+            true
+        }
+    });
+
+    window.refresh();
+    if should_schedule {
+        schedule_list_frame(scroll_state.clone(), handle, window);
+    }
+}
+
+pub fn smooth_scroll_list_to_item(
+    scroll_state: &Entity<SmoothListState>,
+    list_state: &ListState,
+    item_index: usize,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    let start_offset = list_state.scroll_px_offset_for_scrollbar();
+    list_state.scroll_to_reveal_item(item_index);
+    let target_y = list_state.scroll_px_offset_for_scrollbar().y;
+    list_state.set_offset_from_scrollbar(start_offset);
+
+    let reduce_motion = cx.reduce_motion();
+    let handle = list_state.clone();
+    let should_schedule = scroll_state.update(cx, |state, _| {
+        state.target_y = target_y;
+        if reduce_motion {
+            handle.set_offset_from_scrollbar(point(start_offset.x, target_y));
+            state.running = false;
+            false
+        } else {
+            state.running = true;
+            state.last_frame = Instant::now();
+            true
+        }
+    });
+
+    window.refresh();
+    if should_schedule {
+        schedule_list_frame(scroll_state.clone(), handle, window);
+    }
 }
 
 fn handle_list_wheel(
