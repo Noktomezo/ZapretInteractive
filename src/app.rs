@@ -7,6 +7,7 @@ use gpui::*;
 use crate::app_state::AppState;
 use crate::faulty_terminal::FaultyTerminal;
 use crate::ui::components::button::Button;
+use crate::ui::foundation::element_ext::ElementPrepaintExt as _;
 use crate::ui::components::dropdown::{DropdownChoice, DropdownEvent, DropdownState};
 use crate::ui::components::text_input::{TextInputEvent, TextInputState};
 use crate::ui::foundation::colors::{
@@ -14,7 +15,6 @@ use crate::ui::foundation::colors::{
     muted_foreground, paper, secondary, yellow as accent,
 };
 use crate::ui::foundation::control_style::{SHELL_CONTROL_SIZE, SHELL_SPACING};
-use crate::ui::foundation::element_ext::ElementPrepaintExt as _;
 use crate::ui::foundation::motion::{DropdownMotion, ScalarTransition, mix_color};
 
 mod setup;
@@ -808,7 +808,8 @@ fn titlebar_window_controls(
                 #[cfg(not(windows))]
                 window.minimize_window();
             } else {
-                let deferred = state_close.update(cx, |state, cx| state.defer_quit_for_probe(cx));
+                let deferred =
+                    state_close.update(cx, |state, cx| state.defer_quit_for_probe(cx));
                 if !deferred {
                     cx.quit();
                 }

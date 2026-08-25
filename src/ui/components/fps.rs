@@ -594,8 +594,7 @@ impl Render for FpsMonitor {
                     if phase != DispatchPhase::Capture || event.button != MouseButton::Left {
                         return;
                     }
-                    let dragging =
-                        capture_monitor.read_with(cx, |monitor, _| monitor.drag.is_some());
+                    let dragging = capture_monitor.read_with(cx, |monitor, _| monitor.drag.is_some());
                     if dragging {
                         capture_monitor.update(cx, |monitor, cx| {
                             monitor.drag = None;
