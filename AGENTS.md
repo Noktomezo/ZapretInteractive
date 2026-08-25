@@ -64,9 +64,19 @@ These rules apply to **every** Rust change. No exceptions for “quick fix”, �
 - **Minimal diff**: Change only what is required for the task. Do not reformat unrelated code, rename widely, or perform drive-by edits.
 - **No out-of-scope features**: Implement strictly what was requested.
 
-### 11. Before finishing any Rust task
-Checklist (mentally or explicitly):
-- [ ] Compiles with project’s standard `cargo check` / `cargo test` scope
+### 11. Mandatory Quality Gate — Full Verification Pipeline (EVERY TASK)
+Before marking any task complete, committing, or pushing, you MUST run this verification pipeline in order:
+
+1. **Format**: `cargo fmt --all` (format all source files to project standards).
+2. **Type Check**: `cargo check --all-targets` (verify compilation across all targets).
+3. **Clippy (Strict Zero-Warning Policy)**: `cargo clippy --all-targets -- -D warnings` (must pass with 0 warnings, fix any lints).
+4. **Tests**: `cargo test` (verify all unit and integration tests pass with 0 failures).
+
+Checklist before delivery:
+- [ ] `cargo fmt --all` executed
+- [ ] `cargo check --all-targets` succeeds
+- [ ] `cargo clippy --all-targets -- -D warnings` passes with 0 warnings
+- [ ] `cargo test` passes with 0 failures
 - [ ] No new unjustified `unwrap` / `unsafe` / deps
 - [ ] Errors propagated with context
 - [ ] Public API and ownership make sense

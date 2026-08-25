@@ -391,10 +391,11 @@ fn target_metadata(target: &TargetSummary) -> String {
     if let Some(status_code) = target.status_code {
         parts.push(format!("HTTP {status_code}"));
     }
-    if let Some(protocol) = &target.actual_protocol {
-        if protocol != "STUN" && target.protocol != ProbeProtocol::Stun {
-            parts.push(format!("h{protocol}"));
-        }
+    if let Some(protocol) = &target.actual_protocol
+        && protocol != "STUN"
+        && target.protocol != ProbeProtocol::Stun
+    {
+        parts.push(format!("h{protocol}"));
     }
     parts.push(format!(
         "{} ms",
