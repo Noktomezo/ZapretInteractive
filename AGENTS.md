@@ -57,10 +57,12 @@ These rules apply to **every** Rust change. No exceptions for “quick fix”, �
 - Avoid unnecessary allocations in hot paths (`format!` in tight loops, repeated `to_string()`, collect when an iterator suffices).
 - Prefer `impl Iterator` / streaming over intermediate `Vec` when the API allows.
 
-### 10. Git / change discipline
-- Minimal diff: change only what’s required for the task.
-- Do not reformat unrelated code, rename widely, or “clean up” drive-by unless asked.
-- Do not add features beyond the request.
+### 10. Git & Branching Workflow (STRICT)
+- **Feature branch from `main`**: Always branch from `origin/main` for each new task, fix, or feature (e.g., `feature/<name>`, `fix/<name>`). Never accumulate unrelated changes into long-lived omnibus branches (no 80k line monster PRs).
+- **PRs directly to `main`**: Open Pull Requests directly from the focused `feature/<name>` branch into `main` for clean review.
+- **Local sync**: Keep the user's local working copy updated with the feature changes (via worktree, direct branch switch, or cherry-pick/rebase) so changes are immediately testable locally.
+- **Minimal diff**: Change only what is required for the task. Do not reformat unrelated code, rename widely, or perform drive-by edits.
+- **No out-of-scope features**: Implement strictly what was requested.
 
 ### 11. Before finishing any Rust task
 Checklist (mentally or explicitly):
