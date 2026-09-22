@@ -30,6 +30,7 @@ boosty.to
 ottai.com
 ufanet.tv
 apple.com
+gudsen.vip
 whatbox.ca
 trovo.live
 beeline.tv
@@ -64,6 +65,7 @@ voidboost.one
 kaspersky.com
 canonical.com
 mediafire.com
+mozaracing.com
 vivoglobal.com
 dolynkcloud.com
 libreoffice.org
@@ -576,4 +578,12 @@ dreametech.com
 dreamehome.com
 dreame-technology.cn
 dreame-technology.com
+#################################### Arena Breakout Infinite
+li.com
+netease.com
+igamecj.com
+proximabeta.com
+levelinfinite.com
+arenabreakout.com
+arenabreakoutinfinite.com
 ####################################
