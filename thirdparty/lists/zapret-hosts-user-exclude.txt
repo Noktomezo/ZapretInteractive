@@ -41,6 +41,7 @@ yandex.com
 yandex.org
 yandex.net
 chatglm.cn
+pantum.com
 gstatic.com
 lichess.org
 premier.one
@@ -69,6 +70,7 @@ mozaracing.com
 vivoglobal.com
 dolynkcloud.com
 libreoffice.org
+payguide.online
 easy4ipcloud.com
 feralhosting.com
 moondroplab.tech
@@ -587,7 +589,7 @@ levelinfinite.com
 arenabreakout.com
 arenabreakoutinfinite.com
 #################################### Aniimo
+funplus.com
 guardease.com
 kingsgroupgames.com
-funplus.com
 ####################################
