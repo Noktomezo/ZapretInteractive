@@ -68,6 +68,7 @@ voidboost.one
 kaspersky.com
 canonical.com
 mediafire.com
+huggingface.co
 mozaracing.com
 vivoglobal.com
 dolynkcloud.com
@@ -605,4 +606,14 @@ tplinkwifi.net
 tplinkcloud.com
 tplinklogin.net
 tplinkrepeater.net
+#################################### Nintendo
+nintendo.com
+nintendo.net
+nintendo.co.jp
+nintendo.com.au
+nintendo.com.uk
+nintendo.com.hk
+nintendo.com.tw
+nintendo.com.cn
+nintendo-europe.com
 ####################################
