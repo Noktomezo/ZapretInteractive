@@ -616,6 +616,4 @@ nintendo.com.hk
 nintendo.com.tw
 nintendo.com.cn
 nintendo-europe.com
-#################################### Roblox
-rbxcdn.com
 ####################################
