@@ -63,6 +63,7 @@ ipstream.one
 godville.net
 voidboost.cc
 hcaptcha.com
+fanatical.com
 mchose.com.cn
 voidboost.one
 kaspersky.com
@@ -616,4 +617,7 @@ nintendo.com.hk
 nintendo.com.tw
 nintendo.com.cn
 nintendo-europe.com
+#################################### Хmeye
+xmeye.net
+xiongmaitech.com
 ####################################
