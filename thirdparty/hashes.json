@@ -56,7 +56,7 @@
   "filters:windivert_part.stun.txt": "4106750dff21c0d45998960931bfc1c08ea709132b8d59a41636e7c83e10cd2d",
   "filters:windivert_part.wireguard.txt": "da68586267462b29e3e370203ce0369ae2baa25a07aa2deab5fb44d69fef27be",
   "lists:zapret-hosts-google.txt": "f83a38144f7f65f51dc4996414ec8b6b6eef29524e6a8cfe0ec15078c9699dc1",
-  "lists:zapret-hosts-user-exclude.txt": "57c29bed3d8498f11d4fcb2fe9ebe4a3d05006104109ff4b750ed32d46bae4d4",
+  "lists:zapret-hosts-user-exclude.txt": "e0bdfe572e7f02873a9defda11b881454eede37853a278e1c95367540887af0b",
   "lists:zapret-ip-user.txt": "365aba7ceba7e58ffba606bea384de478601b634c03dc6d33b681f22bc5995cf",
   "modules:curl-impersonate/curl-impersonate.exe": "52c1fdcb96edda3c477d0793c951845e47dd3d6ec6908e59c06bf64651d084a9",
   "modules:dnscrypt-proxy/dnscrypt-proxy.exe": "312274e07e0084088f61bd60f57ee5c3dcf4307f5c1f5dbcf374fd6f5d4fc7d0",
