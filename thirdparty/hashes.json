@@ -60,5 +60,5 @@
   "lists:zapret-ip-user.txt": "86775b5ff6efe1f778dfba719596d5308adc23335cf9a93dff35337883be18d1",
   "modules:curl-impersonate/curl-impersonate.exe": "52c1fdcb96edda3c477d0793c951845e47dd3d6ec6908e59c06bf64651d084a9",
   "modules:dnscrypt-proxy/dnscrypt-proxy.exe": "312274e07e0084088f61bd60f57ee5c3dcf4307f5c1f5dbcf374fd6f5d4fc7d0",
-  "modules:tg-ws-proxy-rs/tg-ws-proxy.exe": "627b41f23a4facc2ea4fee92874cf20901640ab50028c20cc8b473c9bbd33eb2"
+  "modules:tg-ws-proxy-rs/tg-ws-proxy.exe": "57eeb5d0f835bb2626a8b2ef9f361431bb8e7bd4e316077f9d45de3764e8a016"
 }
