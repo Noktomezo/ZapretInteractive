@@ -25,6 +25,7 @@ ktalk.ru
 avito.st
 habr.com
 vibio.tv
+vivo.com
 ali.click
 nexon.com
 tenor.com
@@ -533,6 +534,10 @@ origin.com
 tnt-ea.com
 easports.com
 eamobile.com
+battlefront.com
+gosredirector.ea.com
+gosgvaprod-qos.ea.com
+eaassets-a.akamaihd.net
 #################################### IP Camera
 av380.net
 hiseese.com
