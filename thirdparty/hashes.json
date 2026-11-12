@@ -56,8 +56,8 @@
   "filters:windivert_part.stun.txt": "4106750dff21c0d45998960931bfc1c08ea709132b8d59a41636e7c83e10cd2d",
   "filters:windivert_part.wireguard.txt": "da68586267462b29e3e370203ce0369ae2baa25a07aa2deab5fb44d69fef27be",
   "lists:zapret-hosts-google.txt": "f83a38144f7f65f51dc4996414ec8b6b6eef29524e6a8cfe0ec15078c9699dc1",
-  "lists:zapret-hosts-user-exclude.txt": "84e8600a213d9de6ded01fc6bcc56db8036d6d22a81d0ccb1671d577249d4ff6",
-  "lists:zapret-ip-user.txt": "010e6e797008ad4ed1fcd562d3f1929e88a84185c857cf4e4a09fc052dd8f05c",
+  "lists:zapret-hosts-user-exclude.txt": "7ad7ce0c93b3ecee14d160592e695b109962d14d24d01f5e36fb54ff5663839a",
+  "lists:zapret-ip-user.txt": "15bf75a9abff06bcbb3b60d148ce0377bbca1b079747a8bfb4c8bf9ec6aebcf4",
   "modules:curl-impersonate/curl-impersonate.exe": "916551ba56031958049a69a903ee9a058e918b826d4c6667cd953d8dfc96247a",
   "modules:dnscrypt-proxy/dnscrypt-proxy.exe": "312274e07e0084088f61bd60f57ee5c3dcf4307f5c1f5dbcf374fd6f5d4fc7d0",
   "modules:tg-ws-proxy-rs/tg-ws-proxy.exe": "18917ecd9dcaeeec510483b90fbc7bc20c171838c6edfbc8d667e48a6801afad"
